@@ -1,0 +1,2 @@
+{ "name": "@delish/shared", "version": "0.1.0", "main": "./src/index.ts", "type": "module",
+  "dependencies": { "zod": "^3.23.8" }, "devDependencies": { "typescript": "^5.5.4" } }
