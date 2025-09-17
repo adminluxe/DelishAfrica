@@ -1,20 +1,20 @@
 import "reflect-metadata";
 import * as dotenv from "dotenv";
-dotenv.config();
+dotenv.config({ path: ".env", override: true });
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
-import * as cookieParser from "cookie-parser";
-import * as express from "express";
+import cookieParser from "cookie-parser";
+import express from "express";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { cors: true });
   app.use(cookieParser());
   app.setGlobalPrefix("api");
-
-  // Stripe webhook needs raw body
-  app.use("/webhooks/stripe", express.raw({ type: "application/json" }));
-
-  await app.listen(process.env.PORT || 4000);
-  console.log(`API listening on http://localhost:${process.env.PORT || 4000}`);
+  // Stripe webhook: raw body
+  app.use("/api/webhooks/stripe", (express as any).raw({ type: "application/json" }));
+  const port = process.env.PORT || 4000;
+  await app.listen(port);
+  // eslint-disable-next-line no-console
+  console.log(`API listening on http://localhost:${port}`);
 }
 bootstrap();

@@ -1,19 +1,25 @@
 {
   "name": "delishafrica-monorepo",
   "private": true,
-  "packageManager": "pnpm@9",
   "scripts": {
     "dev": "turbo run dev --parallel",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "format": "prettier -w .",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "backend:dev": "pnpm --filter backend dev",
+    "backend:test": "pnpm --filter backend test",
+    "backend:test:e2e": "pnpm --filter backend test:e2e",
+    "backend:build": "pnpm --filter backend build",
+    "backend:start:prod": "node backend/dist/main.js"
   },
   "devDependencies": {
+    "@types/cookie-parser": "1.4.9",
+    "@types/multer": "^1.4.13",
     "@types/node": "^20.11.30",
     "prettier": "^3.3.3",
-    "typescript": "^5.5.4",
-    "turbo": "^2.1.1"
+    "turbo": "^2.1.1",
+    "typescript": "^5.5.4"
   }
 }

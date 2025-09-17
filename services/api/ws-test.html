@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+  <body>
+    <h1>WS test</h1>
+    <button id="join">Join TESTORDER</button>
+    <button id="chat">Send chat</button>
+    <button id="loc">Send location</button>
+    <pre id="log"></pre>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+      const log = (m) => (document.getElementById('log').textContent += m + '\n');
+      const s = io('http://localhost:4000/dispatch', { transports: ['websocket'] });
+      s.on('connect', () => log('connected: ' + s.id));
+      s.on('chatMessage', (m) => log('chat: ' + JSON.stringify(m)));
+      s.on('courierLocationUpdate', (m) => log('loc: ' + JSON.stringify(m)));
+      document.getElementById('join').onclick = () => s.emit('join', { orderId: 'TESTORDER' });
+      document.getElementById('chat').onclick = () => s.emit('chat', { orderId: 'TESTORDER', sender: 'courier', text: 'Hello!' });
+      document.getElementById('loc').onclick = () => s.emit('courierLocation', { orderId: 'TESTORDER', lat: 50.84, lng: 4.35 });
+    </script>
+  </body>
+</html>

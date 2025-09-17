@@ -1,0 +1,37 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:16
+    container_name: delish_prod_db
+    environment:
+      POSTGRES_USER: tonton
+      POSTGRES_PASSWORD: DontHave2701!
+      POSTGRES_DB: delishafrica
+    ports:
+      - "5432:5432"
+    volumes:
+      - delish_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tonton -d delishafrica"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: delish_backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Prisma DATABASE_URL vers le service db interne
+      DATABASE_URL: postgresql://tonton:DontHave2701!@db:5432/delishafrica?schema=public
+      NODE_ENV: production
+      PORT: 3000
+    ports:
+      - "3000:3000"
+
+volumes:
+  delish_pg:
