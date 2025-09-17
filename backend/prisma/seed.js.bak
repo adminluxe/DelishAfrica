@@ -1,0 +1,66 @@
+// backend/prisma/seed.js
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+
+async function main() {
+  // créer un marchand avec deux produits
+  const merchant = await prisma.merchant.create({
+    data: {
+      name: 'Chez Awa',
+      menuItems: {
+        create: [
+          {
+            name: 'Mafé',
+            description: 'Ragoût à la sauce arachide',
+            category: 'plats chauds',
+            price: 12.5,
+            available: true,
+            spicyLevel: 1,
+          },
+          {
+            name: 'Yassa',
+            description: 'Poulet mariné aux oignons',
+            category: 'plats chauds',
+            price: 10.0,
+            available: true,
+            spicyLevel: 0,
+          },
+        ],
+      },
+    },
+    include: { menuItems: true },
+  });
+
+  // créer un utilisateur test
+  const user = await prisma.user.create({
+    data: {
+      email: 'client@test.com',
+      password: 'motdepasse',
+      role: 'CLIENT',
+    },
+  });
+
+  // créer une commande liée à ce marchand et cet utilisateur
+  const order = await prisma.order.create({
+    data: {
+      userId: user.id,
+      merchantId: merchant.id,
+      items: {
+        connect: merchant.menuItems.map((item) => ({ id: item.id })),
+      },
+      total: merchant.menuItems.reduce((sum, item) => sum + item.price, 0),
+      status: 'ACCEPTED',
+    },
+  });
+
+  console.log('Échantillon de données inséré :', { merchant, user, order });
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

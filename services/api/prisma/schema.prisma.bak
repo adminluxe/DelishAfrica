@@ -1,0 +1,49 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      Role     @default(CUSTOMER)
+  createdAt DateTime @default(now())
+}
+
+model Merchant {
+  id        String   @id @default(cuid())
+  name      String
+  address   String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  menuItems MenuItem[]
+  orders    Order[]
+}
+
+model MenuItem {
+  id         String   @id @default(cuid())
+  merchantId String
+  name       String
+  description String?
+  price      Decimal
+  category   String
+  spicyLevel Int      @default(0)
+  imageUrl   String?
+  available  Boolean  @default(true)
+  Merchant   Merchant @relation(fields: [merchantId], references: [id])
+}
+
+model Order {
+  id           String   @id @default(cuid())
+  merchantId   String
+  customerEmail String
+  amount       Decimal
+  currency     String    @default("EUR")
+  status       OrderStatus @default(CREATED)
+  stripePaymentIntentId String? @unique
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  Merchant     Merchant  @relation(fields: [merchantId], references: [id])
+}
+
+enum Role { ADMIN MERCHANT COURIER CUSTOMER }
+enum OrderStatus { CREATED CONFIRMED PREPARING READY PICKED_UP DELIVERED CANCELLED FAILED PAID }

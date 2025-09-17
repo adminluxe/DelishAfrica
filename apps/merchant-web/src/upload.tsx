@@ -9,7 +9,7 @@ export default function UploadCSV() {
     if (!file) return;
     const fd = new FormData();
     fd.append("file", file);
-    const res = await fetch("http://localhost:4000/merchants/import-menu", { method: "POST", body: fd });
+    const res = await fetch("http://localhost:4000/api/merchants/import-menu", { method: "POST", body: fd });
     const json = await res.json();
     setOut(JSON.stringify(json, null, 2));
   };

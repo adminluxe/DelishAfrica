@@ -1,0 +1,6 @@
+import { Module } from "@nestjs/common";
+import { MerchantService } from "./merchant.service";
+import { MerchantImportController } from "./merchant.import.controller";
+import { MerchantReadController } from "./merchant.read.controller";
+@Module({ providers: [MerchantService], controllers: [MerchantImportController, MerchantReadController], exports: [MerchantService] })
+export class MerchantModule {}

@@ -1,0 +1,74 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id       String   @id @default(uuid())
+  email    String   @unique
+  password String
+  role     Role     @default(CLIENT)
+  orders   Order[]
+}
+
+model Merchant {
+  id        String    @id @default(uuid())
+  name      String
+  menuItems Product[]
+  orders    Order[]
+}
+
+model Product {
+  id         String       @id @default(uuid())
+  merchantId String
+  name       String
+  description String?
+  category   String?
+  price      Float
+  available  Boolean      @default(true)
+  spicyLevel Int?
+  merchant   Merchant     @relation(fields: [merchantId], references: [id])
+  orderItems OrderItem[]  // relation pivot vers Order
+}
+
+model Order {
+  id         String       @id @default(uuid())
+  userId     String
+  merchantId String
+  total      Float
+  status     OrderStatus  @default(PENDING)
+  user       User         @relation(fields: [userId], references: [id])
+  merchant   Merchant     @relation(fields: [merchantId], references: [id])
+  orderItems OrderItem[]  // relation pivot vers Product
+}
+
+model OrderItem {
+  orderId   String
+  productId String
+  quantity  Int           @default(1)
+  order     Order    @relation(fields: [orderId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@id([orderId, productId])        // clé primaire composite
+}
+
+enum Role {
+  CLIENT
+  MERCHANT
+  COURIER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  IN_PREPARATION
+  READY
+  PICKED_UP
+  DELIVERED
+  CANCELED
+}

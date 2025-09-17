@@ -1,0 +1,6 @@
+merchant_id,name,price,category,description,spicy_level,imageUrl,available
+MERCH1,Thieboudienne,12.90,Plats,"Riz au poisson (senegalais)",1,,true
+MERCH1,Attieke Poisson,13.50,Plats,"Semoule de manioc + poisson",2,,true
+MERCH1,Alloco Poulet,9.90,Snacks,"Bananes plantain + poulet",1,,true
+MERCH1,Sauce Gombo,11.00,Plats,"Gombo, viande, epices",2,,true
+MERCH1,Bissap,3.50,Boissons,"Jus d'hibiscus",0,,true
