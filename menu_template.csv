@@ -1,0 +1,4 @@
+"name","description","price","categoryId","imageUrl","available"
+"Mafé poulet","Poulet mijoté dans une sauce arachide servi avec du riz","12.50","African Classics","https://example.com/images/mafe.jpg","true"
+"Yassa poisson","Poisson mariné aux oignons et citron, accompagné de riz et légumes","14.00","African Classics","https://example.com/images/yassa.jpg","true"
+"Thiakry","Dessert au couscous de mil, lait caillé, parfumé à la vanille","6.00","Desserts","https://example.com/images/thiakry.jpg","true"
