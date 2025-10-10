@@ -1,21 +1,19 @@
-node_modules
-.DS_Store
-.env*
-.dist
-build
-coverage
-.pnpm-store
-.next
-.expo
-android
-ios
-dist
-.eslintcache
-
-# Turborepo cache
+# --- node & build ---
+node_modules/
+dist/
+.pnpm-store/
 .turbo/
+.coverage/
+*.log
+nohup.out
 
-# Local env
-.env.local
+# --- env files (never commit secrets) ---
 *.env
--q ^*.env.* .gitignore || echo *.env.* >> .gitignore.env.example
+*.env.*
+!.env.example
+!*.env.example
+services/api/.env
+services/api/.env.*
+!services/api/.env.example
+
+# Add your other ignores below…

@@ -25,12 +25,8 @@ module.exports = {
       env: {
         NODE_ENV: "development",
         PORT: 4001,
-
-        // Prisma: on ne lit PAS prisma/.env -> on force l'URL ici
         PRISMA_SKIP_ENV_LOAD: 1,
         DATABASE_URL: "postgresql://delish_user:delish_pass@localhost:5432/delish_db?schema=public",
-
-        // Stripe (tu peux laisser tels quels, ce sont les tiens de test)
         STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY
         STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET
       }

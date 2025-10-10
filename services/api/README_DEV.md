@@ -22,7 +22,7 @@ GET  /api/merchants/:id/menu.csv
 ## ENV requis (exemples)
 PORT=4001
 DATABASE_URL=postgresql://postgres@localhost:5433/postgres?schema=public
-STRIPE_SECRET_KEY=***REMOVED***
+STRIPE_SECRET_KEY=<renseigner_dans_.env>
 TZ=Europe/Brussels
 NODE_ENV=production
 
