@@ -7,7 +7,7 @@ export class StripeWebhookController {
   private readonly stripe: Stripe;
   constructor(private readonly orders: OrdersService) {
     const secretKey = process.env.STRIPE_SECRET_KEY!;
-    this.stripe = new Stripe(secretKey, { apiVersion: "2023-08-16" });
+    this.stripe = new Stripe(secretKey, { apiVersion: '2023-10-16' });
   }
 
   @Post("stripe")

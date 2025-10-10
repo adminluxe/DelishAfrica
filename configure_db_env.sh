@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+if [ -z "${BASH_VERSION:-}" ]; then exec /bin/bash "$0" "$@"; fi
+set -Eeuo pipefail
 
 # Configure the DATABASE_URL in backend/.env with user-provided credentials.
 #

@@ -1,0 +1,4 @@
+merchant_id,name,price,description,image_url,available,category
+cmfwrzm2x00003hgb7cgoqxtq,Mafé Poulet,12.00,Poulet mijoté sauce arachide,https://example.com/images/mafe.jpg,true,African Classics
+cmfwrzm2x00003hgb7cgoqxtq,Thiebou Yapp,14.50,Riz au mouton parfumé,https://example.com/images/yapp.jpg,true,African Classics
+cmfwrzm2x00003hgb7cgoqxtq,Alloco,6.00,Banane plantain frite,https://example.com/images/alloco.jpg,true,Sides

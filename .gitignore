@@ -14,3 +14,8 @@ dist
 
 # Turborepo cache
 .turbo/
+
+# Local env
+.env.local
+*.env
+-q ^*.env.* .gitignore || echo *.env.* >> .gitignore.env.example

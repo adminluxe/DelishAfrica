@@ -1,0 +1,20 @@
+import { MerchantPublicController } from './merchant.public.controller';
+import { Module } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import { MerchantExportController } from './merchant.export.controller';
+import { MerchantImportController } from './merchant.import.controller';
+import { MerchantImportService } from './merchant.import.service';
+
+@Module({
+  controllers: ([
+    MerchantExportController,
+    MerchantImportController,
+    // ⚠️ Si tu as d'autres controllers marchands, ajoute-les ici.
+  , MerchantPublicController].filter(Boolean) as any),
+  providers: [
+    PrismaService,
+    MerchantImportService,
+    // ⚠️ Si tu as d'autres services marchands, ajoute-les ici.
+  ],
+})
+export class MerchantModule {}

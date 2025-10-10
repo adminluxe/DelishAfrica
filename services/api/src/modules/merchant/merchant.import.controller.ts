@@ -1,36 +1,46 @@
-import { Controller, Post, UseInterceptors, UploadedFile, BadRequestException } from "@nestjs/common";
-import { FileInterceptor } from "@nestjs/platform-express";
-import { MerchantService } from "./merchant.service";
-import csv from "csv-parser";
-import { Readable } from "stream";
-import multer from "multer";
+import {
+  Controller, Post, UploadedFile, UseInterceptors, Param, Body, BadRequestException,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
+import { MerchantImportService } from './merchant.import.service';
 
-@Controller("merchants")
+@ApiTags('merchants')
+@Controller('merchants')
 export class MerchantImportController {
-  constructor(private readonly merchantService: MerchantService) {}
+  constructor(private readonly svc: MerchantImportService) {}
 
-  @Post("import-menu")
-  @UseInterceptors(FileInterceptor("file", {
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 5 * 1024 * 1024 }
-  }))
-  async importMenu(@UploadedFile() file: Express.Multer.File) {
-    try {
-      if (!file) throw new BadRequestException("Aucun fichier reçu (champ 'file').");
-      const rows: Record<string, string>[] = [];
-      const stream = Readable.from(file.buffer);
-      await new Promise<void>((resolve, reject) => {
-        stream
-          .pipe(csv({ separator: ",", mapHeaders: ({ header }) => String(header).trim() }))
-          .on("data", (d) => rows.push(d))
-          .on("error", (e) => reject(e))
-          .on("end", () => resolve());
-      });
-      const items = await this.merchantService.createMenuItemsFromCSV(rows);
-      return { count: items.length, items };
-    } catch (e: any) {
-      console.error("CSV import error:", e?.message || e, e?.stack);
-      throw e;
-    }
+  @Post('import-menu')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        merchantId: { type: 'string', nullable: true },
+      },
+      required: ['file'],
+    },
+  })
+  async importWithHeader(@UploadedFile() file: Express.Multer.File, @Body('merchantId') merchantId?: string) {
+    if (!file) throw new BadRequestException('Missing file');
+    return this.svc.importCsv(file.buffer, merchantId);
+  }
+
+  @Post(':merchantId/import-menu')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+      required: ['file'],
+    },
+  })
+  async importForMerchant(@Param('merchantId') merchantId: string, @UploadedFile() file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('Missing file');
+    return this.svc.importCsv(file.buffer, merchantId);
   }
 }

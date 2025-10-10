@@ -1,6 +1,7 @@
+import { prisma } from '../../prisma/client';
 import { Controller, Get, Param, NotFoundException } from "@nestjs/common";
 import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
+
 
 @Controller("merchants")
 export class MerchantReadController {

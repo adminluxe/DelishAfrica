@@ -1,3 +1,4 @@
+import { SkipThrottle } from '@nestjs/throttler';
 import { Controller, Get, Header } from '@nestjs/common';
 
 @Controller('health') // => route finale: /api/health

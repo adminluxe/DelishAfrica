@@ -1,0 +1,6 @@
+
+# Local runtime
+.env.runtime
+
+# Prisma local
+prisma/.env

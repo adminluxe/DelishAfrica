@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+if [ -z "${BASH_VERSION:-}" ]; then exec /bin/bash "$0" "$@"; fi
 set -Eeuo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"

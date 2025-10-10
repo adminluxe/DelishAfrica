@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+if [ -z "${BASH_VERSION:-}" ]; then exec /bin/bash "$0" "$@"; fi
 set -Eeuo pipefail
 
 # 1) backend/src/prisma/prisma.service.ts (supprime l'appel this.$on)

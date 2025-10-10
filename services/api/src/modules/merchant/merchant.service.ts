@@ -1,83 +1,63 @@
-import { Injectable, BadRequestException, NotFoundException } from "@nestjs/common";
-import { PrismaClient } from "@prisma/client";
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import { parse } from 'csv-parse/sync';
 
-const prisma = new PrismaClient();
-
-function sanitizeId(merchantId: string, name: string) {
-  return `${merchantId}-${name}`
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[^\w\s-]/g, "")
-    .replace(/\s+/g, "_")
-    .slice(0, 191);
-}
-
-function getField(row: Record<string, string>, keys: string[]): string | undefined {
-  for (const k of keys) {
-    if (row[k] != null) return String(row[k]).trim();
-    if (row[k.toLowerCase()] != null) return String(row[k.toLowerCase()]).trim();
-    if (row[k.toUpperCase()] != null) return String(row[k.toUpperCase()]).trim();
-  }
-  return undefined;
-}
+type CsvRow = { [key: string]: any };
 
 @Injectable()
 export class MerchantService {
-  async createMenuItemsFromCSV(rows: Record<string, string>[]) {
-    if (!Array.isArray(rows) || rows.length === 0) {
-      throw new BadRequestException("CSV vide");
-    }
+  constructor(private readonly prisma: PrismaService) {}
 
-    const items: any[] = [];
+  private asBool(v: any) {
+    const s = String(v ?? '').trim().toLowerCase();
+    return s === 'true' || s === '1' || s === 'yes' || s === 'y';
+  }
+
+  async importMenuCsv(buffer: Buffer, opts?: { merchantId?: string; delimiter?: string; encoding?: string }) {
+    const merchantId = opts?.merchantId;
+    const delimiter = opts?.delimiter || ',';
+    const encoding  = opts?.encoding  || 'utf-8';
+    if (!buffer?.length) throw new BadRequestException('CSV vide');
+
+    const rows = parse(buffer, { columns: true, skip_empty_lines: true, trim: true }) as CsvRow[];
+
+    let ok = 0, ko = 0;
+    const errors: Array<{ line: number; error: string }> = [];
+
     for (let i = 0; i < rows.length; i++) {
-      const raw = rows[i];
+      const row: CsvRow = rows[i]; const line = i + 2; // +1 entête
       try {
-        const merchantId = getField(raw, ["merchant_id", "merchantId"]);
-        const name = getField(raw, ["name"])!;
-        const priceStr = getField(raw, ["price"])!;
-        const category = getField(raw, ["category"]) || "Divers";
-        const description = getField(raw, ["description"]) || null;
-        const spicyStr = getField(raw, ["spicy_level", "spicyLevel"]) || "0";
-        const imageUrl = getField(raw, ["imageUrl", "image_url"]) || null;
-        const availableStr = getField(raw, ["available"]) || "true";
+        const merchantId = row.merchant_id ?? row.merchantId;
+        if (!merchantId) throw new BadRequestException('Colonne "merchant_id" manquante');
 
-        if (!merchantId || !name || !priceStr) {
-          throw new BadRequestException(`Ligne ${i + 1}: merchant_id, name et price sont requis`);
-        }
+        const merchant = await this.prisma.merchant.findUnique({ where: { id: String(merchantId) } });
+        if (!merchant) throw new NotFoundException(`Marchand introuvable: ${merchantId}`);
 
-        const merchant = await prisma.merchant.findUnique({ where: { id: merchantId } });
-        if (!merchant) throw new NotFoundException(`Ligne ${i + 1}: merchant ${merchantId} introuvable`);
+        const name = String(row.name ?? '').trim();
+        if (!name) throw new BadRequestException('Colonne "name" vide');
 
-        const priceNorm = priceStr.replace(",", ".");
-        const priceNum = Number(priceNorm);
-        if (!Number.isFinite(priceNum)) {
-          throw new BadRequestException(`Ligne ${i + 1}: price invalide "${priceStr}"`);
-        }
+        const priceStr = String(row.price ?? '').replace(',', '.');
+        const price = Number(priceStr);
+        if (!isFinite(price)) throw new BadRequestException(`Prix invalide: "${row.price}"`);
 
-        const spicyLevel = Number(spicyStr) || 0;
-        const available = String(availableStr).toLowerCase() !== "false";
-        const id = sanitizeId(merchantId, name);
+        const description = row.description ? String(row.description) : null;
+        const imageUrl = row.image_url || row.imageUrl || null;
+        const available = row.available != null ? this.asBool(row.available) : true;
+        const category = row.category ? String(row.category) : null;
 
-        let item;
-        try {
-          item = await prisma.menuItem.upsert({
-            where: { id },
-            update: { description, price: priceNum, category, spicyLevel, imageUrl, available },
-            create: { id, merchantId, name, description, price: priceNum, category, spicyLevel, imageUrl, available }
-          });
-        } catch (e: any) {
-          // Prisma error → renvoyer 400 explicite
-          console.error("DB upsert error @", i + 1, { id, merchantId, name, priceNum, category }, e?.code, e?.message);
-          const code = e?.code ? ` (Prisma ${e.code})` : "";
-          throw new BadRequestException(`Ligne ${i + 1}: echec upsert${code} — ${e?.meta?.cause || e?.message || e}`);
-        }
+        // upsert idempotent via clé composite UNIQUE @@unique([merchantId, name], name: "merchantId_name")
+        await this.prisma.menuItem.upsert({
+          where: { merchantId_name: { merchantId: merchant.id, name } as any },
+          update: { price, description, imageUrl, available, ...(category !== null ? { category } : {}) },
+          create: { merchantId: merchant.id, name, price, description, imageUrl, available, category: (category ?? 'Uncategorized') },
+        });
 
-        items.push(item);
+        ok++;
       } catch (e: any) {
-        console.error("CSV row error @", i + 1, raw, e?.message || e);
-        throw e;
+        ko++; errors.push({ line, error: e?.message ?? String(e) });
       }
     }
-    return items;
+
+    return { imported: ok, errors: ko, details: errors };
   }
 }

@@ -1,0 +1,98 @@
+
+—— 1) Préparer prisma/ (service + module) ——
+ℹ️  prisma.service.ts existe déjà (ok)
+ℹ️  prisma.module.ts existe déjà (ok)
+ℹ️  prisma/index.ts existe déjà (ok)
+
+—— 2) Patch merchant.module.ts (imports + providers) ——
+ℹ️  merchant.module.ts déjà correct
+
+—— 3) Patch merchant.service.ts (import relatif stable) ——
+✅ merchant.service.ts : import corrigé (si nécessaire)
+
+—— 4) Dépendances Prisma dans services/api ——
+../..                                    |  WARN  `node_modules` is present. Lockfile only installation will make it out-of-date
+../..                                    | Progress: resolved 1, reused 0, downloaded 0, added 0
+ WARN  deprecated multer@1.4.5-lts.2: Multer 1.x is impacted by a number of vulnerabilities, which have been patched in 2.x. You should upgrade to the latest 2.x version.
+../..                                    | Progress: resolved 11, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 27, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 35, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 36, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 38, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 40, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 146, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 202, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 281, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 392, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 461, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 523, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 618, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 723, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 787, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 828, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 917, reused 0, downloaded 0, added 0
+ WARN  3 deprecated subdependencies found: glob@7.2.3, inflight@1.0.6, rimraf@3.0.2
+../..                                    | Progress: resolved 938, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 938, reused 0, downloaded 0, added 0, done
+ WARN  Issues with peer dependencies found
+services/api
+├─┬ @nestjs/platform-socket.io 11.1.6
+│ ├── ✕ unmet peer @nestjs/common@^11.0.0: found 10.4.20
+│ └── ✕ unmet peer @nestjs/websockets@^11.0.0: found 10.4.20
+└─┬ @nestjs/websockets 10.4.20
+  └── ✕ unmet peer @nestjs/platform-socket.io@^10.0.0: found 11.1.6
+
+../..                                    |   +2 +
+Done in 25.9s using pnpm v10.14.0
+../..                                    |  WARN  `node_modules` is present. Lockfile only installation will make it out-of-date
+../..                                    | Progress: resolved 1, reused 0, downloaded 0, added 0
+ WARN  deprecated multer@1.4.5-lts.2: Multer 1.x is impacted by a number of vulnerabilities, which have been patched in 2.x. You should upgrade to the latest 2.x version.
+../..                                    | Progress: resolved 24, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 33, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 37, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 38, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 40, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 73, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 165, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 271, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 362, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 432, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 605, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 690, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 732, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 773, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 859, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 955, reused 0, downloaded 0, added 0
+ WARN  3 deprecated subdependencies found: glob@7.2.3, inflight@1.0.6, rimraf@3.0.2
+../..                                    | Progress: resolved 964, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 964, reused 0, downloaded 0, added 0, done
+ WARN  Issues with peer dependencies found
+services/api
+├─┬ @nestjs/platform-socket.io 11.1.6
+│ ├── ✕ unmet peer @nestjs/common@^11.0.0: found 10.4.20
+│ └── ✕ unmet peer @nestjs/websockets@^11.0.0: found 10.4.20
+└─┬ @nestjs/websockets 10.4.20
+  └── ✕ unmet peer @nestjs/platform-socket.io@^10.0.0: found 11.1.6
+
+../..                                    |   +2   -7 +-
+Done in 25.3s using pnpm v10.14.0
+Prisma schema loaded from prisma/schema.prisma
+
+✔ Generated Prisma Client (v6.16.2) to ./../../node_modules/.pnpm/@prisma+client@6.16.2_prisma@6.16.2_typescript@5.9.2__typescript@5.9.2/node_modules/@prisma/client in 565ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Need your database queries to be 1000x faster? Accelerate offers you that and more: https://pris.ly/tip-2-accelerate
+
+
+—— 5) État final ——
+total 20
+drwxrwxr-x 2 tontoncestcarre tontoncestcarre 4096 sept. 23 02:54 .
+drwxrwxr-x 6 tontoncestcarre tontoncestcarre 4096 sept. 23 02:54 ..
+-rw-rw-r-- 1 tontoncestcarre tontoncestcarre   67 sept. 23 02:54 index.ts
+-rw-rw-r-- 1 tontoncestcarre tontoncestcarre  210 sept. 23 02:54 prisma.module.ts
+-rw-rw-r-- 1 tontoncestcarre tontoncestcarre  349 sept. 23 02:54 prisma.service.ts
+✅ Fix terminé.
+👉 Démarrage conseillé :
+   PORT=4001 pnpm -C services/api exec ts-node --transpile-only src/main.ts
+   (ou avec aliases) PORT=4001 pnpm -C services/api exec ts-node -r tsconfig-paths/register --transpile-only src/main.ts

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+if [ -z "${BASH_VERSION:-}" ]; then exec /bin/bash "$0" "$@"; fi
 set -euo pipefail
 
 # This script sets up the DelishAfrica monorepo automatically. It does the following:

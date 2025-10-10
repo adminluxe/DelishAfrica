@@ -1,0 +1,4 @@
+# moved to prisma/.env
+NODE_ENV=development
+PORT=4001
+CORS_ORIGINS=http://localhost:5173,https://app.delishafrica.com

@@ -1,0 +1,32 @@
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+
+type SearchRow = { id: string; name: string; address: string; score: number };
+
+@Injectable()
+export class SearchService {
+  private readonly logger = new Logger(SearchService.name);
+  constructor(private readonly prisma: PrismaService) {}
+
+  async search(params: { q?: string; limit?: number; offset?: number; tenant?: string }) {
+    const q = params.q ?? '';
+    const limitRaw = Number.isFinite(params.limit) ? (params.limit as number) : 10;
+    const offsetRaw = Number.isFinite(params.offset) ? (params.offset as number) : 0;
+
+    const limit = Math.max(1, Math.min(50, limitRaw));
+    const offset = Math.max(0, offsetRaw);
+
+    const t = params.tenant ?? process.env.SEARCH_TENANT ?? 'DELISHAFRICA STAGING';
+
+    try {
+      const rows = await this.prisma.$queryRaw<SearchRow[]>`
+        SELECT id, name, address, score
+        FROM public.search_merchants(${t}, ${q}, ${limit}::int, ${offset}::int);
+      `;
+      return rows;
+    } catch (e) {
+      this.logger.error('search_merchants failed', e instanceof Error ? e.stack : String(e));
+      throw new InternalServerErrorException('Search failed');
+    }
+  }
+}

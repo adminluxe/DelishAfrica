@@ -1,7 +1,8 @@
+import { prisma } from '../../prisma/client';
 import { Injectable } from "@nestjs/common";
 import { PrismaClient, OrderStatus } from "@prisma/client";
 import Stripe from "stripe";
-const prisma = new PrismaClient();
+
 
 @Injectable()
 export class OrdersService {
