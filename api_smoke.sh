@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+if [ -z "${BASH_VERSION:-}" ]; then exec /bin/bash "$0" "$@"; fi
 set -Eeuo pipefail
 command -v jq >/dev/null 2>&1 || { echo "✗ jq requis (apt install jq)."; exit 1; }
 

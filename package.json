@@ -12,7 +12,10 @@
     "backend:test": "pnpm --filter backend test",
     "backend:test:e2e": "pnpm --filter backend test:e2e",
     "backend:build": "pnpm --filter backend build",
-    "backend:start:prod": "node backend/dist/main.js"
+    "backend:start:prod": "node backend/dist/main.js",
+    "api:restart": "services/api/scripts/restart_api.sh",
+    "api:restart:q": "services/api/scripts/restart_api.sh --quiet",
+    "api:restart:120": "TIMEOUT_SECS=120 services/api/scripts/restart_api.sh"
   },
   "devDependencies": {
     "@types/cookie-parser": "1.4.9",

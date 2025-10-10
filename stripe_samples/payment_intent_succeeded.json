@@ -1,0 +1,15 @@
+{
+  "id": "evt_1LocalDemo",
+  "object": "event",
+  "type": "payment_intent.succeeded",
+  "data": {
+    "object": {
+      "id": "pi_local_demo_123",
+      "object": "payment_intent",
+      "status": "succeeded",
+      "amount": 1999,
+      "currency": "eur",
+      "metadata": { "orderId": "11111111-1111-1111-1111-111111111111" }
+    }
+  }
+}

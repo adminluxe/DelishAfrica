@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
+# --- audit guard start ---
+if [[ "${NO_COMMIT:-0}" == "1" ]]; then
+  echo "NO_COMMIT=1 → audit check-only (aucune modif, aucun git commit)";
+  # ⚠️ Ne lancer ici que des vérifications en lecture (lint, grep, etc.)
+  # Si ton script a une section "Commit de sûreté", elle NE DOIT PAS s’exécuter.
+  exit 0;
+fi
+# --- audit guard end ---
 # ./scripts/audit_shells.sh
 #!/usr/bin/env bash
 if [ -z "${BASH_VERSION:-}" ]; then exec /bin/bash "$0" "$@"; fi

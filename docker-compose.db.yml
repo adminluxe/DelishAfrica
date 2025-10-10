@@ -1,0 +1,19 @@
+services:
+  delish-db:
+    image: postgres:16
+    container_name: delish-db
+    environment:
+      POSTGRES_USER: delish_user
+      POSTGRES_PASSWORD: delish_pass
+      POSTGRES_DB: delish_local
+    ports:
+      - "5438:5432"
+    volumes:
+      - delish_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U delish_user -d delish_local"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+volumes:
+  delish_pgdata:

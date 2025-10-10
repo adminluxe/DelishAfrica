@@ -1,0 +1,31 @@
+import { Controller, Get, Query, BadRequestException } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+@Controller('search')
+export class SearchController {
+  @Get()
+  async search(
+    @Query('q') q = '',
+    @Query('scope') scope = 'merchants',
+    @Query('limit') limit = '10',
+    @Query('offset') offset = '0',
+  ) {
+    const lim = Math.max(1, Math.min(parseInt(String(limit), 10) || 10, 50));
+    const off = Math.max(0, parseInt(String(offset), 10) || 0);
+    const s = String(scope).toLowerCase();
+    const term = String(q || '').trim();
+
+    if (!term) throw new BadRequestException('Missing query param: q');
+
+    if (s === 'merchants') {
+      const appName = process.env.APP_NAME || 'DELISHAFRICA STAGING';
+      const rows: Array<{ id: string; name: string; address: string; score: number }> =
+        await prisma.$queryRaw`SELECT id, name, address, score FROM public.search_merchants(${appName}, ${term}, ${lim}, ${off})`;
+      return { merchants: rows, count: rows.length, scope: 'merchants', q: term };
+    }
+
+    throw new BadRequestException('Unsupported scope. Use: scope=merchants');
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "extends": "../../packages/config/tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "target": "ES2020",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "strict": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "rootDir": "src"
+  },
+  "include": [
+    "src",
+    "prisma"
+  ]
+,
+  "exclude": ["node_modules","dist","test","**/*.spec.ts","prisma"]
+}

@@ -1,0 +1,21 @@
+import { NestFactory } from '@nestjs/core'
+import { AppModule } from './app.module'
+import * as express from 'express'
+
+async function bootstrap() {
+  // IMPORTANT : active rawBody au niveau Nest
+  const app = await NestFactory.create(AppModule, {
+    rawBody: true,
+  })
+
+  // Si tu as un globalPrefix('api'), le chemin effectif est /api/webhooks/stripe
+  // On force le RAW body *avant* tout bodyParser JSON
+  app.use('/api/webhooks/stripe', express.raw({ type: '*/*' }))
+
+  // (le reste de ta config: CORS, prefix, etc.)
+  // app.setGlobalPrefix('api') par ex.
+
+  const port = process.env.PORT || 4001
+  await app.listen(port as number)
+}
+bootstrap()

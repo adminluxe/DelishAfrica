@@ -3,7 +3,7 @@ import { Server, Socket } from "socket.io";
 
 @WebSocketGateway({ namespace: "/dispatch", cors: { origin: "*" } })
 export class DispatchGateway {
-  @WebSocketServer() server: Server;
+  @WebSocketServer() server!: Server;
 
   @SubscribeMessage("join")
   handleJoin(@MessageBody() data: { orderId: string }, @ConnectedSocket() client: Socket) {

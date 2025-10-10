@@ -7,52 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  role      Role     @default(CUSTOMER)
-  createdAt DateTime @default(now())
-}
-
-model Merchant {
-  id        String     @id @default(cuid())
-  name      String
-  address   String
-  active    Boolean    @default(true)
-  createdAt DateTime   @default(now())
-  menuItems MenuItem[]
-  orders    Order[]
-}
-
-model MenuItem {
-  id          String  @id @default(cuid())
-  merchantId  String
-  name        String
-  description String?
-  price       Decimal @db.Decimal(10, 2)
-  category    String
-  spicyLevel  Int     @default(0)
-  imageUrl    String?
-  available   Boolean @default(true)
-
-  Merchant Merchant @relation(fields: [merchantId], references: [id])
-}
-
-model Order {
-  id                    String      @id @default(cuid())
-  merchantId            String
-  customerEmail         String
-  amount                Decimal     @db.Decimal(10, 2)
-  currency              String      @default("EUR")
-  status                OrderStatus @default(CREATED)
-  stripePaymentIntentId String?     @unique
-  createdAt             DateTime    @default(now())
-  updatedAt             DateTime    @updatedAt
-
-  Merchant Merchant @relation(fields: [merchantId], references: [id])
-}
-
 enum Role {
   ADMIN
   MERCHANT
@@ -70,4 +24,83 @@ enum OrderStatus {
   CANCELLED
   FAILED
   PAID
+}
+
+enum PaymentStatus {
+  PENDING
+  REQUIRES_ACTION
+  SUCCEEDED
+  FAILED
+  CANCELED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      Role     @default(CUSTOMER)
+  createdAt DateTime @default(now())
+}
+
+model Merchant {
+  id        String     @id @default(cuid())
+  name      String
+  phone     String?
+  address   String
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  menuItems MenuItem[]
+  orders    Order[]
+}
+
+model MenuItem {
+  id         String @id @default(cuid())
+  merchantId String
+
+  // ✅ AJOUT : relation inverse vers Merchant
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  name        String
+  price       Float? // ← garde ton type actuel si c'est déjà Float (ne change pas ici)
+  category    String?
+  description String?
+  spicyLevel  Int?
+  imageUrl    String?
+  available   Boolean? // ou Boolean @default(true) si c'est déjà le cas
+
+  @@unique([merchantId, name])
+  // ✅ INDEXS / CONTRAINTE
+  @@index([merchantId])
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  merchantId    String
+  customerEmail String
+  amount        Decimal     @db.Decimal(10, 2)
+  currency      String      @default("EUR")
+  status        OrderStatus @default(CREATED)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  payment               Payment? // <-- OK pour 1–1 (côté Order)
+  Merchant              Merchant @relation(fields: [merchantId], references: [id])
+  stripePaymentIntentId String?  @unique
+}
+
+model Payment {
+  id           String        @id @default(cuid())
+  provider     String        @default("stripe")
+  intentId     String        @unique
+  clientSecret String?
+  amount       Int
+  currency     String        @default("EUR")
+  status       PaymentStatus @default(PENDING)
+
+  // >>> AJOUTE @unique ICI pour forcer 1–1
+  orderId String? @unique
+  order   Order?  @relation(fields: [orderId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

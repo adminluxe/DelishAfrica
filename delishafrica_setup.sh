@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+if [ -z "${BASH_VERSION:-}" ]; then exec /bin/bash "$0" "$@"; fi
+set -Eeuo pipefail
 
 # DelishAfrica project bootstrap script
 #
