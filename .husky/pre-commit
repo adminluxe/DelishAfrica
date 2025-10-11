@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -e
+if git diff --cached -G'sk_(test|live)_[A-Za-z0-9_]+' --name-only | grep -q .; then
+  echo "❌ Stripe key détectée. Remplace par un placeholder."; exit 1; fi
+if git diff --cached -G'whsec_[A-Za-z0-9_]+' --name-only | grep -q .; then
+  echo "❌ Webhook secret détecté. Utilise une variable d'environnement."; exit 1; fi
