@@ -17,3 +17,7 @@ services/api/.env.*
 !services/api/.env.example
 
 # Add your other ignores below…
+
+.env
+**/.env
+.env.*
