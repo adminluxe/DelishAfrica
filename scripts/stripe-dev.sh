@@ -59,7 +59,7 @@ cat <<'TIP'
 
 Tests utiles :
 
-1) Créer un PaymentIntent (clé requise STRIPE_SECRET_KEY=***REMOVED***) :
+1) Créer un PaymentIntent (clé requise STRIPE_SECRET_KEY=<votre_clef_test_en_.env>) :
 curl -s -X POST http://localhost:4001/api/payments/intent \
   -H 'content-type: application/json' \
   -d '{"amount": 1999, "currency": "EUR", "orderId": "11111111-1111-1111-1111-111111111111"}' | jq .
