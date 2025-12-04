@@ -1,0 +1,11 @@
+# cache/artefacts
+node_modules
+dist
+build
+coverage
+.pnpm-store
+.next
+.expo
+android
+ios
+.eslintcache
