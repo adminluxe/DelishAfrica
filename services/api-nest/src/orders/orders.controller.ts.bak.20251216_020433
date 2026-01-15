@@ -1,0 +1,42 @@
+import { Body, Controller, Get, NotFoundException, Param, Patch, Post, Query } from '@nestjs/common';
+import { OrdersService } from './orders.service';
+import type { CreateOrderDto } from './dto/create-order.dto';
+import type { UpdateOrderStatusDto } from './dto/update-status.dto';
+import type { OrderStatus } from './orders.types';
+
+@Controller()
+export class OrdersController {
+  constructor(private readonly orders: OrdersService) {}
+
+  @Post(['api/orders/_demo/reset','api/v1/orders/_demo/reset'])
+  reset() {
+    this.orders.resetForDemo();
+    this.orders.seedThieypDemo();
+    return { ok: true };
+  }
+
+  @Post(['api/orders','api/v1/orders'])
+  create(@Body() dto: CreateOrderDto) {
+    const order = this.orders.create(dto as any);
+    return { orderId: order.id, status: order.status, order };
+  }
+
+  @Get(['api/orders','api/v1/orders'])
+  list(@Query('status') status?: OrderStatus, @Query('partnerSlug') partnerSlug?: string) {
+    return this.orders.list({ status, partnerSlug });
+  }
+
+  @Get(['api/orders/:id','api/v1/orders/:id'])
+  get(@Param('id') id: string) {
+    const order = this.orders.getById(id);
+    if (!order) throw new NotFoundException('Order not found');
+    return order;
+  }
+
+  @Patch(['api/orders/:id/status','api/v1/orders/:id/status'])
+  updateStatus(@Param('id') id: string, @Body() dto: UpdateOrderStatusDto) {
+    const order = this.orders.updateStatus(id, (dto as any).status);
+    if (!order) throw new NotFoundException('Order not found');
+    return order;
+  }
+}

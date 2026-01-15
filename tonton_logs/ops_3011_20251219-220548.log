@@ -1,0 +1,5 @@
+[22:05:48] == OPS LOCATE + START SAFE 3011 ==
+[22:05:48] LOG=/opt/delishafrica/monorepo/tonton_logs/ops_3011_20251219-220548.log
+[22:05:48] OPS non trouvé dans candidats. Recherche sous /opt (maxdepth 6)...
+[22:05:54] ❌ OPS introuvable. Donne-moi SON PATH exact (dossier qui contient package.json).
+[22:05:54] Astuce: find /opt -maxdepth 8 -type f -name package.json | grep -i ops

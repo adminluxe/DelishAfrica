@@ -1,0 +1,255 @@
+[DA] DelishAfrica Scroll Diagnostic
+[DA] Root directory: /opt/delishafrica/monorepo
+[DA] Apps directory: /opt/delishafrica/monorepo/apps
+[DA] Report: /opt/delishafrica/monorepo/.tonton_backups/_reports/scroll_detector_20260113_213027.txt
+[DA] Engine: rg
+
+
+============================================================
+[1] OVERLAYS: components that often block touches if absolute / no pointerEvents
+============================================================
+[DA] Looking for: BlurView / LinearGradient / ImageBackground / Svg / Skia / Lottie / Canvas…
+[OVERLAY:no-pointerEvents] /opt/delishafrica/monorepo/apps/courier/components/SignaturePad.tsx:29 ->         <Svg style={{ flex: 1 }}>
+
+============================================================
+[2] POINTER EVENTS: suspicious values
+============================================================
+[DA] Looking for pointerEvents values that can block scroll (auto / box-only / unspecified on overlays).
+[POINTER_EVENTS:auto] /opt/delishafrica/monorepo/apps/courier/ui/ui.tsx:36 ->       <SafeAreaView style={[styles.safe, style]} pointerEvents="auto">
+[POINTER_EVENTS:auto] /opt/delishafrica/monorepo/apps/courier/ui/ui.tsx:50 ->     <SafeAreaView style={[styles.safe, style]} pointerEvents="auto">
+[POINTER_EVENTS:auto] /opt/delishafrica/monorepo/apps/merchant/ui/ui.tsx:36 ->       <SafeAreaView style={[styles.safe, style]} pointerEvents="auto">
+[POINTER_EVENTS:auto] /opt/delishafrica/monorepo/apps/merchant/ui/ui.tsx:50 ->     <SafeAreaView style={[styles.safe, style]} pointerEvents="auto">
+[POINTER_EVENTS:auto] /opt/delishafrica/monorepo/apps/client/ui/ui.tsx:36 ->       <SafeAreaView style={[styles.safe, style]} pointerEvents="auto">
+[POINTER_EVENTS:auto] /opt/delishafrica/monorepo/apps/client/ui/ui.tsx:50 ->     <SafeAreaView style={[styles.safe, style]} pointerEvents="auto">
+
+============================================================
+[3] GESTURE HANDLERS: GestureDetector / PanResponder / RNGH
+============================================================
+[DA] Looking for gesture wrappers that can capture vertical scroll gestures.
+[GESTURE] /opt/delishafrica/monorepo/apps/courier/components/SignaturePad.tsx:10 ->   const pan = useMemo(() => PanResponder.create({
+
+============================================================
+[4] RESPONDER CAPTURE: on*ShouldSetResponder(Capture)
+============================================================
+[DA] These can *steal* touches from ScrollView/FlatList if they return true.
+
+============================================================
+[5] SCROLL DISABLED: scrollEnabled={false}
+============================================================
+[DA] Looking for ScrollView/FlatList/SectionList with scrollEnabled={false}.
+
+============================================================
+[6] FULLSCREEN TOUCHABLES: Pressable/Touchable with absoluteFill / position:absolute
+============================================================
+[DA] Looking for Pressable/Touchable wrappers likely to cover the screen.
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/.backup/courier_v2_20251114-194018/app/mission/[id].tsx:19 ->         <Pressable onPress={() => router.back()}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/.backup/courier_v2_20251114-194018/app/mission/[id].tsx:63 ->       <Pressable onPress={() => router.back()} style={{ marginBottom: 16 }}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/.backup/courier_v2_20251114-194018/app/mission/[id].tsx:124 ->       <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/src/components/TestApiButton.tsx:56 ->       <TouchableOpacity
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/components/MagicButton.tsx:25 ->     <Pressable onPress={onPress} onPressIn={down} onPressOut={up}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/components/ProofPhotoModal.tsx:66 ->             <Pressable style={S.btn} onPress={pick}><Text style={S.btnText}>Prendre une photo</Text></Pressable>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/components/ProofPhotoModal.tsx:70 ->               <Pressable style={[S.btn,{marginTop:12}]} onPress={send} disabled={sending}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/components/ProofPhotoModal.tsx:75 ->           <Pressable style={[S.btnGhost,{marginTop:8}]} onPress={close}><Text>Annuler</Text></Pressable>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/components/ProofModal.tsx:27 ->             <Pressable onPress={onClose} style={[S.btn,S.gray]}><Text style={S.btnt}>Annuler</Text></Pressable>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/components/SignatureModal.tsx:25 ->           <Pressable style={S.btn} onPress={onCancel}><Text style={S.btnText}>Fermer</Text></Pressable>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/components/RippleBtn.tsx:30 ->     <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/components/SignaturePadModal.tsx:50 ->           <Pressable style={S.btn} onPress={onCancel}><Text style={S.btnText}>Fermer</Text></Pressable>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/src/components/TestApiButton.tsx:56 ->       <TouchableOpacity
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/components/haptic-tab.tsx:24 ->     <TouchableOpacity
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/components/SignaturePad.tsx:35 ->         <Pressable onPress={clear} style={[styles.btn, styles.ghost]}><Text style={styles.txt}>Effacer</Text></Pressable>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/components/SignaturePad.tsx:36 ->         <Pressable onPress={exportData} style={[styles.btn, styles.primary]}><Text style={styles.txt}>Utiliser la signature</Text></Pressable>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/index.tsx:282 ->               <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/components/ui/collapsible.tsx:16 ->       <TouchableOpacity
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/components/MagicButton.tsx:25 ->     <Pressable onPress={onPress} onPressIn={down} onPressOut={up}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/components/JobCard.tsx:33 ->         <Pressable style={{ marginBottom: 8 }}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/components/JobCard.tsx:48 ->         <Pressable onPress={() => onAccept(id)} style={[s.btn, s.btnPrimary]}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/components/JobCard.tsx:51 ->         <Pressable onPress={() => onDelivered(id)} style={[s.btn, s.btnGhost]}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/components/haptic-tab.tsx:16 ->     <Pressable onPress={handlePress} style={props.style}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/components/da/NeonButton.tsx:33 ->     <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/components/ui/collapsible.tsx:16 ->       <TouchableOpacity
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/components/ui/collapsible.tsx:16 ->       <TouchableOpacity
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/components/da/NeonButton.tsx:33 ->     <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/ui/screens/Onboarding.tsx:91 ->           <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/ui/screens/Onboarding.tsx:101 ->           <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/ui/screens/SignatureHomeMerchant.tsx:25 ->  <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/app/thieyp-demo.tsx:80 ->  <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/app/thieyp-demo.tsx:94 ->  <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/app/thieyp-demo.tsx:114 ->  <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/ui/screens/Onboarding.tsx:91 ->           <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/ui/screens/Onboarding.tsx:101 ->           <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/ui/components/DelishButton.tsx:83 ->     <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/ui/screens/SignatureHomeCourier.tsx:39 ->     <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/app/commande/[id].tsx:21 ->  <Pressable onPress={() => router.back()}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/app/commande/[id].tsx:65 ->  <Pressable onPress={() => router.back()} style={{ marginBottom: 16 }}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/app/commande/[id].tsx:121 ->  <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/app/index.tsx:26 ->               <Pressable style={[styles.btn, styles.btnPrimary]}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/app/index.tsx:31 ->               <Pressable style={[styles.btn, styles.btnGhost]}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/app/ops.tsx:22 ->  <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/app/ops.tsx:29 ->  <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/app/ops.tsx:36 ->  <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/ui/components/DelishButton.tsx:83 ->     <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/app/home.tsx:83 ->  <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/app/home.tsx:97 ->  <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/app/_components/DemoFab.tsx:24 ->  <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/merchant/app/auth/login.tsx:23 ->  <Pressable onPress={onLogin} style={{ marginTop:12, padding:14, backgroundColor:"black", borderRadius:10 }}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/app/debug.tsx:21 ->  <Pressable onPress={onPress} style={{ padding: 10, borderWidth: 1, borderRadius: 8, marginRight: 8, marginVertical: 6 }}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/app/login.tsx:38 ->  <Pressable onPress={handleLogin} style={S.btn} disabled={loading}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/app/thieyp-demo.tsx:18 ->         <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/app/thieyp-demo.tsx:35 ->         <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/delishafrica-client/components/ui/collapsible.tsx:16 ->       <TouchableOpacity
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/app/index.tsx:26 ->               <Pressable style={[styles.btn, styles.btnPrimary]}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/app/index.tsx:31 ->               <Pressable style={[styles.btn, styles.btnGhost]}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/app/mission/[id].tsx:76 ->         <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/app/mission/[id].tsx:93 ->         <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/app/orders.tsx:68 ->         <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/app/orders.tsx:85 ->         <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/app/home.tsx:29 -> <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/app/home.tsx:270 ->                           <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/app/auth/login.tsx:23 ->  <Pressable onPress={onLogin} style={{ marginTop:12, padding:14, backgroundColor:"black", borderRadius:10 }}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/app/_components/DemoFab.tsx:24 ->  <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/app/job/[id].tsx:12 ->       <Pressable onPress={() => router.back()} style={styles.btn}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/app/mission.tsx:23 ->           <Pressable style={[styles.btn, styles.btnGhost]} onPress={() => router.back()}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/app/mission.tsx:27 ->           <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/components/ui/collapsible.tsx:16 ->       <TouchableOpacity
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/src/components/TestApiButton.tsx:56 ->       <TouchableOpacity
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/apps/client/app/restaurants/index.tsx:47 ->             <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/apps/client/app/auth/login.tsx:26 ->       <Pressable onPress={onLogin} style={{ marginTop: 12, padding: 14, backgroundColor: "black", borderRadius: 10 }}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/index.tsx:189 ->             <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/components/MagicButton.tsx:25 ->     <Pressable onPress={onPress} onPressIn={down} onPressOut={up}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/components/haptic-tab.tsx:24 ->     <TouchableOpacity
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/components/ui/collapsible.tsx:16 ->       <TouchableOpacity
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/ui/screens/Onboarding.tsx:91 ->           <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/ui/screens/Onboarding.tsx:101 ->           <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/ui/screens/SignatureHomeClient.tsx:42 ->  <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/components/da/NeonButton.tsx:33 ->     <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/ui/components/DelishButton.tsx:83 ->     <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/app/restaurants/index.tsx:15 ->           <Pressable style={{padding:16, borderWidth:1, borderColor:"#eee", borderRadius:12, marginBottom:12}}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/app/index.tsx:36 ->               <Pressable style={[styles.btn, styles.btnPrimary]}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/app/index.tsx:42 ->               <Pressable style={[styles.btn, styles.btnGhost]}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/app/orders.tsx:20 ->           <Pressable style={[styles.btn, styles.btnGhost]} onPress={() => router.back()}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/app/orders.tsx:23 ->           <Pressable style={[styles.btn, styles.btnPrimary]} onPress={() => { /* next step later */ }}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/app/restaurant/[id].tsx:17 ->  <Pressable onPress={() => router.back()}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/app/restaurant/[id].tsx:26 ->  <Pressable onPress={() => router.back()} style={{ marginBottom: 16 }}>
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/app/restaurant/[id].tsx:60 ->  <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/app/thieyp-demo.tsx:37 ->               <TouchableOpacity
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/app/thieyp-demo.tsx:45 ->               <TouchableOpacity
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/app/thieyp-demo.tsx:55 ->           <TouchableOpacity
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/app/partner/[slug].tsx:50 ->         <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/app/_components/DemoFab.tsx:24 ->  <Pressable
+[TOUCHABLE_OVERLAY] /opt/delishafrica/monorepo/apps/client/app/menu.tsx:22 ->         <Pressable
+
+============================================================
+[7] WRAPPERS: Screen/Layout/Provider likely shared across many screens
+============================================================
+[DA] Looking for wrappers containing GestureDetector/PanResponder/ResponderCapture or absolute overlays.
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx.BAK_20251202-174643
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx.BAK.20251219_141555
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/merchant/app/(tabs)/_layout.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx.BAK.20251219-135357
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx.BAK_20251202-182843
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx.BAK_HEADERS_2025-11-14-1828
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx.BAK_20251202-181441
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx.BAK.20251219-133347
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/merchant/da/InnerLayout.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/merchant/components/da/Screen.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/_layout.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/client/app/_layout.tsx.BAK.20251219-112040
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/client/app/(tabs)/_layout.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/client/app/_layout.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/client/da/InnerLayout.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/client/components/da/Screen.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/courier/app/(tabs)/_layout.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/courier/app/_layout.tsx.BAK.20251219-135357
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/courier/app/_layout.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/courier/app/_layout.tsx.BAK_HEADERS_2025-11-14-1828
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/courier/app/_layout.tsx.BAK.20251219-133347
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/courier/app/_layout.tsx.BAK_2025-11-14-1804
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/courier/da/InnerLayout.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/courier/.backup_layout/_layout.tsx.20251115-133526
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/app/(tabs)/_layout.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/app/_layout.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/da/InnerLayout.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/courier/delishafrica-client/app/(tabs)/_layout.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/courier/delishafrica-client/app/_layout.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/courier/delishafrica-client/da/InnerLayout.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/app/(tabs)/_layout.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/app/_layout.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/da/InnerLayout.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/courier/components/da/Screen.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/courier/.backup/courier_v2_20251114-194018/app/_layout.tsx
+
+[WRAPPER_CANDIDATE] /opt/delishafrica/monorepo/apps/courier/.backup/courier_v2_20251114-194018/da/InnerLayout.tsx
+
+
+============================================================
+[SUMMARY] TOP SUSPECT FILES (by number of hits)
+============================================================
+      4 /opt/delishafrica/monorepo/apps/courier/components/SignaturePad.tsx
+      3 /opt/delishafrica/monorepo/apps/merchant/app/thieyp-demo.tsx
+      3 /opt/delishafrica/monorepo/apps/merchant/app/ops.tsx
+      3 /opt/delishafrica/monorepo/apps/merchant/app/commande/[id].tsx
+      3 /opt/delishafrica/monorepo/apps/courier/components/ProofPhotoModal.tsx
+      3 /opt/delishafrica/monorepo/apps/courier/components/JobCard.tsx
+      3 /opt/delishafrica/monorepo/apps/courier/.backup/courier_v2_20251114-194018/app/mission/[id].tsx
+      3 /opt/delishafrica/monorepo/apps/client/app/thieyp-demo.tsx
+      3 /opt/delishafrica/monorepo/apps/client/app/restaurant/[id].tsx
+      2 /opt/delishafrica/monorepo/apps/merchant/ui/ui.tsx
+      2 /opt/delishafrica/monorepo/apps/merchant/ui/screens/Onboarding.tsx
+      2 /opt/delishafrica/monorepo/apps/merchant/app/index.tsx
+      2 /opt/delishafrica/monorepo/apps/merchant/app/home.tsx
+      2 /opt/delishafrica/monorepo/apps/courier/ui/ui.tsx
+      2 /opt/delishafrica/monorepo/apps/courier/ui/screens/Onboarding.tsx
+      2 /opt/delishafrica/monorepo/apps/courier/app/thieyp-demo.tsx
+      2 /opt/delishafrica/monorepo/apps/courier/app/orders.tsx
+      2 /opt/delishafrica/monorepo/apps/courier/app/mission/[id].tsx
+      2 /opt/delishafrica/monorepo/apps/courier/app/mission.tsx
+      2 /opt/delishafrica/monorepo/apps/courier/app/index.tsx
+      2 /opt/delishafrica/monorepo/apps/courier/app/home.tsx
+      2 /opt/delishafrica/monorepo/apps/client/ui/ui.tsx
+      2 /opt/delishafrica/monorepo/apps/client/ui/screens/Onboarding.tsx
+      2 /opt/delishafrica/monorepo/apps/client/app/orders.tsx
+      2 /opt/delishafrica/monorepo/apps/client/app/index.tsx
+      1 /opt/delishafrica/monorepo/apps/merchant/ui/screens/SignatureHomeMerchant.tsx
+      1 /opt/delishafrica/monorepo/apps/merchant/ui/components/DelishButton.tsx
+      1 /opt/delishafrica/monorepo/apps/merchant/src/components/TestApiButton.tsx
+      1 /opt/delishafrica/monorepo/apps/merchant/index.tsx
+      1 /opt/delishafrica/monorepo/apps/merchant/da/InnerLayout.tsx
+
+[DA] Done. Review report: /opt/delishafrica/monorepo/.tonton_backups/_reports/scroll_detector_20260113_213027.txt
+[DA] Next: paste me the TOP 10 lines from the SUMMARY section + the first WRAPPER_CANDIDATE block.

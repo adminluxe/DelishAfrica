@@ -1,0 +1,15 @@
+
+[14:07:47] 🧬 Scroll Rescue Stage2 (SAFE replacements only)
+
+[14:07:47] Backup=/opt/delishafrica/monorepo/.tonton_backups/scroll_rescue_stage2_20260114_140747
+
+[14:07:47] Report=/opt/delishafrica/monorepo/.tonton_reports/scroll_rescue_stage2_20260114_140747.log
+
+[14:07:47] 🔎 Evidence (before): scrollEnabled/disableScrollViewPanResponder/contentContainerStyle flex:1
+
+[stage2-safe] changed files:
+[stage2-safe] total: 0
+
+[14:07:47] ✅ Done.
+
+[14:07:47] 🧯 Rollback (1-liner): rsync -a "/opt/delishafrica/monorepo/.tonton_backups/scroll_rescue_stage2_20260114_140747/" "/opt/delishafrica/monorepo/"

@@ -1,0 +1,13 @@
+🧷 Inject extra.eas.projectId into dynamic app.config.ts
+Root:   /opt/delishafrica/monorepo
+Backup: /opt/delishafrica/monorepo/.tonton_backups/inject_eas_project_ids_20260114_222739
+Report: /opt/delishafrica/monorepo/.tonton_reports/inject_eas_project_ids_20260114_222739.log
+
+✅ Wrote: /opt/delishafrica/monorepo/apps/client/app.config.ts (slug=client, projectId=de3e6023-5b7d-400a-8977-8008c096d555)
+✅ Wrote: /opt/delishafrica/monorepo/apps/merchant/app.config.ts (slug=merchant, projectId=292e5d9e-9dbe-4dfb-baf7-ed80cf2e2bbc)
+✅ Wrote: /opt/delishafrica/monorepo/apps/courier/app.config.ts (slug=courier, projectId=dae37d7c-369e-436c-a4d1-ba62bfb8cbf6)
+
+✅ DONE
+Backup: /opt/delishafrica/monorepo/.tonton_backups/inject_eas_project_ids_20260114_222739
+Report: /opt/delishafrica/monorepo/.tonton_reports/inject_eas_project_ids_20260114_222739.log
+Rollback: rsync -a "/opt/delishafrica/monorepo/.tonton_backups/inject_eas_project_ids_20260114_222739/" "/opt/delishafrica/monorepo/"

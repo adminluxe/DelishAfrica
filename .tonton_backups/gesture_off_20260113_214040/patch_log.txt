@@ -1,0 +1,141 @@
+[DA] ROOT   : /opt/delishafrica/monorepo
+[DA] REPORT : /opt/delishafrica/monorepo/.tonton_backups/_reports/scroll_detector_20260113_213027.txt
+[DA] BACKUP : /opt/delishafrica/monorepo/.tonton_backups/gesture_off_20260113_214040
+
+[DA] Targets to patch:
+  - /opt/delishafrica/monorepo/apps/_layout.tsx
+  - /opt/delishafrica/monorepo/apps/client/app/(tabs)/_layout.tsx
+  - /opt/delishafrica/monorepo/apps/client/app/_layout.tsx
+  - /opt/delishafrica/monorepo/apps/client/app/_layout.tsx.BAK.20251219-112040
+  - /opt/delishafrica/monorepo/apps/client/app/index.tsx
+  - /opt/delishafrica/monorepo/apps/client/app/orders.tsx
+  - /opt/delishafrica/monorepo/apps/client/app/restaurant/[id].tsx
+  - /opt/delishafrica/monorepo/apps/client/app/thieyp-demo.tsx
+  - /opt/delishafrica/monorepo/apps/client/components/da/Screen.tsx
+  - /opt/delishafrica/monorepo/apps/client/da/InnerLayout.tsx
+  - /opt/delishafrica/monorepo/apps/client/ui/screens/Onboarding.tsx
+  - /opt/delishafrica/monorepo/apps/client/ui/ui.tsx
+  - /opt/delishafrica/monorepo/apps/courier/.backup_layout/_layout.tsx.20251115-133526
+  - /opt/delishafrica/monorepo/apps/courier/app/(tabs)/_layout.tsx
+  - /opt/delishafrica/monorepo/apps/courier/app/_layout.tsx
+  - /opt/delishafrica/monorepo/apps/courier/app/_layout.tsx.BAK.20251219-133347
+  - /opt/delishafrica/monorepo/apps/courier/app/_layout.tsx.BAK.20251219-135357
+  - /opt/delishafrica/monorepo/apps/courier/app/_layout.tsx.BAK_2025-11-14-1804
+  - /opt/delishafrica/monorepo/apps/courier/app/_layout.tsx.BAK_HEADERS_2025-11-14-1828
+  - /opt/delishafrica/monorepo/apps/courier/app/home.tsx
+  - /opt/delishafrica/monorepo/apps/courier/app/index.tsx
+  - /opt/delishafrica/monorepo/apps/courier/app/mission.tsx
+  - /opt/delishafrica/monorepo/apps/courier/app/mission/[id].tsx
+  - /opt/delishafrica/monorepo/apps/courier/app/orders.tsx
+  - /opt/delishafrica/monorepo/apps/courier/app/thieyp-demo.tsx
+  - /opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/app/(tabs)/_layout.tsx
+  - /opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/app/_layout.tsx
+  - /opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/da/InnerLayout.tsx
+  - /opt/delishafrica/monorepo/apps/courier/components/JobCard.tsx
+  - /opt/delishafrica/monorepo/apps/courier/components/ProofPhotoModal.tsx
+  - /opt/delishafrica/monorepo/apps/courier/components/SignaturePad.tsx
+  - /opt/delishafrica/monorepo/apps/courier/components/da/Screen.tsx
+  - /opt/delishafrica/monorepo/apps/courier/da/InnerLayout.tsx
+  - /opt/delishafrica/monorepo/apps/courier/delishafrica-client/app/(tabs)/_layout.tsx
+  - /opt/delishafrica/monorepo/apps/courier/delishafrica-client/app/_layout.tsx
+  - /opt/delishafrica/monorepo/apps/courier/delishafrica-client/da/InnerLayout.tsx
+  - /opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/app/(tabs)/_layout.tsx
+  - /opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/app/_layout.tsx
+  - /opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/da/InnerLayout.tsx
+  - /opt/delishafrica/monorepo/apps/courier/ui/screens/Onboarding.tsx
+  - /opt/delishafrica/monorepo/apps/courier/ui/ui.tsx
+  - /opt/delishafrica/monorepo/apps/merchant/app/(tabs)/_layout.tsx
+  - /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx
+  - /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx.BAK.20251219-133347
+  - /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx.BAK.20251219-135357
+  - /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx.BAK.20251219_141555
+  - /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx.BAK_20251202-174643
+  - /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx.BAK_20251202-181441
+  - /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx.BAK_20251202-182843
+  - /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx.BAK_HEADERS_2025-11-14-1828
+  - /opt/delishafrica/monorepo/apps/merchant/app/commande/[id].tsx
+  - /opt/delishafrica/monorepo/apps/merchant/app/home.tsx
+  - /opt/delishafrica/monorepo/apps/merchant/app/index.tsx
+  - /opt/delishafrica/monorepo/apps/merchant/app/ops.tsx
+  - /opt/delishafrica/monorepo/apps/merchant/app/thieyp-demo.tsx
+  - /opt/delishafrica/monorepo/apps/merchant/components/da/Screen.tsx
+  - /opt/delishafrica/monorepo/apps/merchant/da/InnerLayout.tsx
+  - /opt/delishafrica/monorepo/apps/merchant/index.tsx
+  - /opt/delishafrica/monorepo/apps/merchant/src/components/TestApiButton.tsx
+  - /opt/delishafrica/monorepo/apps/merchant/ui/components/DelishButton.tsx
+  - /opt/delishafrica/monorepo/apps/merchant/ui/screens/Onboarding.tsx
+  - /opt/delishafrica/monorepo/apps/merchant/ui/screens/SignatureHomeMerchant.tsx
+  - /opt/delishafrica/monorepo/apps/merchant/ui/ui.tsx
+
+[PATCHED] /opt/delishafrica/monorepo/apps/_layout.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/client/app/(tabs)/_layout.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/client/app/_layout.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/client/app/_layout.tsx.BAK.20251219-112040
+[PATCHED] /opt/delishafrica/monorepo/apps/client/app/index.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/client/app/orders.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/client/app/restaurant/[id].tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/client/app/thieyp-demo.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/client/components/da/Screen.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/client/da/InnerLayout.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/client/ui/screens/Onboarding.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/client/ui/ui.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/.backup_layout/_layout.tsx.20251115-133526
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/app/(tabs)/_layout.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/app/_layout.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/app/_layout.tsx.BAK.20251219-133347
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/app/_layout.tsx.BAK.20251219-135357
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/app/_layout.tsx.BAK_2025-11-14-1804
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/app/_layout.tsx.BAK_HEADERS_2025-11-14-1828
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/app/home.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/app/index.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/app/mission.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/app/mission/[id].tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/app/orders.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/app/thieyp-demo.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/app/(tabs)/_layout.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/app/_layout.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/da/InnerLayout.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/components/JobCard.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/components/ProofPhotoModal.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/components/SignaturePad.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/components/da/Screen.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/da/InnerLayout.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/delishafrica-client/app/(tabs)/_layout.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/delishafrica-client/app/_layout.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/delishafrica-client/da/InnerLayout.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/app/(tabs)/_layout.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/app/_layout.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/da/InnerLayout.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/ui/screens/Onboarding.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/courier/ui/ui.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/app/(tabs)/_layout.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx.BAK.20251219-133347
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx.BAK.20251219-135357
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx.BAK.20251219_141555
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx.BAK_20251202-174643
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx.BAK_20251202-181441
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx.BAK_20251202-182843
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx.BAK_HEADERS_2025-11-14-1828
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/app/commande/[id].tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/app/home.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/app/index.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/app/ops.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/app/thieyp-demo.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/components/da/Screen.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/da/InnerLayout.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/index.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/src/components/TestApiButton.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/ui/components/DelishButton.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/ui/screens/Onboarding.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/ui/screens/SignatureHomeMerchant.tsx
+[PATCHED] /opt/delishafrica/monorepo/apps/merchant/ui/ui.tsx
+
+[DA] Done. Patched files: 63
+[DA] Patch log: /opt/delishafrica/monorepo/.tonton_backups/gesture_off_20260113_214040/patch_log.txt
+[DA] Backup dir: /opt/delishafrica/monorepo/.tonton_backups/gesture_off_20260113_214040
+
+[DA] NEXT:
+  1) Ctrl+C metros
+  2) restart expo with --clear
+  3) swipe-close apps + rescan QR

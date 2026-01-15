@@ -12,7 +12,7 @@
 # -----------------------------------------------------------------------------
 set -euo pipefail
 
-COMPOSE_DIR="${COMPOSE_DIR:-/opt/delishafrica/compose}"
+COMPOSE_DIR="${COMPOSE_DIR:-/opt/delishafrica/monorepo}"
 MONOREPO_DIR="${MONOREPO_DIR:-/opt/delishafrica/monorepo}"
 
 echo "[DA][auto] 📂 COMPOSE_DIR  = $COMPOSE_DIR"

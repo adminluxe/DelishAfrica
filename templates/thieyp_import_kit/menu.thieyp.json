@@ -1,0 +1,39 @@
+{
+  "partnerId": "thieyp",
+  "currency": "EUR",
+  "sections": [
+    {
+      "id": "daily-specials",
+      "title": "Plats du jour",
+      "items": [
+        { "id": "mon_rice_and_peace", "day": "MON", "name": "Rice and Peace", "price": 21.90 },
+        { "id": "mon_attieke_poisson", "day": "MON", "name": "Attiéké au poisson", "price": 21.90 },
+
+        { "id": "tue_thieboudieune", "day": "TUE", "name": "Thiéboudieune", "price": 21.90 },
+        { "id": "tue_mafe_jarret", "day": "TUE", "name": "Mafè à la viande (jarret)", "price": 29.90 },
+
+        { "id": "wed_yassa_crevettes", "day": "WED", "name": "Yassa aux crevettes", "price": 22.90 },
+        { "id": "wed_attieke_poulet", "day": "WED", "name": "Attiéké au poulet", "price": 21.90 },
+
+        { "id": "thu_foutou_graine", "day": "THU", "name": "Foutou banane sauce graine", "price": 22.90 },
+        { "id": "thu_thiou_boulettes_poisson", "day": "THU", "name": "Thiou boulettes de poisson", "price": 21.90 },
+
+        { "id": "fri_yassa_poulet", "day": "FRI", "name": "Yassa au poulet", "price": 21.90 },
+        { "id": "fri_thieboudieune", "day": "FRI", "name": "Thiéboudieune", "price": 21.90 },
+
+        { "id": "sat_dibi_allocos", "day": "SAT", "name": "Dibi et allocos", "price": 22.90 },
+        { "id": "sat_acras_morue_allocos", "day": "SAT", "name": "Acras de morue et allocos", "price": 21.90 }
+      ]
+    },
+    {
+      "id": "extras",
+      "title": "Extras",
+      "items": [
+        { "id": "entree_du_jour", "name": "Entrée du jour", "priceRange": { "min": 10.50, "max": 12.50 } },
+        { "id": "plat_vegetarien", "name": "Plat végétarien sur demande", "price": 21.90 },
+        { "id": "dessert_du_jour", "name": "Dessert du jour", "priceRange": { "min": 8.50, "max": 10.50 } },
+        { "id": "jus_frais", "name": "Jus frais naturels (hibiscus, gingembre ou baobab)", "price": 4.90 }
+      ]
+    }
+  ]
+}

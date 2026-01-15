@@ -1,0 +1,9 @@
+[22:09:26] == FLOW GATE E2E ==
+[22:09:26] BASE=http://127.0.0.1:3010
+[22:09:26] LOG=/opt/delishafrica/monorepo/tonton_logs/gate_e2e_20251219-220926.log
+[22:09:26] [1] health
+{"status":"ok"}
+[22:09:26] [2] create demo order
+{"ok":true,"order":{"id":"demo_mjdd47gu_2l4gxb","partnerSlug":"thieyp","status":"pending","items":[],"totals":{"itemsCount":0,"amount":0,"currency":"EUR"},"createdAt":"2025-12-19T21:09:26.094Z","updatedAt":"2025-12-19T21:09:26.094Z","timeline":[{"at":"2025-12-19T21:09:26.094Z","status":"pending","note":"created"}]}}
+
+[22:09:26] ❌ orderId introuvable -> endpoint create ne renvoie pas ce format.

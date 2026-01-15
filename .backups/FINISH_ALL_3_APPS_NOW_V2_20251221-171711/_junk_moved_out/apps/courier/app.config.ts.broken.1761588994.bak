@@ -1,0 +1,12 @@
+import 'dotenv/config';
+export default {
+  expo: {
+    name: "DelishAfrica Courier",
+    slug: "courier",
+    scheme: "delishcourier",
+    extra: { eas: { projectId: 'f9b92429-bab0-4436-90bc-d9c8e5adfada',  projectId: 'f9b92429-bab0-4436-90bc-d9c8faad8fad$3 }, 
+      API_BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL || "https://api.delishafrica.me",
+      USE_DEV_MOCKS: process.env.EXPO_PUBLIC_USE_DEV_MOCKS ?? "true"
+    }
+  }
+};

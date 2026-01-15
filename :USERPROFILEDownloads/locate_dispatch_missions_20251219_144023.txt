@@ -1,0 +1,147 @@
+Locate Dispatch/Missions - Root: /opt/delishafrica/monorepo
+------------------------------------------------------------
+[A] Candidate API roots
+FOUND: /opt/delishafrica/monorepo/services/api
+FOUND: /opt/delishafrica/monorepo/services/api-nest
+------------------------------------------------------------
+[B] Grep for likely controllers/modules
+./da_audit_bridge_courier_platform_v2.sh:59:log "## 6) API code discovery (courier/dispatch/missions + CORS/auth hints)"
+./da_audit_bridge_courier_platform_v2.sh:61:  run "cd $API_DIR && rg -n \"(courier|couriers|dispatch|mission|missions)\" -S . --glob '!node_modules/**' --glob '!dist/**' | head -n 220"
+./da_audit_bridge_courier_platform_v2.sh:71:  "/api/dispatch"
+./da_audit_bridge_courier_platform_v2.sh:72:  "/api/v1/dispatch"
+./da_audit_bridge_courier_platform_v2.sh:73:  "/api/v1/dispatch/active"
+./da_audit_bridge_courier_platform_v2.sh:74:  "/api/missions"
+./da_audit_bridge_courier_platform_v2.sh:75:  "/api/v1/missions"
+./da_audit_bridge_courier_platform_v2.sh:76:  "/api/v1/courier/missions"
+./da_audit_bridge_courier_platform.sh:38:log "## 4) API routes discovery (courier/dispatch/missions)"
+./da_audit_bridge_courier_platform.sh:40:  run "cd $API_DIR && rg -n \"courier|couriers|dispatch|mission|missions\" -S . --glob '!node_modules/**' --glob '!dist/**' | head -n 200"
+./da_audit_bridge_courier_platform.sh:51:  "/api/dispatch"
+./da_audit_bridge_courier_platform.sh:52:  "/api/v1/dispatch"
+./da_audit_bridge_courier_platform.sh:53:  "/api/missions"
+./da_audit_bridge_courier_platform.sh:54:  "/api/v1/missions"
+./da_audit_bridge_courier_platform.sh:55:  "/api/v1/dispatch/active"
+./da_patch_courier_bridge_v1.sh:139:  app.get('/api/v1/dispatch/active', (req, res) => {
+./da_patch_courier_bridge_v1.sh:143:  app.get('/api/v1/missions', (req, res) => {
+./da_patch_courier_bridge_v1.sh:164:echo "  curl -i https://api.delishafrica.me/api/v1/dispatch/active"
+./da_patch_courier_bridge_v1.sh:165:echo "  curl -i https://api.delishafrica.me/api/v1/missions"
+./_diag/20251219_025450/router_layout_scan.txt:93:apps/courier/app/missions/index.tsx
+./_diag/20251219_025450/router_layout_scan.txt:94:apps/courier/app/missions/index.tsx.bak
+./da_probe_courier_endpoints_now.sh:9:  "/api/v1/dispatch/active"
+./da_probe_courier_endpoints_now.sh:10:  "/api/v1/missions"
+./da_probe_courier_endpoints_now.sh:12:  "/api/dispatch/active"
+./da_probe_courier_endpoints_now.sh:13:  "/api/missions"
+./_diag/20251219_025450/find_files.txt:46559:apps/courier/app/missions/index.tsx
+./_diag/20251219_025450/find_files.txt:46560:apps/courier/app/missions/index.tsx.bak
+./_diag/20251219_025450/find_files.txt:47358:backups/ui_fix_final_2025-12-17T17-02-00-251Z/courier/app/missions/index.tsx
+./_diag/20251219_025450/find_files.txt:47359:backups/ui_fix_final_2025-12-17T17-02-00-251Z/courier/app/missions/index.tsx.bak
+./_diag/20251219_025450/find_files.txt:47496:backups/ui_imports_fix_20251217_055424/courier_app/missions/index.tsx
+./_diag/20251219_025450/find_files.txt:47497:backups/ui_imports_fix_20251217_055424/courier_app/missions/index.tsx.bak
+------------------------------------------------------------
+[C] NestJS route prefix hints (main.ts / app.module.ts)
+---- services/api/src/main.ts
+import { NestFactory } from '@nestjs/core';
+import { ThieypDemoModule } from './thieyp-demo/thieyp-demo.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(ThieypDemoModule, {
+    cors: true,
+  });
+
+  // Toutes les routes seront préfixées par /api
+  app.setGlobalPrefix('api');
+
+  // Port : 4001 par défaut (aligné avec ton healthcheck / tmux / scripts)
+  const port = process.env.PORT ? Number(process.env.PORT) : 4001;
+  await app.listen(port);
+
+  console.log(`DelishAfrica Thieyp API démarrée sur port ${port}`);
+}
+
+bootstrap().catch((err) => {
+  // Petit log d'erreur explicite au cas où
+  // (évite que Nest crashe silencieusement)
+  // eslint-disable-next-line no-console
+  console.error('Erreur au démarrage de ThieypDemoModule', err);
+  process.exit(1);
+});
+------------------------------------------------------------
+---- services/api-nest/src/main.ts
+import 'reflect-metadata';
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+
+type Partner = {
+  id: string;
+  name: string;
+  slug: string;
+  city: string;
+  cuisine?: string;
+  rating?: number;
+};
+
+const partners: Partner[] = [
+  { id: 'p1', name: 'Thieyp', slug: 'thieyp', city: 'Bruxelles', cuisine: 'Sénégalais', rating: 4.8 },
+  { id: 'p2', name: 'Afrosian', slug: 'afrosian', city: 'Bruxelles', cuisine: 'Afro-asiatique', rating: 4.6 },
+  { id: 'p3', name: 'Toukoul', slug: 'toukoul', city: 'Bruxelles', cuisine: 'Éthiopien', rating: 4.7 }
+];
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, { cors: true });
+
+  // Canonique (v1)
+  app.setGlobalPrefix('api/v1');
+
+  const port = parseInt(process.env.PORT || '3010', 10);
+
+  // ✅ Aliases Express pour compat apps (health + partners)
+  const server = app.getHttpAdapter().getInstance();
+
+  const healthHandler = (_req: any, res: any) => res.status(200).json({ status: 'ok' });
+
+  server.get('/health', healthHandler);
+  server.get('/api/health', healthHandler);
+  // /api/v1/health est déjà servi par Nest via le prefix + controller, mais on le redonne aussi en alias safe
+  server.get('/api/v1/health', healthHandler);
+
+  server.get('/partners', (_req: any, res: any) => res.status(200).json(partners));
+  server.get('/api/partners', (_req: any, res: any) => res.status(200).json(partners));
+  server.get('/api/v1/partners', (_req: any, res: any) => res.status(200).json(partners));
+
+  server.get(['/partners/:slug', '/api/partners/:slug', '/api/v1/partners/:slug'], (req: any, res: any) => {
+    const p = partners.find(x => x.slug === req.params.slug);
+    if (!p) return res.status(404).json({ message: 'partner_not_found' });
+    return res.status(200).json(p);
+  });
+
+  await app.listen(port, '0.0.0.0');
+  console.log(`[API] OK on http://127.0.0.1:${port} (health: /health | /api/health | /api/v1/health)`);
+}
+bootstrap();
+------------------------------------------------------------
+---- services/api/src/app.module.ts
+import { Module } from '@nestjs/common';
+import { MenuController } from './menu/menu.controller';
+import { DemoOrdersController } from './orders/demo-orders.controller';
+import { OrdersDemoController } from './orders/orders-demo.controller';
+
+@Module({
+  imports: [],
+  controllers: [MenuController, DemoOrdersController, OrdersDemoController],
+  providers: [],
+})
+export class AppModule {}
+------------------------------------------------------------
+---- services/api-nest/src/app.module.ts
+import { Module } from '@nestjs/common';
+import { AppController } from './app.controller';
+
+import { OrdersModule } from './orders/orders.module';
+
+@Module({
+  controllers: [AppController],
+  imports: [OrdersModule],
+
+})
+export class AppModule {}
+------------------------------------------------------------
+Report: /root/da_reports/locate_dispatch_missions_20251219_144023.txt

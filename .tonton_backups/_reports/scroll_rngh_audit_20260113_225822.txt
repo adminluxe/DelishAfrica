@@ -1,0 +1,38 @@
+[DA] ROOT: /opt/delishafrica/monorepo
+[DA] OUT : /opt/delishafrica/monorepo/.tonton_backups/_reports/scroll_rngh_audit_20260113_225822.txt
+
+============================================================
+[A] Imports ScrollView/FlatList/SectionList depuis react-native-gesture-handler
+============================================================
+
+============================================================
+[B] Presence de GestureHandlerRootView (doit être au root)
+============================================================
+
+============================================================
+[C] Vérif entrée: import 'react-native-gesture-handler' (React Navigation recommande top-of-file)
+============================================================
+
+============================================================
+[D] _layout.tsx (Expo Router): manque un wrapper RNGH ?
+============================================================
+[MISS] /opt/delishafrica/monorepo/apps/merchant/app/(tabs)/_layout.tsx
+[MISS] /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx
+[MISS] /opt/delishafrica/monorepo/apps/_layout.tsx
+[MISS] /opt/delishafrica/monorepo/apps/client/app/(tabs)/_layout.tsx
+[MISS] /opt/delishafrica/monorepo/apps/client/app/_layout.tsx
+[MISS] /opt/delishafrica/monorepo/apps/courier/app/(tabs)/_layout.tsx
+[MISS] /opt/delishafrica/monorepo/apps/courier/app/_layout.tsx
+[MISS] /opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/app/(tabs)/_layout.tsx
+[MISS] /opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/app/_layout.tsx
+[MISS] /opt/delishafrica/monorepo/apps/courier/delishafrica-client/app/(tabs)/_layout.tsx
+[MISS] /opt/delishafrica/monorepo/apps/courier/delishafrica-client/app/_layout.tsx
+[MISS] /opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/app/(tabs)/_layout.tsx
+[MISS] /opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/app/_layout.tsx
+[MISS] /opt/delishafrica/monorepo/apps/courier/.backup/courier_v2_20251114-194018/app/_layout.tsx
+
+============================================================
+[E] Rappel RN: ScrollView doit avoir hauteur bornée (flex:1 chain)
+============================================================
+=> Si ScrollView est dans une stack de Views sans flex:1, il peut sembler 'KO'.
+   Voir docs RN: bounded height / flex chain.

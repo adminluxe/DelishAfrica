@@ -1,0 +1,34 @@
+import { ExpoConfig, ConfigContext } from 'expo/config';
+
+export default ({ config }: ConfigContext): ExpoConfig => ({
+  name: "DelishAfrica - Marchand",
+  slug: "delishafrica-merchant",
+  owner: 'purpleorchidgroup',
+  version: '1.0.0',
+  orientation: 'portrait',
+  icon: './assets/icon.png',
+  userInterfaceStyle: 'light',
+  splash: {
+    image: './assets/splash.png',
+    resizeMode: 'contain',
+    backgroundColor: '#ffffff'
+  },
+  ios: {
+    supportsTablet: true,
+    bundleIdentifier: 'com.delishafrica.merchant'
+  },
+  android: {
+    adaptiveIcon: {
+      foregroundImage: './assets/adaptive-icon.png',
+      backgroundColor: '#ffffff'
+    },
+    package: 'com.delishafrica.merchant'
+  },
+  extra: {
+    eas: {
+      
+    },
+    EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL || 'https://api.delishafrica.me'
+  },
+  plugins: ['expo-router']
+});  

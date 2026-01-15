@@ -1,0 +1,864 @@
+🍏 TONTON iOS HARD RESET + DEV CLIENT REBUILD
+Root:   /opt/delishafrica/monorepo
+Backup: /opt/delishafrica/monorepo/.tonton_backups/ios_hard_reset_20260114_193507
+Report: /opt/delishafrica/monorepo/.tonton_reports/ios_hard_reset_20260114_193507.log
+Apps:   client courier merchant
+EAS:    profile=development platform=ios
+
+============================================================
+0) Snapshot sécurité
+============================================================
+ M app/_layout.tsx
+ M apps/_marchand.disabled/.env
+ M apps/client
+ M apps/courier
+ M apps/fix_api_base_all.sh
+ M apps/fix_demo_homescreens.sh
+ M apps/merchant
+ M apps/rebuild_all_apps.sh
+ A eas.json
+ M package.json
+ M pnpm-lock.yaml
+ M scripts/da_rescue_client_merchant.sh
+ M scripts/delishafrica_auto_migration.sh
+ M turbo.json
+?? .backup_accents_20251217_035803/
+?? .backup_force_real_routes_20251220-160739/
+?? .backup_force_signature_20251220-155703/
+?? .backup_onboarding_once_session_20251220-163557/
+?? .backup_phase2b_signature_20251220-165242/
+?? .backup_safearea_20251217_034813/
+?? .backup_scroll_pointerevents_20260112_181954/
+?? .backup_ui_folder_20251217_040653/
+?? .backup_ui_v1_20251220-120652/
+?? .backup_ux_phase1_20251217_025531/
+?? .backup_ux_wire_v1_20251220-121737/
+?? .backups/
+?? .env
+?? .reports_scroll_fix/
+?? .tonton_api_reset_20251219-194125.log
+?? .tonton_backups/
+?? .tonton_fix_port_3010_20251219-192007.log
+?? .tonton_logs/
+?? .tonton_reports/
+?? .tonton_smoke_20251219-154926.log
+?? .tonton_smoke_20251219-155443.log
+?? :USERPROFILEDownloads/
+?? _backup_scroll_20251221-220356/
+?? _backup_ui_safe_padding_20251220-172059/
+?? _diag/
+?? _ops/
+?? _snapshots/
+?? app/_layout.tsx.bak.20251216_023209
+?? assets/
+?? backup_phase2a_cta_20251220-190450/
+?? backup_phase2a_wire_cta_20251220-204359/
+?? backup_phase2b_anim_20251220-210757/
+?? backup_phase2b_anim_20251220-210821/
+?? backup_phase2b_demo_screens_20251220-205700/
+?? backup_safe_padding_20251220-172929/
+?? backups/
+?? branding/
+?? da/
+?? da_api_autoboot.sh
+?? da_api_debug_routes.sh
+?? da_api_docror_and_mux.sh
+?? da_api_local_check.sh
+?? da_api_origin_probe.log
+?? da_api_origin_probe.sh
+?? da_api_rebuild_only.sh
+?? da_api_start.sh
+?? da_apply_env_apiurl.sh
+?? da_apply_env_demo.sh
+?? da_apply_uiux_v1.sh
+?? da_audit_bridge_courier_platform.sh
+?? da_audit_bridge_courier_platform_v2.sh
+?? da_compose_rescue.sh
+?? da_enable_demo_ui.sh
+?? da_final_fix.sh
+?? da_fix_client_runtime.sh
+?? da_fix_cloudflared.sh
+?? da_fix_decor_overlays.sh
+?? da_fix_decor_overlays_v2.sh
+?? da_fix_metro_runtime_ui_v1.sh
+?? da_fix_scroll_3010_eio.sh
+?? da_fix_scroll_bg_v3.sh
+?? da_fix_scroll_final.sh
+?? da_fix_scroll_global.sh
+?? da_fix_scroll_overlays_SAFE.sh
+?? da_fix_scroll_pointerevents.sh
+?? da_fix_sharedarraybuffer.log
+?? da_fix_sharedarraybuffer.sh
+?? da_fix_sharedarraybuffer_root.sh
+?? da_fix_sharedarraybuffer_v2.log
+?? da_fix_sharedarraybuffer_v2.sh
+?? da_fix_sharedarraybuffer_v3.sh
+?? da_fix_ui_imports.sh
+?? da_fix_ui_pkg_resolution.sh
+?? da_full_stack_boot.sh
+?? da_guardian.sh
+?? da_kill_metro_ports.sh
+?? da_master_tmux_5win.sh
+?? da_mux_monorepo.sh
+?? da_mux_v3.sh
+?? da_patch_courier_bridge_v1.sh
+?? da_patch_hmrclient_stub.sh
+?? da_patch_pretty_format_stub.sh
+?? da_probe_courier_endpoints_now.sh
+?? da_rescue_all.sh
+?? da_reset_all.sh.save
+?? da_reset_and_mux.sh
+?? da_reset_node_modules.sh
+?? da_reset_ports_and_mux.sh
+?? da_scan_scroll_killers.sh
+?? da_scroll_gesture_detector.sh
+?? da_scroll_gesture_detector.sh.bak.20260113_213004
+?? da_smoketest_api.sh
+?? da_thieyp_refresh.sh
+?? da_tmux_boot_10.sh
+?? da_tmux_delish.sh
+?? da_tmux_reboot.sh
+?? da_tonton_fix_ui_and_restart.sh
+?? da_tonton_launch.sh
+?? da_ultimate_reset_3010.sh
+?? da_ultime_reset_3010.sh
+?? da_ultra_reset.sh
+?? delishafrica_import.sh
+?? docker-compose.yml
+?? docker-compose.yml.bak.2025-12-15_220644
+?? docker-compose.yml.bak.2025-12-15_221009
+?? docker-compose.yml.bak.20260111_164854
+?? docker-compose.yml.bak.20260111_165527
+?? docs/
+?? fix_expo_app_entry.js
+?? metro.config.js
+?? ops_snapshot.sh
+?? package.json.bak
+?? package.json.bak.20251213_100847
+?? package.json.before_turbo_fix
+?? package.json.current_backup
+?? packages/
+?? patch-courier-premium-ui.sh
+?? patch-courier-ui.sh
+?? patch-ui-magic-pack.sh
+?? pnpm-workspace.yaml.bak.20251215-044712
+?? rebirth.sh
+?? rebirth_all.sh
+?? reset_api_3010.sh
+?? reset_delishafrica.sh
+?? restart_delish_dev.sh
+?? scan-project.js
+?? scan-project.js.bak.20260111_180243
+?? scripts/DA_FINALIZE_NOW.sh
+?? scripts/DA_FIND_FLOW_FILES.sh
+?? scripts/DA_FIX_CLIENT_COURIER_NOW.sh
+?? scripts/DA_FIX_INTERACTIONS_NOW.sh
+?? scripts/DA_FIX_SCROLL_AND_ROUTES_ALL.sh
+?? scripts/DA_FIX_SCROLL_OVERLAYS_CAPTURE.sh
+?? scripts/DA_FIX_SCROLL_SCREEN_ALL.sh
+?? scripts/DA_FIX_TAPS_NOW.sh
+?? scripts/DA_FIX_THIEYP_DEMO_IMPORTS_NOW.sh
+?? scripts/DA_FORCE_SCROLL_ALL.sh
+?? scripts/DA_NUKE_SLUG_SCREENS_ALL_APPS.sh
+?? scripts/FINISH_ALL_3_APPS_NOW_V2.sh
+?? scripts/_archive/
+?? scripts/da_add_orders_demo_flow_api.sh
+?? scripts/da_add_ui_kit_v2.sh
+?? scripts/da_api_doctor.sh
+?? scripts/da_api_hard_recover_3010.sh
+?? scripts/da_api_hard_reset.sh
+?? scripts/da_api_supervisor_3010.sh
+?? scripts/da_api_supervisor_3010_strict.sh
+?? scripts/da_app_dev.sh
+?? scripts/da_apply_safe_top_futuristic_v1.sh
+?? scripts/da_autofix_async_useEffect_safe.sh
+?? scripts/da_autofix_routes_default_export_safe.sh
+?? scripts/da_cf530_diag.sh
+?? scripts/da_cf_fix_api_dns.sh
+?? scripts/da_check_skin_thieyp.sh
+?? scripts/da_create_thieyp_demo_routes.sh
+?? scripts/da_debug_cta_demo.sh
+?? scripts/da_debug_merchant_press.sh
+?? scripts/da_detect_orders_screen_merchant.sh
+?? scripts/da_dev_lock_10win.sh
+?? scripts/da_dev_mux_6win.sh
+?? scripts/da_dev_mux_8win.sh
+?? scripts/da_diag_pack.sh
+?? scripts/da_env_aliases_fix.sh
+?? scripts/da_expo_router_ghostbuster.sh
+?? scripts/da_find_compose_3010.sh
+?? scripts/da_find_projects.sh
+?? scripts/da_find_thieyp_screens.sh
+?? scripts/da_fix_all_app_configs.sh
+?? scripts/da_fix_all_app_configs_v2.sh
+?? scripts/da_fix_bg_pointerevents.sh
+?? scripts/da_fix_chapitreA_final.sh
+?? scripts/da_fix_client_orders_demo.sh
+?? scripts/da_fix_cloudflared_api.sh
+?? scripts/da_fix_cloudflared_api_v2.sh
+?? scripts/da_fix_cloudflared_api_v3.sh
+?? scripts/da_fix_commander_demo_route.sh
+?? scripts/da_fix_demo_flow_api.sh
+?? scripts/da_fix_demo_flow_api_auto.sh
+?? scripts/da_fix_demo_flow_api_nest.sh
+?? scripts/da_fix_expo_ids_in_expo_obj.sh
+?? scripts/da_fix_expo_ports_in_use.sh
+?? scripts/da_fix_layout_escapes.sh
+?? scripts/da_fix_layout_merchant_courier.sh
+?? scripts/da_fix_layout_quotes_v1.sh
+?? scripts/da_fix_layout_unicode.sh
+?? scripts/da_fix_merchant_orders_screen.sh
+?? scripts/da_fix_merchant_ready_button_inert.sh
+?? scripts/da_fix_orderid_replace_safe.sh
+?? scripts/da_fix_orders_demo_click_client.sh
+?? scripts/da_fix_orders_demo_default_export.sh
+?? scripts/da_fix_orders_demo_placeholder_to_thieyp.sh
+?? scripts/da_fix_parallax_safe.sh
+?? scripts/da_fix_partners_routes_clean.sh
+?? scripts/da_fix_partners_routes_clean_v2.sh
+?? scripts/da_fix_partners_routes_clean_v3.sh
+?? scripts/da_fix_partners_routes_v4.sh
+?? scripts/da_fix_plusui_and_router_warnings.sh
+?? scripts/da_fix_plusui_imports.sh
+?? scripts/da_fix_pointerevents_syntax_client.sh
+?? scripts/da_fix_port_3010_eaddrinuse.sh
+?? scripts/da_fix_ports_expo.sh
+?? scripts/da_fix_probe_syntax_error.sh
+?? scripts/da_fix_rngh_root_layouts.sh
+?? scripts/da_fix_rngh_root_safe.sh
+?? scripts/da_fix_root_dev_scripts.sh
+?? scripts/da_fix_safearea.sh
+?? scripts/da_fix_scroll_parallax.sh
+?? scripts/da_fix_slug_pointerevents_hammer_client.sh
+?? scripts/da_fix_titles_taglines.sh
+?? scripts/da_fix_ui_final.js
+?? scripts/da_fix_ui_folder_router.sh
+?? scripts/da_fix_ui_imports.sh
+?? scripts/da_fix_ui_imports_to__ui.sh
+?? scripts/da_fix_ui_private_folder.sh
+?? scripts/da_fix_ui_router_now.sh
+?? scripts/da_fix_warnings_and_routes.sh
+?? scripts/da_flow_gate_e2e.sh
+?? scripts/da_force_api_base_all_apps.sh
+?? scripts/da_force_fix_orders_demo_routes.sh
+?? scripts/da_force_merchant_list_demo.sh
+?? scripts/da_gate_scan_injections.sh
+?? scripts/da_hotfix_client_lint_now.sh
+?? scripts/da_hotfix_layouts_merchant_courier.sh
+?? scripts/da_hotfix_orders_demo_ids.sh
+?? scripts/da_hotfix_orders_demo_safe_orderid.sh
+?? scripts/da_import_thieyp_menu.sh
+?? scripts/da_inventory.sh
+?? scripts/da_kill_3010_hard.sh
+?? scripts/da_kill_port.sh
+?? scripts/da_lock_api_port_3010_localhost.sh
+?? scripts/da_migrate_ui_out_of_app.sh
+?? scripts/da_mux_da_dev_6win.sh
+?? scripts/da_onboarding_once_per_session_v1.sh
+?? scripts/da_onrails.sh
+?? scripts/da_ops_locate_start_3011.sh
+?? scripts/da_ops_start_safe_3011.sh
+?? scripts/da_patch_action_principale_to_orders_demo.sh
+?? scripts/da_patch_action_principale_to_orders_demo_v2.sh
+?? scripts/da_patch_and_restart_merchant_orders_list.sh
+?? scripts/da_patch_api_demo_get_accept_all_ids.sh
+?? scripts/da_patch_api_demo_get_accept_all_ids_v2.sh
+?? scripts/da_patch_api_demo_get_always.sh
+?? scripts/da_patch_compose_3010_localhost_safe.sh
+?? scripts/da_patch_demo_orders_api.sh
+?? scripts/da_patch_demo_orders_api_auto.sh
+?? scripts/da_patch_demo_ux_magic_v2.sh
+?? scripts/da_patch_expo_icons.sh
+?? scripts/da_patch_front_extract_order_id_safe.sh
+?? scripts/da_patch_headers_and_keys.sh
+?? scripts/da_patch_merchant_demo_list.sh
+?? scripts/da_patch_merchant_orders_demo_clean.sh
+?? scripts/da_patch_merchant_orders_screen.sh
+?? scripts/da_patch_ui_headers_and_orders_v1.sh
+?? scripts/da_patch_ui_polish_v2.sh
+?? scripts/da_patch_ui_polish_v3.sh
+?? scripts/da_phase2a_cta_button_fix.sh
+?? scripts/da_phase2a_routes_bootstrap.sh
+?? scripts/da_phase2a_wire_cta_routes.sh
+?? scripts/da_phase2b_add_animations.sh
+?? scripts/da_phase2b_add_animations_safe.sh
+?? scripts/da_phase2b_add_animations_safe_v2.sh
+?? scripts/da_phase2b_create_demo_screens.sh
+?? scripts/da_phase2b_signature_screens_v1.sh
+?? scripts/da_prebuild_sanitize_api_urls.sh
+?? scripts/da_probe_orders_api.sh
+?? scripts/da_probe_orders_partner_thieyp.sh
+?? scripts/da_rebuild_app_config_ts.sh
+?? scripts/da_rebuild_app_config_ts.sh.bak.20260111_211847
+?? scripts/da_recover_all_strict.sh
+?? scripts/da_release_deploy.sh
+?? scripts/da_release_rollback.sh
+?? scripts/da_reload_da_rel_clean_metros_v3.sh
+?? scripts/da_repair_demo_flow_module.sh
+?? scripts/da_restart_client_hard.sh
+?? scripts/da_restart_expo_3apps.sh
+?? scripts/da_restart_expo_3apps_clean.sh
+?? scripts/da_restart_expo_3apps_clean_v2.sh
+?? scripts/da_restart_merchant_force.sh
+?? scripts/da_restart_merchant_hard.sh
+?? scripts/da_restart_merchant_hard_qr.sh
+?? scripts/da_restart_merchant_ultra.sh
+?? scripts/da_restore_demo_files_lastbak.sh
+?? scripts/da_restore_layout_git.sh
+?? scripts/da_safe_padding_screen.sh
+?? scripts/da_scalpel_bg_off.sh
+?? scripts/da_scroll_disable_gestures_suspects.sh
+?? scripts/da_scroll_fix_after_probe.sh
+?? scripts/da_scroll_fix_list_imports.sh
+?? scripts/da_scroll_layout_scalpel.sh
+?? scripts/da_scroll_nuclear_recover.sh
+?? scripts/da_scroll_purge_probe_git.sh
+?? scripts/da_scroll_remove_probe_now.sh
+?? scripts/da_scroll_report.sh
+?? scripts/da_scroll_responder_scalpel.sh
+?? scripts/da_scroll_rngh_audit.sh
+?? scripts/da_scroll_touchsafe_overlays.sh
+?? scripts/da_scroll_true_scalpel.sh
+?? scripts/da_set_app_accents.sh
+?? scripts/da_set_app_accents_v2.sh
+?? scripts/da_set_app_ids_safe.sh
+?? scripts/da_silence_expo_router_warnings.sh
+?? scripts/da_smoke_flow_e2e.sh
+?? scripts/da_smoke_flow_orders.sh
+?? scripts/da_smoke_thieyp_flow.sh
+?? scripts/da_snapshot.sh
+?? scripts/da_stabilize_run.sh
+?? scripts/da_start_ops_platform_3011.sh
+?? scripts/da_sync_api_base_all_apps.sh
+?? scripts/da_sync_api_base_all_apps_v2.sh
+?? scripts/da_thieyp_e2e_smoke.sh
+?? scripts/da_thieyp_real_menu_magic.sh
+?? scripts/da_tmux_10win.sh
+?? scripts/da_tmux_10win_solid_v1.sh
+?? scripts/da_tmux_da_dev.sh
+?? scripts/da_tmux_da_dev_10.sh
+?? scripts/da_tmux_dev_8win.sh
+?? scripts/da_tmux_full_reset.sh
+?? scripts/da_tmux_release_cockpit.sh
+?? scripts/da_tonton_recover_all.sh
+?? scripts/da_tonton_reset_tmux_10win.sh
+?? scripts/da_tonton_scroll_rescue.sh
+?? scripts/da_tonton_scroll_reset.sh
+?? scripts/da_tunnel_audit.sh
+?? scripts/da_ui_headers_delishafrica.sh
+?? scripts/da_ui_polish_v3.sh
+?? scripts/da_ui_polish_v4.sh
+?? scripts/da_ui_safe_padding.sh
+?? scripts/da_unlock_apps_for_patch.sh
+?? scripts/da_ux_force_real_routes_v1.sh
+?? scripts/da_ux_force_signature_v1.sh
+?? scripts/da_ux_foundation_v1.sh
+?? scripts/da_ux_wire_v1.sh
+?? scripts/da_write_orders_demo_helpers.sh
+?? scripts/da_write_thieyp_orders_demo_pages.sh
+?? scripts/da_zero_restart_tmux.sh
+?? scripts/enable_scroll_all_apps.sh
+?? scripts/fix_and_boot_delishafrica_thieyp.sh
+?? scripts/fix_metro_all.sh
+?? scripts/tmux_5win_delish.sh
+?? scripts/tonton_abs_children_boxnone.sh
+?? scripts/tonton_da_hard_reset_3apps.sh
+?? scripts/tonton_da_smoke_orders.sh
+?? scripts/tonton_disable_abs_overlays.sh
+?? scripts/tonton_finisher2_disable_responder_killers.sh
+?? scripts/tonton_finisher_bypass_parallax.sh
+?? scripts/tonton_fix_layout_quotes.sh
+?? scripts/tonton_fix_parallax_pointerevents.sh
+?? scripts/tonton_fix_pointerevents_killer.sh
+?? scripts/tonton_fix_taps_all_apps.sh
+?? scripts/tonton_flex_doctor.sh
+?? scripts/tonton_force_scroll_everywhere.sh
+?? scripts/tonton_ios_hard_reset_rebuild_devclient.sh
+?? scripts/tonton_overlay_passthrough.sh
+?? scripts/tonton_parallax_find_and_patch.sh
+?? scripts/tonton_parallax_killer_fix.sh
+?? scripts/tonton_scroll_nuke_mode.sh
+?? scripts/tonton_scroll_radical_fix.sh
+?? scripts/tonton_scroll_rescue_stage2_safe.sh
+?? scripts/tonton_scroll_rescue_v2.sh
+?? scripts/tonton_scroll_rescue_v3.sh
+?? scripts/tonton_touchtrace_add_scrollprobe.sh
+?? scripts/tonton_touchtrace_cleanup_dupes.sh
+?? scripts/tonton_touchtrace_harden.sh
+?? scripts/tonton_trace_touch_3apps.sh
+?? scripts/tonton_unblock_scroll_capture_wrappers.sh
+?? scripts/tonton_unblock_scroll_keyboard_wrappers.sh
+?? scripts/ux_phase1_apply.sh
+?? scrolltester_backup_20260113_164538/
+?? serve_ota.log
+?? services/api-nest/
+?? services/api/.env
+?? services/api/DelishAfrica-Coursiers-Infra-Debug-Report.md
+?? services/api/Dockerfile
+?? services/api/da_api_tsc_build.sh
+?? services/api/da_find_app_module.sh
+?? services/api/setup_thiepy_demo.sh
+?? services/api/src/
+?? services/da_api_autoboot.sh
+?? services/da_api_diagnose.log
+?? services/da_api_diagnose.sh
+?? services/da_find_app_module.sh
+?? start_env.sh
+?? supervisor.sh
+?? templates/
+?? testeur.sh
+?? tmux_demo_down.sh
+?? tmux_demo_up.sh
+?? tonton_all_in_one.sh
+?? tonton_backups/
+?? tonton_clean_scrolltester.sh
+?? tonton_clean_start.sh
+?? tonton_clean_start_3010.sh
+?? tonton_lock_base_delish.sh
+?? tonton_logs/
+?? tonton_pids/
+?? tonton_reset_prod.sh
+?? tonton_sweep_ports_and_apiurl.sh
+?? tools/
+?? turbo.json.before_tasks_fix
+✅ Snapshot OK -> /opt/delishafrica/monorepo/.tonton_backups/ios_hard_reset_20260114_193507
+
+============================================================
+1) Nettoyage caches (metro/expo/tmp/node_modules)
+============================================================
+✅ Caches nettoyés
+
+============================================================
+2) Réinstall dependencies (pnpm)
+============================================================
+9.12.1
+Scope: all 6 workspace projects
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +1269
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 1269, reused 0, downloaded 0, added 0
+Progress: resolved 1269, reused 116, downloaded 0, added 0
+Progress: resolved 1269, reused 206, downloaded 0, added 0
+Progress: resolved 1269, reused 537, downloaded 0, added 0
+Progress: resolved 1269, reused 763, downloaded 0, added 0
+Progress: resolved 1269, reused 970, downloaded 0, added 0
+Progress: resolved 1269, reused 1213, downloaded 0, added 78
+Progress: resolved 1269, reused 1213, downloaded 0, added 189
+Progress: resolved 1269, reused 1213, downloaded 0, added 349
+Progress: resolved 1269, reused 1213, downloaded 0, added 567
+Progress: resolved 1269, reused 1213, downloaded 0, added 634
+Progress: resolved 1269, reused 1213, downloaded 0, added 745
+Progress: resolved 1269, reused 1213, downloaded 0, added 814
+Progress: resolved 1269, reused 1213, downloaded 0, added 853
+Progress: resolved 1269, reused 1213, downloaded 1, added 1004
+Progress: resolved 1269, reused 1213, downloaded 1, added 1265
+Progress: resolved 1269, reused 1213, downloaded 1, added 1269, done
+.../node_modules/unrs-resolver postinstall$ napi-postinstall unrs-resolver 1.11.1 check
+.../node_modules/@nestjs/core postinstall$ opencollective || exit 0
+.../node_modules/unrs-resolver postinstall: Done
+.../node_modules/@nestjs/core postinstall:                            Thanks for installing nest 
+.../node_modules/@nestjs/core postinstall:                  Please consider donating to our open collective
+.../node_modules/@nestjs/core postinstall:                         to help us maintain this package.
+.../node_modules/@nestjs/core postinstall:                                          
+.../node_modules/@nestjs/core postinstall:                             Number of contributors: 0
+.../node_modules/@nestjs/core postinstall:                              Number of backers: 1164
+.../node_modules/@nestjs/core postinstall:                              Annual budget: $129,676
+.../node_modules/@nestjs/core postinstall:                              Current balance: $6,435
+.../node_modules/@nestjs/core postinstall:                                          
+.../node_modules/@nestjs/core postinstall:              Become a partner: https://opencollective.com/nest/donate
+.../node_modules/@nestjs/core postinstall:                                          
+.../node_modules/@nestjs/core postinstall: Done
+
+dependencies:
++ @babel/runtime 7.28.4
++ @expo/metro-runtime 6.1.2
++ @radix-ui/react-compose-refs 1.1.2
++ @radix-ui/react-slot 1.2.4
++ @react-native/assets-registry 0.83.0
++ @react-native/normalize-colors 0.83.0
++ @react-native/virtualized-lists 0.83.0
++ @react-navigation/bottom-tabs 7.8.11
++ @react-navigation/elements 2.9.1
++ @react-navigation/native 7.1.24
++ @react-navigation/native-stack 7.8.5
++ @react-navigation/routers 7.5.2
++ @ungap/structured-clone 1.3.0
++ abort-controller 3.0.0
++ anser 2.3.3
++ ansi-regex 6.2.2
++ base64-js 1.5.1
++ buffer 6.0.3
++ color 5.0.3
++ color-convert 3.1.3
++ color-name 2.1.0
++ color-string 2.1.4
++ decode-uri-component 0.4.1
++ escape-string-regexp 5.0.0
++ event-target-shim 6.0.2
++ expo-haptics 15.0.7
++ expo-modules-core 3.0.28
++ fast-deep-equal 3.1.3
++ filter-obj 6.1.0
++ ieee754 1.2.1
++ invariant 2.2.4
++ memoize-one 6.0.0
++ metro-runtime 0.83.3
++ nanoid 5.1.6
++ nullthrows 1.1.1
++ pretty-format 30.2.0
++ promise 8.3.0
++ punycode 2.3.1
++ query-string 9.3.1
++ react-freeze 1.0.4
++ react-is 19.2.1
++ react-native-safe-area-context 5.6.2
++ react-refresh 0.18.0
++ scheduler 0.27.0
++ semver 7.7.3
++ split-on-first 4.0.0
++ stacktrace-parser 0.1.11
++ use-latest-callback 0.3.3
++ use-sync-external-store 1.6.0
++ warn-once 0.1.1
++ webidl-conversions 8.0.0
++ whatwg-fetch 3.6.20
++ whatwg-url-without-unicode 8.0.0-3
+
+devDependencies:
++ @babel/core 7.28.5
++ @types/node 20.19.25
++ babel-preset-expo 54.0.9
++ prettier 3.7.4
++ react-native-reanimated 4.1.5
++ ts-node 10.9.2
++ turbo 2.6.1
++ typescript 5.9.3
+
+Done in 21.2s
+✅ Install OK
+
+============================================================
+3) Expo doctor (détecte mismatch natifs)
+============================================================
+---- expo-doctor: client ----
+env: load .env.local .env.development .env
+env: export EXPO_PUBLIC_API_BASE_URL EXPO_PUBLIC_API_URL NEXT_PUBLIC_API_URL API_BASE_URL EXPO_PUBLIC_BG_OFF EXPO_PUBLIC_SCROLL_DIAG EXPO_PUBLIC_LAYOUT_SCALPEL EXPO_PUBLIC_RESPONDER_SCALPEL EXPO_PUBLIC_SCROLL_FIX
+[33m[1mWarning: [22mRoot-level [1m"expo"[22m object found. Ignoring extra keys in Expo config: "android", "ios"
+[90mLearn more: https://expo.fyi/root-expo-object[0m[0m
+Running 17 checks on your project...
+12/17 checks passed. 5 checks failed. Possible issues detected:
+Use the --verbose flag to see more details about passed checks.
+
+✖ Check Expo config (app.json/ app.config.js) schema
+Error validating asset fields in /opt/delishafrica/monorepo/apps/client/app.json:
+ Field: Splash.image - the file extension should match the content, but the file extension is .png while the file content at './assets/splash.png' is of type jpg.
+ Field: Splash.image - field 'Splash.image' should point to .png image but the file at './assets/splash.png' has type jpg.
+Advice:
+Resolve schema errors in your app config. Learn more: https://docs.expo.dev/workflow/configuration/
+
+✖ Check Expo config for common issues
+You have an app.json file in your project, but your app.config.ts is not using the values from it.
+Advice:
+Remove the static app.json, or use its values in your dynamic app.config.js. Learn more: https://docs.expo.dev/workflow/configuration
+
+✖ Check dependencies for packages that should not be installed directly
+The package  "@types/react-native" should not be installed directly in your project, as types are included with the "react-native" package.
+The package "expo-modules-core" should not be installed directly in your project. You should instead use the exported API from the expo package.
+Advice:
+Remove these packages from your package.json.
+
+✖ Check that no duplicate dependencies are installed
+Your project contains duplicate native module dependencies, which should be de-duplicated.
+Native builds may only contain one version of any given native module, and having multiple versions of a single Native module installed may lead to unexpected build errors.
+Found duplicates for @expo/vector-icons:
+  ├─ @expo/vector-icons@15.0.3 (at: node_modules/@expo/vector-icons)
+  │  └─ linked to: ../../node_modules/.pnpm/@expo+vector-icons@15.0.3_expo-font@14.0.9_expo@54.0.25_react-native@0.81.4_@babel+core@7.28._daltj2a5m2iebwcljg6g3vux7a/node_modules/@expo/vector-icons
+  └─ @expo/vector-icons@15.0.3 (at: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/@expo/vector-icons)
+     └─ linked to a different installation
+Found duplicates for expo:
+  ├─ expo@54.0.25 (at: node_modules/expo)
+  │  └─ linked to: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/expo
+  ├─ expo@54.0.25 (at: ../../node_modules/.pnpm/expo-keep-awake@15.0.7_expo@54.0.25_react@19.1.0/node_modules/expo)
+  │  └─ linked to a different installation
+  └─ expo@54.0.25 (at: ../../node_modules/.pnpm/expo-haptics@15.0.7_expo@54.0.25/node_modules/expo)
+     └─ linked to a different installation
+Found duplicates for expo-asset:
+  ├─ expo-asset@12.0.11 (at: node_modules/expo-asset)
+  │  └─ linked to: ../../node_modules/.pnpm/expo-asset@12.0.11_expo@54.0.25_react-native@0.81.4_@babel+core@7.28.5_@types+react@19.1.17_react@19.1.0__react@19.1.0/node_modules/expo-asset
+  └─ expo-asset@12.0.11 (at: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo-asset)
+     └─ linked to a different installation
+Found duplicates for expo-constants:
+  ├─ expo-constants@18.0.10 (at: node_modules/expo-constants)
+  │  └─ linked to: ../../node_modules/.pnpm/expo-constants@18.0.10_expo@54.0.25_react-native@0.81.4_@babel+core@7.28.5_@types+react@19.1.17_react@19.1.0_/node_modules/expo-constants
+  ├─ expo-constants@18.0.11 (at: ../../node_modules/.pnpm/expo-asset@12.0.11_expo@54.0.25_react-native@0.81.4_@babel+core@7.28.5_@types+react@19.1.17_react@19.1.0__react@19.1.0/node_modules/expo-constants)
+  │  └─ linked to a different installation
+  ├─ expo-constants@18.0.10 (at: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo-constants)
+  │  └─ linked to a different installation
+  └─ expo-constants@18.0.11 (at: ../../node_modules/.pnpm/expo-asset@12.0.11_expo@54.0.25_react-native@0.81.5_@babel+core@7.28.5_@types+react@19.1.17_react@19.1.0__react@19.1.0/node_modules/expo-constants)
+     └─ linked to a different installation
+Found duplicates for expo-font:
+  ├─ expo-font@14.0.9 (at: node_modules/expo-font)
+  │  └─ linked to: ../../node_modules/.pnpm/expo-font@14.0.9_expo@54.0.25_react-native@0.81.4_@babel+core@7.28.5_@types+react@19.1.17_react@19.1.0__react@19.1.0/node_modules/expo-font
+  └─ expo-font@14.0.9 (at: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo-font)
+     └─ linked to a different installation
+Found duplicates for expo-modules-core:
+  ├─ expo-modules-core@3.0.28 (at: node_modules/expo-modules-core)
+  │  └─ linked to: ../../node_modules/.pnpm/expo-modules-core@3.0.28_react-native@0.81.4_@babel+core@7.28.5_@types+react@19.1.17_react@19.1.0__react@19.1.0/node_modules/expo-modules-core
+  ├─ expo-modules-core@3.0.26 (at: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/expo-modules-core)
+  │  └─ linked to a different installation
+  └─ expo-modules-core@3.0.26 (at: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo-modules-core)
+     └─ linked to a different installation
+Found duplicates for react-native:
+  ├─ react-native@0.81.4 (at: node_modules/react-native)
+  │  └─ linked to: ../../node_modules/.pnpm/react-native@0.81.4_@babel+core@7.28.5_@types+react@19.1.17_react@19.1.0/node_modules/react-native
+  └─ react-native@0.81.5 (at: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/react-native)
+     └─ linked to a different installation
+Found duplicates for expo-file-system:
+  ├─ expo-file-system@19.0.19 (at: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/expo-file-system)
+  │  └─ linked to a different installation
+  └─ expo-file-system@19.0.19 (at: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo-file-system)
+     └─ linked to a different installation
+Advice:
+Your node_modules folder may be corrupted. Multiple copies of the same version exist for: @expo/vector-icons, expo, expo-asset, expo-font, expo-file-system.
+- Try deleting your node_modules folders and reinstall your dependencies after.
+- If this error persists, delete your node_modules as well as your lockfile and reinstall.
+Resolve your dependency issues and deduplicate your dependencies. Learn more: https://expo.fyi/resolving-dependency-issues
+
+✖ Check that packages match versions required by installed Expo SDK
+
+⚠️ Minor version mismatches
+package             expected  found    
+react-native-maps   1.20.1    1.26.19  
+
+🔧 Patch version mismatches
+package             expected  found    
+expo                ~54.0.31  54.0.25  
+expo-asset          ~12.0.12  12.0.11  
+expo-constants      ~18.0.13  18.0.10  
+expo-dev-client     ~6.0.20   6.0.18   
+expo-font           ~14.0.10  14.0.9   
+expo-haptics        ~15.0.8   15.0.7   
+expo-image          ~3.0.11   3.0.10   
+expo-linking        ~8.0.11   8.0.9    
+expo-modules-core   ~3.0.29   3.0.28   
+expo-secure-store   ~15.0.8   15.0.7   
+expo-splash-screen  ~31.0.13  31.0.11  
+expo-status-bar     ~3.0.9    3.0.8    
+expo-symbols        ~1.0.8    1.0.7    
+expo-system-ui      ~6.0.9    6.0.8    
+expo-web-browser    ~15.0.10  15.0.9   
+react-native        0.81.5    0.81.4   
+expo-location       ~19.0.8   19.0.7   
+expo-router         ~6.0.21   6.0.17   
+
+Changelogs:
+- expo-asset → https://github.com/expo/expo/blob/sdk-54/packages/expo-asset/CHANGELOG.md
+- expo-constants → https://github.com/expo/expo/blob/sdk-54/packages/expo-constants/CHANGELOG.md
+- expo-dev-client → https://github.com/expo/expo/blob/sdk-54/packages/expo-dev-client/CHANGELOG.md
+- expo-font → https://github.com/expo/expo/blob/sdk-54/packages/expo-font/CHANGELOG.md
+- expo-haptics → https://github.com/expo/expo/blob/sdk-54/packages/expo-haptics/CHANGELOG.md
+- expo-image → https://github.com/expo/expo/blob/sdk-54/packages/expo-image/CHANGELOG.md
+- expo-linking → https://github.com/expo/expo/blob/sdk-54/packages/expo-linking/CHANGELOG.md
+- expo-modules-core → https://github.com/expo/expo/blob/sdk-54/packages/expo-modules-core/CHANGELOG.md
+- expo-secure-store → https://github.com/expo/expo/blob/sdk-54/packages/expo-secure-store/CHANGELOG.md
+- expo-splash-screen → https://github.com/expo/expo/blob/sdk-54/packages/expo-splash-screen/CHANGELOG.md
+- expo-status-bar → https://github.com/expo/expo/blob/sdk-54/packages/expo-status-bar/CHANGELOG.md
+- expo-symbols → https://github.com/expo/expo/blob/sdk-54/packages/expo-symbols/CHANGELOG.md
+- expo-system-ui → https://github.com/expo/expo/blob/sdk-54/packages/expo-system-ui/CHANGELOG.md
+- expo-web-browser → https://github.com/expo/expo/blob/sdk-54/packages/expo-web-browser/CHANGELOG.md
+- expo-location → https://github.com/expo/expo/blob/sdk-54/packages/expo-location/CHANGELOG.md
+- expo-router → https://github.com/expo/expo/blob/sdk-54/packages/expo-router/CHANGELOG.md
+
+19 packages out of date.
+Advice:
+Use 'npx expo install --check' to review and upgrade your dependencies.
+To ignore specific packages, add them to "expo.install.exclude" in package.json. Learn more: https://expo.fyi/dependency-validation
+
+5 checks failed, indicating possible issues with the project.
+---- expo-doctor: courier ----
+env: load .env.local .env.development .env
+env: export EXPO_PUBLIC_API_BASE_URL EXPO_PUBLIC_API_URL NEXT_PUBLIC_API_URL API_BASE_URL EXPO_PUBLIC_BG_OFF EXPO_PUBLIC_SCROLL_DIAG EXPO_PUBLIC_RESPONDER_SCALPEL EXPO_PUBLIC_LAYOUT_SCALPEL EXPO_PUBLIC_SCROLL_FIX
+Running 17 checks on your project...
+12/17 checks passed. 5 checks failed. Possible issues detected:
+Use the --verbose flag to see more details about passed checks.
+
+✖ Check Expo config (app.json/ app.config.js) schema
+Error validating asset fields in /opt/delishafrica/monorepo/apps/courier/app.json:
+ Field: Splash.image - the file extension should match the content, but the file extension is .png while the file content at './assets/splash.png' is of type jpg.
+ Field: Splash.image - field 'Splash.image' should point to .png image but the file at './assets/splash.png' has type jpg.
+Advice:
+Resolve schema errors in your app config. Learn more: https://docs.expo.dev/workflow/configuration/
+
+✖ Check Expo config for common issues
+You have an app.json file in your project, but your app.config.ts is not using the values from it.
+Advice:
+Remove the static app.json, or use its values in your dynamic app.config.js. Learn more: https://docs.expo.dev/workflow/configuration
+
+✖ Check that required peer dependencies are installed
+Missing peer dependency: react-native-gesture-handler
+Required by: @react-navigation/stack
+Advice:
+Install missing required peer dependency with "npx expo install react-native-gesture-handler"
+Your app may crash outside of Expo Go without this dependency. Native module peer dependencies must be installed directly.
+
+✖ Check that no duplicate dependencies are installed
+Your project contains duplicate native module dependencies, which should be de-duplicated.
+Native builds may only contain one version of any given native module, and having multiple versions of a single Native module installed may lead to unexpected build errors.
+Found duplicates for expo:
+  ├─ expo@54.0.25 (at: node_modules/expo)
+  │  └─ linked to: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo
+  ├─ expo@54.0.25 (at: ../../node_modules/.pnpm/expo-dev-client@6.0.18_expo@54.0.25/node_modules/expo)
+  │  └─ linked to a different installation
+  └─ expo@54.0.25 (at: ../../node_modules/.pnpm/expo-secure-store@15.0.7_expo@54.0.25/node_modules/expo)
+     └─ linked to a different installation
+Found duplicates for expo-constants:
+  ├─ expo-constants@18.0.10 (at: node_modules/expo-constants)
+  │  └─ linked to: ../../node_modules/.pnpm/expo-constants@18.0.10_expo@54.0.25_react-native@0.81.5_@babel+core@7.28.5_@types+react@19.1.17_react@19.1.0_/node_modules/expo-constants
+  ├─ expo-constants@18.0.11 (at: ../../node_modules/.pnpm/expo-asset@12.0.11_expo@54.0.25_react-native@0.81.5_@babel+core@7.28.5_@types+react@19.1.17_react@19.1.0__react@19.1.0/node_modules/expo-constants)
+  │  └─ linked to a different installation
+  ├─ expo-constants@18.0.10 (at: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/expo-constants)
+  │  └─ linked to a different installation
+  └─ expo-constants@18.0.11 (at: ../../node_modules/.pnpm/expo-asset@12.0.11_expo@54.0.25_react-native@0.81.4_@babel+core@7.28.5_@types+react@19.1.17_react@19.1.0__react@19.1.0/node_modules/expo-constants)
+     └─ linked to a different installation
+Found duplicates for react-native:
+  ├─ react-native@0.81.5 (at: node_modules/react-native)
+  │  └─ linked to: ../../node_modules/.pnpm/react-native@0.81.5_@babel+core@7.28.5_@types+react@19.1.17_react@19.1.0/node_modules/react-native
+  └─ react-native@0.81.4 (at: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/react-native)
+     └─ linked to a different installation
+Found duplicates for @expo/vector-icons:
+  ├─ @expo/vector-icons@15.0.3 (at: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/@expo/vector-icons)
+  │  └─ linked to a different installation
+  └─ @expo/vector-icons@15.0.3 (at: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/@expo/vector-icons)
+     └─ linked to a different installation
+Found duplicates for expo-asset:
+  ├─ expo-asset@12.0.11 (at: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo-asset)
+  │  └─ linked to a different installation
+  └─ expo-asset@12.0.11 (at: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/expo-asset)
+     └─ linked to a different installation
+Found duplicates for expo-file-system:
+  ├─ expo-file-system@19.0.19 (at: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo-file-system)
+  │  └─ linked to a different installation
+  └─ expo-file-system@19.0.19 (at: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/expo-file-system)
+     └─ linked to a different installation
+Found duplicates for expo-font:
+  ├─ expo-font@14.0.9 (at: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo-font)
+  │  └─ linked to a different installation
+  └─ expo-font@14.0.9 (at: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/expo-font)
+     └─ linked to a different installation
+Found duplicates for expo-modules-core:
+  ├─ expo-modules-core@3.0.26 (at: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo-modules-core)
+  │  └─ linked to a different installation
+  └─ expo-modules-core@3.0.26 (at: ../../node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/expo-modules-core)
+     └─ linked to a different installation
+Advice:
+Your node_modules folder may be corrupted. Multiple copies of the same version exist for: expo, @expo/vector-icons, expo-asset, expo-file-system, expo-font, expo-modules-core.
+- Try deleting your node_modules folders and reinstall your dependencies after.
+- If this error persists, delete your node_modules as well as your lockfile and reinstall.
+Resolve your dependency issues and deduplicate your dependencies. Learn more: https://expo.fyi/resolving-dependency-issues
+
+✖ Check that packages match versions required by installed Expo SDK
+
+🔧 Patch version mismatches
+package            expected  found    
+expo               ~54.0.31  54.0.25  
+expo-constants     ~18.0.13  18.0.10  
+expo-dev-client    ~6.0.20   6.0.18   
+expo-haptics       ~15.0.8   15.0.7   
+expo-image         ~3.0.11   3.0.10   
+expo-linking       ~8.0.11   8.0.9    
+expo-router        ~6.0.21   6.0.17   
+expo-secure-store  ~15.0.8   15.0.7   
+expo-status-bar    ~3.0.9    3.0.8    
+expo-symbols       ~1.0.8    1.0.7    
+expo-web-browser   ~15.0.10  15.0.9   
+
+Changelogs:
+- expo-constants → https://github.com/expo/expo/blob/sdk-54/packages/expo-constants/CHANGELOG.md
+- expo-dev-client → https://github.com/expo/expo/blob/sdk-54/packages/expo-dev-client/CHANGELOG.md
+- expo-haptics → https://github.com/expo/expo/blob/sdk-54/packages/expo-haptics/CHANGELOG.md
+- expo-image → https://github.com/expo/expo/blob/sdk-54/packages/expo-image/CHANGELOG.md
+- expo-linking → https://github.com/expo/expo/blob/sdk-54/packages/expo-linking/CHANGELOG.md
+- expo-router → https://github.com/expo/expo/blob/sdk-54/packages/expo-router/CHANGELOG.md
+- expo-secure-store → https://github.com/expo/expo/blob/sdk-54/packages/expo-secure-store/CHANGELOG.md
+- expo-status-bar → https://github.com/expo/expo/blob/sdk-54/packages/expo-status-bar/CHANGELOG.md
+- expo-symbols → https://github.com/expo/expo/blob/sdk-54/packages/expo-symbols/CHANGELOG.md
+- expo-web-browser → https://github.com/expo/expo/blob/sdk-54/packages/expo-web-browser/CHANGELOG.md
+
+11 packages out of date.
+Advice:
+Use 'npx expo install --check' to review and upgrade your dependencies.
+To ignore specific packages, add them to "expo.install.exclude" in package.json. Learn more: https://expo.fyi/dependency-validation
+
+5 checks failed, indicating possible issues with the project.
+---- expo-doctor: merchant ----
+env: load .env.local .env
+env: export EXPO_PUBLIC_API_BASE_URL EXPO_PUBLIC_API_URL NEXT_PUBLIC_API_URL EXPO_PUBLIC_BG_OFF EXPO_PUBLIC_SCROLL_DIAG EXPO_PUBLIC_RESPONDER_SCALPEL EXPO_PUBLIC_LAYOUT_SCALPEL EXPO_PUBLIC_SCROLL_FIX
+Running 17 checks on your project...
+13/17 checks passed. 4 checks failed. Possible issues detected:
+Use the --verbose flag to see more details about passed checks.
+
+✖ Check Expo config (app.json/ app.config.js) schema
+Error validating asset fields in /opt/delishafrica/monorepo/apps/merchant/app.json:
+ Field: Splash.image - the file extension should match the content, but the file extension is .png while the file content at './assets/splash.png' is of type jpg.
+ Field: Splash.image - field 'Splash.image' should point to .png image but the file at './assets/splash.png' has type jpg.
+Advice:
+Resolve schema errors in your app config. Learn more: https://docs.expo.dev/workflow/configuration/
+
+✖ Check Expo config for common issues
+You have an app.json file in your project, but your app.config.ts is not using the values from it.
+Advice:
+Remove the static app.json, or use its values in your dynamic app.config.js. Learn more: https://docs.expo.dev/workflow/configuration
+
+✖ Check that required peer dependencies are installed
+Missing peer dependency: react-native-gesture-handler
+Required by: @react-navigation/stack
+Advice:
+Install missing required peer dependency with "npx expo install react-native-gesture-handler"
+Your app may crash outside of Expo Go without this dependency. Native module peer dependencies must be installed directly.
+
+✖ Check that packages match versions required by installed Expo SDK
+
+🔧 Patch version mismatches
+package            expected  found    
+expo               ~54.0.31  54.0.23  
+expo-constants     ~18.0.13  18.0.10  
+expo-dev-client    ~6.0.20   6.0.18   
+expo-haptics       ~15.0.8   15.0.7   
+expo-image         ~3.0.11   3.0.10   
+expo-linking       ~8.0.11   8.0.9    
+expo-router        ~6.0.21   6.0.17   
+expo-secure-store  ~15.0.8   15.0.7   
+expo-status-bar    ~3.0.9    3.0.8    
+expo-web-browser   ~15.0.10  15.0.9   
+
+Changelogs:
+- expo-constants → https://github.com/expo/expo/blob/sdk-54/packages/expo-constants/CHANGELOG.md
+- expo-dev-client → https://github.com/expo/expo/blob/sdk-54/packages/expo-dev-client/CHANGELOG.md
+- expo-haptics → https://github.com/expo/expo/blob/sdk-54/packages/expo-haptics/CHANGELOG.md
+- expo-image → https://github.com/expo/expo/blob/sdk-54/packages/expo-image/CHANGELOG.md
+- expo-linking → https://github.com/expo/expo/blob/sdk-54/packages/expo-linking/CHANGELOG.md
+- expo-router → https://github.com/expo/expo/blob/sdk-54/packages/expo-router/CHANGELOG.md
+- expo-secure-store → https://github.com/expo/expo/blob/sdk-54/packages/expo-secure-store/CHANGELOG.md
+- expo-status-bar → https://github.com/expo/expo/blob/sdk-54/packages/expo-status-bar/CHANGELOG.md
+- expo-web-browser → https://github.com/expo/expo/blob/sdk-54/packages/expo-web-browser/CHANGELOG.md
+
+10 packages out of date.
+Advice:
+Use 'npx expo install --check' to review and upgrade your dependencies.
+To ignore specific packages, add them to "expo.install.exclude" in package.json. Learn more: https://expo.fyi/dependency-validation
+
+4 checks failed, indicating possible issues with the project.
+
+============================================================
+4) EAS CLI + builds iOS (cloud) --clear-cache
+============================================================
+eas-cli/16.28.0 linux-x64 node-v20.19.6
+
+⚠️ IMPORTANT:
+- Tu vas peut-être devoir te login (eas login) si pas déjà fait.
+- Les builds iOS sont CLOUD (normal sur serveur Linux).
+
+---- EAS BUILD: client ----
+Project config: Slug for project identified by "extra.eas.projectId" (client) does not match the "slug" field (delishafrica-client). Learn more: https://expo.fyi/eas-project-id
+    Error: build command failed.

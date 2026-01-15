@@ -1,0 +1,24 @@
+import base from './app.config.base';
+import type { ExpoConfig } from 'expo';
+
+const BG = '#121212';
+
+const enhance = (c: ExpoConfig): ExpoConfig => ({
+  ...c,
+  scheme: 'delishafricaclient',
+  icon: './assets/icon.png',
+  splash: { image: './assets/splash.png', resizeMode: 'contain', backgroundColor: BG },
+  ios:   { ...c.ios,   splash: { ...(c.ios?.splash||{}), backgroundColor: BG } },
+  android:{
+    ...c.android,
+    splash: { ...(c.android?.splash||{}), backgroundColor: BG },
+    adaptiveIcon: { ...(c.android?.adaptiveIcon||{}), foregroundImage: './assets/icon-adaptive-foreground.png', backgroundColor: BG }
+  },
+  plugins: [
+    ...(c.plugins||[]),
+    ['expo-splash-screen', { image: './assets/splash.png', backgroundColor: BG, resizeMode: 'contain' }],
+    'expo-dev-client'
+  ],
+});
+
+export default ({ config }: any) => enhance(typeof base === 'function' ? base({config}) : (base as ExpoConfig));

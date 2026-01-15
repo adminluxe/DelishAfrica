@@ -1,0 +1,14 @@
+[06:27:15] === PATCH MERCHANT ORDERS SCREENS (multi-target) ===
+[06:27:15] APP=/opt/delishafrica/monorepo/apps/merchant
+[06:27:15] BK=/opt/delishafrica/monorepo/tonton_backups/merchant_orders_patch_20251220-062715
+[06:27:15] LOG=/opt/delishafrica/monorepo/tonton_logs/merchant_orders_patch_20251220-062715.log
+[06:27:15] -> Found: app/orders-demo.tsx
+[06:27:15]    Backup: /opt/delishafrica/monorepo/tonton_backups/merchant_orders_patch_20251220-062715/app/orders-demo.tsx.bak
+[06:27:15]    Patched: app/orders-demo.tsx
+[06:27:15] -> Skip missing: app/order.tsx
+[06:27:15] -> Found: app/thieyp-demo.tsx
+[06:27:15]    Backup: /opt/delishafrica/monorepo/tonton_backups/merchant_orders_patch_20251220-062715/app/thieyp-demo.tsx.bak
+[06:27:15]    Patched: app/thieyp-demo.tsx
+[06:27:15] -> Skip missing: components/DemoFab.tsx
+[06:27:15] DONE. patched_count=2
+[06:27:15] Next: hard restart Merchant (new QR) + rescan iPhone.

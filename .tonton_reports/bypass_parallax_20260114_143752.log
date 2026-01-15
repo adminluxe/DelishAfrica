@@ -1,0 +1,14 @@
+
+[14:37:52] 🏁 FINISHER: Bypass ParallaxScrollView -> ScrollView vanilla
+
+[14:37:52] Backup=/opt/delishafrica/monorepo/.tonton_backups/bypass_parallax_20260114_143752
+
+[14:37:52] Report=/opt/delishafrica/monorepo/.tonton_reports/bypass_parallax_20260114_143752.log
+
+[14:37:52] 📄 Parallax candidates: 6
+/opt/delishafrica/monorepo/apps/client/components/parallax-scroll-view.tsx
+/opt/delishafrica/monorepo/apps/merchant/components/parallax-scroll-view.tsx
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/components/parallax-scroll-view.tsx
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/components/parallax-scroll-view.tsx
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/components/parallax-scroll-view.tsx
+/opt/delishafrica/monorepo/apps/courier/components/parallax-scroll-view.tsx

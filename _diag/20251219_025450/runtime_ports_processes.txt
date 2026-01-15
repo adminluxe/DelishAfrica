@@ -1,0 +1,14 @@
+SS LISTEN (important ports):
+LISTEN 0      4096         0.0.0.0:3010       0.0.0.0:*    users:(("docker-proxy",pid=580143,fd=7))                                                                                                       
+LISTEN 0      4096            [::]:3010          [::]:*    users:(("docker-proxy",pid=580148,fd=7))                                                                                                       
+
+Top node/expo/metro processes:
+root      580101  0.0  0.5 1258080 89192 ?       Ssl  01:21   0:00 node /usr/local/bin/pnpm run start:dev
+root      580259  0.0  0.0   2480  1536 ?        S    01:21   0:00 sh -c nest start --watch
+root      580260  0.3  1.3 1174820 222920 ?      Sl   01:21   0:19 node /app/services/api-nest/node_modules/.bin/../@nestjs/cli/bin/nest.js start --watch
+root      580368  0.0  0.0   2480  1536 ?        S    01:21   0:00 /bin/sh -c node --enable-source-maps /app/services/api-nest/dist/main
+root      580369  0.0  0.4 1008824 78340 ?       Sl   01:21   0:05 node --enable-source-maps /app/services/api-nest/dist/main
+root      615194  0.2  1.4 1180380 232036 ?      Sl   Dec16   8:58 node /opt/delishafrica/monorepo/services/api-nest/node_modules/.bin/../@nestjs/cli/bin/nest.js start --watch
+root      684630  0.1  0.5 1196456 93964 pts/31  Sl+  02:43   0:01 node /usr/local/bin/pnpm start:dev
+root      684665  0.0  0.0   2800  1664 pts/31   S+   02:43   0:00 sh -c nest start --watch
+root      684666  0.9  1.3 1176796 224440 pts/31 Sl+  02:43   0:06 node /opt/delishafrica/monorepo/services/api-nest/node_modules/.bin/../@nestjs/cli/bin/nest.js start --watch

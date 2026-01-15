@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BASE="http://127.0.0.1:4001"
+MERCHANT_ID="merch_0001"
+CSV="/tmp/menu_template.csv"
+
+echo "📡 [1/6] Vérification de l'API..."
+curl -fsS "$BASE/api/health" | jq . || { echo "❌ API injoignable"; exit 1; }
+
+echo "📦 [2/6] Préparation du menu de test..."
+cat >"$CSV" <<'CSV'
+name,price,category,description
+Yassa Poulet,12.9,Plat,"Poulet mariné citron-oignon"
+Alloco,5,Accompagnement,"Banane plantain frite"
+CSV
+awk -F, -v OFS=, -v ID="$MERCHANT_ID" 'NR==1{print "merchant_id",$0;next}{print ID,$0}' "$CSV" > /tmp/menu_upload.csv
+
+echo "📤 [3/6] Import du menu vers le marchand $MERCHANT_ID..."
+curl -s -X POST "$BASE/api/merchants/import-menu"   -F "file=@/tmp/menu_upload.csv;type=text/csv" | jq .
+
+echo "🧾 [4/6] Lancement de l’app Marchand Expo (port 19002)..."
+cd /opt/delishafrica/monorepo/apps/marchand
+
+pkill -f "expo|metro" 2>/dev/null || true
+rm -rf ~/.expo/* ~/.cache/expo/* 2>/dev/null || true
+
+pnpm dev || echo "❗ Lancement manuel possible : cd apps/marchand && pnpm dev"
+
+echo "📊 [5/6] Vérifie l’affichage du menu et des commandes entrantes."
+
+echo "🎯 [6/6] Tu peux scanner le QR code avec Expo Go ou lancer sur émulateur."

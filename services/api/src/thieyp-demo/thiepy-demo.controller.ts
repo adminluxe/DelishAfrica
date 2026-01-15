@@ -1,0 +1,18 @@
+import { Body, Controller, Get, Post } from '@nestjs/common';
+import { ThiepyDemoService } from './thieyp-demo.service';
+import { CreateDemoOrderDto } from './dto/create-demo-order.dto';
+
+@Controller('api')
+export class ThiepyDemoController {
+  constructor(private readonly demoService: ThiepyDemoService) {}
+
+  @Post('demo-orders')
+  create(@Body() dto: CreateDemoOrderDto) {
+    return this.demoService.create(dto);
+  }
+
+  @Get('demo-orders')
+  findAll() {
+    return this.demoService.findAll();
+  }
+}

@@ -1,0 +1,6 @@
+🧷 Fix app.config.ts (dynamic) -> spread config + slug simple
+Root:   /opt/delishafrica/monorepo
+Backup: /opt/delishafrica/monorepo/.tonton_backups/fix_app_config_slug_20260114_203109
+Report: /opt/delishafrica/monorepo/.tonton_reports/fix_app_config_slug_20260114_203109.log
+
+/opt/delishafrica/monorepo/scripts/tonton_fix_dynamic_app_config_slug.sh: line 33: /opt/delishafrica/monorepo/apps/client/app.config.ts: Operation not permitted

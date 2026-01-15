@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+#
+# DelishAfrica scroll diagnostics script
+# -------------------------------------
+# This script attempts to detect common patterns that can lead to
+# unresponsive scroll gestures in React Native and Expo applications.
+# It scans all application packages in a DelishAfrica monorepo and
+# produces a report listing potential culprits such as overlay
+# components without appropriate `pointerEvents` props and the use
+# of gesture detectors that may intercept scroll events.  The script
+# does not modify your code; it only highlights suspicious files so
+# that you can review and address them manually or with a follow-up
+# patch.
+#
+# Usage:
+#   ./da_scroll_gesture_detector.sh /opt/delishafrica/monorepo
+#
+# If no directory is provided, the current working directory is used.
+#
+# The report will be written to `.tonton_backups/_reports/scroll_detector_YYYYMMDD_HHMMSS.txt`
+# under the specified root.  Each run uses a fresh timestamped report.
+#
+set -euo pipefail
+
+ROOT_DIR="${1:-$(pwd)}"
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+
+# Directory that will contain report and backup placeholder
+REPORT_DIR="$ROOT_DIR/.tonton_backups/_reports"
+mkdir -p "$REPORT_DIR"
+
+REPORT_FILE="$REPORT_DIR/scroll_detector_${TIMESTAMP}.txt"
+
+echo "[DA] DelishAfrica Scroll Diagnostic" | tee "$REPORT_FILE"
+echo "[DA] Root directory: $ROOT_DIR" | tee -a "$REPORT_FILE"
+echo "[DA] Report: $REPORT_FILE" | tee -a "$REPORT_FILE"
+echo "" | tee -a "$REPORT_FILE"
+
+# Helper: check if a component line lacks pointerEvents
+function check_overlay_file() {
+    local file="$1"
+    local line="$2"
+    local match="$3"
+    # Only report overlays when the current file does not include pointerEvents prop
+    if ! grep -qE "pointerEvents\s*=\s*\"?('|")?""?" "$file"; then
+        echo "[OVERLAY] $file:$line -> $match" | tee -a "$REPORT_FILE"
+    fi
+}
+
+# Scan overlays (BlurView, LinearGradient, ImageBackground, Svg, etc.) for missing pointerEvents
+function scan_overlays() {
+    echo "[DA] Scanning for overlay components without pointerEvents…" | tee -a "$REPORT_FILE"
+    # Accept js, jsx, ts, tsx files
+    local overlay_regex="<(BlurView|LinearGradient|ImageBackground|Svg|SvgXml|Canvas|Skia|SkiaView|LottieView)"
+    while IFS=: read -r file line match; do
+        # Skip backup directories to reduce noise
+        if [[ "$file" == *".tonton_backups"* ]]; then
+            continue
+        fi
+        check_overlay_file "$file" "$line" "$match"
+    done < <(grep -RIn --include='*.js' --include='*.jsx' --include='*.ts' --include='*.tsx' -E "$overlay_regex" "$ROOT_DIR/apps" || true)
+    echo "" | tee -a "$REPORT_FILE"
+}
+
+# Scan gesture handlers (GestureDetector, PanResponder)
+function scan_gestures() {
+    echo "[DA] Scanning for gesture handlers that may interfere with scrolling…" | tee -a "$REPORT_FILE"
+    local gesture_regex="PanResponder\.create|<GestureDetector|useAnimatedGestureHandler|GestureHandlerRootView"
+    # Some handlers require explicit extraction
+    while IFS=: read -r file line match; do
+        # Again, skip backups
+        if [[ "$file" == *".tonton_backups"* ]]; then
+            continue
+        fi
+        echo "[GESTURE] $file:$line -> $match" | tee -a "$REPORT_FILE"
+    done < <(grep -RIn --include='*.js' --include='*.jsx' --include='*.ts' --include='*.tsx' -E "$gesture_regex" "$ROOT_DIR/apps" || true)
+    echo "" | tee -a "$REPORT_FILE"
+}
+
+# Scan for wrapper components named Screen, Layout, or Provider using gesture detectors
+function scan_wrapper_components() {
+    echo "[DA] Scanning wrapper components (Screen/Layout/Provider) wrapping gesture handlers…" | tee -a "$REPORT_FILE"
+    local wrapper_regex="(Screen|Layout|Provider).*\n.*(PanResponder\.create|<GestureDetector)"
+    while IFS= read -r file; do
+        # Only check suspected files
+        local lines
+        lines=$(grep -nE "$wrapper_regex" "$file" || true)
+        if [[ -n "$lines" ]]; then
+            echo "[WRAPPER] $file" | tee -a "$REPORT_FILE"
+            echo "$lines" | tee -a "$REPORT_FILE"
+        fi
+    done < <(find "$ROOT_DIR/apps" -type f \( -name "*Screen.*" -o -name "*Layout.*" -o -name "*Provider.*" \) -print)
+    echo "" | tee -a "$REPORT_FILE"
+}
+
+# Scan for explicit pointerEvents assignments that may block scrolling
+function scan_pointer_events() {
+    echo "[DA] Scanning for explicit pointerEvents assignments (non 'none'/'box-none')…" | tee -a "$REPORT_FILE"
+    while IFS=: read -r file line match; do
+        # Only consider pointerEvents not equal to none or box-none
+        local value
+        value=$(echo "$match" | sed -nE "s/.*pointerEvents\s*=\s*['\"]([^'\"]+)['\"].*/\1/p")
+        if [[ "$value" != "none" && "$value" != "box-none" && "$value" != "box-only" ]]; then
+            echo "[POINTER_EVENTS] $file:$line -> $match" | tee -a "$REPORT_FILE"
+        fi
+    done < <(grep -RIn --include='*.js' --include='*.jsx' --include='*.ts' --include='*.tsx' -E "pointerEvents\s*=\s*['\"][^'\"]+['\"]" "$ROOT_DIR/apps" || true)
+    echo "" | tee -a "$REPORT_FILE"
+}
+
+# Execute all scans
+scan_overlays
+scan_gestures
+scan_wrapper_components
+scan_pointer_events
+
+echo "[DA] Scroll diagnostics completed. Please review $REPORT_FILE for potential issues." | tee -a "$REPORT_FILE"

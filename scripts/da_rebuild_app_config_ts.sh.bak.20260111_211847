@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="/opt/delishafrica/monorepo"
+API_URL_DEFAULT="https://api.delishafrica.me/api/v1"
+APPS=("client" "merchant" "courier")
+
+unlock() {
+  local f="$1"
+  if command -v lsattr >/dev/null 2>&1; then
+    if lsattr "$f" 2>/dev/null | grep -q 'i'; then
+      echo "-> immutable ON: chattr -i $f"
+      chattr -i "$f" || true
+    fi
+  fi
+  chmod u+w "$f" || true
+}
+
+relock() {
+  local f="$1"
+  chmod u-w "$f" || true
+  command -v chattr >/dev/null 2>&1 && chattr +i "$f" || true
+}
+
+backup() {
+  local f="$1"
+  local ts
+  ts="$(date +%Y%m%d_%H%M%S)"
+  cp -a "$f" "$f.bak.$ts"
+  echo "backup: $f.bak.$ts"
+}
+
+node_pick() {
+  # args: file, jsExprThatReturnsValueOrEmptyString
+  local file="$1"
+  local expr="$2"
+  node - <<'NODE' "$file" "$expr"
+const fs = require("fs");
+const file = process.argv[1];
+const expr = process.argv[2];
+const raw = fs.readFileSync(file, "utf8");
+const j = JSON.parse(raw);
+const expo = j.expo ? j.expo : j;
+function get(obj, path) {
+  return path.split(".").reduce((o,k)=> (o && o[k]!==undefined) ? o[k] : undefined, obj);
+}
+let v;
+try {
+  // expr example: "expo.name"
+  v = get({expo}, expr.replace(/^expo\./,'expo.'));
+} catch (e) { v = undefined; }
+if (v === undefined || v === null) process.stdout.write("");
+else process.stdout.write(String(v));
+NODE
+}
+
+for app in "${APPS[@]}"; do
+  DIR="$ROOT/apps/$app"
+  APPJSON="$DIR/app.json"
+  CFG="$DIR/app.config.ts"
+
+  echo
+  echo "== $app =="
+  echo "dir: $DIR"
+
+  [[ -d "$DIR" ]] || { echo "ERROR: missing dir $DIR"; exit 1; }
+  [[ -f "$APPJSON" ]] || { echo "ERROR: missing $APPJSON"; exit 1; }
+  [[ -f "$CFG" ]] || { echo "ERROR: missing $CFG"; exit 1; }
+
+  backup "$CFG"
+  unlock "$CFG"
+
+  NAME="$(node_pick "$APPJSON" "expo.name")"
+  SLUG="$(node_pick "$APPJSON" "expo.slug")"
+  OWNER="$(node_pick "$APPJSON" "expo.owner")"
+  SCHEME="$(node_pick "$APPJSON" "expo.scheme")"
+  ICON="$(node_pick "$APPJSON" "expo.icon")"
+  SPLASH="$(node_pick "$APPJSON" "expo.splash.image")"
+  IOS_BUNDLE="$(node_pick "$APPJSON" "expo.ios.bundleIdentifier")"
+  ANDROID_PKG="$(node_pick "$APPJSON" "expo.android.package")"
+  PROJECT_ID="$(node_pick "$APPJSON" "expo.extra.eas.projectId")"
+  API_URL="$(node_pick "$APPJSON" "expo.extra.EXPO_PUBLIC_API_URL")"
+
+  # defaults
+  [[ -n "$NAME" ]] || NAME="DelishAfrica - ${app^}"
+  [[ -n "$SLUG" ]] || SLUG="delishafrica-$app"
+  [[ -n "$OWNER" ]] || OWNER="delishafrica"
+  [[ -n "$SCHEME" ]] || SCHEME="delishafrica.$app"
+  [[ -n "$ICON" ]] || ICON="./assets/icon.png"
+  [[ -n "$SPLASH" ]] || SPLASH="./assets/splash.png"
+  [[ -n "$IOS_BUNDLE" ]] || IOS_BUNDLE="me.delishafrica.$app"
+  [[ -n "$ANDROID_PKG" ]] || ANDROID_PKG="com.delishafrica.$app"
+  [[ -n "$API_URL" ]] || API_URL="$API_URL_DEFAULT"
+
+  # write clean TS
+  cat > "$CFG" <<TS
+import type { ExpoConfig } from "expo/config";
+
+const config: ExpoConfig = {
+  name: "$NAME",
+  slug: "$SLUG",
+  owner: "$OWNER",
+  scheme: "$SCHEME",
+  icon: "$ICON",
+  splash: {
+    image: "$SPLASH",
+    resizeMode: "contain",
+    backgroundColor: "#ffffff",
+  },
+  extra: {
+    EXPO_PUBLIC_API_URL: "$API_URL",
+TS
+
+  if [[ -n "$PROJECT_ID" ]]; then
+    cat >> "$CFG" <<TS
+    eas: { projectId: "$PROJECT_ID" },
+TS
+  fi
+
+  cat >> "$CFG" <<TS
+  },
+  ios: {
+    bundleIdentifier: "$IOS_BUNDLE",
+  },
+  android: {
+    package: "$ANDROID_PKG",
+  },
+  plugins: ["expo-router", "expo-secure-store"],
+};
+
+export default config;
+TS
+
+  echo "-- verify expo config parse --"
+  (cd "$DIR" && npx -y expo config --json >/dev/null) && echo "OK: expo config parses for $app" || {
+    echo "ERROR: expo config still failing for $app"
+    echo "Run: cd $DIR && npx -y expo config --json"
+    exit 1
+  }
+
+  relock "$CFG"
+  echo "locked: $CFG"
+done
+
+echo
+echo "DONE: rebuilt app.config.ts for client/merchant/courier"

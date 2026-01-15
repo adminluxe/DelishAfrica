@@ -1,0 +1,201 @@
+import React, { useState } from 'react';
+import { ScrollView, View, Text, Pressable, Alert } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { demoMissions } from '../demoMissions';
+
+type Step = 'recu' | 'en_route' | 'livree';
+
+export default function MissionDetail() {
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const router = useRouter();
+  const mission =
+    demoMissions.find((m) => m.id === id) ?? demoMissions[0];
+
+  const [step, setStep] = useState<Step>('recu');
+
+  const handlePress = () => {
+    if (step === 'recu') {
+      setStep('en_route');
+      Alert.alert(
+        'Mission démarrée (démo)',
+        "Dans la version finale, la navigation GPS s’ouvrirait pour te guider vers le restaurant."
+      );
+    } else if (step === 'en_route') {
+      setStep('livree');
+      Alert.alert(
+        'Livraison confirmée (démo)',
+        'Dans la version finale, une photo / signature serait envoyée et le client serait notifié.'
+      );
+    } else {
+      Alert.alert(
+        'Mission terminée (démo)',
+        'Dans la version finale, la mission passerait en historique et une nouvelle mission pourrait être attribuée.'
+      );
+    }
+  };
+
+  const statusLabel =
+    step === 'recu'
+      ? 'Mission reçue (démo)'
+      : step === 'en_route'
+      ? 'En route vers le client (démo)'
+      : 'Mission terminée (démo)';
+
+  const statusColor =
+    step === 'recu'
+      ? '#F97316'
+      : step === 'en_route'
+      ? '#22C55E'
+      : '#38BDF8';
+
+  const buttonLabel =
+    step === 'recu'
+      ? 'Démarrer la mission (démo)'
+      : step === 'en_route'
+      ? 'Confirmer la livraison (démo)'
+      : 'Mission terminée';
+
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: '#020617' }}
+      contentContainerStyle={{ padding: 24, paddingBottom: 40 }}
+    >
+      {/* Lien retour */}
+      <Pressable
+        onPress={() => router.back()}
+        style={{ marginBottom: 16 }}
+      >
+        <Text style={{ color: '#9CA3AF', fontSize: 14 }}>
+          ← Retour aux missions
+        </Text>
+      </Pressable>
+
+      {/* Titre */}
+      <Text
+        style={{
+          fontSize: 24,
+          fontWeight: '700',
+          color: '#FACC15',
+          marginBottom: 4,
+        }}
+      >
+        {mission.title}
+      </Text>
+      <Text
+        style={{
+          fontSize: 16,
+          color: '#E5E7EB',
+          marginBottom: 16,
+        }}
+      >
+        {mission.client} – {mission.address}
+      </Text>
+
+      {/* Carte contenu commande */}
+      <View
+        style={{
+          backgroundColor: '#020617',
+          borderRadius: 24,
+          padding: 20,
+          borderWidth: 1,
+          borderColor: '#1E293B',
+          marginBottom: 16,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 16,
+            fontWeight: '600',
+            color: '#F9FAFB',
+            marginBottom: 8,
+          }}
+        >
+          Contenu de la commande
+        </Text>
+        <Text style={{ fontSize: 14, color: '#E5E7EB', marginBottom: 4 }}>
+          • 2 × Poulet braisé + attiéké
+        </Text>
+        <Text style={{ fontSize: 14, color: '#E5E7EB', marginBottom: 4 }}>
+          • 2 × Bissap
+        </Text>
+        <Text
+          style={{
+            fontSize: 14,
+            color: '#E5E7EB',
+            marginTop: 8,
+          }}
+        >
+          Total :{' '}
+          <Text style={{ fontWeight: '700', color: '#FACC15' }}>
+            {mission.price}
+          </Text>
+        </Text>
+      </View>
+
+      {/* Statut */}
+      <View
+        style={{
+          backgroundColor: '#020617',
+          borderRadius: 24,
+          padding: 20,
+          borderWidth: 1,
+          borderColor: '#1E293B',
+          marginBottom: 24,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 16,
+            fontWeight: '600',
+            color: '#F9FAFB',
+            marginBottom: 8,
+          }}
+        >
+          Statut (démo)
+        </Text>
+        <Text
+          style={{
+            fontSize: 14,
+            fontWeight: '600',
+            color: statusColor,
+          }}
+        >
+          {statusLabel}
+        </Text>
+        <Text
+          style={{
+            fontSize: 13,
+            color: '#9CA3AF',
+            marginTop: 6,
+          }}
+        >
+          Dans la version finale, ce statut évoluerait automatiquement en
+          fonction de tes actions et des notifications de l’API.
+        </Text>
+      </View>
+
+      {/* Bouton d’action */}
+      <Pressable
+        onPress={handlePress}
+        disabled={step === 'livree'}
+        style={({ pressed }) => ({
+          opacity: pressed || step === 'livree' ? 0.8 : 1,
+          backgroundColor: '#FACC15',
+          borderRadius: 999,
+          paddingVertical: 16,
+          alignItems: 'center',
+        })}
+      >
+        <Text
+          style={{
+            fontSize: 16,
+            fontWeight: '700',
+            color: '#111827',
+          }}
+        >
+          {buttonLabel}
+        </Text>
+      </Pressable>
+    </ScrollView>
+  );
+}

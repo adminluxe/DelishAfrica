@@ -1,0 +1,406 @@
+
+==============================
+APP: client
+BASE: /opt/delishafrica/monorepo/apps/client
+DATE: Tue Jan 13 06:00:57 CET 2026
+==============================
+
+>>> Suspects keywords:
+TouchableWithoutFeedback | onStartShouldSetResponder | onMoveShouldSetResponder | GestureDetector | PanGestureHandler | Gesture.Pan | Pressable style flex:1 | pointerEvents
+
+>>> Matches:
+/opt/delishafrica/monorepo/apps/client/app/menu.tsx:2:import { View, Text, Pressable, StyleSheet } from 'react-native';
+/opt/delishafrica/monorepo/apps/client/app/menu.tsx:22:        <Pressable
+/opt/delishafrica/monorepo/apps/client/app/menu.tsx:27:        </Pressable>
+/opt/delishafrica/monorepo/apps/client/app/_components/DemoFab.tsx:2:import { Pressable, Text, View } from "react-native";
+/opt/delishafrica/monorepo/apps/client/app/_components/DemoFab.tsx:16: pointerEvents="box-none"
+/opt/delishafrica/monorepo/apps/client/app/_components/DemoFab.tsx:24: <Pressable
+/opt/delishafrica/monorepo/apps/client/app/_components/DemoFab.tsx:36: </Pressable>
+/opt/delishafrica/monorepo/apps/client/app/(tabs)/index.tsx:9:    <View style={styles.root} pointerEvents="box-none">
+/opt/delishafrica/monorepo/apps/client/app/(tabs)/index.tsx:10:      <View pointerEvents="none" style={styles.badgeWrap}>
+/opt/delishafrica/monorepo/apps/client/app/(tabs)/index.tsx:25:          Alors le bloqueur est dans l’écran original (TouchableWithoutFeedback / Pressable full-flex / GestureDetector / responder props).
+/opt/delishafrica/monorepo/apps/client/app/orders.tsx:2:import { View, Text, Pressable, StyleSheet } from "react-native";
+/opt/delishafrica/monorepo/apps/client/app/orders.tsx:20:          <Pressable style={[styles.btn, styles.btnGhost]} onPress={() => router.back()}>
+/opt/delishafrica/monorepo/apps/client/app/orders.tsx:22:          </Pressable>
+/opt/delishafrica/monorepo/apps/client/app/orders.tsx:23:          <Pressable style={[styles.btn, styles.btnPrimary]} onPress={() => { /* next step later */ }}>
+/opt/delishafrica/monorepo/apps/client/app/orders.tsx:25:          </Pressable>
+/opt/delishafrica/monorepo/apps/client/app/index.tsx:9:    <View style={styles.root} pointerEvents="box-none">
+/opt/delishafrica/monorepo/apps/client/app/index.tsx:10:      <View pointerEvents="none" style={styles.badgeWrap}>
+/opt/delishafrica/monorepo/apps/client/app/index.tsx:25:          Alors le bloqueur est dans l’écran original (TouchableWithoutFeedback / Pressable full-flex / GestureDetector / responder props).
+/opt/delishafrica/monorepo/apps/client/app/partner/[slug].tsx:2:import { View, Text, Pressable, ScrollView } from "react-native";
+/opt/delishafrica/monorepo/apps/client/app/partner/[slug].tsx:50:        <Pressable
+/opt/delishafrica/monorepo/apps/client/app/partner/[slug].tsx:65:        </Pressable>
+/opt/delishafrica/monorepo/apps/client/app/restaurant/[id].tsx:2:import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
+/opt/delishafrica/monorepo/apps/client/app/restaurant/[id].tsx:17: <Pressable onPress={() => router.back()}>
+/opt/delishafrica/monorepo/apps/client/app/restaurant/[id].tsx:19: </Pressable>
+/opt/delishafrica/monorepo/apps/client/app/restaurant/[id].tsx:26: <Pressable onPress={() => router.back()} style={{ marginBottom: 16 }}>
+/opt/delishafrica/monorepo/apps/client/app/restaurant/[id].tsx:28: </Pressable>
+/opt/delishafrica/monorepo/apps/client/app/restaurant/[id].tsx:60: <Pressable
+/opt/delishafrica/monorepo/apps/client/app/restaurant/[id].tsx:76: </Pressable>
+/opt/delishafrica/monorepo/apps/client/app/restaurants/index.tsx:2:import { ActivityIndicator, FlatList, Pressable, SafeAreaView, Text, View } from "react-native";
+/opt/delishafrica/monorepo/apps/client/app/restaurants/index.tsx:15:          <Pressable style={{padding:16, borderWidth:1, borderColor:"#eee", borderRadius:12, marginBottom:12}}>
+/opt/delishafrica/monorepo/apps/client/app/restaurants/index.tsx:18:          </Pressable>
+/opt/delishafrica/monorepo/apps/client/app/orders-demo.tsx.DISABLED.20251221-210617:2:import { View, Text, Pressable } from "react-native";
+/opt/delishafrica/monorepo/apps/client/app/orders-demo.tsx.DISABLED.20251221-210617:22: <Pressable
+/opt/delishafrica/monorepo/apps/client/app/orders-demo.tsx.DISABLED.20251221-210617:33: </Pressable>
+/opt/delishafrica/monorepo/apps/client/app/orders-demo.tsx.DISABLED.20251221-210617:35: <Pressable
+/opt/delishafrica/monorepo/apps/client/app/orders-demo.tsx.DISABLED.20251221-210617:46: </Pressable>
+/opt/delishafrica/monorepo/apps/client/patch-courier-premium-ui.sh:110:    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+/opt/delishafrica/monorepo/apps/client/patch-courier-premium-ui.sh:241:import { View, Text, FlatList, ActivityIndicator, SafeAreaView, Pressable, Alert, useColorScheme } from 'react-native';
+/opt/delishafrica/monorepo/apps/client/patch-courier-premium-ui.sh:266:    <Pressable
+/opt/delishafrica/monorepo/apps/client/patch-courier-premium-ui.sh:280:    </Pressable>
+/opt/delishafrica/monorepo/apps/client/patch-courier-premium-ui.sh:506:                          <Pressable
+/opt/delishafrica/monorepo/apps/client/patch-courier-premium-ui.sh:520:                          </Pressable>
+/opt/delishafrica/monorepo/apps/client/ui/ui.tsx:36:      <SafeAreaView style={[styles.safe, style]} pointerEvents="auto">
+/opt/delishafrica/monorepo/apps/client/ui/ui.tsx:50:    <SafeAreaView style={[styles.safe, style]} pointerEvents="auto">
+/opt/delishafrica/monorepo/apps/client/ui/components/DelishButton.tsx:2:import { Animated, Pressable, StyleProp, Text, TextStyle, ViewStyle } from "react-native";
+/opt/delishafrica/monorepo/apps/client/ui/components/DelishButton.tsx:83:    <Pressable
+/opt/delishafrica/monorepo/apps/client/ui/components/DelishButton.tsx:134:    </Pressable>
+/opt/delishafrica/monorepo/apps/client/ui/screens/SignatureHomeClient.tsx:3:import { Pressable, ScrollView, StyleSheet, Text, View, Animated, Easing } from 'react-native';
+/opt/delishafrica/monorepo/apps/client/ui/screens/SignatureHomeClient.tsx:42: <Pressable
+/opt/delishafrica/monorepo/apps/client/ui/screens/SignatureHomeClient.tsx:51: </Pressable>
+/opt/delishafrica/monorepo/apps/client/ui/screens/Onboarding.tsx:2:import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+/opt/delishafrica/monorepo/apps/client/ui/screens/Onboarding.tsx:91:          <Pressable
+/opt/delishafrica/monorepo/apps/client/ui/screens/Onboarding.tsx:99:          </Pressable>
+/opt/delishafrica/monorepo/apps/client/ui/screens/Onboarding.tsx:101:          <Pressable
+/opt/delishafrica/monorepo/apps/client/ui/screens/Onboarding.tsx:109:          </Pressable>
+/opt/delishafrica/monorepo/apps/client/apps/client/app/auth/login.tsx:2:import { SafeAreaView, Text, TextInput, Pressable, View } from "react-native";
+/opt/delishafrica/monorepo/apps/client/apps/client/app/auth/login.tsx:26:      <Pressable onPress={onLogin} style={{ marginTop: 12, padding: 14, backgroundColor: "black", borderRadius: 10 }}>
+/opt/delishafrica/monorepo/apps/client/apps/client/app/auth/login.tsx:28:      </Pressable>
+/opt/delishafrica/monorepo/apps/client/apps/client/app/restaurants/index.tsx:3:import { ActivityIndicator, FlatList, Pressable, SafeAreaView, Text, View } from "react-native";
+/opt/delishafrica/monorepo/apps/client/apps/client/app/restaurants/index.tsx:47:            <Pressable
+/opt/delishafrica/monorepo/apps/client/apps/client/app/restaurants/index.tsx:59:            </Pressable>
+/opt/delishafrica/monorepo/apps/client/components/da/NeonButton.tsx:2:import { Pressable, Text, ActivityIndicator, ViewStyle } from "react-native";
+/opt/delishafrica/monorepo/apps/client/components/da/NeonButton.tsx:33:    <Pressable
+/opt/delishafrica/monorepo/apps/client/components/da/NeonButton.tsx:58:    </Pressable>
+/opt/delishafrica/monorepo/apps/client/components/parallax-scroll-view.tsx:75:            pointerEvents="none"
+/opt/delishafrica/monorepo/apps/client/components/AppBackground.tsx:29:    <View pointerEvents="box-none" style={[styles.root, { backgroundColor: colors[0] }]}>
+/opt/delishafrica/monorepo/apps/client/components/AppBackground.tsx:31:      <View pointerEvents="none" style={[styles.layer, { backgroundColor: colors[0], opacity: 1 }]} />
+/opt/delishafrica/monorepo/apps/client/components/AppBackground.tsx:32:      <View pointerEvents="none" style={[styles.layer, { backgroundColor: colors[1], opacity: 0.92 }]} />
+/opt/delishafrica/monorepo/apps/client/components/AppBackground.tsx:33:      <View pointerEvents="none" style={[styles.layer, { backgroundColor: colors[2], opacity: 0.86 }]} />
+/opt/delishafrica/monorepo/apps/client/components/AppBackground.tsx:40:      <View pointerEvents="none" style={[styles.vignette, { opacity: isDark ? 0.55 : 0.16 }]} />
+/opt/delishafrica/monorepo/apps/client/components/AppBackground.tsx:46:        pointerEvents="none"
+/opt/delishafrica/monorepo/apps/client/components/AppBackground.tsx:51:      <View pointerEvents="box-none" style={styles.content}>{children}</View>
+/opt/delishafrica/monorepo/apps/client/components/BrandBackground.tsx:11:    <View pointerEvents="box-none" style={styles.root}>
+/opt/delishafrica/monorepo/apps/client/components/BrandBackground.tsx:18:      <View pointerEvents="none" style={styles.overlay} />
+/opt/delishafrica/monorepo/apps/client/components/BrandBackground.tsx:19:      <View pointerEvents="box-none" style={styles.content}>{children}</View>
+/opt/delishafrica/monorepo/apps/client/components/MagicButton.tsx:2:import { Animated, Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
+/opt/delishafrica/monorepo/apps/client/components/MagicButton.tsx:25:    <Pressable onPress={onPress} onPressIn={down} onPressOut={up}>
+/opt/delishafrica/monorepo/apps/client/components/MagicButton.tsx:29:    </Pressable>
+/opt/delishafrica/monorepo/apps/client/index.tsx:4:  Pressable,
+/opt/delishafrica/monorepo/apps/client/index.tsx:189:            <Pressable
+/opt/delishafrica/monorepo/apps/client/index.tsx:208:            </Pressable>
+/opt/delishafrica/monorepo/apps/client/src/ui/SnowOverlay.tsx:47:    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+/opt/delishafrica/monorepo/apps/client/.tonton_backups/lint_hotfix_2026-01-11T05-20-53+01-00/SnowOverlay.tsx.bak:54:    <View pointerEvents="none" style={StyleSheet.absoluteFill}} pointerEvents="none">
+/opt/delishafrica/monorepo/apps/client/.tonton_backups/lint_hotfix_2026-01-11T05-20-53+01-00/thieyp-demo.tsx.bak:5:  Pressable,
+/opt/delishafrica/monorepo/apps/client/.tonton_backups/lint_hotfix_2026-01-11T05-20-53+01-00/thieyp-demo.tsx.bak:39:        <Pressable
+/opt/delishafrica/monorepo/apps/client/.tonton_backups/lint_hotfix_2026-01-11T05-20-53+01-00/thieyp-demo.tsx.bak:55:        </Pressable>
+/opt/delishafrica/monorepo/apps/client/.tonton_backups/lint_hotfix_2026-01-11T05-20-53+01-00/thieyp-demo.tsx.bak:59:        <Pressable
+/opt/delishafrica/monorepo/apps/client/.tonton_backups/lint_hotfix_2026-01-11T05-20-53+01-00/thieyp-demo.tsx.bak:76:        </Pressable>
+
+>>> Tip: cherche un wrapper plein écran (flex:1) autour d’un ScrollView/FlatList.
+
+
+==============================
+APP: courier
+BASE: /opt/delishafrica/monorepo/apps/courier
+DATE: Tue Jan 13 06:00:57 CET 2026
+==============================
+
+>>> Suspects keywords:
+TouchableWithoutFeedback | onStartShouldSetResponder | onMoveShouldSetResponder | GestureDetector | PanGestureHandler | Gesture.Pan | Pressable style flex:1 | pointerEvents
+
+>>> Matches:
+/opt/delishafrica/monorepo/apps/courier/app/auth/login.tsx:3:import { SafeAreaView, Text, TextInput, Pressable } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/app/auth/login.tsx:23: <Pressable onPress={onLogin} style={{ marginTop:12, padding:14, backgroundColor:"black", borderRadius:10 }}>
+/opt/delishafrica/monorepo/apps/courier/app/auth/login.tsx:25: </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/home.tsx:3:import { View, Text, FlatList, ActivityIndicator, SafeAreaView, Pressable, Alert, useColorScheme } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/app/home.tsx:29:<Pressable
+/opt/delishafrica/monorepo/apps/courier/app/home.tsx:43:    </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/home.tsx:270:                          <Pressable
+/opt/delishafrica/monorepo/apps/courier/app/home.tsx:284:                          </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/mission.tsx:2:import { View, Text, Pressable, StyleSheet } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/app/mission.tsx:23:          <Pressable style={[styles.btn, styles.btnGhost]} onPress={() => router.back()}>
+/opt/delishafrica/monorepo/apps/courier/app/mission.tsx:25:          </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/mission.tsx:27:          <Pressable
+/opt/delishafrica/monorepo/apps/courier/app/mission.tsx:36:          </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/job/[id].tsx:2:import { View, Text, Pressable, StyleSheet } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/app/job/[id].tsx:12:      <Pressable onPress={() => router.back()} style={styles.btn}>
+/opt/delishafrica/monorepo/apps/courier/app/job/[id].tsx:14:      </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/_components/DemoFab.tsx:2:import { Pressable, Text, View } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/app/_components/DemoFab.tsx:16: pointerEvents="box-none"
+/opt/delishafrica/monorepo/apps/courier/app/_components/DemoFab.tsx:24: <Pressable
+/opt/delishafrica/monorepo/apps/courier/app/_components/DemoFab.tsx:36: </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/(tabs)/index.tsx:9:    <View style={styles.root} pointerEvents="box-none">
+/opt/delishafrica/monorepo/apps/courier/app/(tabs)/index.tsx:10:      <View pointerEvents="none" style={styles.badgeWrap}>
+/opt/delishafrica/monorepo/apps/courier/app/(tabs)/index.tsx:25:          Alors le bloqueur est dans l’écran original (TouchableWithoutFeedback / Pressable full-flex / GestureDetector / responder props).
+/opt/delishafrica/monorepo/apps/courier/app/orders.tsx:2:import { View, Text, Pressable, ScrollView } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/app/orders.tsx:68:        <Pressable
+/opt/delishafrica/monorepo/apps/courier/app/orders.tsx:81:        </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/orders.tsx:85:        <Pressable
+/opt/delishafrica/monorepo/apps/courier/app/orders.tsx:100:        </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/mission/[id].tsx:2:import { View, Text, Pressable, ScrollView } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/app/mission/[id].tsx:76:        <Pressable
+/opt/delishafrica/monorepo/apps/courier/app/mission/[id].tsx:89:        </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/mission/[id].tsx:93:        <Pressable
+/opt/delishafrica/monorepo/apps/courier/app/mission/[id].tsx:108:        </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/index.tsx:9:    <View style={styles.root} pointerEvents="box-none">
+/opt/delishafrica/monorepo/apps/courier/app/index.tsx:10:      <View pointerEvents="none" style={styles.badgeWrap}>
+/opt/delishafrica/monorepo/apps/courier/app/index.tsx:25:          Alors le bloqueur est dans l’écran original (TouchableWithoutFeedback / Pressable full-flex / GestureDetector / responder props).
+/opt/delishafrica/monorepo/apps/courier/app/thieyp-demo.tsx:2:import { View, Text, Pressable, ScrollView } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/app/thieyp-demo.tsx:18:        <Pressable
+/opt/delishafrica/monorepo/apps/courier/app/thieyp-demo.tsx:31:        </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/thieyp-demo.tsx:35:        <Pressable
+/opt/delishafrica/monorepo/apps/courier/app/thieyp-demo.tsx:50:        </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/login.tsx:2:import { View, Text, TextInput, Pressable, StyleSheet, SafeAreaView, Alert, ActivityIndicator } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/app/login.tsx:38: <Pressable onPress={handleLogin} style={S.btn} disabled={loading}>
+/opt/delishafrica/monorepo/apps/courier/app/login.tsx:40: </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/mission-demo.tsx.DISABLED.20251221-210617:2:import { ActivityIndicator, Pressable, SafeAreaView, Text, View } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/app/mission-demo.tsx.DISABLED.20251221-210617:80: <Pressable
+/opt/delishafrica/monorepo/apps/courier/app/mission-demo.tsx.DISABLED.20251221-210617:96: </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/mission-demo.tsx.DISABLED.20251221-210617:185: <View pointerEvents="box-none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
+/opt/delishafrica/monorepo/apps/courier/app/home.tsx.BAK_2025-11-14-1717:2:import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/app/home.tsx.BAK_2025-11-14-1717:64:      <Pressable onPress={() => handleAccept(item.id)} style={styles.btnPrimary}><Text style={styles.btnPrimaryText}>Accepter</Text></Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/home.tsx.BAK_2025-11-14-1717:75:      <Pressable onPress={async()=>{ await clearToken(); router.replace('/login'); }} style={{alignSelf:'center', padding:6}}>
+/opt/delishafrica/monorepo/apps/courier/app/home.tsx.BAK_2025-11-14-1717:77:      </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/home.tsx.BAK_2025-11-14-1717:82:        <View style={styles.center}><Text style={styles.err}>Erreur : {error}</Text><Pressable onPress={fetchJobs} style={styles.btnGhost}><Text>Réessayer</Text></Pressable></View>
+/opt/delishafrica/monorepo/apps/courier/app/debug.tsx:3:import { View, Text, ScrollView, Pressable, TextInput, Alert } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/app/debug.tsx:21: <Pressable onPress={onPress} style={{ padding: 10, borderWidth: 1, borderRadius: 8, marginRight: 8, marginVertical: 6 }}>
+/opt/delishafrica/monorepo/apps/courier/app/debug.tsx:23: </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-1926:8:  Pressable,
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-1926:101:          <Pressable
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-1926:106:          </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-1926:108:          <Pressable
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-1926:113:          </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-1926:129:                <Pressable onPress={() => onAccept(item.id)} style={[styles.btn, styles.btnPrimary]}>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-1926:131:                </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-205551:8:  Pressable,
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-205551:123:          <Pressable onPress={onToggleOnline} style={[styles.btn, online ? styles.btnDanger : styles.btnSuccess]}>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-205551:125:          </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-205551:127:          <Pressable onPress={onRefresh} style={[styles.btn, styles.btnSecondary]}>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-205551:129:          </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-205551:145:                <Pressable onPress={() => onAccept(item.id)} style={[styles.btn, styles.btnPrimary]}>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-205551:147:                </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-210017:8:  Pressable,
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-210017:123:          <Pressable onPress={onToggleOnline} style={[styles.btn, online ? styles.btnDanger : styles.btnSuccess]}>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-210017:125:          </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-210017:127:          <Pressable onPress={onRefresh} style={[styles.btn, styles.btnSecondary]}>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-210017:129:          </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-210017:145:                <Pressable onPress={() => onAccept(item.id)} style={[styles.btn, styles.btnPrimary]}>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-210017:147:                </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-210659:8:  Pressable,
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-210659:123:          <Pressable onPress={onToggleOnline} style={[styles.btn, online ? styles.btnDanger : styles.btnSuccess]}>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-210659:125:          </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-210659:127:          <Pressable onPress={onRefresh} style={[styles.btn, styles.btnSecondary]}>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-210659:129:          </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-210659:145:                <Pressable onPress={() => onAccept(item.id)} style={[styles.btn, styles.btnPrimary]}>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-210659:147:                </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-1916:4:  Pressable, RefreshControl, SafeAreaView, StyleSheet, Text, View,
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-1916:129:      <Pressable onPress={() => setOnline(v => !v)} style={[styles.bigBtn, online ? styles.btnOn : styles.btnOff]}>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-1916:131:      </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-1916:133:        <Pressable onPress={resetDemo} style={[styles.bigBtn, styles.btnReset]}>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-1916:135:        </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-205129:8:  Pressable,
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-205129:123:          <Pressable onPress={onToggleOnline} style={[styles.btn, online ? styles.btnDanger : styles.btnSuccess]}>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-205129:125:          </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-205129:127:          <Pressable onPress={onRefresh} style={[styles.btn, styles.btnSecondary]}>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-205129:129:          </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-205129:145:                <Pressable onPress={() => onAccept(item.id)} style={[styles.btn, styles.btnPrimary]}>
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-205129:147:                </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/orders-demo.tsx.DISABLED.20251221-210617:2:import { View, Text, Pressable, ScrollView } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/app/orders-demo.tsx.DISABLED.20251221-210617:18: <Pressable
+/opt/delishafrica/monorepo/apps/courier/app/orders-demo.tsx.DISABLED.20251221-210617:30: </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/orders-demo.tsx.DISABLED.20251221-210617:34: <Pressable
+/opt/delishafrica/monorepo/apps/courier/app/orders-demo.tsx.DISABLED.20251221-210617:48: </Pressable>
+/opt/delishafrica/monorepo/apps/courier/app/orders-demo.tsx.DISABLED.20251221-210617:52: <Pressable
+/opt/delishafrica/monorepo/apps/courier/app/orders-demo.tsx.DISABLED.20251221-210617:66: </Pressable>
+/opt/delishafrica/monorepo/apps/courier/ui/ui.tsx:36:      <SafeAreaView style={[styles.safe, style]} pointerEvents="auto">
+/opt/delishafrica/monorepo/apps/courier/ui/ui.tsx:50:    <SafeAreaView style={[styles.safe, style]} pointerEvents="auto">
+/opt/delishafrica/monorepo/apps/courier/ui/components/DelishButton.tsx:2:import { Animated, Pressable, StyleProp, Text, TextStyle, ViewStyle } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/ui/components/DelishButton.tsx:83:    <Pressable
+/opt/delishafrica/monorepo/apps/courier/ui/components/DelishButton.tsx:134:    </Pressable>
+/opt/delishafrica/monorepo/apps/courier/ui/screens/SignatureHomeCourier.tsx:5:  Pressable,
+/opt/delishafrica/monorepo/apps/courier/ui/screens/SignatureHomeCourier.tsx:39:    <Pressable
+/opt/delishafrica/monorepo/apps/courier/ui/screens/SignatureHomeCourier.tsx:52:    </Pressable>
+/opt/delishafrica/monorepo/apps/courier/ui/screens/SignatureHomeCourier.tsx:128:      <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, styles.bgGlow]} />
+/opt/delishafrica/monorepo/apps/courier/ui/screens/SignatureHomeCourier.tsx:201:    // léger glow décoratif, et surtout pointerEvents="none"
+/opt/delishafrica/monorepo/apps/courier/ui/screens/Onboarding.tsx:2:import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/ui/screens/Onboarding.tsx:91:          <Pressable
+/opt/delishafrica/monorepo/apps/courier/ui/screens/Onboarding.tsx:99:          </Pressable>
+/opt/delishafrica/monorepo/apps/courier/ui/screens/Onboarding.tsx:101:          <Pressable
+/opt/delishafrica/monorepo/apps/courier/ui/screens/Onboarding.tsx:109:          </Pressable>
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/components/haptic-tab.tsx:2:import { PlatformPressable } from '@react-navigation/elements';
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/components/haptic-tab.tsx:7:    <PlatformPressable
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/components/BrandBackground.tsx:11:    <View pointerEvents="box-none" style={styles.root}>
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/components/BrandBackground.tsx:18:      <View pointerEvents="none" style={styles.overlay} />
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/components/BrandBackground.tsx:19:      <View pointerEvents="box-none" style={styles.content}>{children}</View>
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/components/haptic-tab.tsx:2:import { PlatformPressable } from '@react-navigation/elements';
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/components/haptic-tab.tsx:7:    <PlatformPressable
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/components/BrandBackground.tsx:11:    <View pointerEvents="box-none" style={styles.root}>
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/components/BrandBackground.tsx:18:      <View pointerEvents="none" style={styles.overlay} />
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/components/BrandBackground.tsx:19:      <View pointerEvents="box-none" style={styles.content}>{children}</View>
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/components/haptic-tab.tsx:2:import { PlatformPressable } from '@react-navigation/elements';
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/components/haptic-tab.tsx:7:    <PlatformPressable
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/components/BrandBackground.tsx:11:    <View pointerEvents="box-none" style={styles.root}>
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/components/BrandBackground.tsx:18:      <View pointerEvents="none" style={styles.overlay} />
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/components/BrandBackground.tsx:19:      <View pointerEvents="box-none" style={styles.content}>{children}</View>
+/opt/delishafrica/monorepo/apps/courier/components/da/NeonButton.tsx:2:import { Pressable, Text, ActivityIndicator, ViewStyle } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/components/da/NeonButton.tsx:33:    <Pressable
+/opt/delishafrica/monorepo/apps/courier/components/da/NeonButton.tsx:58:    </Pressable>
+/opt/delishafrica/monorepo/apps/courier/components/ConfettiBurst.tsx:48:    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+/opt/delishafrica/monorepo/apps/courier/components/JobCard.tsx:2:import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/JobCard.tsx:33:        <Pressable style={{ marginBottom: 8 }}>
+/opt/delishafrica/monorepo/apps/courier/components/JobCard.tsx:45:        </Pressable>
+/opt/delishafrica/monorepo/apps/courier/components/JobCard.tsx:48:        <Pressable onPress={() => onAccept(id)} style={[s.btn, s.btnPrimary]}>
+/opt/delishafrica/monorepo/apps/courier/components/JobCard.tsx:50:        </Pressable>
+/opt/delishafrica/monorepo/apps/courier/components/JobCard.tsx:51:        <Pressable onPress={() => onDelivered(id)} style={[s.btn, s.btnGhost]}>
+/opt/delishafrica/monorepo/apps/courier/components/JobCard.tsx:53:        </Pressable>
+/opt/delishafrica/monorepo/apps/courier/components/parallax-scroll-view.tsx:75:            pointerEvents="none"
+/opt/delishafrica/monorepo/apps/courier/components/AppBackground.tsx:29:    <View pointerEvents="box-none" style={[styles.root, { backgroundColor: colors[0] }]}>
+/opt/delishafrica/monorepo/apps/courier/components/AppBackground.tsx:31:      <View pointerEvents="none" style={[styles.layer, { backgroundColor: colors[0], opacity: 1 }]} />
+/opt/delishafrica/monorepo/apps/courier/components/AppBackground.tsx:32:      <View pointerEvents="none" style={[styles.layer, { backgroundColor: colors[1], opacity: 0.92 }]} />
+/opt/delishafrica/monorepo/apps/courier/components/AppBackground.tsx:33:      <View pointerEvents="none" style={[styles.layer, { backgroundColor: colors[2], opacity: 0.86 }]} />
+/opt/delishafrica/monorepo/apps/courier/components/AppBackground.tsx:40:      <View pointerEvents="none" style={[styles.vignette, { opacity: isDark ? 0.55 : 0.16 }]} />
+/opt/delishafrica/monorepo/apps/courier/components/AppBackground.tsx:46:        pointerEvents="none"
+/opt/delishafrica/monorepo/apps/courier/components/AppBackground.tsx:51:      <View pointerEvents="box-none" style={styles.content}>{children}</View>
+/opt/delishafrica/monorepo/apps/courier/components/SignaturePad.tsx:2:import { View, StyleSheet, PanResponder, GestureResponderEvent, PanResponderGestureState, Pressable, Text } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/SignaturePad.tsx:35:        <Pressable onPress={clear} style={[styles.btn, styles.ghost]}><Text style={styles.txt}>Effacer</Text></Pressable>
+/opt/delishafrica/monorepo/apps/courier/components/SignaturePad.tsx:36:        <Pressable onPress={exportData} style={[styles.btn, styles.primary]}><Text style={styles.txt}>Utiliser la signature</Text></Pressable>
+/opt/delishafrica/monorepo/apps/courier/components/MapPreview.tsx:24:      <MapView style={StyleSheet.absoluteFill} initialRegion={region}} pointerEvents="none">
+/opt/delishafrica/monorepo/apps/courier/components/SignaturePadModal.tsx:2:import { Modal, View, Pressable, Text, StyleSheet } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/SignaturePadModal.tsx:50:          <Pressable style={S.btn} onPress={onCancel}><Text style={S.btnText}>Fermer</Text></Pressable>
+/opt/delishafrica/monorepo/apps/courier/components/Toast.tsx:42:        pointerEvents="none"
+/opt/delishafrica/monorepo/apps/courier/components/RippleBtn.tsx:3:import { Pressable, Text, View, Animated, Easing, GestureResponderEvent } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/RippleBtn.tsx:30:    <Pressable
+/opt/delishafrica/monorepo/apps/courier/components/RippleBtn.tsx:48:          pointerEvents="none"
+/opt/delishafrica/monorepo/apps/courier/components/RippleBtn.tsx:63:    </Pressable>
+/opt/delishafrica/monorepo/apps/courier/components/SignatureModal.tsx:2:import { Modal, View, Pressable, Text, StyleSheet } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/SignatureModal.tsx:25:          <Pressable style={S.btn} onPress={onCancel}><Text style={S.btnText}>Fermer</Text></Pressable>
+/opt/delishafrica/monorepo/apps/courier/components/ProofModal.tsx:2:import { Modal, View, Text, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/ProofModal.tsx:27:            <Pressable onPress={onClose} style={[S.btn,S.gray]}><Text style={S.btnt}>Annuler</Text></Pressable>
+/opt/delishafrica/monorepo/apps/courier/components/BrandBackground.tsx:11:    <View pointerEvents="box-none" style={styles.root}>
+/opt/delishafrica/monorepo/apps/courier/components/BrandBackground.tsx:18:      <View pointerEvents="none" style={styles.overlay} />
+/opt/delishafrica/monorepo/apps/courier/components/BrandBackground.tsx:19:      <View pointerEvents="box-none" style={styles.content}>{children}</View>
+/opt/delishafrica/monorepo/apps/courier/components/ProofPhotoModal.tsx:2:import { Modal, View, Text, Pressable, Image, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/ProofPhotoModal.tsx:66:            <Pressable style={S.btn} onPress={pick}><Text style={S.btnText}>Prendre une photo</Text></Pressable>
+/opt/delishafrica/monorepo/apps/courier/components/ProofPhotoModal.tsx:70:              <Pressable style={[S.btn,{marginTop:12}]} onPress={send} disabled={sending}>
+/opt/delishafrica/monorepo/apps/courier/components/ProofPhotoModal.tsx:72:              </Pressable>
+/opt/delishafrica/monorepo/apps/courier/components/ProofPhotoModal.tsx:75:          <Pressable style={[S.btnGhost,{marginTop:8}]} onPress={close}><Text>Annuler</Text></Pressable>
+/opt/delishafrica/monorepo/apps/courier/components/MagicButton.tsx:2:import { Animated, Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/MagicButton.tsx:25:    <Pressable onPress={onPress} onPressIn={down} onPressOut={up}>
+/opt/delishafrica/monorepo/apps/courier/components/MagicButton.tsx:29:    </Pressable>
+/opt/delishafrica/monorepo/apps/courier/src/ui/SnowOverlay.tsx:59:    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+/opt/delishafrica/monorepo/apps/courier/src/ui/SnowOverlay.tsx:72:          <Animated.View pointerEvents="none"
+/opt/delishafrica/monorepo/apps/courier/.backup/courier_v2_20251114-194018/app/mission/[id].tsx:2:import { ScrollView, View, Text, Pressable, Alert } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/.backup/courier_v2_20251114-194018/app/mission/[id].tsx:19:        <Pressable onPress={() => router.back()}>
+/opt/delishafrica/monorepo/apps/courier/.backup/courier_v2_20251114-194018/app/mission/[id].tsx:21:        </Pressable>
+/opt/delishafrica/monorepo/apps/courier/.backup/courier_v2_20251114-194018/app/mission/[id].tsx:63:      <Pressable onPress={() => router.back()} style={{ marginBottom: 16 }}>
+/opt/delishafrica/monorepo/apps/courier/.backup/courier_v2_20251114-194018/app/mission/[id].tsx:65:      </Pressable>
+/opt/delishafrica/monorepo/apps/courier/.backup/courier_v2_20251114-194018/app/mission/[id].tsx:124:      <Pressable
+/opt/delishafrica/monorepo/apps/courier/.backup/courier_v2_20251114-194018/app/mission/[id].tsx:134:      </Pressable>
+
+>>> Tip: cherche un wrapper plein écran (flex:1) autour d’un ScrollView/FlatList.
+
+
+==============================
+APP: merchant
+BASE: /opt/delishafrica/monorepo/apps/merchant
+DATE: Tue Jan 13 06:00:57 CET 2026
+==============================
+
+>>> Suspects keywords:
+TouchableWithoutFeedback | onStartShouldSetResponder | onMoveShouldSetResponder | GestureDetector | PanGestureHandler | Gesture.Pan | Pressable style flex:1 | pointerEvents
+
+>>> Matches:
+/opt/delishafrica/monorepo/apps/merchant/app/auth/login.tsx:3:import { SafeAreaView, Text, TextInput, Pressable } from "react-native";
+/opt/delishafrica/monorepo/apps/merchant/app/auth/login.tsx:23: <Pressable onPress={onLogin} style={{ marginTop:12, padding:14, backgroundColor:"black", borderRadius:10 }}>
+/opt/delishafrica/monorepo/apps/merchant/app/auth/login.tsx:25: </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/app/orders.tsx.DISABLED.20251221-210617:2:import { View, Text, Pressable, StyleSheet } from "react-native";
+/opt/delishafrica/monorepo/apps/merchant/app/orders.tsx.DISABLED.20251221-210617:20:          <Pressable style={[styles.btn, styles.btnGhost]} onPress={() => router.back()}>
+/opt/delishafrica/monorepo/apps/merchant/app/orders.tsx.DISABLED.20251221-210617:22:          </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/app/orders.tsx.DISABLED.20251221-210617:23:          <Pressable style={[styles.btn, styles.btnPrimary]} onPress={() => { /* next step later */ }}>
+/opt/delishafrica/monorepo/apps/merchant/app/orders.tsx.DISABLED.20251221-210617:25:          </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/app/home.tsx:2:import { Alert, Pressable, ScrollView, Text, View } from "react-native";
+/opt/delishafrica/monorepo/apps/merchant/app/home.tsx:83: <Pressable
+/opt/delishafrica/monorepo/apps/merchant/app/home.tsx:95: </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/app/home.tsx:97: <Pressable
+/opt/delishafrica/monorepo/apps/merchant/app/home.tsx:109: </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/app/_components/DemoFab.tsx:2:import { Pressable, Text, View } from "react-native";
+/opt/delishafrica/monorepo/apps/merchant/app/_components/DemoFab.tsx:16: pointerEvents="box-none"
+/opt/delishafrica/monorepo/apps/merchant/app/_components/DemoFab.tsx:24: <Pressable
+/opt/delishafrica/monorepo/apps/merchant/app/_components/DemoFab.tsx:36: </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/app/(tabs)/index.tsx:9:    <View style={styles.root} pointerEvents="box-none">
+/opt/delishafrica/monorepo/apps/merchant/app/(tabs)/index.tsx:10:      <View pointerEvents="none" style={styles.badgeWrap}>
+/opt/delishafrica/monorepo/apps/merchant/app/(tabs)/index.tsx:25:          Alors le bloqueur est dans l’écran original (TouchableWithoutFeedback / Pressable full-flex / GestureDetector / responder props).
+/opt/delishafrica/monorepo/apps/merchant/app/ops.tsx:2:import { View, Text, Pressable, StyleSheet } from 'react-native';
+/opt/delishafrica/monorepo/apps/merchant/app/ops.tsx:22: <Pressable
+/opt/delishafrica/monorepo/apps/merchant/app/ops.tsx:27: </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/app/ops.tsx:29: <Pressable
+/opt/delishafrica/monorepo/apps/merchant/app/ops.tsx:34: </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/app/ops.tsx:36: <Pressable
+/opt/delishafrica/monorepo/apps/merchant/app/ops.tsx:41: </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/app/index.tsx:9:    <View style={styles.root} pointerEvents="box-none">
+/opt/delishafrica/monorepo/apps/merchant/app/index.tsx:10:      <View pointerEvents="none" style={styles.badgeWrap}>
+/opt/delishafrica/monorepo/apps/merchant/app/index.tsx:25:          Alors le bloqueur est dans l’écran original (TouchableWithoutFeedback / Pressable full-flex / GestureDetector / responder props).
+/opt/delishafrica/monorepo/apps/merchant/app/commande/[id].tsx:2:import { ScrollView, View, Text, Pressable, Alert } from 'react-native';
+/opt/delishafrica/monorepo/apps/merchant/app/commande/[id].tsx:21: <Pressable onPress={() => router.back()}>
+/opt/delishafrica/monorepo/apps/merchant/app/commande/[id].tsx:23: </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/app/commande/[id].tsx:65: <Pressable onPress={() => router.back()} style={{ marginBottom: 16 }}>
+/opt/delishafrica/monorepo/apps/merchant/app/commande/[id].tsx:67: </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/app/commande/[id].tsx:121: <Pressable
+/opt/delishafrica/monorepo/apps/merchant/app/commande/[id].tsx:133: </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/app/thieyp-demo.tsx:2:import { Alert, Pressable, ScrollView, Text, View } from "react-native";
+/opt/delishafrica/monorepo/apps/merchant/app/thieyp-demo.tsx:80: <Pressable
+/opt/delishafrica/monorepo/apps/merchant/app/thieyp-demo.tsx:92: </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/app/thieyp-demo.tsx:94: <Pressable
+/opt/delishafrica/monorepo/apps/merchant/app/thieyp-demo.tsx:106: </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/app/thieyp-demo.tsx:114: <Pressable
+/opt/delishafrica/monorepo/apps/merchant/app/thieyp-demo.tsx:132: </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/app/index.tsx.BAK_HEADERS_2025-11-14-1828:2:import { ScrollView, View, Text, Pressable } from 'react-native';
+/opt/delishafrica/monorepo/apps/merchant/app/index.tsx.BAK_HEADERS_2025-11-14-1828:92: <Pressable
+/opt/delishafrica/monorepo/apps/merchant/app/index.tsx.BAK_HEADERS_2025-11-14-1828:134: </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/app/orders-demo.tsx.DISABLED.20251221-210617:2:import { ActivityIndicator, Pressable, SafeAreaView, Text, View } from "react-native";
+/opt/delishafrica/monorepo/apps/merchant/app/orders-demo.tsx.DISABLED.20251221-210617:82: <Pressable
+/opt/delishafrica/monorepo/apps/merchant/app/orders-demo.tsx.DISABLED.20251221-210617:98: </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/app/orders-demo.tsx.DISABLED.20251221-210617:231: <View pointerEvents="box-none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
+/opt/delishafrica/monorepo/apps/merchant/ui/ui.tsx:36:      <SafeAreaView style={[styles.safe, style]} pointerEvents="auto">
+/opt/delishafrica/monorepo/apps/merchant/ui/ui.tsx:50:    <SafeAreaView style={[styles.safe, style]} pointerEvents="auto">
+/opt/delishafrica/monorepo/apps/merchant/ui/components/DelishButton.tsx:2:import { Animated, Pressable, StyleProp, Text, TextStyle, ViewStyle } from "react-native";
+/opt/delishafrica/monorepo/apps/merchant/ui/components/DelishButton.tsx:83:    <Pressable
+/opt/delishafrica/monorepo/apps/merchant/ui/components/DelishButton.tsx:134:    </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/ui/screens/SignatureHomeMerchant.tsx:2:import { Pressable, ScrollView, StyleSheet, Text, View, Animated, Easing } from 'react-native';
+/opt/delishafrica/monorepo/apps/merchant/ui/screens/SignatureHomeMerchant.tsx:25: <Pressable
+/opt/delishafrica/monorepo/apps/merchant/ui/screens/SignatureHomeMerchant.tsx:34: </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/ui/screens/Onboarding.tsx:2:import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+/opt/delishafrica/monorepo/apps/merchant/ui/screens/Onboarding.tsx:91:          <Pressable
+/opt/delishafrica/monorepo/apps/merchant/ui/screens/Onboarding.tsx:99:          </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/ui/screens/Onboarding.tsx:101:          <Pressable
+/opt/delishafrica/monorepo/apps/merchant/ui/screens/Onboarding.tsx:109:          </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/components/da/NeonButton.tsx:2:import { Pressable, Text, ActivityIndicator, ViewStyle } from "react-native";
+/opt/delishafrica/monorepo/apps/merchant/components/da/NeonButton.tsx:33:    <Pressable
+/opt/delishafrica/monorepo/apps/merchant/components/da/NeonButton.tsx:58:    </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/components/parallax-scroll-view.tsx:75:            pointerEvents="none"
+/opt/delishafrica/monorepo/apps/merchant/components/AppBackground.tsx:29:    <View pointerEvents="box-none" style={[styles.root, { backgroundColor: colors[0] }]}>
+/opt/delishafrica/monorepo/apps/merchant/components/AppBackground.tsx:31:      <View pointerEvents="none" style={[styles.layer, { backgroundColor: colors[0], opacity: 1 }]} />
+/opt/delishafrica/monorepo/apps/merchant/components/AppBackground.tsx:32:      <View pointerEvents="none" style={[styles.layer, { backgroundColor: colors[1], opacity: 0.92 }]} />
+/opt/delishafrica/monorepo/apps/merchant/components/AppBackground.tsx:33:      <View pointerEvents="none" style={[styles.layer, { backgroundColor: colors[2], opacity: 0.86 }]} />
+/opt/delishafrica/monorepo/apps/merchant/components/AppBackground.tsx:40:      <View pointerEvents="none" style={[styles.vignette, { opacity: isDark ? 0.55 : 0.16 }]} />
+/opt/delishafrica/monorepo/apps/merchant/components/AppBackground.tsx:46:        pointerEvents="none"
+/opt/delishafrica/monorepo/apps/merchant/components/AppBackground.tsx:51:      <View pointerEvents="box-none" style={styles.content}>{children}</View>
+/opt/delishafrica/monorepo/apps/merchant/components/haptic-tab.tsx:2:import { Pressable } from "react-native";
+/opt/delishafrica/monorepo/apps/merchant/components/haptic-tab.tsx:16:    <Pressable onPress={handlePress} style={props.style}>
+/opt/delishafrica/monorepo/apps/merchant/components/haptic-tab.tsx:18:    </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/components/BrandBackground.tsx:11:    <View pointerEvents="box-none" style={styles.root}>
+/opt/delishafrica/monorepo/apps/merchant/components/BrandBackground.tsx:18:      <View pointerEvents="none" style={styles.overlay} />
+/opt/delishafrica/monorepo/apps/merchant/components/BrandBackground.tsx:19:      <View pointerEvents="box-none" style={styles.content}>{children}</View>
+/opt/delishafrica/monorepo/apps/merchant/components/MagicButton.tsx:2:import { Animated, Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
+/opt/delishafrica/monorepo/apps/merchant/components/MagicButton.tsx:25:    <Pressable onPress={onPress} onPressIn={down} onPressOut={up}>
+/opt/delishafrica/monorepo/apps/merchant/components/MagicButton.tsx:29:    </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/index.tsx:4:  Pressable,
+/opt/delishafrica/monorepo/apps/merchant/index.tsx:282:              <Pressable
+/opt/delishafrica/monorepo/apps/merchant/index.tsx:301:              </Pressable>
+/opt/delishafrica/monorepo/apps/merchant/src/ui/SnowOverlay.tsx:59:    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+/opt/delishafrica/monorepo/apps/merchant/src/ui/SnowOverlay.tsx:72:          <Animated.View pointerEvents="none"
+
+>>> Tip: cherche un wrapper plein écran (flex:1) autour d’un ScrollView/FlatList.
+

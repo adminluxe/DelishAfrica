@@ -1,0 +1,23 @@
+import { ExpoConfig } from 'expo/config';
+
+const config: ExpoConfig = {
+  name: 'DelishAfrica - Client',
+  slug: 'delishafrica-client',
+  owner: 'delishafrica',
+  scheme: 'delishafrica.client',
+  icon: './assets/icon.png',
+  splash: {
+    image: './assets/splash.png',
+    resizeMode: 'contain',
+    backgroundColor: '#ffffff',
+  },
+  extra: {
+    EXPO_PUBLIC_API_URL: 'https://api.delishafrica.me',
+    eas: {
+      projectId: 'b63a37af-f832-4c16-bc10-3f384d5ea2b3',
+    },
+  },
+  plugins: ['expo-router', 'expo-secure-store'],
+};
+
+export default config;

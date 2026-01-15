@@ -1,0 +1,16 @@
+import { ConfigContext, ExpoConfig } from 'expo/config';
+
+export default ({ config }: ConfigContext): ExpoConfig => ({
+  name: 'DelishAfrica Courier',
+  slug: 'courier',
+  scheme: 'delishcourier',
+  owner: 'delishafrica', // ton username Expo (sans espace)
+  platforms: ['ios','android'],
+  ios: { bundleIdentifier: 'me.delishafrica.courier' },
+  android: { package: 'me.delishafrica.courier' },
+  extra: {
+    eas: { projectId: 'ab6e7dc9-664e-421c-a54a-10489f71bee9' },
+    API_BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.delishafrica.me',
+    USE_DEV_MOCKS: process.env.EXPO_PUBLIC_USE_DEV_MOCKS || 'true',
+  },
+});

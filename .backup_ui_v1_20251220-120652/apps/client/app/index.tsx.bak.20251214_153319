@@ -1,0 +1,259 @@
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "expo-router";
+import Constants from "expo-constants";
+import {
+  ActivityIndicator,
+  FlatList,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  Text,
+  View,
+  RefreshControl,
+} from "react-native";
+
+const API =
+  process.env.EXPO_PUBLIC_API_URL ||
+  (Constants.expoConfig?.extra as any)?.EXPO_PUBLIC_API_URL ||
+  "https://api.delishafrica.me";
+
+type Partner = {
+  slug: string;
+  name: string;
+  city?: string;
+  cuisine?: string;
+  rating?: number;
+  description?: string;
+  address?: string;
+};
+
+const FALLBACK: Partner[] = [
+  {
+    slug: "thieyp",
+    name: "Thieyp",
+    city: "Bruxelles",
+    cuisine: "Sénégalais",
+    rating: 4.8,
+    description: "Restaurant démo — parcours commande grandeur nature.",
+    address: "Bruxelles",
+  },
+  { slug: "afrosian", name: "Afrosian", city: "Bruxelles", cuisine: "Afro-asiatique", rating: 4.6 },
+  { slug: "toukoul", name: "Toukoul", city: "Bruxelles", cuisine: "Éthiopien", rating: 4.7 },
+];
+
+async function checkHealth(paths: string[]) {
+  let lastErr: any = null;
+  for (const p of paths) {
+    try {
+      const r = await fetch(`${API}${p}`, { method: "GET" });
+      if (r.ok) return { ok: true, path: p, status: r.status };
+      lastErr = new Error(`HTTP ${r.status} on ${p}`);
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  return { ok: false, path: paths.join(" | "), status: undefined as any, err: String(lastErr?.message ?? lastErr ?? "unknown") };
+}
+
+async function fetchFirstOkJson(paths: string[]) {
+  let lastErr: any = null;
+  for (const p of paths) {
+    try {
+      const r = await fetch(`${API}${p}`, { method: "GET" });
+      if (!r.ok) throw new Error(`HTTP ${r.status} on ${p}`);
+      const j = await r.json();
+      return { data: j, path: p };
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr ?? new Error("No endpoint succeeded");
+}
+
+function Chip({ label, tone }: { label: string; tone: "ok" | "warn" | "bad" | "info" }) {
+  const bg =
+    tone === "ok"
+      ? "#052E1A"
+      : tone === "bad"
+      ? "#3B0A0A"
+      : tone === "warn"
+      ? "#3A2A05"
+      : "#0B2A4A";
+  const border =
+    tone === "ok"
+      ? "#14532D"
+      : tone === "bad"
+      ? "#7F1D1D"
+      : tone === "warn"
+      ? "#854D0E"
+      : "#1F2937";
+  const fg =
+    tone === "ok"
+      ? "#86EFAC"
+      : tone === "bad"
+      ? "#FCA5A5"
+      : tone === "warn"
+      ? "#FDE68A"
+      : "#93C5FD";
+
+  return (
+    <View
+      style={{
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 999,
+        backgroundColor: bg,
+        borderWidth: 1,
+        borderColor: border,
+      }}
+    >
+      <Text style={{ color: fg, fontWeight: "900", fontSize: 12 }}>{label}</Text>
+    </View>
+  );
+}
+
+export default function Home() {
+  const [healthOk, setHealthOk] = useState<"ok" | "nok" | "…">("…");
+  const [healthPath, setHealthPath] = useState<string>("");
+  const [healthErr, setHealthErr] = useState<string>("");
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [partnersPath, setPartnersPath] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const iosHttpBlocked = useMemo(() => Platform.OS === "ios" && API.startsWith("http://"), []);
+
+  const featured = useMemo(() => {
+    const src = partners.length ? partners : FALLBACK;
+    return src.find((p) => p.slug === "thieyp") ?? FALLBACK[0];
+  }, [partners]);
+
+  const list = useMemo(() => {
+    const src = partners.length ? partners : FALLBACK;
+    return src.filter((p) => p.slug !== "thieyp");
+  }, [partners]);
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+
+    const h = await checkHealth(["/api/health", "/health"]);
+    setHealthOk(h.ok ? "ok" : "nok");
+    setHealthPath(h.path);
+    setHealthErr(h.ok ? "" : (h.err ?? ""));
+
+    try {
+      const r = await fetchFirstOkJson(["/api/partners", "/partners"]);
+      const j = r.data;
+      const items: Partner[] = Array.isArray(j) ? j : (j.items ?? j.partners ?? []);
+      setPartners(items);
+      setPartnersPath(r.path);
+    } catch {
+      setPartners([]);
+      setPartnersPath("/api/partners | /partners");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadAll();
+    setRefreshing(false);
+  }, [loadAll]);
+
+  return (
+    <SafeAreaView style={{ flex: 1 }}>
+      <View style={{ position: "absolute", top: -120, left: -80, width: 320, height: 320, borderRadius: 999, backgroundColor: "#0B2A4A", opacity: 0.35 }} />
+      <View style={{ position: "absolute", top: 140, right: -120, width: 360, height: 360, borderRadius: 999, backgroundColor: "#1F2937", opacity: 0.35 }} />
+
+      <View style={{ flex: 1, padding: 16 }}>
+        <Text style={{ color: "#FFFFFF", fontSize: 26, fontWeight: "900" }}>DelishAfrica</Text>
+        <Text style={{ color: "#9CA3AF", marginTop: 6, fontSize: 14 }}>
+          App Client • Mode démo • Test grandeur nature
+        </Text>
+
+        <View style={{ flexDirection: "row", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+          <Chip label={healthOk === "ok" ? "API ONLINE" : healthOk === "nok" ? "API OFFLINE" : "API CHECK…"} tone={healthOk === "ok" ? "ok" : healthOk === "nok" ? "bad" : "warn"} />
+          <Chip label="PARTENAIRE: THIEYP" tone="info" />
+          {Platform.OS === "ios" && API.startsWith("http://") && <Chip label="iOS BLOQUE HTTP → HTTPS" tone="warn" />}
+        </View>
+
+        <View style={{ height: 12 }} />
+
+        <View style={{ backgroundColor: "#0B1220", borderRadius: 18, padding: 14, borderWidth: 1, borderColor: "#1F2937" }}>
+          <Text style={{ color: "#E5E7EB", fontWeight: "900", fontSize: 14 }}>Connexion</Text>
+          <Text style={{ color: "#9CA3AF", marginTop: 6, fontSize: 12 }}>API: {API}</Text>
+          <Text style={{ color: healthOk === "ok" ? "#86EFAC" : "#FCA5A5", marginTop: 6, fontSize: 12 }}>
+            Health: {healthOk} ({healthPath})
+          </Text>
+          {!!healthErr && (
+            <Text style={{ color: "#FCA5A5", marginTop: 6, fontSize: 12 }}>
+              Erreur: {healthErr}
+            </Text>
+          )}
+          <Text style={{ color: "#9CA3AF", marginTop: 6, fontSize: 12 }}>
+            Partners endpoint: {partnersPath || "—"}
+          </Text>
+
+          <View style={{ height: 10 }} />
+
+          <Pressable
+            onPress={loadAll}
+            style={{
+              alignSelf: "flex-start",
+              backgroundColor: "#111827",
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: "#1F2937",
+            }}
+          >
+            <Text style={{ color: "#93C5FD", fontWeight: "900" }}>↻ Rafraîchir</Text>
+          </Pressable>
+        </View>
+
+        <View style={{ height: 14 }} />
+
+        <Link href={`/partner/${featured.slug}`} asChild>
+          <Pressable style={{ backgroundColor: "#0B1220", borderRadius: 18, padding: 16, borderWidth: 1, borderColor: "#1F2937" }}>
+            <Text style={{ color: "#FDE68A", fontSize: 13, fontWeight: "900" }}>★ Partenaire mis en avant</Text>
+            <Text style={{ color: "#FFFFFF", marginTop: 8, fontSize: 20, fontWeight: "900" }}>{featured.name}</Text>
+            <Text style={{ color: "#9CA3AF", marginTop: 4 }}>
+              {featured.city ?? "Bruxelles"} • {featured.cuisine ?? "Cuisine"} {featured.rating ? `• ⭐ ${featured.rating}` : ""}
+            </Text>
+            <Text style={{ color: "#93C5FD", marginTop: 12, fontWeight: "900" }}>Ouvrir la fiche →</Text>
+          </Pressable>
+        </Link>
+
+        <View style={{ height: 14 }} />
+
+        <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "900", marginBottom: 10 }}>Autres partenaires</Text>
+
+        {loading && <ActivityIndicator style={{ marginBottom: 10 }} />}
+
+        <FlatList
+          data={list}
+          keyExtractor={(item) => item.slug}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+          renderItem={({ item }) => (
+            <Link href={`/partner/${item.slug}`} asChild>
+              <Pressable style={{ backgroundColor: "#0B1220", borderRadius: 16, padding: 14, borderWidth: 1, borderColor: "#1F2937" }}>
+                <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "900" }}>{item.name}</Text>
+                <Text style={{ color: "#9CA3AF", marginTop: 4 }}>
+                  {item.city ?? "Bruxelles"} • {item.cuisine ?? "Cuisine"} {item.rating ? `• ⭐ ${item.rating}` : ""}
+                </Text>
+              </Pressable>
+            </Link>
+          )}
+          ListFooterComponent={<View style={{ height: 24 }} />}
+        />
+      </View>
+    </SafeAreaView>
+  );
+}

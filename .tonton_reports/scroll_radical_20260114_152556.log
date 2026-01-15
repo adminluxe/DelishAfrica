@@ -1,0 +1,39 @@
+🧨 TONTON SCROLL RADICAL FIX
+Root:   /opt/delishafrica/monorepo
+Backup: /opt/delishafrica/monorepo/.tonton_backups/scroll_radical_20260114_152556
+Report: /opt/delishafrica/monorepo/.tonton_reports/scroll_radical_20260114_152556.log
+
+============================================================
+1) Neutraliser TouchTrace (NOOP) — suspect #1
+============================================================
+TouchTrace candidates: 3
+/opt/delishafrica/monorepo/apps/client/ui/_debug/TouchTrace.tsx
+/opt/delishafrica/monorepo/apps/courier/ui/_debug/TouchTrace.tsx
+/opt/delishafrica/monorepo/apps/merchant/ui/_debug/TouchTrace.tsx
+
+➡️ Patch TouchTrace -> NOOP : /opt/delishafrica/monorepo/apps/client/ui/_debug/TouchTrace.tsx
+➡️ Patch TouchTrace -> NOOP : /opt/delishafrica/monorepo/apps/courier/ui/_debug/TouchTrace.tsx
+➡️ Patch TouchTrace -> NOOP : /opt/delishafrica/monorepo/apps/merchant/ui/_debug/TouchTrace.tsx
+
+============================================================
+2) Désactiver les 'responder blockers' globaux (=> false)
+   (hors whitelist: Signature/Map/Camera/Scanner)
+============================================================
+Responder-blocker files: 0
+
+
+
+============================================================
+3) Patch classique RN: contentContainerStyle flex:1 -> flexGrow:1
+============================================================
+flex->flexGrow files: 0
+
+
+
+✅ DONE
+Backup: /opt/delishafrica/monorepo/.tonton_backups/scroll_radical_20260114_152556
+Report: /opt/delishafrica/monorepo/.tonton_reports/scroll_radical_20260114_152556.log
+
+NEXT:
+  1) Redémarre les metros CLEAN (voir commandes ci-dessous)
+  2) Sur iPhone: swipe-close COMPLET des 3 apps puis re-scan QR

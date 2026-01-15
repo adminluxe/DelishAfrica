@@ -1,0 +1,26 @@
+import { ExpoConfig } from 'expo/config';
+
+const config: ExpoConfig = {
+  name: 'DelishAfrica - Merchant',
+  slug: 'delishafrica-merchant',
+  owner: 'delishafrica',
+  scheme: 'delishafrica.merchant',
+  icon: './assets/icon.png',
+  splash: {
+    image: './assets/splash.png',
+    resizeMode: 'contain',
+    backgroundColor: '#ffffff',
+  },
+  extra: {
+    EXPO_PUBLIC_API_URL: 'https://api.delishafrica.me',
+    eas: {
+      projectId: '394e7d6f-559b-4536-81a9-fbc0cdb0c68f',
+    },
+  },
+  ios: {
+    bundleIdentifier: 'me.delishafrica.merchant',
+  },
+  plugins: ['expo-router', 'expo-secure-store', 'expo-web-browser'],
+};
+
+export default config;

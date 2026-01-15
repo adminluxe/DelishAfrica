@@ -1,0 +1,46 @@
+=== Scroll Fix After Probe ===
+Date: Tue Jan 13 06:36:36 CET 2026
+Backup: /opt/delishafrica/monorepo/.tonton_backups/scroll_fix_after_probe_20260113_063635
+
+client patched: apps/client/app/(tabs)/index.tsx
+client patched: apps/client/app/index.tsx
+client patched: apps/client/app/thieyp-demo.tsx
+client patched: apps/client/app/demo-thieyp.tsx
+client patched: apps/client/app/partner/[slug].tsx
+client patched: apps/client/app/restaurant/[id].tsx
+client patched: apps/client/app/restaurants/index.tsx
+client patched: apps/client/app/_debug-scroll.tsx
+client patched: apps/client/ui/ui.tsx
+client patched: apps/client/ui/screens/SignatureHomeClient.tsx
+
+client: patched_files=10
+
+courier patched: apps/courier/app/home.tsx
+courier patched: apps/courier/app/(tabs)/index.tsx
+courier patched: apps/courier/app/orders.tsx
+courier patched: apps/courier/app/mission/[id].tsx
+courier patched: apps/courier/app/index.tsx
+courier patched: apps/courier/app/missions/index.tsx
+courier patched: apps/courier/app/thieyp-demo.tsx
+courier patched: apps/courier/app/demo-thieyp.tsx
+courier patched: apps/courier/app/demoMissions.tsx
+courier patched: apps/courier/app/debug.tsx
+courier patched: apps/courier/app/_debug-scroll.tsx
+courier patched: apps/courier/ui/ui.tsx
+courier patched: apps/courier/ui/screens/SignatureHomeCourier.tsx
+
+courier: patched_files=13
+
+merchant patched: apps/merchant/app/home.tsx
+merchant patched: apps/merchant/app/orders/index.tsx
+merchant patched: apps/merchant/app/(tabs)/index.tsx
+merchant patched: apps/merchant/app/index.tsx
+merchant patched: apps/merchant/app/commande/[id].tsx
+merchant patched: apps/merchant/app/thieyp-demo.tsx
+merchant patched: apps/merchant/app/demo-thieyp.tsx
+merchant patched: apps/merchant/app/_debug-scroll.tsx
+merchant patched: apps/merchant/ui/ui.tsx
+merchant patched: apps/merchant/ui/screens/SignatureHomeMerchant.tsx
+
+merchant: patched_files=10
+

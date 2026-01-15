@@ -1,0 +1,51 @@
+
+[14:24:41] 🧩 Fix ParallaxScrollView pointerEvents (none -> box-none/auto)
+
+[14:24:41] Backup=/opt/delishafrica/monorepo/.tonton_backups/parallax_pointerevents_20260114_142441
+
+[14:24:41] Report=/opt/delishafrica/monorepo/.tonton_reports/parallax_pointerevents_20260114_142441.log
+
+[14:24:42] 📄 Candidates: 18
+/opt/delishafrica/monorepo/apps/courier/components/parallax-scroll-view.tsx
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/components/parallax-scroll-view.tsx
+/opt/delishafrica/monorepo/apps/merchant/components/parallax-scroll-view.tsx
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/components/parallax-scroll-view.tsx
+/opt/delishafrica/monorepo/apps/merchant/app/(tabs)/explore.tsx
+/opt/delishafrica/monorepo/apps/merchant/app/(tabs)/index.tsx
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/app/(tabs)/explore.tsx
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/app/(tabs)/index.tsx
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/app/(tabs)/explore.tsx
+/opt/delishafrica/monorepo/apps/courier/app/(tabs)/explore.tsx
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/app/(tabs)/index.tsx
+/opt/delishafrica/monorepo/apps/courier/app/(tabs)/index.tsx
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/app/(tabs)/explore.tsx
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/app/(tabs)/index.tsx
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/components/parallax-scroll-view.tsx
+/opt/delishafrica/monorepo/apps/client/components/parallax-scroll-view.tsx
+/opt/delishafrica/monorepo/apps/client/app/(tabs)/explore.tsx
+/opt/delishafrica/monorepo/apps/client/app/(tabs)/index.tsx
+
+[parallax-pointerevents] changed files:
+  - /opt/delishafrica/monorepo/apps/courier/components/parallax-scroll-view.tsx
+  - /opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/components/parallax-scroll-view.tsx
+  - /opt/delishafrica/monorepo/apps/merchant/components/parallax-scroll-view.tsx
+  - /opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/components/parallax-scroll-view.tsx
+  - /opt/delishafrica/monorepo/apps/merchant/app/(tabs)/explore.tsx
+  - /opt/delishafrica/monorepo/apps/merchant/app/(tabs)/index.tsx
+  - /opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/app/(tabs)/explore.tsx
+  - /opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/app/(tabs)/index.tsx
+  - /opt/delishafrica/monorepo/apps/courier/delishafrica-client/app/(tabs)/explore.tsx
+  - /opt/delishafrica/monorepo/apps/courier/app/(tabs)/explore.tsx
+  - /opt/delishafrica/monorepo/apps/courier/delishafrica-client/app/(tabs)/index.tsx
+  - /opt/delishafrica/monorepo/apps/courier/app/(tabs)/index.tsx
+  - /opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/app/(tabs)/explore.tsx
+  - /opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/app/(tabs)/index.tsx
+  - /opt/delishafrica/monorepo/apps/courier/delishafrica-client/components/parallax-scroll-view.tsx
+  - /opt/delishafrica/monorepo/apps/client/components/parallax-scroll-view.tsx
+  - /opt/delishafrica/monorepo/apps/client/app/(tabs)/explore.tsx
+  - /opt/delishafrica/monorepo/apps/client/app/(tabs)/index.tsx
+[parallax-pointerevents] total: 18
+
+[14:24:42] ✅ Done.
+
+[14:24:42] 🧯 Rollback (1-liner): rsync -a "/opt/delishafrica/monorepo/.tonton_backups/parallax_pointerevents_20260114_142441/" "/opt/delishafrica/monorepo/"

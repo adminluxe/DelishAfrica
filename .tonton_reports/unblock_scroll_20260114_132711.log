@@ -1,0 +1,20 @@
+
+[13:27:11] 🧷 Unblock scroll: Keyboard.dismiss wrappers + responder capture
+
+[13:27:11] Backup=/opt/delishafrica/monorepo/.tonton_backups/unblock_scroll_20260114_132711
+
+[13:27:11] Report=/opt/delishafrica/monorepo/.tonton_reports/unblock_scroll_20260114_132711.log
+
+[13:27:11] 🔎 Evidence scan (rg)
+/opt/delishafrica/monorepo/apps/courier/components/SignaturePad.tsx:2:import { View, StyleSheet, PanResponder, GestureResponderEvent, PanResponderGestureState, Pressable, Text } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/SignaturePad.tsx:10:  const pan = useMemo(() => PanResponder.create({
+/opt/delishafrica/monorepo/apps/courier/components/SignaturePad.tsx:11:    onStartShouldSetPanResponder: () => true,
+/opt/delishafrica/monorepo/apps/courier/components/SignaturePad.tsx:12:    onPanResponderGrant: (e: GestureResponderEvent) => {
+/opt/delishafrica/monorepo/apps/courier/components/SignaturePad.tsx:17:    onPanResponderMove: (_: GestureResponderEvent, g: PanResponderGestureState) => {
+
+[unblock-scroll] changed files:
+[unblock-scroll] total: 0
+
+[13:27:11] ✅ Done.
+
+[13:27:11] 🧯 Rollback (1-liner): rsync -a "/opt/delishafrica/monorepo/.tonton_backups/unblock_scroll_20260114_132711/" "/opt/delishafrica/monorepo/"

@@ -1,0 +1,16 @@
+import { Controller, Get, Query } from '@nestjs/common';
+import { ProxyDemoOrdersService } from './proxy-demo-orders.service';
+
+@Controller('/api/dispatch')
+export class DispatchHttpController {
+  constructor(private readonly proxy: ProxyDemoOrdersService) {}
+
+  @Get('/active')
+  async active(@Query('partnerSlug') partnerSlug?: string) {
+    // MVP: "active" = first READY order (acts as active mission placeholder)
+    const resp = await this.proxy.listDemoOrders({ partnerSlug, status: 'READY' });
+    const items = resp?.json?.items ?? resp?.json?.orders ?? [];
+    const active = Array.isArray(items) && items.length ? items[0] : null;
+    return { ok: true, active, source: 'demo-orders', http: resp.status };
+  }
+}

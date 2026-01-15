@@ -1,0 +1,26 @@
+import { ExpoConfig } from 'expo/config';
+
+const config: ExpoConfig = {
+  name: 'DelishAfrica - Courier',
+  slug: 'delishafrica-courier',
+  owner: 'delishafrica',
+  scheme: 'delishafrica.courier',
+  icon: './assets/icon.png',
+  splash: {
+    image: './assets/splash.png',
+    resizeMode: 'contain',
+    backgroundColor: '#ffffff',
+  },
+  extra: {
+    EXPO_PUBLIC_API_URL: 'https://api.delishafrica.me',
+    eas: {
+      projectId: '5d1b6b85-9e64-4cc2-9cbe-7d698feccc84',
+    },
+  },
+  ios: {
+    bundleIdentifier: 'me.delishafrica.courier',
+  },
+  plugins: ['expo-router', 'expo-secure-store'],
+};
+
+export default config;

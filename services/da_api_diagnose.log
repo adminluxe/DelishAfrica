@@ -1,0 +1,35 @@
+>>> 1) Vérification du répertoire API attendu
+Répertoire API : $(pwd)
+
+>>> 2) Contenu de src/ (niveau 1) :
+menu
+orders
+thiepy-demo
+
+>>> 3) Fichier src/main.ts (premières lignes) :
+✗ src/main.ts introuvable
+
+>>> 4) Fichier src/app.module.ts (statut + aperçu) :
+Aucun src/app.module.ts dans $(pwd)/src
+
+>>> 5) Recherche de 'AppModule' dans src/ :
+Aucune occurrence de 'AppModule' trouvée dans src/
+
+>>> 6) Tous les fichiers *module.ts détectés dans src/ (profondeur 4) :
+src/thiepy-demo/thiepy-demo.module.ts
+
+>>> 7) Tous les app.module.ts sous /opt/delishafrica (maxdepth 8, avec aperçus courts) :
+
+=== $f ===
+  Aperçu (1-40) :
+
+=== $f ===
+  Aperçu (1-40) :
+
+=== $f ===
+  Aperçu (1-40) :
+
+=== $f ===
+  Aperçu (1-40) :
+
+>>> Diagnostic terminé.

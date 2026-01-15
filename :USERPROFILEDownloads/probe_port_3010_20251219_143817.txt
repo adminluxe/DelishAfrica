@@ -1,0 +1,115 @@
+DelishAfrica - PROBE runtime port 3010
+Timestamp: 2025-12-19T14:38:17+01:00
+Host: srv1037391  User: root
+------------------------------------------------------------
+[A] ss -lntp (IPv4/IPv6) filtered
+State  Recv-Q Send-Q Local Address:Port  Peer Address:PortProcess                                                                                                                                         
+LISTEN 0      511          0.0.0.0:80         0.0.0.0:*    users:(("nginx",pid=2894085,fd=5),("nginx",pid=2894084,fd=5),("nginx",pid=2894083,fd=5),("nginx",pid=2894082,fd=5),("nginx",pid=768,fd=5))     
+LISTEN 0      4096   127.0.0.53%lo:53         0.0.0.0:*    users:(("systemd-resolve",pid=581,fd=15))                                                                                                      
+LISTEN 0      4096         0.0.0.0:22         0.0.0.0:*    users:(("sshd",pid=1961056,fd=3),("systemd",pid=1,fd=89))                                                                                      
+LISTEN 0      511          0.0.0.0:443        0.0.0.0:*    users:(("nginx",pid=2894085,fd=10),("nginx",pid=2894084,fd=10),("nginx",pid=2894083,fd=10),("nginx",pid=2894082,fd=10),("nginx",pid=768,fd=10))
+LISTEN 0      4096      127.0.0.54:53         0.0.0.0:*    users:(("systemd-resolve",pid=581,fd=17))                                                                                                      
+LISTEN 0      511          0.0.0.0:3010       0.0.0.0:*    users:(("node",pid=1485429,fd=20))                                                                                                             
+LISTEN 0      4096       127.0.0.1:4041       0.0.0.0:*    users:(("ngrok",pid=1462578,fd=6))                                                                                                             
+LISTEN 0      4096       127.0.0.1:4040       0.0.0.0:*    users:(("ngrok",pid=1301938,fd=6))                                                                                                             
+LISTEN 0      4096       127.0.0.1:4043       0.0.0.0:*    users:(("ngrok",pid=1509478,fd=6))                                                                                                             
+LISTEN 0      4096       127.0.0.1:4042       0.0.0.0:*    users:(("ngrok",pid=1509105,fd=6))                                                                                                             
+LISTEN 0      4096       127.0.0.1:20241      0.0.0.0:*    users:(("cloudflared",pid=3382531,fd=3))                                                                                                       
+LISTEN 0      80         127.0.0.1:3306       0.0.0.0:*    users:(("mariadbd",pid=32751,fd=24))                                                                                                           
+LISTEN 0      200        127.0.0.1:5432       0.0.0.0:*    users:(("postgres",pid=2440208,fd=7))                                                                                                          
+LISTEN 0      4096         0.0.0.0:5433       0.0.0.0:*    users:(("docker-proxy",pid=579918,fd=7))                                                                                                       
+LISTEN 0      4096         0.0.0.0:6379       0.0.0.0:*    users:(("docker-proxy",pid=579888,fd=7))                                                                                                       
+LISTEN 0      4096            [::]:22            [::]:*    users:(("sshd",pid=1961056,fd=4),("systemd",pid=1,fd=90))                                                                                      
+LISTEN 0      200            [::1]:5432          [::]:*    users:(("postgres",pid=2440208,fd=6))                                                                                                          
+LISTEN 0      4096               *:20242            *:*    users:(("cloudflared",pid=16852,fd=6))                                                                                                         
+LISTEN 0      4096               *:20243            *:*    users:(("cloudflared",pid=16831,fd=6))                                                                                                         
+LISTEN 0      4096            [::]:5433          [::]:*    users:(("docker-proxy",pid=579925,fd=7))                                                                                                       
+LISTEN 0      4096            [::]:6379          [::]:*    users:(("docker-proxy",pid=579896,fd=7))                                                                                                       
+LISTEN 0      511                *:8082             *:*    users:(("node",pid=1508881,fd=22))                                                                                                             
+LISTEN 0      511                *:8083             *:*    users:(("node",pid=1508301,fd=22))                                                                                                             
+LISTEN 0      511                *:8081             *:*    users:(("node",pid=1462479,fd=22))                                                                                                             
+------------------------------------------------------------
+[B] lsof listeners (if available)
+COMMAND     PID USER   FD   TYPE    DEVICE SIZE/OFF NODE NAME
+node    1485429 root   20u  IPv4 115476377      0t0  TCP *:3010 (LISTEN)
+------------------------------------------------------------
+[C] Docker check (containers exposing 3010)
+NAMES                        CONTAINER ID   PORTS                                         IMAGE
+delish-redis                 7a8bdd443764   0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp   redis:7
+delish-db                    e70a68c04b1e   0.0.0.0:5433->5432/tcp, [::]:5433->5432/tcp   postgres:15
+delishafrica-db-1            40e4e4ee08f3   5432/tcp                                      postgres:16-alpine
+delishafrica-redis-1         5e0e8bfbe61b   6379/tcp                                      redis:7-alpine
+delish-cf                    89242feeacc4                                                 cloudflare/cloudflared:latest
+delish-tunnel                3aded49ca2f8                                                 c3213692eff0
+delishafrica-cloudflared-1   37c49e175332                                                 c3213692eff0
+------------------------------------------------------------
+Docker port mapping hits:
+No container shows 3010 in docker ps Ports
+------------------------------------------------------------
+[D] Resolve host PID(s) listening on 3010
+Host PID(s): 1485429
+------------------------------------------------------------
+[PID 1485429] identity
+1485429 1485427    2471 node --enable-source-maps /opt/delishafrica/monorepo/services/api-nest/dist/main
+[PID 1485429] cwd
+/opt/delishafrica/monorepo/services/api-nest
+[PID 1485429] exe
+/usr/bin/node
+[PID 1485429] cmdline (null-separated -> spaced)
+node --enable-source-maps /opt/delishafrica/monorepo/services/api-nest/dist/main ------------------------------------------------------------
+[PID 1485429] env hints (PORT/NODE_ENV/WORKDIR snippets)
+DATABASE_URL=postgresql://postgres:postgres@172.18.0.7:5432/delish?schema=public
+PWD=/opt/delishafrica/monorepo/services/api-nest
+------------------------------------------------------------
+[PID 1485429] open TCP sockets (brief)
+total 0
+lrwx------ 1 root root 64 Dec 19 14:07 0 -> /dev/pts/31
+lrwx------ 1 root root 64 Dec 19 13:57 1 -> /dev/pts/31
+lr-x------ 1 root root 64 Dec 19 14:07 10 -> pipe:[115477103]
+l-wx------ 1 root root 64 Dec 19 14:07 11 -> pipe:[115477103]
+lrwx------ 1 root root 64 Dec 19 14:07 12 -> anon_inode:[eventfd]
+lrwx------ 1 root root 64 Dec 19 14:07 13 -> anon_inode:[eventpoll]
+lr-x------ 1 root root 64 Dec 19 14:07 14 -> pipe:[115474253]
+l-wx------ 1 root root 64 Dec 19 14:07 15 -> pipe:[115474253]
+lrwx------ 1 root root 64 Dec 19 14:07 16 -> anon_inode:[eventfd]
+lrwx------ 1 root root 64 Dec 19 14:07 17 -> /dev/pts/31
+lr-x------ 1 root root 64 Dec 19 14:07 18 -> /dev/null
+lrwx------ 1 root root 64 Dec 19 14:07 19 -> /dev/pts/31
+lrwx------ 1 root root 64 Dec 19 13:57 2 -> /dev/pts/31
+lrwx------ 1 root root 64 Dec 19 14:07 20 -> socket:[115476377]
+lrwx------ 1 root root 64 Dec 19 14:07 3 -> anon_inode:[eventpoll]
+lr-x------ 1 root root 64 Dec 19 14:07 4 -> pipe:[115475245]
+l-wx------ 1 root root 64 Dec 19 14:07 5 -> pipe:[115475245]
+lr-x------ 1 root root 64 Dec 19 14:07 6 -> pipe:[115475246]
+l-wx------ 1 root root 64 Dec 19 14:07 7 -> pipe:[115475246]
+lrwx------ 1 root root 64 Dec 19 14:07 8 -> anon_inode:[eventfd]
+lrwx------ 1 root root 64 Dec 19 14:07 9 -> anon_inode:[eventpoll]
+------------------------------------------------------------
+[PID 1485429] systemd unit (if any)
+● user@0.service - User Manager for UID 0
+     Loaded: loaded (/usr/lib/systemd/system/user@.service; static)
+    Drop-In: /usr/lib/systemd/system/user@0.service.d
+             └─10-login-barrier.conf
+             /usr/lib/systemd/system/user@.service.d
+             └─timeout.conf
+     Active: active (running) since Mon 2025-11-10 21:26:34 CET; 1 month 8 days ago
+       Docs: man:user@.service(5)
+   Main PID: 8792 (systemd)
+     Status: "Ready."
+      Tasks: 296
+     Memory: 3.6G (peak: 8.3G)
+        CPU: 1d 3h 24min 57.049s
+     CGroup: /user.slice/user-0.slice/user@0.service
+             ├─init.scope
+             │ ├─8792 /usr/lib/systemd/systemd --user
+             │ └─8793 "(sd-pam)"
+             ├─session.slice
+             │ └─dbus.service
+             │   └─14537 /usr/bin/dbus-daemon --session --address=systemd: --nofork --nopidfile --systemd-activation --syslog-only
+             ├─tmux-spawn-0ec2f793-5344-49e2-9d29-2e86bafba656.scope
+             │ └─3370383 -bash
+             ├─tmux-spawn-104b1a79-1dea-4c6a-8d84-3c909f67b2cb.scope
+             │ └─3382608 -bash
+             ├─tmux-spawn-186f793b-ae83-442e-b669-f26455ddb222.scope
+------------------------------------------------------------
+Report: /root/da_reports/probe_port_3010_20251219_143817.txt

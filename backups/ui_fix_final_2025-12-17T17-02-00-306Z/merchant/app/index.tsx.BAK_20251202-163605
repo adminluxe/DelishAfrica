@@ -1,0 +1,89 @@
+import React, { useEffect, useState } from "react";
+import {
+  SafeAreaView,
+  Text,
+  ScrollView,
+  View,
+  RefreshControl,
+  ActivityIndicator,
+} from "react-native";
+
+const API = process.env.EXPO_PUBLIC_API_URL ?? "https://api.delishafrica.me";
+
+export default function MerchantHome() {
+  const [loading, setLoading] = useState(true);
+  const [health, setHealth] = useState("unknown");
+  const [thieyp, setThieyp] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function reload() {
+    setRefreshing(true);
+    try {
+      const [h, t] = await Promise.all([
+        fetch(`${API}/api/health`).then((r) => r.json()),
+        fetch(`${API}/api/partners/thieyp`).then((r) => r.json()),
+      ]);
+
+      setHealth(h?.status ?? "nok");
+      setThieyp(t ?? null);
+    } catch (e) {
+      setHealth("nok");
+    }
+    setLoading(false);
+    setRefreshing(false);
+  }
+
+  useEffect(() => reload(), []);
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0a0f18" }}>
+      <ScrollView
+        contentContainerStyle={{ padding: 16 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={reload} />
+        }
+      >
+        <Text style={{ fontSize: 24, fontWeight: "800", color: "#F97316" }}>
+          DelishAfrica – Merchant
+        </Text>
+
+        <Text style={{ color: "white", marginTop: 8 }}>API: {API}</Text>
+
+        <Text
+          style={{
+            color: health === "ok" ? "#22c55e" : "#ef4444",
+            marginTop: 8,
+            fontWeight: "700",
+          }}
+        >
+          Health: {health}
+        </Text>
+
+        {loading && (
+          <ActivityIndicator style={{ marginTop: 20 }} color="#F97316" />
+        )}
+
+        {thieyp && (
+          <View
+            style={{
+              padding: 16,
+              marginTop: 20,
+              borderRadius: 12,
+              backgroundColor: "#1e2635",
+            }}
+          >
+            <Text style={{ color: "#9ca3af" }}>Restaurant connecté</Text>
+            <Text
+              style={{ color: "white", fontSize: 20, fontWeight: "700" }}
+            >
+              {thieyp.name}
+            </Text>
+            <Text style={{ color: "#d1d5db", marginTop: 8 }}>
+              {thieyp.description}
+            </Text>
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}

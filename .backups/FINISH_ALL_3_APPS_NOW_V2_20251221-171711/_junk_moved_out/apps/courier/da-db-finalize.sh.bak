@@ -1,0 +1,53 @@
+# === da-db-finalize.sh ===
+set -euo pipefail
+
+COMPOSE_DIR="/opt/delishafrica/monorepo"
+API_DIR="/opt/delishafrica/monorepo/services/api"
+DB_NAME="delish"
+DB_USER="postgres"
+DB_PASS="postgres"          # <-- tu peux changer après coup
+DB_PORT="5432"
+
+echo "1) DB up…"
+cd "$COMPOSE_DIR"
+docker compose up -d db >/dev/null
+
+CID="$(docker compose ps -q db)"
+[ -n "$CID" ] || { echo "✖ conteneur 'db' introuvable"; exit 1; }
+
+DB_HOST="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$CID")"
+echo "   → DB @ ${DB_HOST}:${DB_PORT}"
+
+echo "2) (Ré)initialiser mot de passe + DB '${DB_NAME}'…"
+docker exec -T "$CID" psql -U postgres -v ON_ERROR_STOP=1 -c "ALTER USER postgres WITH PASSWORD '${DB_PASS}';"
+docker exec -T "$CID" psql -U postgres -v ON_ERROR_STOP=1 -tc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" | grep -q 1 \
+  || docker exec -T "$CID" psql -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE ${DB_NAME} OWNER postgres;"
+
+echo "3) Poser DATABASE_URL (session + persistant + .env)…"
+DB_URL="postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public"
+export DATABASE_URL="$DB_URL"
+echo "export DATABASE_URL='${DB_URL}'" >/etc/profile.d/delishafrica-db.sh
+echo "DATABASE_URL='${DB_URL}'" > "${API_DIR}/.env"
+echo "   → $DB_URL"
+
+echo "4) Prisma generate + (re)build + restart PM2…"
+cd "$API_DIR"
+pnpm install --silent || true
+pnpm prisma generate || npx prisma generate || true
+pnpm build || true
+
+if pm2 describe delish-api >/dev/null 2>&1; then
+  pm2 restart delish-api --update-env
+else
+  if [ -f "dist/main.js" ]; then
+    DATABASE_URL="$DB_URL" pm2 start "node dist/main.js" --name delish-api
+  else
+    DATABASE_URL="$DB_URL" pm2 start "pnpm start:prod" --name delish-api
+  fi
+fi
+sleep 2
+
+echo "5) Tests santé"
+echo "→ local (:4001)";    curl -sf http://127.0.0.1:4001/api/health && echo " (OK)"
+echo "→ nginx local https"; curl -skI -H "Host: api.delishafrica.me" https://127.0.0.1/api/health | head -n1
+echo "→ public CF";        curl -svo /dev/null https://api.delishafrica.me/api/health 2>&1 | sed -n '1,12p'; echo; curl -s https://api.delishafrica.me/api/health && echo

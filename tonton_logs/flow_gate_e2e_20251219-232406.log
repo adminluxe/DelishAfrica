@@ -1,0 +1,22 @@
+[23:24:06] == FLOW GATE E2E ==
+[23:24:06] BASE=http://127.0.0.1:3010
+[23:24:06] LOG=/opt/delishafrica/monorepo/tonton_logs/flow_gate_e2e_20251219-232406.log
+[23:24:06] [1] health
+{"status":"ok"}
+[23:24:06] [2] create demo order
+{"ok":true,"order":{"id":"demo_mjdfs8p3_xn58ah","partnerSlug":"thieyp","status":"pending","items":[],"totals":{"itemsCount":0,"amount":0,"currency":"EUR"},"createdAt":"2025-12-19T22:24:06.663Z","updatedAt":"2025-12-19T22:24:06.663Z","timeline":[{"at":"2025-12-19T22:24:06.663Z","status":"pending","note":"created"}]}}
+
+[23:24:06] orderId=demo_mjdfs8p3_xn58ah
+[23:24:06] [3] set READY
+{"ok":false,"error":"not_found"}
+
+[23:24:06] [4] probe READY list (best effort)
+[]
+[23:24:06] [5] probe missions/dispatch endpoints (best effort)
+[23:24:06] ℹ️ /api/missions not available
+[23:24:06] ✅ /api/v1/missions exists:
+{"ok":true,"items":[{"id":"demo_mjdfs8p3_xn58ah","partnerSlug":"thieyp","status":"pending","items":[],"totals":{"itemsCount":0,"amount":0,"currency":"EUR"},"createdAt":"2025-12-19T22:24:06.663Z","updatedAt":"2025-12-19T22:24:06.663Z","timeline":[{"at":"2025-12-19T22:24:06.663Z","status":"pending","note":"created"}]}],"source":"demo-orders","http":201}
+[23:24:06] ℹ️ /api/dispatch/active not available
+[23:24:06] ✅ /api/v1/dispatch/active exists:
+{"ok":true,"active":{"id":"demo_mjdfs8p3_xn58ah","partnerSlug":"thieyp","status":"pending","items":[],"totals":{"itemsCount":0,"amount":0,"currency":"EUR"},"createdAt":"2025-12-19T22:24:06.663Z","updatedAt":"2025-12-19T22:24:06.663Z","timeline":[{"at":"2025-12-19T22:24:06.663Z","status":"pending","note":"created"}]},"source":"demo-orders","http":201}
+[23:24:06] ✅ FLOW GATE DONE

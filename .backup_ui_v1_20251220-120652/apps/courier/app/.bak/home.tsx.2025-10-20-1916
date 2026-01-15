@@ -1,0 +1,190 @@
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator, Alert, FlatList, ImageBackground,
+  Pressable, RefreshControl, SafeAreaView, StyleSheet, Text, View,
+} from 'react-native';
+import Constants from 'expo-constants';
+import * as Location from 'expo-location';
+import ConfettiBurst from '../components/ConfettiBurst';
+import JobCard from '../components/JobCard';
+
+type Job = {
+  id: string;
+  title?: string;
+  pickupAddress?: string;
+  dropoffAddress?: string;
+  distanceKm?: number;
+  reward?: number;
+  pickup?: { lat: number; lng: number } | null;
+  dropoff?: { lat: number; lng: number } | null;
+};
+
+// Fond “routes & pins”
+const BG_TILE = {
+  uri: 'data:image/svg+xml;base64,' +
+    btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40">
+    <rect width="40" height="40" fill="#f4f5f5"/>
+    <path d="M0 20 H40 M20 0 V40" stroke="#d6dde1" stroke-width="1"/>
+    <circle cx="20" cy="20" r="2" fill="#1e40af"/>
+    <circle cx="0" cy="20" r="2" fill="#0f766e"/>
+    <circle cx="40" cy="20" r="2" fill="#b45309"/>
+  </svg>`)
+};
+
+export default function CourierHome() {
+  const EXTRA = (Constants?.expoConfig as any)?.extra || {};
+  const API: string = EXTRA.API_BASE_URL || 'https://api.delishafrica.me';
+
+  const [online, setOnline] = useState(false);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [confetti, setConfetti] = useState(false);
+
+  // Demande la permission de localisation (utile pour l'étape “navigation”)
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          console.log('Location permission denied');
+        }
+      } catch {}
+    })();
+  }, []);
+
+  const parseJobs = (data: any): Job[] => {
+    // API: { items: [...] } ; fallback: { jobs: [...] } ou array direct
+    const arr = Array.isArray(data) ? data : (data?.items || data?.jobs || []);
+    return arr.map((j: any) => ({
+      id: j.id,
+      title: j.title,
+      pickupAddress: j.pickup?.address ?? j.pickupAddress ?? j.pickup_addr,
+      dropoffAddress: j.dropoff?.address ?? j.dropoffAddress ?? j.dropoff_addr,
+      distanceKm: j.distanceKm ?? j.distance_km,
+      reward: j.reward ?? j.payout,
+      pickup: j.pickup?.lat ? { lat: j.pickup.lat, lng: j.pickup.lng } : null,
+      dropoff: j.dropoff?.lat ? { lat: j.dropoff.lat, lng: j.dropoff.lng } : null,
+    }));
+  };
+
+  const fetchJobs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await fetch(`${API}/api/couriers/jobs/available`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+      setJobs(parseJobs(data));
+    } catch (e: any) {
+      Alert.alert('Erreur', `Impossible de charger les missions (${e?.message || e})`);
+    } finally { setLoading(false); }
+  }, [API]);
+
+  useEffect(() => { if (online) fetchJobs(); }, [online, fetchJobs]);
+
+  const onRefresh = useCallback(async () => { setRefreshing(true); await fetchJobs(); setRefreshing(false); }, [fetchJobs]);
+
+  const acceptJob = useCallback(async (id: string) => {
+    try {
+      const r = await fetch(`${API}/api/couriers/jobs/${id}/accept`, { method: 'POST' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      Alert.alert('Accepté', `Mission ${id} acceptée ✅`);
+      await fetchJobs();
+    } catch (e: any) { Alert.alert('Erreur', `Acceptation impossible (${e?.message || e})`); }
+  }, [API, fetchJobs]);
+
+  const markDelivered = useCallback(async (id: string) => {
+    try {
+      const r = await fetch(`${API}/api/couriers/jobs/${id}/delivered`, { method: 'POST' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      setConfetti(true); setTimeout(() => setConfetti(false), 1100);
+      await fetchJobs();
+    } catch (e: any) { Alert.alert('Erreur', `Clôture impossible (${e?.message || e})`); }
+  }, [API, fetchJobs]);
+
+  const resetDemo = useCallback(async () => {
+    try {
+      const candidates = [
+        `${API}/api/couriers/jobs/reset-demo`,
+        `${API}/api/dev/reset-demo-jobs`,
+      ];
+      let ok = false, last = '';
+      for (const url of candidates) {
+        const r = await fetch(url, { method: 'POST' }).catch((e) => { last = String(e); return null; });
+        if (r && r.ok) { ok = true; break; }
+        if (r) last = await r.text();
+      }
+      if (!ok) throw new Error(last || 'reset failed');
+      Alert.alert('OK', 'Données démo réinitialisées ✅');
+      if (online) fetchJobs();
+    } catch (e: any) {
+      Alert.alert('Reset impossible', String(e?.message || e));
+    }
+  }, [API, online, fetchJobs]);
+
+  const header = useMemo(() => (
+    <View style={styles.header}>
+      <Text style={styles.h1}>DelishAfrica • Coursier</Text>
+      <Text style={styles.h2}>{online ? 'En ligne' : 'Hors ligne'}</Text>
+      <Pressable onPress={() => setOnline(v => !v)} style={[styles.bigBtn, online ? styles.btnOn : styles.btnOff]}>
+        <Text style={styles.bigBtnText}>{online ? 'Se déconnecter' : 'Go Online'}</Text>
+      </Pressable>
+      {__DEV__ && (
+        <Pressable onPress={resetDemo} style={[styles.bigBtn, styles.btnReset]}>
+          <Text style={styles.bigBtnText}>Reset démo (dev)</Text>
+        </Pressable>
+      )}
+    </View>
+  ), [online, resetDemo]);
+
+  return (
+    <ImageBackground source={BG_TILE} resizeMode="repeat" style={{ flex: 1 }}>
+      <SafeAreaView style={styles.container}>
+        {header}
+        {!online ? (
+          <View style={styles.centerBox}><Text style={styles.muted}>Appuie sur “Go Online” pour recevoir des missions.</Text></View>
+        ) : loading ? (
+          <View style={styles.centerBox}><ActivityIndicator /><Text style={styles.muted}>Chargement des missions…</Text></View>
+        ) : (
+          <FlatList
+            data={jobs}
+            keyExtractor={(it) => it.id}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            contentContainerStyle={jobs.length === 0 ? styles.centerList : undefined}
+            ListEmptyComponent={<Text style={styles.muted}>Aucune mission pour le moment.</Text>}
+            renderItem={({ item }) => (
+              <JobCard
+                id={item.id}
+                title={item.title}
+                pickupAddress={item.pickupAddress}
+                dropoffAddress={item.dropoffAddress}
+                distanceKm={item.distanceKm}
+                reward={item.reward}
+                pickup={item.pickup || null}
+                dropoff={item.dropoff || null}
+                onAccept={acceptJob}
+                onDelivered={markDelivered}
+              />
+            )}
+          />
+        )}
+        {confetti && <ConfettiBurst />}
+      </SafeAreaView>
+    </ImageBackground>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, paddingHorizontal: 16 },
+  header: { paddingVertical: 12, gap: 6 },
+  h1: { fontSize: 22, fontWeight: '700' },
+  h2: { fontSize: 14, color: '#1f6f43' },
+  bigBtn: { marginTop: 8, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
+  bigBtnText: { color: 'white', fontSize: 16, fontWeight: '700' },
+  btnOn: { backgroundColor: '#b91c1c' },
+  btnOff: { backgroundColor: '#166534' },
+  btnReset: { backgroundColor: '#4b5563' },
+  centerBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
+  muted: { color: '#555' },
+  centerList: { flexGrow: 1, alignItems: 'center', justifyContent: 'center' },
+});

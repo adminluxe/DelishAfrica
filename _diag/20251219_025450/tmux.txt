@@ -1,0 +1,23 @@
+DA_DEV: 10 windows (created Fri Dec 19 01:21:41 2025) (attached)
+
+DA_DEV:0: shell (1 panes) [113x75] 
+DA_DEV:1: shell (1 panes) [113x75] 
+DA_DEV:2: api (1 panes) [94x57] 
+DA_DEV:3: health (1 panes) [94x57] 
+DA_DEV:4: ports (1 panes) [94x57] 
+DA_DEV:5: client (1 panes) [94x57] 
+DA_DEV:6: merchant (1 panes) [113x75] 
+DA_DEV:7: courier- (1 panes) [94x57] 
+DA_DEV:8: platform (1 panes) [113x75] 
+DA_DEV:9: shell* (1 panes) [94x57] 
+
+DA_DEV:0.0 bash srv1037391 1
+DA_DEV:1.0 bash srv1037391 1
+DA_DEV:2.0 node srv1037391 1
+DA_DEV:3.0 bash srv1037391 1
+DA_DEV:4.0 bash srv1037391 1
+DA_DEV:5.0 bash srv1037391 1
+DA_DEV:6.0 bash srv1037391 1
+DA_DEV:7.0 bash srv1037391 1
+DA_DEV:8.0 bash srv1037391 1
+DA_DEV:9.0 bash srv1037391 1

@@ -1,0 +1,62 @@
+env: load .env.local .env
+env: export EXPO_PUBLIC_API_BASE_URL EXPO_PUBLIC_API_URL NEXT_PUBLIC_API_URL EXPO_PUBLIC_BG_OFF EXPO_PUBLIC_SCROLL_DIAG EXPO_PUBLIC_RESPONDER_SCALPEL EXPO_PUBLIC_LAYOUT_SCALPEL EXPO_PUBLIC_SCROLL_FIX
+Running 17 checks on your project...
+✔ Check for common project setup issues
+✔ Check package.json for common issues
+✔ Check Expo config for common issues
+✔ Check if the project meets version requirements for submission to app stores
+✔ Check for lock file
+✔ Check dependencies for packages that should not be installed directly
+✔ Check for app config fields that may not be synced in a non-CNG project
+✔ Check for issues with Metro config
+✔ Check native tooling versions
+✖ Check that required peer dependencies are installed
+✔ Check npm/yarn versions
+✔ Check Expo config (app.json/ app.config.js) schema
+✖ Check that packages match versions required by installed Expo SDK
+✔ Check that no duplicate dependencies are installed
+✔ Validate packages against React Native Directory package metadata
+✔ Check that native modules do not use incompatible support packages
+✔ Check for legacy global CLI installed locally
+
+15/17 checks passed. 2 checks failed. Possible issues detected:
+
+✖ Check that required peer dependencies are installed
+Missing peer dependency: react-native-gesture-handler
+Required by: @react-navigation/stack
+Advice:
+Install missing required peer dependency with "npx expo install react-native-gesture-handler"
+Your app may crash outside of Expo Go without this dependency. Native module peer dependencies must be installed directly.
+
+✖ Check that packages match versions required by installed Expo SDK
+
+🔧 Patch version mismatches
+package            expected  found    
+expo               ~54.0.31  54.0.23  
+expo-constants     ~18.0.13  18.0.10  
+expo-dev-client    ~6.0.20   6.0.18   
+expo-haptics       ~15.0.8   15.0.7   
+expo-image         ~3.0.11   3.0.10   
+expo-linking       ~8.0.11   8.0.9    
+expo-router        ~6.0.21   6.0.17   
+expo-secure-store  ~15.0.8   15.0.7   
+expo-status-bar    ~3.0.9    3.0.8    
+expo-web-browser   ~15.0.10  15.0.9   
+
+Changelogs:
+- expo-constants → https://github.com/expo/expo/blob/sdk-54/packages/expo-constants/CHANGELOG.md
+- expo-dev-client → https://github.com/expo/expo/blob/sdk-54/packages/expo-dev-client/CHANGELOG.md
+- expo-haptics → https://github.com/expo/expo/blob/sdk-54/packages/expo-haptics/CHANGELOG.md
+- expo-image → https://github.com/expo/expo/blob/sdk-54/packages/expo-image/CHANGELOG.md
+- expo-linking → https://github.com/expo/expo/blob/sdk-54/packages/expo-linking/CHANGELOG.md
+- expo-router → https://github.com/expo/expo/blob/sdk-54/packages/expo-router/CHANGELOG.md
+- expo-secure-store → https://github.com/expo/expo/blob/sdk-54/packages/expo-secure-store/CHANGELOG.md
+- expo-status-bar → https://github.com/expo/expo/blob/sdk-54/packages/expo-status-bar/CHANGELOG.md
+- expo-web-browser → https://github.com/expo/expo/blob/sdk-54/packages/expo-web-browser/CHANGELOG.md
+
+10 packages out of date.
+Advice:
+Use 'npx expo install --check' to review and upgrade your dependencies.
+To ignore specific packages, add them to "expo.install.exclude" in package.json. Learn more: https://expo.fyi/dependency-validation
+
+2 checks failed, indicating possible issues with the project.

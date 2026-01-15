@@ -1,0 +1,18 @@
+import { Stack } from "expo-router";
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { View } from "react-native";
+
+export default function RootLayout() {
+  return (
+    <View style={{ flex: 1, backgroundColor: "#070A10" }}>
+      <Stack
+        
+      "screenOptions={{ sceneContainerStyle: { flex: 1 }, "
+    
+          headerShown: false,
+          contentStyle: { backgroundColor: "#070A10" },
+        }}
+      />
+    </View>
+  );
+}

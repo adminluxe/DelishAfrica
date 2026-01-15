@@ -1,0 +1,46 @@
+import React, { useEffect, useMemo } from 'react';
+import { View, Animated, Easing, StyleSheet } from 'react-native';
+
+const N = 8;
+export default function ConfettiBurst() {
+  const particles = useMemo(
+    () => Array.from({ length: N }).map(() => ({
+      x: new Animated.Value(0),
+      y: new Animated.Value(0),
+      o: new Animated.Value(1),
+      c: `hsl(${Math.floor(Math.random()*360)},80%,55%)`,
+      dx: (Math.random() * 120 - 60),
+      dy: - (80 + Math.random() * 120),
+      r: 4 + Math.random() * 4,
+    })), []
+  );
+
+  useEffect(() => {
+    particles.forEach((p, i) => {
+      Animated.parallel([
+        Animated.timing(p.x, { toValue: p.dx, duration: 800, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(p.y, { toValue: p.dy, duration: 800, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(p.o, { toValue: 0,   duration: 800, easing: Easing.linear,         useNativeDriver: true }),
+      ]).start();
+    });
+  }, [particles]);
+
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
+      <View style={[StyleSheet.absoluteFillObject, { alignItems:'center', justifyContent:'center' }]}>
+        {particles.map((p, idx) => (
+          <Animated.View
+            key={idx}
+            style={{
+              position:'absolute',
+              width:p.r*2, height:p.r*2, borderRadius:p.r,
+              backgroundColor:p.c,
+              opacity:p.o,
+              transform:[{ translateX:p.x }, { translateY:p.y }],
+            }}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}

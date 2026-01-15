@@ -1,0 +1,42 @@
+=== [DA] Fix SharedArrayBuffer polyfill - Fri Dec 12 01:54:03 CET 2025 ===
+
+>>> App: apps/client
+✅ Créé: /opt/delishafrica/monorepo/apps/client/polyfills.js
+⚠️ Impossible de trouver un entrypoint (index.*) contenant expo-router/entry dans apps/client
+   -> On n'a rien patché pour cette app.
+
+>>> App: apps/courier
+✅ Créé: /opt/delishafrica/monorepo/apps/courier/polyfills.js
+⚠️ Impossible de trouver un entrypoint (index.*) contenant expo-router/entry dans apps/courier
+   -> On n'a rien patché pour cette app.
+
+>>> App: apps/merchant
+✅ Créé: /opt/delishafrica/monorepo/apps/merchant/polyfills.js
+⚠️ Impossible de trouver un entrypoint (index.*) contenant expo-router/entry dans apps/merchant
+   -> On n'a rien patché pour cette app.
+
+=== OK. Prochaine étape ===
+1) Redémarre Metro (client) : cd /opt/delishafrica/monorepo && pnpm client:dev
+2) Sur iPhone : force-quit l'app Client puis relance.
+Logs: /opt/delishafrica/monorepo/da_fix_sharedarraybuffer.log
+=== [DA] Fix SharedArrayBuffer polyfill - Fri Dec 12 09:47:25 CET 2025 ===
+
+>>> App: apps/client
+ℹ️ Déjà présent: /opt/delishafrica/monorepo/apps/client/polyfills.js
+⚠️ Impossible de trouver un entrypoint (index.*) contenant expo-router/entry dans apps/client
+   -> On n'a rien patché pour cette app.
+
+>>> App: apps/courier
+ℹ️ Déjà présent: /opt/delishafrica/monorepo/apps/courier/polyfills.js
+⚠️ Impossible de trouver un entrypoint (index.*) contenant expo-router/entry dans apps/courier
+   -> On n'a rien patché pour cette app.
+
+>>> App: apps/merchant
+ℹ️ Déjà présent: /opt/delishafrica/monorepo/apps/merchant/polyfills.js
+⚠️ Impossible de trouver un entrypoint (index.*) contenant expo-router/entry dans apps/merchant
+   -> On n'a rien patché pour cette app.
+
+=== OK. Prochaine étape ===
+1) Redémarre Metro (client) : cd /opt/delishafrica/monorepo && pnpm client:dev
+2) Sur iPhone : force-quit l'app Client puis relance.
+Logs: /opt/delishafrica/monorepo/da_fix_sharedarraybuffer.log

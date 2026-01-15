@@ -1,0 +1,86 @@
+[23:24:00] === API SUPERVISOR STRICT :3010 ===
+[23:24:00] LOG=/opt/delishafrica/monorepo/tonton_logs/api_3010_20251219-232400.log
+[23:24:00] PIDFILE=/opt/delishafrica/monorepo/tonton_logs/api_3010.pid
+[23:24:00] === KILL HARD port 3010 ===
+[23:24:00] Listeners before:
+[23:24:00] OK: no PID on port 3010
+[23:24:00] OK: no ghost dist/main.js for api-nest
+[23:24:00] Docker containers exposing 3010 (info):
+[23:24:00] Listeners after:
+[23:24:00] === DONE ===
+[23:24:00] Old PIDFILE found: 2149772 -> killing
+[23:24:01] Install deps (best effort, scripts OFF)
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+Done in 1.3s
+[23:24:03] Build API (nest build)
+
+> delishafrica-api-nest@0.0.1 build /opt/delishafrica/monorepo/services/api-nest
+> nest build
+
+[23:24:06] Start API: nohup node dist/main.js
+[23:24:06] PID=2171091
+[23:24:06] Healthcheck loop...
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +8ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mOrdersModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDispatchHttpModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAppController {/api/v1/health}:[39m[38;5;3m +3ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/health, GET} route[39m[38;5;3m +2ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mOrdersController {/api/v1/orders}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/orders/_demo/reset, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/orders, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/orders, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/orders/:id, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/orders/:id/status, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mOrdersController {/api/v1/api/orders}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/api/orders/_demo/reset, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/api/orders, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/api/orders, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/api/orders/:id, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/api/orders/:id/status, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mOrdersDemoController {/api/v1/orders/demo}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/orders/demo/reset, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/orders/demo/health, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mOrdersDemoApiController {/api/v1/api/orders/demo}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/api/orders/demo/reset, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/api/orders/demo/health, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mOrdersDemoV1Controller {/api/v1/api/v1/orders/demo}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/api/v1/orders/demo/reset, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/api/v1/orders/demo/health, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mOrdersDemoFlowController {/api/v1/orders/demo}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/orders/demo/create, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/orders/demo/list, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/orders/demo/get, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/orders/demo/status, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mOrdersDemoFlowApiController {/api/v1/api/orders/demo}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/api/orders/demo/create, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/api/orders/demo/list, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/api/orders/demo/get, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/api/orders/demo/status, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mOrdersDemoFlowUnderscoreController {/api/v1/orders/_demo}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/orders/_demo/create, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/orders/_demo/list, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/orders/_demo/get, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/orders/_demo/status, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mOrdersDemoFlowUnderscoreApiController {/api/v1/api/orders/_demo}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/api/orders/_demo/create, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/api/orders/_demo/list, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/api/orders/_demo/get, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/api/orders/_demo/status, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mDispatchHttpController {/api/v1/dispatch}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/dispatch/active, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mDispatchHttpController {/api/v1/api/dispatch}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/api/dispatch/active, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mMissionsHttpController {/api/v1/missions}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/missions, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mMissionsHttpController {/api/v1/api/missions}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/api/missions, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 2171091  - [39m12/19/2025, 11:24:06 PM [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +1ms[39m
+[API] OK on http://127.0.0.1:3010 (health: /health | /api/health | /api/v1/health)
+[23:24:06] OK /api/health
+[23:24:06] Listeners proof:
+LISTEN 0      511          0.0.0.0:3010       0.0.0.0:*    users:(("node",pid=2171091,fd=18))                                                                                                             
+[23:24:06] === DONE (API should be stable) ===
+[23:24:06] TAIL: tail -n 80 /opt/delishafrica/monorepo/tonton_logs/api_3010_20251219-232400.log

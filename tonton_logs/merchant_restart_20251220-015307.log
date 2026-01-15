@@ -1,0 +1,20 @@
+[01:53:07] === HARD RESTART MERCHANT ===
+[01:53:07] [1] Kill expo/metro (best effort)
+[01:53:08] [2] Free port 8083
+[01:53:08] [3] Clear caches
+[01:53:08] [4] Start (tunnel + clear)
+
+> merchant@1.0.0 dev /opt/delishafrica/monorepo/apps/merchant
+> expo start --dev-client --tunnel --port 8083 "--" "--tunnel" "--port" "8083" "--clear"
+
+env: load .env.local .env
+env: export EXPO_PUBLIC_API_BASE_URL
+Starting project at /opt/delishafrica/monorepo/apps/merchant
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Tunnel connected.
+Tunnel ready.
+Waiting on http://localhost:8083
+Logs for your project will appear below.
+Killed
+ ELIFECYCLE  Command failed with exit code 137.

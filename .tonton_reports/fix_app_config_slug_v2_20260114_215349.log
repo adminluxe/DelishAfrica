@@ -1,0 +1,13 @@
+🧷 Fix app.config.ts (dynamic) v2 -> spread config + slug + projectId env
+Root:   /opt/delishafrica/monorepo
+Backup: /opt/delishafrica/monorepo/.tonton_backups/fix_app_config_slug_v2_20260114_215349
+Report: /opt/delishafrica/monorepo/.tonton_reports/fix_app_config_slug_v2_20260114_215349.log
+
+✅ Wrote: /opt/delishafrica/monorepo/apps/client/app.config.ts (slug=client, env=EAS_PROJECT_ID_CLIENT)
+✅ Wrote: /opt/delishafrica/monorepo/apps/courier/app.config.ts (slug=courier, env=EAS_PROJECT_ID_COURIER)
+✅ Wrote: /opt/delishafrica/monorepo/apps/merchant/app.config.ts (slug=merchant, env=EAS_PROJECT_ID_MERCHANT)
+
+✅ DONE
+Backup: /opt/delishafrica/monorepo/.tonton_backups/fix_app_config_slug_v2_20260114_215349
+Report: /opt/delishafrica/monorepo/.tonton_reports/fix_app_config_slug_v2_20260114_215349.log
+Rollback: rsync -a "/opt/delishafrica/monorepo/.tonton_backups/fix_app_config_slug_v2_20260114_215349/" "/opt/delishafrica/monorepo/"

@@ -1,0 +1,24 @@
+{
+  "id": "thieyp",
+  "slug": "thieyp",
+  "name": "Thieyp",
+  "city": "Ixelles",
+  "country": "BE",
+  "address": {
+    "line1": "Rue Longue Vie 46",
+    "postalCode": "1050",
+    "city": "Ixelles",
+    "country": "Belgium"
+  },
+  "hours": [
+    { "days": ["MON", "TUE", "WED", "THU", "FRI", "SAT"], "open": "12:00", "close": "14:30" },
+    { "days": ["MON", "TUE", "WED", "THU", "FRI", "SAT"], "open": "18:00", "close": "22:00" }
+  ],
+  "contacts": {
+    "phoneE164": "+32493392737",
+    "website": "https://www.thieyp.be",
+    "instagram": "thieypbruxelles"
+  },
+  "tags": ["africain", "sénégalais", "ivoirien", "streetfood"],
+  "notes": "Carte limitée pour assurer la plus grande fraîcheur des plats."
+}

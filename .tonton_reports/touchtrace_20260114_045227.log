@@ -1,0 +1,12 @@
+
+[04:52:27] 📌 TouchTrace install + patch layouts (3 apps)
+
+[04:52:27] → app=client
+
+[04:52:27] → app=courier
+
+[04:52:27] → app=merchant
+
+[04:52:27] ✅ Done. Report=/opt/delishafrica/monorepo/.tonton_reports/touchtrace_20260114_045227.log
+
+[04:52:27] 🧯 Rollback from /opt/delishafrica/monorepo/.tonton_backups/touchtrace_20260114_045227 (or git checkout -- .)

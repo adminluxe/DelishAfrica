@@ -1,0 +1,180 @@
+// apps/courier/app/home.tsx
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  ImageBackground,
+  Pressable,
+  RefreshControl,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import Constants from 'expo-constants';
+import ConfettiBurst from '../components/ConfettiBurst';
+
+type Job = { id: string; title?: string; pickup?: string; dropoff?: string; };
+
+// Motif plus visible (petit quadrillage doux)
+const BG_PATTERN =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAQCAYAAABHqLwSAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAADdJREFUeNpiYBgFoyEw4T8GJgYkA8M/ZmBgYJgBGL0g9v//fwYxwGQw4GQZkGk4wJgGg8WMAgQYAJgAB0cVg2b5f3zQAAAABJRU5ErkJggg==';
+
+const DEV_MOCKS: Job[] = [
+  { id: 'job_demo_0001', title: 'Pickup: Mama Yassa → Client', pickup: 'Rue Test 1', dropoff: 'Av. Exemple 42' },
+  { id: 'job_demo_0002', title: 'Courses: Épicerie → Client', pickup: 'Marché Central', dropoff: 'Bd Central 10' },
+];
+
+export default function CourierHome() {
+  const { width } = useWindowDimensions();
+  const headingSize = Math.round(Math.max(20, Math.min(28, 18 + (width - 320) / 20)));
+
+  const EXTRA = Constants.expoConfig?.extra || {};
+  const API = EXTRA.API_BASE_URL || 'http://localhost:4001';
+
+  const [online, setOnline] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [celebrate, setCelebrate] = useState(false);
+
+  const statusText = online ? 'En ligne' : 'Hors ligne';
+  const statusColor = online ? '#198754' : '#6c757d';
+
+  const useMocks = () => {
+    if (__DEV__) {
+      setJobs(DEV_MOCKS);
+    }
+  };
+
+  const fetchJobs = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const r = await fetch(`${API}/api/couriers/jobs/available`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+      const arr = Array.isArray(data) ? data : (data?.items || []);
+      if (arr.length === 0) {
+        useMocks();               // ← injecte des missions démo si l’API est vide
+      } else {
+        setJobs(arr);
+      }
+    } catch (e: any) {
+      setError(e.message || 'Erreur réseau');
+      useMocks();                 // ← en cas d’erreur API, on voit quand-même l’UI
+    } finally {
+      setLoading(false);
+    }
+  }, [API]);
+
+  useEffect(() => { fetchJobs(); }, [fetchJobs, online]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    // En dev: reset = (ré)injection des mocks, puis tentative API
+    if (__DEV__) setJobs(DEV_MOCKS);
+    await fetchJobs();
+    setRefreshing(false);
+  }, [fetchJobs]);
+
+  const onToggleOnline = () => setOnline(v => !v);
+
+  const onAccept = async (id: string) => {
+    try {
+      // On tente l’API; sinon on valide localement pour la démo
+      const r = await fetch(`${API}/api/couriers/jobs/${id}/accept`, { method: 'POST' }).catch(() => null);
+      if (!r || !r.ok) {
+        // fallback démo : retire la mission localement
+        setJobs(prev => prev.filter(j => j.id !== id));
+      }
+      setCelebrate(true);
+      setTimeout(() => setCelebrate(false), 1200);
+      await fetchJobs();
+    } catch (e: any) {
+      Alert.alert('Erreur', e.message || 'Impossible d’accepter la mission');
+    }
+  };
+
+  const Empty = useMemo(
+    () => (
+      <View style={styles.empty}>
+        <Text style={styles.emptyTxt}>Aucune mission pour le moment.</Text>
+      </View>
+    ),
+    []
+  );
+
+  return (
+    <ImageBackground source={{ uri: BG_PATTERN }} resizeMode="repeat" style={{ flex: 1 }}>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.headerWrap}>
+          <Text style={[styles.heading, { fontSize: headingSize }]} numberOfLines={2}>
+            DelishAfrica • Coursier
+          </Text>
+          <Text style={[styles.sub, { color: statusColor }]}>{statusText}</Text>
+          {error ? <Text style={styles.err}>{error}</Text> : null}
+        </View>
+
+        <View style={styles.actions}>
+          <Pressable onPress={onToggleOnline} style={[styles.btn, online ? styles.btnDanger : styles.btnSuccess]}>
+            <Text style={styles.btnTxt}>{online ? 'Se déconnecter' : 'Go Online'}</Text>
+          </Pressable>
+
+          <Pressable onPress={onRefresh} style={[styles.btn, styles.btnSecondary]}>
+            <Text style={styles.btnTxt}>Reset démo (dev)</Text>
+          </Pressable>
+        </View>
+
+        {loading ? (
+          <View style={styles.loader}><ActivityIndicator /></View>
+        ) : (
+          <FlatList
+            data={jobs}
+            keyExtractor={(j) => j.id}
+            ListEmptyComponent={Empty}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            renderItem={({ item }) => (
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>{item.title || `Mission ${item.id}`}</Text>
+                <Text style={styles.cardLine}>Pickup: {item.pickup || '—'}</Text>
+                <Text style={styles.cardLine}>Dropoff: {item.dropoff || '—'}</Text>
+                <Pressable onPress={() => onAccept(item.id)} style={[styles.btn, styles.btnPrimary]}>
+                  <Text style={styles.btnTxt}>Accepter</Text>
+                </Pressable>
+              </View>
+            )}
+            contentContainerStyle={{ paddingBottom: 40 }}
+          />
+        )}
+
+        {celebrate && <ConfettiBurst />}
+      </SafeAreaView>
+    </ImageBackground>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1 },
+  headerWrap: { width: '100%', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
+  heading: { fontWeight: '800', textAlign: 'center' },
+  sub: { marginTop: 4, fontSize: 16, fontWeight: '600' },
+  err: { marginTop: 4, fontSize: 12, color: '#b42325' },
+  actions: { paddingHorizontal: 16, gap: 12, marginTop: 10 },
+  btn: { borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
+  btnTxt: { color: '#fff', fontWeight: '700', fontSize: 18 },
+  btnSuccess: { backgroundColor: '#1f7a3a' },
+  btnDanger: { backgroundColor: '#b42325' },
+  btnSecondary: { backgroundColor: '#495057' },
+  btnPrimary: { backgroundColor: '#0d6efd', marginTop: 10 },
+  loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
+  emptyTxt: { color: '#6c757d', fontSize: 16 },
+  card: { marginHorizontal: 16, marginTop: 16, backgroundColor: '#fff', borderRadius: 16, padding: 14, elevation: 2,
+          shadowColor: '#000', shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 }, shadowRadius: 8 },
+  cardTitle: { fontSize: 18, fontWeight: '700', marginBottom: 6 },
+  cardLine: { color: '#495057', marginBottom: 2 },
+});

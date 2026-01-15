@@ -1,0 +1,22 @@
+[02:38:00] === MERCHANT ULTRA RESTART ===
+[02:38:00] APP=/opt/delishafrica/monorepo/apps/merchant
+[02:38:00] PORT=8083
+[02:38:00] LOG=/opt/delishafrica/monorepo/tonton_logs/merchant_ultra_20251220-023800.log
+[02:38:00] [1] Kill expo/metro (best effort)
+[02:38:00] [2] Free port 8083
+[02:38:01] No listener on 8083
+[02:38:01] [3] Clear caches (merchant)
+[02:38:01] [4] Start merchant with tunnel + clear (QR must appear)
+
+> merchant@1.0.0 dev /opt/delishafrica/monorepo/apps/merchant
+> expo start --dev-client --tunnel --port 8083 "--" "--tunnel" "--port" "8083" "--clear"
+
+env: load .env.local .env
+env: export EXPO_PUBLIC_API_BASE_URL
+Starting project at /opt/delishafrica/monorepo/apps/merchant
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Tunnel connected.
+Tunnel ready.
+Waiting on http://localhost:8083
+Logs for your project will appear below.

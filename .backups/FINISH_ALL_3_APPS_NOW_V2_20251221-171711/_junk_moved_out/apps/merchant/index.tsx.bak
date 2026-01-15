@@ -1,0 +1,308 @@
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
+
+const API_BASE =
+  process.env.EXPO_PUBLIC_API_URL ?? "https://api.delishafrica.me";
+
+type Partner = {
+  slug: string;
+  name: string;
+  city?: string;
+  country?: string;
+  description?: string;
+};
+
+type OrderStatus = "pending" | "prepared" | "picked-up";
+
+type Order = {
+  id: string;
+  restaurantName: string;
+  status: OrderStatus;
+  customerName: string;
+  customerAddress: string;
+  totalAmount: number;
+  currency: string;
+};
+
+export default function MerchantHomeScreen() {
+  const [health, setHealth] = useState<"unknown" | "ok" | "nok">("unknown");
+  const [thiepy, setThiepy] = useState<Partner | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [order, setOrder] = useState<Order | null>({
+    id: "THIEPY-DEMO-CLIENT",
+    restaurantName: "Thiepy – Démo",
+    status: "pending",
+    customerName: "Client démo DelishAfrica",
+    customerAddress: "Rue de la Paix 10, 1000 Bruxelles",
+    totalAmount: 24.9,
+    currency: "EUR",
+  });
+  const [error, setError] = useState<string | null>(null);
+
+  // Health
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/health`);
+        if (!res.ok) throw new Error();
+        await res.json();
+        setHealth("ok");
+      } catch {
+        setHealth("nok");
+      }
+    };
+    run();
+  }, []);
+
+  // Thiepy
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch(`${API_BASE}/api/partners/thieyp`);
+        if (!res.ok) throw new Error("Erreur /api/partners/thieyp");
+        const json = (await res.json()) as Partner;
+        setThiepy(json);
+      } catch (e: any) {
+        setError(e?.message ?? "Erreur lors du chargement de Thiepy.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const advanceStatus = () => {
+    if (!order) return;
+    if (order.status === "pending") {
+      setOrder({ ...order, status: "prepared" });
+    } else if (order.status === "prepared") {
+      setOrder({ ...order, status: "picked-up" });
+    }
+  };
+
+  const statusLabel =
+    order?.status === "pending"
+      ? "En préparation"
+      : order?.status === "prepared"
+      ? "Prête pour le coursier"
+      : "Récupérée par le coursier";
+
+  const nextActionLabel =
+    order?.status === "pending"
+      ? "Marquer comme préparée"
+      : order?.status === "prepared"
+      ? "Marquer comme récupérée"
+      : "Aucune action supplémentaire";
+
+  const statusColor =
+    health === "ok" ? "#22c55e" : health === "nok" ? "#ef4444" : "#f97316";
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
+      <ScrollView
+        contentContainerStyle={{ padding: 16 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* HEADER */}
+        <View style={{ marginBottom: 16 }}>
+          <Text
+            style={{
+              fontSize: 24,
+              fontWeight: "700",
+              color: "#f9fafb",
+              marginBottom: 4,
+            }}
+          >
+            DelishAfrica – Marchand
+          </Text>
+          <Text style={{ color: "#9ca3af" }}>
+            Vue Thiepy côté restaurant partenaire.
+          </Text>
+        </View>
+
+        {/* API STATUS */}
+        <View
+          style={{
+            borderRadius: 16,
+            padding: 12,
+            backgroundColor: "#020617",
+            borderWidth: 1,
+            borderColor: "#1e293b",
+            marginBottom: 12,
+          }}
+        >
+          <Text style={{ color: "#9ca3af", marginBottom: 4 }}>
+            API actuelle :
+          </Text>
+          <Text
+            style={{ color: "#e5e7eb", fontWeight: "500", marginBottom: 8 }}
+          >
+            {API_BASE}
+          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <View
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 999,
+                marginRight: 6,
+                backgroundColor: statusColor,
+              }}
+            />
+            <Text style={{ color: "#e5e7eb" }}>
+              Health :{" "}
+              {health === "ok"
+                ? "OK"
+                : health === "nok"
+                ? "KO"
+                : "en cours..."}
+            </Text>
+          </View>
+        </View>
+
+        {/* ERREUR */}
+        {error && (
+          <View
+            style={{
+              backgroundColor: "#7f1d1d",
+              borderRadius: 12,
+              padding: 10,
+              marginBottom: 12,
+            }}
+          >
+            <Text style={{ color: "#fee2e2" }}>{error}</Text>
+          </View>
+        )}
+
+        {/* RESTAURANT CONNECTÉ */}
+        <View
+          style={{
+            borderRadius: 20,
+            padding: 16,
+            backgroundColor: "#0b1120",
+            borderWidth: 1,
+            borderColor: "#1f2937",
+            marginBottom: 16,
+          }}
+        >
+          <Text
+            style={{
+              color: "#a5b4fc",
+              fontSize: 13,
+              fontWeight: "600",
+              marginBottom: 6,
+            }}
+          >
+            Restaurant connecté
+          </Text>
+          {loading && !thiepy ? (
+            <ActivityIndicator />
+          ) : thiepy ? (
+            <>
+              <Text
+                style={{
+                  color: "#f9fafb",
+                  fontSize: 20,
+                  fontWeight: "700",
+                  marginBottom: 6,
+                }}
+              >
+                {thiepy.name}
+              </Text>
+              <Text style={{ color: "#9ca3af", marginBottom: 6 }}>
+                {thiepy.description ??
+                  "Partenaire DelishAfrica — configuration de démo."}
+              </Text>
+              <Text style={{ color: "#64748b" }}>
+                {thiepy.city ?? "Bruxelles"} – {thiepy.country ?? "Belgique"}
+              </Text>
+            </>
+          ) : (
+            <Text style={{ color: "#9ca3af" }}>
+              Impossible de charger Thiepy depuis l’API.
+            </Text>
+          )}
+        </View>
+
+        {/* COMMANDE DÉMO */}
+        {order && (
+          <View
+            style={{
+              borderRadius: 20,
+              padding: 16,
+              backgroundColor: "#020617",
+              borderWidth: 1,
+              borderColor: "#16a34a",
+              marginBottom: 24,
+            }}
+          >
+            <Text
+              style={{
+                color: "#bbf7d0",
+                fontSize: 13,
+                fontWeight: "600",
+                marginBottom: 4,
+              }}
+            >
+              Commande Thiepy – Démo
+            </Text>
+            <Text
+              style={{
+                color: "#ecfdf5",
+                fontSize: 18,
+                fontWeight: "700",
+                marginBottom: 8,
+              }}
+            >
+              {order.id}
+            </Text>
+            <Text style={{ color: "#d1fae5", marginBottom: 4 }}>
+              Client : {order.customerName}
+            </Text>
+            <Text style={{ color: "#d1fae5", marginBottom: 4 }}>
+              Adresse : {order.customerAddress}
+            </Text>
+            <Text style={{ color: "#bbf7d0", marginBottom: 4 }}>
+              Montant : {order.totalAmount.toFixed(2)} {order.currency}
+            </Text>
+            <Text style={{ color: "#bbf7d0", marginBottom: 12 }}>
+              Statut actuel : {statusLabel}
+            </Text>
+
+            {order.status !== "picked-up" && (
+              <Pressable
+                onPress={advanceStatus}
+                style={({ pressed }) => ({
+                  opacity: pressed ? 0.7 : 1,
+                  backgroundColor: "#22c55e",
+                  borderRadius: 999,
+                  paddingVertical: 10,
+                  alignItems: "center",
+                })}
+              >
+                <Text
+                  style={{
+                    color: "#022c22",
+                    fontWeight: "700",
+                    fontSize: 15,
+                  }}
+                >
+                  {nextActionLabel}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}

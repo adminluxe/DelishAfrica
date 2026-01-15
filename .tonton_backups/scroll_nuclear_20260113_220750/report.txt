@@ -1,0 +1,7 @@
+============================================================
+[SUMMARY] Nuclear scroll recover
+Scanned files : 304
+Patched files : 33
+Backup dir    : /opt/delishafrica/monorepo/.tonton_backups/scroll_nuclear_20260113_220750
+Patch log     : /opt/delishafrica/monorepo/.tonton_backups/scroll_nuclear_20260113_220750/patch.log
+============================================================

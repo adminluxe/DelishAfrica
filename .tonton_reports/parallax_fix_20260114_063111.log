@@ -1,0 +1,26 @@
+
+[06:31:11] 🔪 Parallax killer fix
+
+[06:31:11] Root=/opt/delishafrica/monorepo
+
+[06:31:11] Backup=/opt/delishafrica/monorepo/.tonton_backups/parallax_fix_20260114_063111
+
+[06:31:11] Report=/opt/delishafrica/monorepo/.tonton_reports/parallax_fix_20260114_063111.log
+
+[06:31:11] → patch: /opt/delishafrica/monorepo/apps/merchant/components/parallax-scroll-view.tsx
+
+[06:31:11] → patch: /opt/delishafrica/monorepo/apps/client/components/parallax-scroll-view.tsx
+
+[06:31:11] → patch: /opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/components/parallax-scroll-view.tsx
+
+[06:31:11] → patch: /opt/delishafrica/monorepo/apps/courier/delishafrica-client/components/parallax-scroll-view.tsx
+
+[06:31:11] → patch: /opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/components/parallax-scroll-view.tsx
+
+[06:31:11] → patch: /opt/delishafrica/monorepo/apps/courier/components/parallax-scroll-view.tsx
+
+[06:31:11] ✅ Done.
+
+[06:31:11] 📄 Report: /opt/delishafrica/monorepo/.tonton_reports/parallax_fix_20260114_063111.log
+
+[06:31:11] 🧯 Rollback: restore from /opt/delishafrica/monorepo/.tonton_backups/parallax_fix_20260114_063111 (or git checkout -- .)

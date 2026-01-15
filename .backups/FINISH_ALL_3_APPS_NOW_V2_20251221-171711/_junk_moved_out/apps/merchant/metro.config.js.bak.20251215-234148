@@ -1,0 +1,35 @@
+const path = require("path");
+const { getDefaultConfig } = require("@expo/metro-config");
+
+const projectRoot = __dirname;
+const workspaceRoot = path.resolve(projectRoot, "../..");
+
+const config = getDefaultConfig(projectRoot);
+
+/**
+ * ✅ Monorepo PNPM:
+ * - Metro doit "voir" le workspace pour résoudre packages + deps.
+ */
+config.watchFolders = [workspaceRoot];
+
+config.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, "node_modules"),
+  path.resolve(workspaceRoot, "node_modules"),
+];
+
+// IMPORTANT: ne pas bloquer la lookup hiérarchique, sinon Metro/React-Native perd des modules internes
+config.resolver.disableHierarchicalLookup = false;
+
+/**
+ * ✅ On conserve ton polyfill "avant main module"
+ * (SharedArrayBuffer / etc.)
+ */
+config.serializer = config.serializer || {};
+const original = config.serializer.getModulesRunBeforeMainModule;
+
+config.serializer.getModulesRunBeforeMainModule = () => {
+  const defaults = original ? original() : [];
+  return [require.resolve("./polyfills"), ...defaults];
+};
+
+module.exports = config;

@@ -1,0 +1,16 @@
+[02:19:45] == MERCHANT PATCH demo/list ==
+[02:19:45] APP=/opt/delishafrica/monorepo/apps/merchant
+[02:19:45] BK=/opt/delishafrica/monorepo/tonton_backups/merchant_patch_20251220-021945
+[02:19:45] LOG=/opt/delishafrica/monorepo/tonton_logs/merchant_patch_20251220-021945.log
+[02:19:45] [1] Scan fichiers cibles...
+[02:19:49] Candidats:
+[02:19:49]  - /opt/delishafrica/monorepo/apps/merchant/app/orders-demo.tsx
+[02:19:49]  - /opt/delishafrica/monorepo/apps/merchant/app/orders-demo.tsx.bak.20251216-034540
+[02:19:49]  - /opt/delishafrica/monorepo/apps/merchant/app/orders-demo.tsx.bak_magic_v2_20251218_035919
+[02:19:49]  - /opt/delishafrica/monorepo/apps/merchant/app/orders-demo.tsx.bak.20251218-031922
+[02:19:49] [2] TARGET=/opt/delishafrica/monorepo/apps/merchant/app/orders-demo.tsx
+[02:19:49] Backup -> /opt/delishafrica/monorepo/tonton_backups/merchant_patch_20251220-021945/orders-demo.tsx.bak
+[02:19:49] [3] Patch contenu (best-effort)...
+[02:19:49] [4] Diff (aperçu):
+[02:19:49] ✅ Patch terminé.
+[02:19:49] 👉 Prochaine étape: restart hard Merchant (nouveau tunnel + cache clear).

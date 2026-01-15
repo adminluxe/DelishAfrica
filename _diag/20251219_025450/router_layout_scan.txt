@@ -1,0 +1,356 @@
+=== LAYOUT FILES (client/merchant/courier) ===
+apps/_layout.tsx
+apps/client/app/(tabs)/_layout.tsx
+apps/client/app/(tabs)/_layout.tsx.bak
+apps/client/app/_layout.tsx
+apps/client/app/_layout.tsx.bak
+apps/client/app/_layout.tsx.bak.20251215-044051
+apps/client/app/_layout.tsx.bak.20251216-034540
+apps/client/app/_layout.tsx.bak.20251216_014227
+apps/client/app/_layout.tsx.bak.20251216_023209
+apps/client/app/_layout.tsx.bak.20251218-031236
+apps/courier/.backup/courier_v2_20251114-194018/app/_layout.tsx
+apps/courier/.backup/courier_v2_20251114-194018/app/_layout.tsx.bak
+apps/courier/.backup/courier_v2_20251114-194018/app/_layout.tsx.bak.20251216_023209
+apps/courier/.backup_layout/_layout.tsx.20251115-133526
+apps/courier/app/(tabs)/_layout.tsx
+apps/courier/app/(tabs)/_layout.tsx.bak
+apps/courier/app/_layout.tsx
+apps/courier/app/_layout.tsx.BAK_2025-11-14-1804
+apps/courier/app/_layout.tsx.BAK_HEADERS_2025-11-14-1828
+apps/courier/app/_layout.tsx.bak
+apps/courier/app/_layout.tsx.bak.1763208014
+apps/courier/app/_layout.tsx.bak.20251215-044051
+apps/courier/app/_layout.tsx.bak.20251216-034540
+apps/courier/app/_layout.tsx.bak.20251216_014227
+apps/courier/app/_layout.tsx.bak.20251216_023209
+apps/courier/app/_layout.tsx.bak.20251218-031236
+apps/courier/appli-delishafrica-/app/(tabs)/_layout.tsx
+apps/courier/appli-delishafrica-/app/(tabs)/_layout.tsx.bak
+apps/courier/appli-delishafrica-/app/_layout.tsx
+apps/courier/appli-delishafrica-/app/_layout.tsx.bak
+apps/courier/appli-delishafrica-/app/_layout.tsx.bak.20251216_014227
+apps/courier/appli-delishafrica-/app/_layout.tsx.bak.20251216_023209
+apps/courier/delishafrica-client/app/(tabs)/_layout.tsx
+apps/courier/delishafrica-client/app/(tabs)/_layout.tsx.bak
+apps/courier/delishafrica-client/app/_layout.tsx
+apps/courier/delishafrica-client/app/_layout.tsx.bak
+apps/courier/delishafrica-client/app/_layout.tsx.bak.20251216_014227
+apps/courier/delishafrica-client/app/_layout.tsx.bak.20251216_023209
+apps/courier/delishafrica-client/delishafrica-merchant/app/(tabs)/_layout.tsx
+apps/courier/delishafrica-client/delishafrica-merchant/app/(tabs)/_layout.tsx.bak
+apps/courier/delishafrica-client/delishafrica-merchant/app/_layout.tsx
+apps/courier/delishafrica-client/delishafrica-merchant/app/_layout.tsx.bak
+apps/courier/delishafrica-client/delishafrica-merchant/app/_layout.tsx.bak.20251216_014227
+apps/courier/delishafrica-client/delishafrica-merchant/app/_layout.tsx.bak.20251216_023209
+apps/merchant/app/(tabs)/_layout.tsx
+apps/merchant/app/(tabs)/_layout.tsx.bak
+apps/merchant/app/_layout.tsx
+apps/merchant/app/_layout.tsx.BAK_20251202-174643
+apps/merchant/app/_layout.tsx.BAK_20251202-181441
+apps/merchant/app/_layout.tsx.BAK_20251202-182843
+apps/merchant/app/_layout.tsx.BAK_HEADERS_2025-11-14-1828
+apps/merchant/app/_layout.tsx.bak
+apps/merchant/app/_layout.tsx.bak.20251215-044051
+apps/merchant/app/_layout.tsx.bak.20251216-034540
+apps/merchant/app/_layout.tsx.bak.20251216_014227
+apps/merchant/app/_layout.tsx.bak.20251216_023209
+apps/merchant/app/_layout.tsx.bak.20251218-031236
+
+=== ROUTES INDEX FILES ===
+apps/client/app/(tabs)/index.tsx
+apps/client/app/(tabs)/index.tsx.bak
+apps/client/app/index.tsx
+apps/client/app/index.tsx.BAK_20251202-163605
+apps/client/app/index.tsx.BAK_20251202-172530
+apps/client/app/index.tsx.DISABLED_2025-11-14-1625
+apps/client/app/index.tsx.bak
+apps/client/app/index.tsx.bak.20251214_153319
+apps/client/app/index.tsx.bak.20251215-044051
+apps/client/app/index.tsx.bak_titles_20251217_032227
+apps/client/app/restaurants/index.tsx
+apps/client/app/restaurants/index.tsx.bak
+apps/client/apps/client/app/index.tsx
+apps/client/apps/client/app/index.tsx.bak
+apps/client/apps/client/app/restaurants/index.tsx
+apps/client/apps/client/app/restaurants/index.tsx.bak
+apps/client/index.js
+apps/client/index.js.bak
+apps/client/index.tsx
+apps/client/index.tsx.bak
+apps/courier/.backup/courier_v2_20251114-194018/app/index.tsx
+apps/courier/.backup/courier_v2_20251114-194018/app/index.tsx.bak
+apps/courier/app/(tabs)/index.tsx
+apps/courier/app/(tabs)/index.tsx.bak
+apps/courier/app/index.tsx
+apps/courier/app/index.tsx.BAK_20251202-163605
+apps/courier/app/index.tsx.bak
+apps/courier/app/index.tsx.bak.20251215-044051
+apps/courier/app/index.tsx.bak.demo-missions
+apps/courier/app/index.tsx.bak.fix-demo-import
+apps/courier/app/index.tsx.bak.fix-demo-import-v2
+apps/courier/app/index.tsx.bak_titles_20251217_032227
+apps/courier/app/missions/index.tsx
+apps/courier/app/missions/index.tsx.bak
+apps/courier/appli-delishafrica-/app/(tabs)/index.tsx
+apps/courier/appli-delishafrica-/app/(tabs)/index.tsx.bak
+apps/courier/delishafrica-client/app/(tabs)/index.tsx
+apps/courier/delishafrica-client/app/(tabs)/index.tsx.bak
+apps/courier/delishafrica-client/delishafrica-merchant/app/(tabs)/index.tsx
+apps/courier/delishafrica-client/delishafrica-merchant/app/(tabs)/index.tsx.bak
+apps/courier/index.tsx
+apps/merchant/app/(tabs)/index.tsx
+apps/merchant/app/(tabs)/index.tsx.bak
+apps/merchant/app/index.tsx
+apps/merchant/app/index.tsx.BAK_2025-11-14-1808
+apps/merchant/app/index.tsx.BAK_20251202-163605
+apps/merchant/app/index.tsx.BAK_HEADERS_2025-11-14-1828
+apps/merchant/app/index.tsx.bak
+apps/merchant/app/index.tsx.bak.20251215-044051
+apps/merchant/app/index.tsx.bak_titles_20251217_032227
+apps/merchant/app/orders/index.tsx
+apps/merchant/app/orders/index.tsx.bak
+apps/merchant/index.tsx
+apps/merchant/index.tsx.bak
+
+=== EXPO-ROUTER REFERENCES (top hits) ===
+apps/courier/app.config.ts.bak:23:  plugins: ['expo-router', 'expo-secure-store'],
+apps/courier/entry.sharedarraybuffer.js.bak.20251212_134830:3:// Previous main: expo-router/entry
+apps/courier/entry.sharedarraybuffer.js.bak.20251212_134830:5:require("expo-router/entry");
+apps/courier/App.tsx:2:import { ExpoRoot } from "expo-router";
+apps/courier/App.tsx:3:import "expo-router/entry";
+apps/courier/.backup/courier_v2_20251114-194018/da/InnerLayout.tsx:2:import { Stack } from 'expo-router';
+apps/courier/.backup/courier_v2_20251114-194018/app/_layout.tsx.bak:2:import { Stack } from 'expo-router';
+apps/courier/.backup/courier_v2_20251114-194018/app/_layout.tsx.bak.20251216_023209:2:import { Stack } from 'expo-router';
+apps/courier/.backup/courier_v2_20251114-194018/app/_layout.tsx:8:import { useRouter } from "expo-router";
+apps/courier/.backup/courier_v2_20251114-194018/app/mission/[id].tsx:3:import { useLocalSearchParams, useRouter } from 'expo-router';
+apps/courier/.backup/courier_v2_20251114-194018/app/mission/[id].tsx.bak:3:import { useLocalSearchParams, useRouter } from 'expo-router';
+apps/courier/app.config.ts.SAFE_2025-11-14-0313:34:  plugins: ['expo-router'],
+apps/courier/package.json.bak:5:  "main": "expo-router/entry",
+apps/courier/package.json.bak:22:    "expo-router": "^6.0.14",
+apps/courier/app.config.ts.bak-20251118-232258:23:  plugins: ['expo-router', 'expo-secure-store'],
+apps/courier/app.config.ts.BROKEN_2025-11-14-0157:35:  plugins: ['expo-router'],
+apps/courier/da/InnerLayout.tsx:2:import { Stack } from "expo-router";
+apps/courier/app/_layout.tsx.bak.1763208014:4:import { Stack } from 'expo-router';
+apps/courier/app.config.ts.bak-eas-20251118-225719:17:  plugins: ['expo-router', 'expo-secure-store'],
+apps/courier/app/_layout.tsx.BAK_2025-11-14-1804:1:import { Stack } from 'expo-router';
+apps/courier/app/_layout.tsx.bak:1:import { Stack } from "expo-router";
+apps/courier/app/debug.tsx:5:import { useRouter } from 'expo-router';
+apps/courier/app/home.tsx.BAK_2025-11-14-1717:3:import { useRouter } from 'expo-router';
+apps/courier/app/orders-demo.tsx.bak.20251218-031922:3:import { Stack, router } from "expo-router";
+apps/courier/app/orders-demo.tsx.bak_magic_v2_20251218_035919:3:import { Stack, router } from "expo-router";
+apps/courier/app/home.tsx.bak:3:import { useRouter } from 'expo-router';
+apps/courier/app.config.ts.BROKEN_2025-11-13-2351:35:  plugins: ['expo-router'],
+apps/courier/app/_layout.tsx.BAK_HEADERS_2025-11-14-1828:3:import { Slot } from 'expo-router';
+apps/courier/app/_layout.tsx.bak.20251216_023209:2:import { Stack } from "expo-router";
+apps/courier/app.config.ts.bak-owner-20251118-225115:17:  plugins: ['expo-router', 'expo-secure-store'],
+apps/courier/app/login.tsx:3:import { useRouter } from 'expo-router';
+apps/courier/app/modal.tsx.bak:1:import { Link } from 'expo-router';
+apps/courier/app/_layout.tsx.bak.20251216-034540:8:import { useRouter } from "expo-router";
+apps/courier/app/_layout.tsx:2:import { Stack } from "expo-router";
+apps/courier/yarn.lock:2674:expo-router@^6.0.14:
+apps/courier/yarn.lock:2676:  resolved "https://registry.yarnpkg.com/expo-router/-/expo-router-6.0.15.tgz#9ac3a0b83923588108856b43308b21301ea251ba"
+apps/courier/app/index.tsx.bak.fix-demo-import-v2:3:import { useRouter } from 'expo-router';
+apps/courier/app/index.tsx:2:import { router } from "expo-router";
+apps/courier/app/mission/[id].tsx.bak.demo:3:import { useLocalSearchParams, useRouter } from 'expo-router';
+apps/courier/app/home.tsx:5:import { useRouter } from 'expo-router';
+apps/courier/entry.sharedarraybuffer.js:3: * MUST run before expo-router/entry
+apps/courier/entry.sharedarraybuffer.js:6:require("expo-router/entry");
+apps/courier/app/index.tsx.bak.demo-missions:3:import { useRouter } from 'expo-router';
+apps/courier/app/mission/[id].tsx:10:import { useLocalSearchParams, useRouter } from "expo-router";
+apps/courier/app/mission/[id].tsx.bak:10:import { useLocalSearchParams, useRouter } from "expo-router";
+apps/courier/app/auth/login.tsx:1:import { useRouter } from "expo-router";
+apps/courier/app/auth/login.tsx.bak:1:import { useRouter } from "expo-router";
+apps/courier/app/index.tsx.bak.fix-demo-import:3:import { useRouter } from 'expo-router';
+apps/courier/app/login.tsx.bak:3:import { useRouter } from 'expo-router';
+apps/courier/app/orders-demo.tsx:3:import { useRouter } from "expo-router";
+apps/courier/app/modal.tsx:1:import { Link } from 'expo-router';
+apps/courier/app/debug.tsx.bak:5:import { useRouter } from 'expo-router';
+apps/courier/app/_layout.tsx.bak.20251215-044051:1:import { Stack } from "expo-router";
+apps/courier/package.json.bak-2025-11-26-225928:5:  "main": "expo-router/entry",
+apps/courier/package.json.bak-2025-11-26-225928:16:    "expo-router": "^6.0.14",
+apps/courier/app/(tabs)/_layout.tsx.bak:1:import { Tabs } from 'expo-router';
+apps/courier/app/(tabs)/_layout.tsx:1:import { Tabs } from 'expo-router';
+apps/client/app.config.ts.bak:23:  plugins: ['expo-router', 'expo-secure-store'],
+apps/courier/app/(tabs)/index.tsx:8:import { Link } from 'expo-router';
+apps/client/entry.sharedarraybuffer.js.bak.20251212_134830:3:// Previous main: expo-router/entry
+apps/client/entry.sharedarraybuffer.js.bak.20251212_134830:5:require("expo-router/entry");
+apps/courier/app/(tabs)/index.tsx.bak:8:import { Link } from 'expo-router';
+apps/courier/app/home.tsx.bak.20251214_153319:5:import { useRouter } from 'expo-router';
+apps/courier/app/_components/DemoFab.tsx:4:import { router, usePathname } from "expo-router";
+apps/courier/app/job/[id].tsx.bak.1761267038:3:import { useLocalSearchParams, useRouter } from 'expo-router';
+apps/client/package.json.bak:3:  "main": "expo-router/entry",
+apps/client/package.json.bak:62:    "expo-router": "~6.0.12",
+apps/courier/app/job/[id].tsx:3:import { useLocalSearchParams, useRouter } from 'expo-router';
+apps/client/app.config.ts.bak-20251118-232258:23:  plugins: ['expo-router', 'expo-secure-store'],
+apps/courier/app/job/[id].tsx.bak:3:import { useLocalSearchParams, useRouter } from 'expo-router';
+apps/courier/app/_layout.tsx.bak.20251216_014227:2:import { Stack } from "expo-router";
+apps/courier/app/_layout.tsx.bak.20251218-031236:1:import { Stack } from "expo-router";
+apps/client/app.config.ts.bak-eas-20251118-225719:17:  plugins: ['expo-router', 'expo-secure-store'],
+apps/client/app.config.ts.bak-20251118-215224:16:  plugins: ["expo-router", "expo-secure-store"],
+apps/courier/app.config.ts.bak-20251118-231002:20:  plugins: ['expo-router', 'expo-secure-store'],
+apps/courier/package.json.bak.20251212_134830:26:    "expo-router": "^6.0.17",
+apps/courier/package.json.bak.20251212_134830:41:  "delishAfricaOriginalMain": "expo-router/entry"
+apps/courier/app.config.ts.BEFORE_V2_2025-11-14-0205:35:  plugins: ['expo-router'],
+apps/courier/app.config.ts.bak.names:34:  plugins: ['expo-router'],
+apps/courier/app.config.ts.SAFE_2025-11-14-0222:35:  plugins: ['expo-router'],
+apps/courier/app.config.ts:23:  plugins: ['expo-router', 'expo-secure-store'],
+apps/courier/app.config.ts.bak-20251118-215444:34:  plugins: ['expo-router'],
+apps/courier/package.json:28:    "expo-router": "^6.0.17",
+apps/courier/package.json:43:  "delishAfricaOriginalMain": "expo-router/entry",
+apps/courier/package.json.bak.20251213_015936:26:    "expo-router": "^6.0.17",
+apps/courier/package.json.bak.20251213_015936:41:  "delishAfricaOriginalMain": "expo-router/entry"
+apps/courier/appli-delishafrica-/package.json.bak:3:  "main": "expo-router/entry",
+apps/courier/appli-delishafrica-/package.json.bak:24:    "expo-router": "~6.0.13",
+apps/client/yarn.lock:3984:expo-router@~6.0.12:
+apps/client/yarn.lock:3986:  resolved "https://registry.yarnpkg.com/expo-router/-/expo-router-6.0.15.tgz#9ac3a0b83923588108856b43308b21301ea251ba"
+apps/client/entry.sharedarraybuffer.js:3: * MUST run before expo-router/entry
+apps/client/entry.sharedarraybuffer.js:6:require("expo-router/entry");
+apps/courier/appli-delishafrica-/package-lock.json.bak:21:        "expo-router": "~6.0.13",
+apps/courier/appli-delishafrica-/package-lock.json.bak:5884:    "node_modules/expo-router": {
+apps/courier/appli-delishafrica-/package-lock.json.bak:5886:      "resolved": "https://registry.npmjs.org/expo-router/-/expo-router-6.0.13.tgz",
+apps/courier/appli-delishafrica-/package-lock.json.bak:5954:    "node_modules/expo-router/node_modules/@radix-ui/react-collection": {
+apps/courier/appli-delishafrica-/package-lock.json.bak:5979:    "node_modules/expo-router/node_modules/@radix-ui/react-collection/node_modules/@radix-ui/react-slot": {
+apps/courier/appli-delishafrica-/package-lock.json.bak:5996:    "node_modules/expo-router/node_modules/@radix-ui/react-presence": {
+apps/courier/appli-delishafrica-/package-lock.json.bak:6019:    "node_modules/expo-router/node_modules/@radix-ui/react-primitive": {
+apps/courier/appli-delishafrica-/package-lock.json.bak:6041:    "node_modules/expo-router/node_modules/@radix-ui/react-primitive/node_modules/@radix-ui/react-slot": {
+apps/courier/appli-delishafrica-/package-lock.json.bak:6058:    "node_modules/expo-router/node_modules/@radix-ui/react-roving-focus": {
+apps/courier/appli-delishafrica-/package-lock.json.bak:6088:    "node_modules/expo-router/node_modules/@radix-ui/react-tabs": {
+apps/courier/appli-delishafrica-/package-lock.json.bak:6117:    "node_modules/expo-router/node_modules/semver": {
+apps/courier/appli-delishafrica-/package-lock.json.bak:6274:        "expo-router": "*",
+apps/courier/appli-delishafrica-/package-lock.json.bak:6278:        "expo-router": {
+apps/courier/appli-delishafrica-/package.json:3:  "main": "expo-router/entry",
+apps/courier/appli-delishafrica-/package.json:24:    "expo-router": "~6.0.13",
+apps/courier/appli-delishafrica-/app.json.bak:29:      "expo-router",
+apps/courier/appli-delishafrica-/app.json:29:      "expo-router",
+apps/courier/appli-delishafrica-/components/external-link.tsx.bak:1:import { Href, Link } from 'expo-router';
+apps/courier/appli-delishafrica-/components/external-link.tsx:1:import { Href, Link } from 'expo-router';
+apps/courier/app.config.ts.bak.20251217_220529:23:  plugins: ['expo-router', 'expo-secure-store'],
+apps/courier/appli-delishafrica-/scripts/reset-project.js:36:const layoutContent = `import { Stack } from "expo-router";
+apps/courier/appli-delishafrica-/scripts/reset-project.js.bak:36:const layoutContent = `import { Stack } from "expo-router";
+apps/client/package-lock.json.bak:48:        "expo-router": "~6.0.12",
+apps/client/package-lock.json.bak:1907:        "expo-router": "*",
+apps/client/package-lock.json.bak:1911:        "expo-router": {
+apps/client/package-lock.json.bak:7426:    "node_modules/expo-router": {
+apps/client/package-lock.json.bak:7428:      "resolved": "https://registry.npmjs.org/expo-router/-/expo-router-6.0.15.tgz",
+apps/client/package-lock.json.bak:7498:    "node_modules/expo-router/node_modules/semver": {
+apps/client/package.json:67:    "expo-router": "~6.0.17",
+apps/client/package.json:78:  "delishAfricaOriginalMain": "expo-router/entry",
+apps/client/package.json.bak.20251213_015936:66:    "expo-router": "~6.0.17",
+apps/client/package.json.bak.20251213_015936:77:  "delishAfricaOriginalMain": "expo-router/entry"
+apps/courier/app.config.ts.FINAL_2025-11-14-0210:35:  plugins: ['expo-router'],
+apps/courier/app.config.ts.bak-safe:34:  plugins: ['expo-router'],
+apps/courier/node_modules/.bin/expo:9:  export NODE_PATH="/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo/bin/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules:/app/node_modules/.pnpm/node_modules"
+apps/courier/node_modules/.bin/expo:11:  export NODE_PATH="/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo/bin/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules:/app/node_modules/.pnpm/node_modules:$NODE_PATH"
+apps/courier/node_modules/.bin/fingerprint:9:  export NODE_PATH="/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo/bin/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules:/app/node_modules/.pnpm/node_modules"
+apps/courier/node_modules/.bin/fingerprint:11:  export NODE_PATH="/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo/bin/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules:/app/node_modules/.pnpm/node_modules:$NODE_PATH"
+apps/courier/node_modules/.bin/expo-modules-autolinking:9:  export NODE_PATH="/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo/bin/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules:/app/node_modules/.pnpm/node_modules"
+apps/courier/node_modules/.bin/expo-modules-autolinking:11:  export NODE_PATH="/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo/bin/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules/expo/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_aw4m4snhafpbnivcsvdr7vkime/node_modules:/app/node_modules/.pnpm/node_modules:$NODE_PATH"
+apps/courier/app.config.ts.bak-20251119-024333:23:  plugins: ['expo-router', 'expo-secure-store'],
+apps/courier/package.json.bak.1763208006:5:  "main": "expo-router/entry",
+apps/courier/package.json.bak.1763208006:15:    "expo-router": "^6.0.14",
+apps/courier/app.config.ts.BROKEN_2025-11-14-0151:35:  plugins: ['expo-router'],
+apps/courier/components/JobCard.tsx.bak:4:import { Link } from 'expo-router';
+apps/courier/components/external-link.tsx.bak:1:import { Href, Link } from 'expo-router';
+apps/courier/delishafrica-client/package.json.bak:3:  "main": "expo-router/entry",
+apps/courier/delishafrica-client/package.json.bak:24:    "expo-router": "~6.0.13",
+apps/courier/components/external-link.tsx:1:import { Href, Link } from 'expo-router';
+apps/client/app.json.bak:87:    "main": "expo-router/entry"
+apps/client/app.config.ts.bak.20251217_220529:23:  plugins: ['expo-router', 'expo-secure-store'],
+apps/client/app.json:87:    "main": "expo-router/entry"
+apps/client/package.json.bak.20251215-044712:66:    "expo-router": "~6.0.17",
+apps/client/package.json.bak.20251215-044712:77:  "delishAfricaOriginalMain": "expo-router/entry"
+apps/client/app.config.ts.bak-safe:16:  plugins: ["expo-router", "expo-secure-store"],
+apps/courier/components/JobCard.tsx:4:import { Link } from 'expo-router';
+apps/courier/appli-delishafrica-/package-lock.json:21:        "expo-router": "~6.0.13",
+apps/courier/appli-delishafrica-/package-lock.json:5884:    "node_modules/expo-router": {
+apps/courier/appli-delishafrica-/package-lock.json:5886:      "resolved": "https://registry.npmjs.org/expo-router/-/expo-router-6.0.13.tgz",
+apps/courier/appli-delishafrica-/package-lock.json:5954:    "node_modules/expo-router/node_modules/@radix-ui/react-collection": {
+apps/courier/appli-delishafrica-/package-lock.json:5979:    "node_modules/expo-router/node_modules/@radix-ui/react-collection/node_modules/@radix-ui/react-slot": {
+apps/courier/appli-delishafrica-/package-lock.json:5996:    "node_modules/expo-router/node_modules/@radix-ui/react-presence": {
+apps/courier/appli-delishafrica-/package-lock.json:6019:    "node_modules/expo-router/node_modules/@radix-ui/react-primitive": {
+apps/courier/appli-delishafrica-/package-lock.json:6041:    "node_modules/expo-router/node_modules/@radix-ui/react-primitive/node_modules/@radix-ui/react-slot": {
+apps/courier/appli-delishafrica-/package-lock.json:6058:    "node_modules/expo-router/node_modules/@radix-ui/react-roving-focus": {
+apps/courier/appli-delishafrica-/package-lock.json:6088:    "node_modules/expo-router/node_modules/@radix-ui/react-tabs": {
+apps/courier/appli-delishafrica-/package-lock.json:6117:    "node_modules/expo-router/node_modules/semver": {
+apps/courier/appli-delishafrica-/package-lock.json:6274:        "expo-router": "*",
+apps/courier/appli-delishafrica-/package-lock.json:6278:        "expo-router": {
+apps/courier/appli-delishafrica-/da/InnerLayout.tsx:2:import { Stack } from 'expo-router';
+apps/client/node_modules/.bin/expo:9:  export NODE_PATH="/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/expo/bin/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/expo/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules:/app/node_modules/.pnpm/node_modules"
+apps/client/node_modules/.bin/expo:11:  export NODE_PATH="/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/expo/bin/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/expo/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules:/app/node_modules/.pnpm/node_modules:$NODE_PATH"
+apps/courier/scripts/reset-project.js:36:const layoutContent = `import { Stack } from "expo-router";
+apps/courier/appli-delishafrica-/app/_layout.tsx.bak:2:import { Stack } from 'expo-router';
+apps/courier/scripts/reset-project.js.bak:36:const layoutContent = `import { Stack } from "expo-router";
+apps/courier/appli-delishafrica-/app/_layout.tsx.bak.20251216_023209:2:import { Stack } from 'expo-router';
+apps/courier/appli-delishafrica-/app/modal.tsx.bak:1:import { Link } from 'expo-router';
+apps/courier/appli-delishafrica-/app/_layout.tsx:12:import { useRouter } from "expo-router";
+apps/courier/appli-delishafrica-/app/modal.tsx:1:import { Link } from 'expo-router';
+apps/courier/package.json.bak.20251212_100841:5:  "main": "expo-router/entry",
+apps/courier/package.json.bak.20251212_100841:26:    "expo-router": "^6.0.17",
+apps/courier/appli-delishafrica-/app/(tabs)/_layout.tsx.bak:1:import { Tabs } from 'expo-router';
+apps/client/apps/client/app/restaurants/index.tsx:1:import { Stack, useRouter } from "expo-router";
+apps/client/apps/client/app/restaurants/index.tsx.bak:1:import { Stack, useRouter } from "expo-router";
+apps/client/node_modules/.bin/fingerprint:9:  export NODE_PATH="/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/expo/bin/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/expo/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules:/app/node_modules/.pnpm/node_modules"
+apps/client/node_modules/.bin/fingerprint:11:  export NODE_PATH="/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/expo/bin/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/expo/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules:/app/node_modules/.pnpm/node_modules:$NODE_PATH"
+apps/client/apps/client/app/index.tsx:1:import { Link, Stack } from "expo-router";
+apps/courier/appli-delishafrica-/app/(tabs)/_layout.tsx:1:import { Tabs } from 'expo-router';
+apps/client/node_modules/.bin/expo-modules-autolinking:9:  export NODE_PATH="/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/expo/bin/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/expo/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules:/app/node_modules/.pnpm/node_modules"
+apps/client/node_modules/.bin/expo-modules-autolinking:11:  export NODE_PATH="/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/expo/bin/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules/expo/node_modules:/app/node_modules/.pnpm/expo@54.0.25_@babel+core@7.28.5_@expo+metro-runtime@6.1.2_expo-router@6.0.17_react-native@0.8_flhusldr7uohekgbzyqfur4fbm/node_modules:/app/node_modules/.pnpm/node_modules:$NODE_PATH"
+apps/client/apps/client/app/index.tsx.bak:1:import { Link, Stack } from "expo-router";
+apps/courier/appli-delishafrica-/app/(tabs)/index.tsx:8:import { Link } from 'expo-router';
+apps/client/apps/client/app/auth/login.tsx:1:import { useRouter } from "expo-router";
+apps/courier/appli-delishafrica-/app/(tabs)/index.tsx.bak:8:import { Link } from 'expo-router';
+apps/client/apps/client/app/auth/login.tsx.bak:1:import { useRouter } from "expo-router";
+apps/courier/appli-delishafrica-/app/_layout.tsx.bak.20251216_014227:2:import { Stack } from 'expo-router';
+apps/client/package.json.bak.20251212_134830:66:    "expo-router": "~6.0.17",
+apps/client/package.json.bak.20251212_134830:77:  "delishAfricaOriginalMain": "expo-router/entry"
+apps/courier/.backup_layout/_layout.tsx.20251115-133526:3:import { Slot } from "expo-router";
+apps/client/app.config.ts.bak.names:15:  plugins: ["expo-router", "expo-secure-store"],
+apps/client/app.config.ts:23:  plugins: ['expo-router', 'expo-secure-store'],
+apps/courier/App.tsx.bak:2:import { ExpoRoot } from "expo-router";
+apps/courier/App.tsx.bak:3:import "expo-router/entry";
+apps/client/App.tsx:4:export { default } from "expo-router/entry";
+apps/courier/delishafrica-client/scripts/reset-project.js:36:const layoutContent = `import { Stack } from "expo-router";
+apps/courier/delishafrica-client/scripts/reset-project.js.bak:36:const layoutContent = `import { Stack } from "expo-router";
+apps/client/patch-courier-premium-ui.sh:243:import { useRouter } from 'expo-router';
+apps/courier/delishafrica-client/package-lock.json.bak:21:        "expo-router": "~6.0.13",
+
+=== Stack.Screen name=... occurrences ===
+apps/courier/appli-delishafrica-/da/InnerLayout.tsx:21:        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+apps/courier/appli-delishafrica-/da/InnerLayout.tsx:22:        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+apps/courier/appli-delishafrica-/app/_layout.tsx.bak:18:        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+apps/courier/appli-delishafrica-/app/_layout.tsx.bak:19:        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+apps/courier/appli-delishafrica-/app/_layout.tsx.bak.20251216_023209:21:        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+apps/courier/appli-delishafrica-/app/_layout.tsx.bak.20251216_023209:22:        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+apps/courier/appli-delishafrica-/app/_layout.tsx.bak.20251216_014227:18:        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+apps/courier/appli-delishafrica-/app/_layout.tsx.bak.20251216_014227:19:        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+apps/courier/app/orders-demo.tsx.bak.20251218-031922:75:      <Stack.Screen options={{ title: "Missions (démo)" }} />
+apps/courier/app/orders-demo.tsx.bak_magic_v2_20251218_035919:75:      <Stack.Screen options={{ title: "Missions (démo)" }} />
+apps/courier/app/_layout.tsx:24:    <Stack.Screen name="index" options={{ title: "DelishAfrica" }} />
+apps/client/apps/client/app/restaurants/index.tsx:35:      <Stack.Screen options={{ title: "Restaurants" }} />
+apps/client/apps/client/app/restaurants/index.tsx.bak:35:      <Stack.Screen options={{ title: "Restaurants" }} />
+apps/client/apps/client/app/index.tsx:7:      <Stack.Screen options={{ title: "DelishAfrica — Home" }} />
+apps/client/apps/client/app/index.tsx.bak:7:      <Stack.Screen options={{ title: "DelishAfrica — Home" }} />
+apps/client/app/orders-demo.tsx.bak.20251218-031922:104:      <Stack.Screen options={{ title: "Commande (démo)" }} />
+apps/client/app/partner/[slug].tsx:124:        <Stack.Screen options={{ title: "Fiche partenaire" }} />
+apps/client/app/orders-demo.tsx.bak_magic_v2_20251218_035919:104:      <Stack.Screen options={{ title: "Commande (démo)" }} />
+apps/client/app/_layout.tsx:24:    <Stack.Screen name="index" options={{ title: "DelishAfrica" }} />
+apps/courier/delishafrica-client/da/InnerLayout.tsx:21:        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+apps/courier/delishafrica-client/da/InnerLayout.tsx:22:        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+apps/courier/delishafrica-client/app/_layout.tsx.bak:18:        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+apps/courier/delishafrica-client/app/_layout.tsx.bak:19:        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+apps/courier/delishafrica-client/app/_layout.tsx.bak.20251216_023209:21:        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+apps/courier/delishafrica-client/app/_layout.tsx.bak.20251216_023209:22:        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+apps/courier/delishafrica-client/app/_layout.tsx.bak.20251216_014227:18:        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+apps/courier/delishafrica-client/app/_layout.tsx.bak.20251216_014227:19:        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+apps/courier/delishafrica-client/delishafrica-merchant/da/InnerLayout.tsx:21:        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+apps/courier/delishafrica-client/delishafrica-merchant/da/InnerLayout.tsx:22:        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+apps/courier/delishafrica-client/delishafrica-merchant/app/_layout.tsx.bak:18:        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+apps/courier/delishafrica-client/delishafrica-merchant/app/_layout.tsx.bak:19:        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+apps/courier/delishafrica-client/delishafrica-merchant/app/_layout.tsx.bak.20251216_023209:21:        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+apps/courier/delishafrica-client/delishafrica-merchant/app/_layout.tsx.bak.20251216_023209:22:        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+apps/courier/delishafrica-client/delishafrica-merchant/app/_layout.tsx.bak.20251216_014227:18:        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+apps/courier/delishafrica-client/delishafrica-merchant/app/_layout.tsx.bak.20251216_014227:19:        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+apps/merchant/app/orders-demo.tsx.bak.20251218-031922:78:      <Stack.Screen options={{ title: "Commandes (démo)" }} />
+apps/merchant/app/orders-demo.tsx.bak_magic_v2_20251218_035919:78:      <Stack.Screen options={{ title: "Commandes (démo)" }} />
+apps/merchant/app/_layout.tsx:24:    <Stack.Screen name="index" options={{ title: "DelishAfrica" }} />

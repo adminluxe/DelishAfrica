@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-COMPOSE_DIR="/opt/delishafrica/compose"
+COMPOSE_DIR="/opt/delishafrica/monorepo"
 MONO_DIR="/opt/delishafrica/monorepo"
 
 echo "[DA][rescue] Patch Merchant HapticTab (suppression de @react-navigation/elements)..."

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BASE="http://127.0.0.1:4001"
+CLIENT_ID="client_0001"
+MERCHANT_ID="merch_0001"
+
+echo "📡 [1/5] Vérification de l'API..."
+curl -fsS "$BASE/api/health" | jq . || { echo "❌ API injoignable"; exit 1; }
+
+echo "🧑‍🍳 [2/5] Vérification des restaurants..."
+curl -s "$BASE/api/merchants" | jq .
+
+echo "🛒 [3/5] Lancement de l’app Client Expo (port 19001)..."
+cd /opt/delishafrica/monorepo/apps/client
+
+pkill -f "expo|metro" 2>/dev/null || true
+rm -rf ~/.expo/* ~/.cache/expo/* 2>/dev/null || true
+
+pnpm dev || echo "❗ Lancement manuel possible : cd apps/client && pnpm dev"
+
+echo "📱 [4/5] L’app Client devrait afficher les plats du marchand $MERCHANT_ID"
+
+echo "🎯 [5/5] Tu peux scanner le QR code avec Expo Go ou lancer sur émulateur."

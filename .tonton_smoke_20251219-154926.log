@@ -1,0 +1,67 @@
+
+🧡 SMOKE FLOW via API — log: /opt/delishafrica/monorepo/.tonton_smoke_20251219-154926.log
+
+
+🧡 API base: https://api.delishafrica.me
+
+
+🧡 1) Health checks
+
+{"status":"ok"}
+[HTTP:200]
+{"status":"ok"}
+[HTTP:200]
+{"status":"ok"}
+[HTTP:200]
+
+🧡 2) Reset demo (si existe)
+
+{"ok":true,"message":"demo reset ok"}
+[HTTP:201]
+{"message":"Cannot POST /api/orders/demo/reset","error":"Not Found","statusCode":404}
+[HTTP:404]
+{"message":"Cannot POST /orders/demo/reset","error":"Not Found","statusCode":404}
+[HTTP:404]
+
+🧡 3) Create demo order (on tente plusieurs endpoints)
+
+
+🧡 Create response (api/v1/orders/demo/create):
+
+{"ok":true,"order":{"id":"demo_mjczjj8h_1tfc3g","partnerSlug":"thieyp","status":"pending","items":[],"totals":{"itemsCount":0,"amount":0,"currency":"EUR"},"createdAt":"2025-12-19T14:49:26.561Z","updatedAt":"2025-12-19T14:49:26.561Z","timeline":[{"at":"2025-12-19T14:49:26.561Z","status":"pending","note":"created"}]}}
+
+🧡 4) List orders (pending/ready/delivered) — endpoints probes
+
+
+🧡 GET https://api.delishafrica.me/api/v1/orders
+
+[]
+[HTTP:200]
+
+🧡 GET https://api.delishafrica.me/api/orders
+
+{"message":"Cannot GET /api/orders","error":"Not Found","statusCode":404}
+[HTTP:404]
+
+🧡 GET https://api.delishafrica.me/orders
+
+{"message":"Cannot GET /orders","error":"Not Found","statusCode":404}
+[HTTP:404]
+
+🧡 GET https://api.delishafrica.me/api/v1/orders?status=pending
+
+[]
+[HTTP:200]
+
+🧡 GET https://api.delishafrica.me/api/v1/orders?status=ready
+
+[]
+[HTTP:200]
+
+🧡 GET https://api.delishafrica.me/api/v1/orders?status=delivered
+
+[]
+[HTTP:200]
+
+🧡 ✅ SMOKE terminé. Lis le log:
+

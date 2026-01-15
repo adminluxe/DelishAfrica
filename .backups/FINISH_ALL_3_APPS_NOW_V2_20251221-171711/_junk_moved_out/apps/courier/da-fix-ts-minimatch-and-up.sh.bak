@@ -1,0 +1,71 @@
+# === da-fix-ts-minimatch-and-up.sh ===
+set -euo pipefail
+
+API_DIR="/opt/delishafrica/monorepo/services/api"
+HEALTH_LOCAL="http://127.0.0.1:4001/api/health"
+HEALTH_PUBLIC="https://api.delishafrica.me/api/health"
+
+echo "→ 1) Patch tsconfig* pour retirer 'minimatch' + activer skipLibCheck…"
+cd "$API_DIR"
+for f in tsconfig.json tsconfig.build.json tsconfig.app.json; do
+  [ -f "$f" ] || continue
+  cp -a "$f" "$f.bak.$(date +%F-%H%M%S)"
+  node - "$f" <<'NODE'
+const fs=require('fs'); const p=process.argv[2];
+const j=JSON.parse(fs.readFileSync(p,'utf8'));
+j.compilerOptions = j.compilerOptions || {};
+// Retire 'minimatch' de compilerOptions.types
+if (Array.isArray(j.compilerOptions.types)) {
+  j.compilerOptions.types = j.compilerOptions.types.filter(t => t !== 'minimatch');
+  if (!j.compilerOptions.types.length) delete j.compilerOptions.types;
+}
+// Force skipLibCheck
+j.compilerOptions.skipLibCheck = true;
+// Nettoie typeRoots (pas nécessaire, mais évite des surcharges exotiques)
+if (Array.isArray(j.compilerOptions.typeRoots) && j.compilerOptions.typeRoots.length===0) {
+  delete j.compilerOptions.typeRoots;
+}
+fs.writeFileSync(p, JSON.stringify(j,null,2));
+console.log('✔ Patched', p);
+NODE
+done
+
+echo "→ 2) Nettoyage caches + reinstall silencieuse…"
+rm -rf node_modules/.cache .turbo dist || true
+pnpm install --silent || true
+
+echo "→ 3) Build API (tolère warnings)…"
+pnpm build || true
+
+echo "→ 4) (Re)démarrage PM2 delish-api…"
+if pm2 describe delish-api >/dev/null 2>&1; then
+  pm2 restart delish-api
+else
+  # Essaie dist, sinon start:prod
+  if [ -f dist/main.js ]; then
+    pm2 start "node dist/main.js" --name delish-api
+  else
+    pm2 start "pnpm start:prod" --name delish-api
+  fi
+fi
+
+echo "→ 5) Attente de l’API locale :4001 (max 25s)…"
+ok=""
+for i in {1..25}; do
+  if curl -sf "$HEALTH_LOCAL" >/dev/null; then ok="yes"; break; fi
+  sleep 1
+done
+if [ -z "$ok" ]; then
+  echo "✖ API KO → logs (80 lignes) :"
+  pm2 logs delish-api --lines 80
+  exit 1
+fi
+echo "✔ API locale OK"
+
+echo "→ 6) Nginx local (HTTPS + Host) :"
+curl -skI -H "Host: api.delishafrica.me" https://127.0.0.1/api/health | head -n1
+
+echo "→ 7) Public (Cloudflare) :"
+curl -svo /dev/null "$HEALTH_PUBLIC" 2>&1 | sed -n '1,12p'
+echo
+curl -s "$HEALTH_PUBLIC" && echo

@@ -1,0 +1,15 @@
+=== Fix probe syntax error — 20260113_185009 ===
+Backup: /opt/delishafrica/monorepo/.tonton_backups/fix_probe_syntax_20260113_185009
+
+[client] restored-from-backup: apps/client/app/(tabs)/index.tsx
+[client] restored-from-backup: apps/client/app/index.tsx
+[courier] restored-from-backup: apps/courier/app/(tabs)/index.tsx
+[courier] restored-from-backup: apps/courier/app/index.tsx
+[merchant] restored-from-backup: apps/merchant/app/(tabs)/index.tsx
+[merchant] restored-from-backup: apps/merchant/app/index.tsx
+
+=== LEFTOVERS client ===
+
+=== LEFTOVERS courier ===
+
+=== LEFTOVERS merchant ===

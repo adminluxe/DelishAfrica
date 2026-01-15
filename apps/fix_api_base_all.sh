@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE="/opt/delishafrica/compose/apps"
+BASE="/opt/delishafrica/monorepo/apps"
 API_URL="https://api.delishafrica.me"
 
 echo "→ Forçage de l'API dans app/index.tsx pour client / courier / merchant"

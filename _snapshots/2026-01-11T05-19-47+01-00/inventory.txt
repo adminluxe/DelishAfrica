@@ -1,0 +1,744 @@
+===== INVENTORY 2026-01-11T05:19:47+01:00 =====
+ROOT: /opt/delishafrica/monorepo
+
+== Runtime ==
+v20.19.6
+9.12.1
+
+== COMPONENTS FOUND ==
+/opt/delishafrica/monorepo
+/opt/delishafrica/monorepo/apps/client
+/opt/delishafrica/monorepo/apps/courier
+/opt/delishafrica/monorepo/apps/merchant
+
+==============================
+DIR: /opt/delishafrica/monorepo
+package.json: yes
+GIT: yes
+BRANCH: master
+LAST: f3832b7 (HEAD -> master) Initial commit
+STATUS:
+## master
+ M app/_layout.tsx
+ M apps/_marchand.disabled/.env
+ m apps/client
+ m apps/courier
+ M apps/fix_api_base_all.sh
+ M apps/fix_demo_homescreens.sh
+ m apps/merchant
+ M apps/rebuild_all_apps.sh
+ A eas.json
+ M package.json
+ M pnpm-lock.yaml
+ M scripts/da_rescue_client_merchant.sh
+ M scripts/delishafrica_auto_migration.sh
+ M turbo.json
+?? .backup_accents_20251217_035803/
+?? .backup_force_real_routes_20251220-160739/
+?? .backup_force_signature_20251220-155703/
+?? .backup_onboarding_once_session_20251220-163557/
+?? .backup_phase2b_signature_20251220-165242/
+?? .backup_safearea_20251217_034813/
+?? .backup_ui_folder_20251217_040653/
+?? .backup_ui_v1_20251220-120652/
+?? .backup_ux_phase1_20251217_025531/
+?? .backup_ux_wire_v1_20251220-121737/
+?? .backups/
+?? .env
+?? .tonton_api_reset_20251219-194125.log
+?? .tonton_backups/
+?? .tonton_fix_port_3010_20251219-192007.log
+?? .tonton_logs/
+?? .tonton_smoke_20251219-154926.log
+?? .tonton_smoke_20251219-155443.log
+?? .turbo/
+?? :USERPROFILEDownloads/
+?? _backup_scroll_20251221-220356/
+?? _backup_ui_safe_padding_20251220-172059/
+?? _diag/
+?? _ops/
+?? _snapshots/
+?? app/_layout.tsx.bak.20251216_023209
+?? assets/
+?? backup_phase2a_cta_20251220-190450/
+?? backup_phase2a_wire_cta_20251220-204359/
+?? backup_phase2b_anim_20251220-210757/
+?? backup_phase2b_anim_20251220-210821/
+?? backup_phase2b_demo_screens_20251220-205700/
+?? backup_safe_padding_20251220-172929/
+?? backups/
+?? branding/
+?? da/
+?? da_api_autoboot.sh
+?? da_api_debug_routes.sh
+?? da_api_docror_and_mux.sh
+?? da_api_local_check.sh
+?? da_api_origin_probe.log
+?? da_api_origin_probe.sh
+?? da_api_rebuild_only.sh
+?? da_api_start.sh
+?? da_apply_env_apiurl.sh
+?? da_apply_env_demo.sh
+?? da_apply_uiux_v1.sh
+?? da_audit_bridge_courier_platform.sh
+?? da_audit_bridge_courier_platform_v2.sh
+?? da_compose_rescue.sh
+?? da_enable_demo_ui.sh
+?? da_fix_client_runtime.sh
+?? da_fix_cloudflared.sh
+?? da_fix_metro_runtime_ui_v1.sh
+?? da_fix_sharedarraybuffer.log
+?? da_fix_sharedarraybuffer.sh
+?? da_fix_sharedarraybuffer_root.sh
+?? da_fix_sharedarraybuffer_v2.log
+?? da_fix_sharedarraybuffer_v2.sh
+?? da_fix_sharedarraybuffer_v3.sh
+?? da_fix_ui_imports.sh
+?? da_fix_ui_pkg_resolution.sh
+?? da_full_stack_boot.sh
+?? da_guardian.sh
+?? da_kill_metro_ports.sh
+?? da_master_tmux_5win.sh
+?? da_mux_monorepo.sh
+?? da_mux_v3.sh
+?? da_patch_courier_bridge_v1.sh
+?? da_patch_hmrclient_stub.sh
+?? da_patch_pretty_format_stub.sh
+?? da_probe_courier_endpoints_now.sh
+?? da_reset_all.sh.save
+?? da_reset_and_mux.sh
+?? da_reset_node_modules.sh
+?? da_reset_ports_and_mux.sh
+?? da_smoketest_api.sh
+?? da_thieyp_refresh.sh
+?? da_tmux_delish.sh
+?? da_tonton_fix_ui_and_restart.sh
+?? da_tonton_launch.sh
+?? da_ultimate_reset_3010.sh
+?? da_ultime_reset_3010.sh
+?? da_ultra_reset.sh
+?? delishafrica_import.sh
+?? docker-compose.yml
+?? docker-compose.yml.bak.2025-12-15_220644
+?? docker-compose.yml.bak.2025-12-15_221009
+?? docs/
+?? fix_expo_app_entry.js
+?? metro.config.js
+?? ops_snapshot.sh
+?? package.json.bak
+?? package.json.bak.20251213_100847
+?? package.json.before_turbo_fix
+?? package.json.current_backup
+?? packages/
+?? patch-courier-premium-ui.sh
+?? patch-courier-ui.sh
+?? patch-ui-magic-pack.sh
+?? pnpm-workspace.yaml.bak.20251215-044712
+?? rebirth_all.sh
+?? reset_api_3010.sh
+?? reset_delishafrica.sh
+?? restart_delish_dev.sh
+?? scan-project.js
+?? scripts/DA_FINALIZE_NOW.sh
+?? scripts/DA_FIND_FLOW_FILES.sh
+?? scripts/DA_FIX_CLIENT_COURIER_NOW.sh
+?? scripts/DA_FIX_INTERACTIONS_NOW.sh
+?? scripts/DA_FIX_SCROLL_AND_ROUTES_ALL.sh
+?? scripts/DA_FIX_SCROLL_OVERLAYS_CAPTURE.sh
+?? scripts/DA_FIX_SCROLL_SCREEN_ALL.sh
+?? scripts/DA_FIX_TAPS_NOW.sh
+?? scripts/DA_FIX_THIEYP_DEMO_IMPORTS_NOW.sh
+?? scripts/DA_FORCE_SCROLL_ALL.sh
+?? scripts/DA_NUKE_SLUG_SCREENS_ALL_APPS.sh
+?? scripts/FINISH_ALL_3_APPS_NOW_V2.sh
+?? scripts/_archive/
+?? scripts/da_add_orders_demo_flow_api.sh
+?? scripts/da_add_ui_kit_v2.sh
+?? scripts/da_api_doctor.sh
+?? scripts/da_api_hard_recover_3010.sh
+?? scripts/da_api_hard_reset.sh
+?? scripts/da_api_supervisor_3010.sh
+?? scripts/da_api_supervisor_3010_strict.sh
+?? scripts/da_app_dev.sh
+?? scripts/da_apply_safe_top_futuristic_v1.sh
+?? scripts/da_autofix_async_useEffect_safe.sh
+?? scripts/da_autofix_routes_default_export_safe.sh
+?? scripts/da_check_skin_thieyp.sh
+?? scripts/da_create_thieyp_demo_routes.sh
+?? scripts/da_debug_cta_demo.sh
+?? scripts/da_debug_merchant_press.sh
+?? scripts/da_detect_orders_screen_merchant.sh
+?? scripts/da_dev_lock_10win.sh
+?? scripts/da_dev_mux_6win.sh
+?? scripts/da_dev_mux_8win.sh
+?? scripts/da_diag_pack.sh
+?? scripts/da_expo_router_ghostbuster.sh
+?? scripts/da_find_projects.sh
+?? scripts/da_find_thieyp_screens.sh
+?? scripts/da_fix_chapitreA_final.sh
+?? scripts/da_fix_client_orders_demo.sh
+?? scripts/da_fix_cloudflared_api.sh
+?? scripts/da_fix_cloudflared_api_v2.sh
+?? scripts/da_fix_cloudflared_api_v3.sh
+?? scripts/da_fix_commander_demo_route.sh
+?? scripts/da_fix_demo_flow_api.sh
+?? scripts/da_fix_demo_flow_api_auto.sh
+?? scripts/da_fix_demo_flow_api_nest.sh
+?? scripts/da_fix_expo_ports_in_use.sh
+?? scripts/da_fix_layout_escapes.sh
+?? scripts/da_fix_layout_merchant_courier.sh
+?? scripts/da_fix_layout_quotes_v1.sh
+?? scripts/da_fix_layout_unicode.sh
+?? scripts/da_fix_merchant_orders_screen.sh
+?? scripts/da_fix_merchant_ready_button_inert.sh
+?? scripts/da_fix_orderid_replace_safe.sh
+?? scripts/da_fix_orders_demo_click_client.sh
+?? scripts/da_fix_orders_demo_default_export.sh
+?? scripts/da_fix_orders_demo_placeholder_to_thieyp.sh
+?? scripts/da_fix_partners_routes_clean.sh
+?? scripts/da_fix_partners_routes_clean_v2.sh
+?? scripts/da_fix_partners_routes_clean_v3.sh
+?? scripts/da_fix_partners_routes_v4.sh
+?? scripts/da_fix_plusui_and_router_warnings.sh
+?? scripts/da_fix_plusui_imports.sh
+?? scripts/da_fix_pointerevents_syntax_client.sh
+?? scripts/da_fix_port_3010_eaddrinuse.sh
+?? scripts/da_fix_ports_expo.sh
+?? scripts/da_fix_root_dev_scripts.sh
+?? scripts/da_fix_safearea.sh
+?? scripts/da_fix_slug_pointerevents_hammer_client.sh
+?? scripts/da_fix_titles_taglines.sh
+?? scripts/da_fix_ui_final.js
+?? scripts/da_fix_ui_folder_router.sh
+?? scripts/da_fix_ui_imports.sh
+?? scripts/da_fix_ui_imports_to__ui.sh
+?? scripts/da_fix_ui_private_folder.sh
+?? scripts/da_fix_ui_router_now.sh
+?? scripts/da_fix_warnings_and_routes.sh
+?? scripts/da_flow_gate_e2e.sh
+?? scripts/da_force_fix_orders_demo_routes.sh
+?? scripts/da_force_merchant_list_demo.sh
+?? scripts/da_gate_scan_injections.sh
+?? scripts/da_hotfix_layouts_merchant_courier.sh
+?? scripts/da_hotfix_orders_demo_ids.sh
+?? scripts/da_hotfix_orders_demo_safe_orderid.sh
+?? scripts/da_import_thieyp_menu.sh
+?? scripts/da_inventory.sh
+?? scripts/da_kill_3010_hard.sh
+?? scripts/da_kill_port.sh
+?? scripts/da_migrate_ui_out_of_app.sh
+?? scripts/da_mux_da_dev_6win.sh
+?? scripts/da_onboarding_once_per_session_v1.sh
+?? scripts/da_ops_locate_start_3011.sh
+?? scripts/da_ops_start_safe_3011.sh
+?? scripts/da_patch_action_principale_to_orders_demo.sh
+?? scripts/da_patch_action_principale_to_orders_demo_v2.sh
+?? scripts/da_patch_and_restart_merchant_orders_list.sh
+?? scripts/da_patch_api_demo_get_accept_all_ids.sh
+?? scripts/da_patch_api_demo_get_accept_all_ids_v2.sh
+?? scripts/da_patch_api_demo_get_always.sh
+?? scripts/da_patch_demo_orders_api.sh
+?? scripts/da_patch_demo_orders_api_auto.sh
+?? scripts/da_patch_demo_ux_magic_v2.sh
+?? scripts/da_patch_expo_icons.sh
+?? scripts/da_patch_front_extract_order_id_safe.sh
+?? scripts/da_patch_headers_and_keys.sh
+?? scripts/da_patch_merchant_demo_list.sh
+?? scripts/da_patch_merchant_orders_demo_clean.sh
+?? scripts/da_patch_merchant_orders_screen.sh
+?? scripts/da_patch_ui_headers_and_orders_v1.sh
+?? scripts/da_patch_ui_polish_v2.sh
+?? scripts/da_patch_ui_polish_v3.sh
+?? scripts/da_phase2a_cta_button_fix.sh
+?? scripts/da_phase2a_routes_bootstrap.sh
+?? scripts/da_phase2a_wire_cta_routes.sh
+?? scripts/da_phase2b_add_animations.sh
+?? scripts/da_phase2b_add_animations_safe.sh
+?? scripts/da_phase2b_add_animations_safe_v2.sh
+?? scripts/da_phase2b_create_demo_screens.sh
+?? scripts/da_phase2b_signature_screens_v1.sh
+?? scripts/da_probe_orders_api.sh
+?? scripts/da_probe_orders_partner_thieyp.sh
+?? scripts/da_recover_all_strict.sh
+?? scripts/da_release_deploy.sh
+?? scripts/da_release_rollback.sh
+?? scripts/da_repair_demo_flow_module.sh
+?? scripts/da_restart_client_hard.sh
+?? scripts/da_restart_expo_3apps.sh
+?? scripts/da_restart_expo_3apps_clean.sh
+?? scripts/da_restart_expo_3apps_clean_v2.sh
+?? scripts/da_restart_merchant_force.sh
+?? scripts/da_restart_merchant_hard.sh
+?? scripts/da_restart_merchant_hard_qr.sh
+?? scripts/da_restart_merchant_ultra.sh
+?? scripts/da_restore_demo_files_lastbak.sh
+?? scripts/da_restore_layout_git.sh
+?? scripts/da_safe_padding_screen.sh
+?? scripts/da_set_app_accents.sh
+?? scripts/da_set_app_accents_v2.sh
+?? scripts/da_silence_expo_router_warnings.sh
+?? scripts/da_smoke_flow_e2e.sh
+?? scripts/da_smoke_flow_orders.sh
+?? scripts/da_smoke_thieyp_flow.sh
+?? scripts/da_snapshot.sh
+?? scripts/da_stabilize_run.sh
+?? scripts/da_start_ops_platform_3011.sh
+?? scripts/da_sync_api_base_all_apps.sh
+?? scripts/da_sync_api_base_all_apps_v2.sh
+?? scripts/da_thieyp_e2e_smoke.sh
+?? scripts/da_thieyp_real_menu_magic.sh
+?? scripts/da_tmux_dev_8win.sh
+?? scripts/da_tmux_full_reset.sh
+?? scripts/da_tonton_recover_all.sh
+?? scripts/da_tonton_reset_tmux_10win.sh
+?? scripts/da_ui_headers_delishafrica.sh
+?? scripts/da_ui_polish_v3.sh
+?? scripts/da_ui_polish_v4.sh
+?? scripts/da_ui_safe_padding.sh
+?? scripts/da_ux_force_real_routes_v1.sh
+?? scripts/da_ux_force_signature_v1.sh
+?? scripts/da_ux_foundation_v1.sh
+?? scripts/da_ux_wire_v1.sh
+?? scripts/da_write_orders_demo_helpers.sh
+?? scripts/da_write_thieyp_orders_demo_pages.sh
+?? scripts/da_zero_restart_tmux.sh
+?? scripts/enable_scroll_all_apps.sh
+?? scripts/fix_and_boot_delishafrica_thieyp.sh
+?? scripts/fix_metro_all.sh
+?? scripts/tmux_5win_delish.sh
+?? scripts/tonton_da_hard_reset_3apps.sh
+?? scripts/tonton_da_smoke_orders.sh
+?? scripts/tonton_fix_taps_all_apps.sh
+?? scripts/ux_phase1_apply.sh
+?? serve_ota.log
+?? services/api-nest/
+?? services/api/.env
+?? services/api/DelishAfrica-Coursiers-Infra-Debug-Report.md
+?? services/api/Dockerfile
+?? services/api/da_api_tsc_build.sh
+?? services/api/da_find_app_module.sh
+?? services/api/setup_thiepy_demo.sh
+?? services/api/src/
+?? services/da_api_autoboot.sh
+?? services/da_api_diagnose.log
+?? services/da_api_diagnose.sh
+?? services/da_find_app_module.sh
+?? start_env.sh
+?? supervisor.sh
+?? templates/
+?? tmux_demo_down.sh
+?? tmux_demo_up.sh
+?? tonton_all_in_one.sh
+?? tonton_backups/
+?? tonton_clean_start.sh
+?? tonton_clean_start_3010.sh
+?? tonton_lock_base_delish.sh
+?? tonton_logs/
+?? tonton_pids/
+?? tonton_reset_prod.sh
+?? tonton_sweep_ports_and_apiurl.sh
+?? tools/
+?? turbo.json.before_tasks_fix
+
+---- package scripts ----
+name: delishafrica-monorepo
+version: (none)
+scripts:
+  build: turbo run build
+  client:dev: pnpm --filter ./apps/client exec -- expo start --dev-client -c --tunnel --port 8081
+  client:dev:lan: bash ./scripts/da_app_dev.sh client --lan
+  courier:dev: pnpm --filter ./apps/courier exec -- expo start --dev-client -c --tunnel --port 8082
+  courier:dev:lan: bash ./scripts/da_app_dev.sh courier --lan
+  dev: turbo run dev --parallel
+  format: prettier -w .
+  lint: turbo run lint
+  merchant:dev: pnpm --filter ./apps/merchant exec -- expo start --dev-client -c --tunnel --port 8083
+  merchant:dev:lan: bash ./scripts/da_app_dev.sh merchant --lan
+  test: turbo run test
+  typecheck: turbo run typecheck
+
+---- env files (presence) ----
+/opt/delishafrica/monorepo/.env
+
+---- env vars used (code) ----
+USED:
+API_BASE_URL
+APP
+APP_MODULE
+APP_PORT
+EXPO_OS
+EXPO_PUBLIC_API
+EXPO_PUBLIC_API_
+EXPO_PUBLIC_API_BASE_URL
+EXPO_PUBLIC_API_URL
+EXPO_PUBLIC_DEMO_UI
+EXPO_PUBLIC_USE_DEV_MOCKS
+NEXT_PUBLIC_API_URL
+PKG
+PORT
+
+MISSING (used - present):
+API_BASE_URL
+APP
+APP_MODULE
+APP_PORT
+EXPO_OS
+EXPO_PUBLIC_API
+EXPO_PUBLIC_API_
+EXPO_PUBLIC_API_URL
+EXPO_PUBLIC_DEMO_UI
+EXPO_PUBLIC_USE_DEV_MOCKS
+NEXT_PUBLIC_API_URL
+PKG
+PORT
+
+==============================
+DIR: /opt/delishafrica/monorepo/apps/client
+package.json: yes
+GIT: yes
+BRANCH: master
+LAST: c6a7c39 (HEAD -> master) Initial commit
+STATUS:
+## master
+ M .npmrc
+ M app.json
+ M app/(tabs)/_layout.tsx
+ M app/_layout.tsx
+ M components/haptic-tab.tsx
+ A eas.json
+ M package.json
+ D pnpm-lock.yaml
+ M tsconfig.json
+?? .env
+?? .env.development
+?? .turbo/
+?? App.tsx
+?? app.config.base.ts
+?? app.config.ts
+?? app/_components/
+?? app/_layout.tsx.BAK.20251219-112040
+?? app/demo-thieyp.tsx
+?? app/index.tsx
+?? app/index.tsx.BAK_20251202-163605
+?? app/index.tsx.BAK_20251202-172530
+?? app/menu.tsx
+?? app/orders-demo.tsx.DISABLED.20251221-210617
+?? app/orders.tsx
+?? app/partner/
+?? app/restaurant/
+?? app/restaurants/
+?? app/thieyp-demo.tsx
+?? apps/
+?? assets/branding/
+?? assets/icon-adaptive-foreground.png
+?? assets/icon.png
+?? assets/logo.jpg
+?? assets/splash.jpg
+?? assets/splash.png
+?? babel.config.js
+?? build_release.sh
+?? client-fix-bruxelles-2025-11-14-1417.tar.gz
+?? client-ui-backup-2025-11-14-0447.tar.gz
+?? client-ui-backup-v2-2025-11-14-0459.tar.gz
+?? components/AppBackground.tsx
+?? components/BrandBackground.tsx
+?? components/HeroHeader.tsx
+?? components/MagicButton.tsx
+?? components/StatusPill.tsx
+?? components/brand.ts
+?? components/da/
+?? da-debug-api-connectivity.sh
+?? da/
+?? da_patch_pretty_format_stub.sh
+?? demoData.ts
+?? dev-all.sh
+?? dev-refresh-client.sh
+?? eas-build-pre-install.sh
+?? entry.sharedarraybuffer.js
+?? env.development.env
+?? index.js
+?? index.tsx
+?? metro.config.da_sharedarraybuffer.js
+?? metro.config.js
+?? package-lock.json
+?? patch-courier-premium-ui.sh
+?? polyfills.js
+?? serve_ota.js
+?? serve_ota.log
+?? src/
+?? ui/
+?? yarn.lock
+
+---- package scripts ----
+name: client
+version: 1.0.0
+scripts:
+  android: expo run:android
+  dev: expo start --dev-client --tunnel --port 8081
+  ios: expo run:ios
+  lint: expo lint
+  reset-project: node ./scripts/reset-project.js
+  start: expo start --dev-client --tunnel --port 8081
+  web: expo start --web
+
+---- env files (presence) ----
+/opt/delishafrica/monorepo/apps/client/.env
+/opt/delishafrica/monorepo/apps/client/.env.local
+/opt/delishafrica/monorepo/apps/client/.env.development
+
+---- env vars used (code) ----
+USED:
+API_BASE_URL
+EXPO_OS
+EXPO_PUBLIC_API_BASE_URL
+EXPO_PUBLIC_API_URL
+
+MISSING (used - present):
+EXPO_OS
+
+==============================
+DIR: /opt/delishafrica/monorepo/apps/courier
+package.json: yes
+GIT: yes
+BRANCH: master
+LAST: d81dc68 (HEAD -> master) Initial commit
+STATUS:
+## master
+ M .npmrc
+ D app.json
+ M app/(tabs)/_layout.tsx
+ M app/_layout.tsx
+ M components/external-link.tsx
+ M components/haptic-tab.tsx
+ M package.json
+ M tsconfig.json
+?? .backup/
+?? .backup_layout/
+?? .env
+?? .env.development
+?? .expo-run.log
+?? App.tsx
+?? app.config.ts
+?? app.config.ts.BEFORE_V2_2025-11-14-0205
+?? app.config.ts.BROKEN_2025-11-13-2351
+?? app.config.ts.BROKEN_2025-11-14-0151
+?? app.config.ts.BROKEN_2025-11-14-0157
+?? app.config.ts.FINAL_2025-11-14-0210
+?? app.config.ts.SAFE_2025-11-14-0222
+?? app.config.ts.SAFE_2025-11-14-0313
+?? app/.bak/
+?? app/_components/
+?? app/_layout.tsx.BAK.20251219-133347
+?? app/_layout.tsx.BAK.20251219-135357
+?? app/_layout.tsx.BAK_2025-11-14-1804
+?? app/_layout.tsx.BAK_HEADERS_2025-11-14-1828
+?? app/auth/
+?? app/debug.tsx
+?? app/demo-missions.ts
+?? app/demo-thieyp.tsx
+?? app/demoMissions.tsx
+?? app/home.tsx
+?? app/home.tsx.BAK_2025-11-14-1717
+?? app/index.tsx
+?? app/index.tsx.BAK_20251202-163605
+?? app/job/
+?? app/login.tsx
+?? app/mission-demo.tsx.DISABLED.20251221-210617
+?? app/mission.tsx
+?? app/mission/
+?? app/missions/
+?? app/orders-demo.tsx.DISABLED.20251221-210617
+?? app/orders.tsx
+?? app/thieyp-demo.tsx
+?? app/utils/
+?? appli-delishafrica-/
+?? assets/branding/
+?? assets/icon-adaptive-foreground.png
+?? assets/icon.png
+?? assets/logo.jpg
+?? assets/splash.jpg
+?? assets/splash.png
+?? assets_backup_202511281833/
+?? babel.config.js
+?? backups/
+?? bootstrap_client_app.sh
+?? bootstrap_coursier_client.sh
+?? bootstrap_full_stack.sh
+?? bootstrap_marchand_app.sh
+?? build_20251025_010234.log
+?? build_release.sh
+?? components/AppBackground.tsx
+?? components/BrandBackground.tsx
+?? components/ConfettiBurst.tsx
+?? components/FadeIn.tsx
+?? components/HeroHeader.tsx
+?? components/JobCard.tsx
+?? components/MagicButton.tsx
+?? components/MapPreview.tsx
+?? components/ProofModal.tsx
+?? components/ProofPhotoModal.tsx
+?? components/RippleBtn.tsx
+?? components/SignatureModal.tsx
+?? components/SignaturePad.tsx
+?? components/SignaturePadModal.tsx
+?? components/StatusPill.tsx
+?? components/Toast.tsx
+?? components/brand.ts
+?? components/da/
+?? da-api-502-rescue.sh
+?? da-api-prisma-hotfix.sh
+?? da-api-up.sh
+?? da-db-detect-and-wire.sh
+?? da-db-finalize.sh
+?? da-fix-appmodule.v2.sh
+?? da-fix-healthmodule-controllers.sh
+?? da-fix-ts-minimatch-and-up.sh
+?? da-set-db-url-and-restart.sh
+?? da/
+?? delishafrica-client/
+?? demoData.ts
+?? eas.json
+?? eas.json.BEFORE_V2_2025-11-14-0205
+?? eas.json.SAFE_2025-11-14-0222
+?? eas.json.SAFE_2025-11-14-0313
+?? entry.sharedarraybuffer.js
+?? env.development.env
+?? expo-run.log
+?? export-ios-test/
+?? fix-nginx-443-for-cloudflare.sh
+?? index.tsx
+?? lib/
+?? metro.config.da_sharedarraybuffer.js
+?? metro.config.js
+?? polyfills.js
+?? push_it_to_the_limit.sh
+?? scripts/dev-refresh-courier.sh
+?? scripts/set-keys.sh
+?? services/
+?? src/
+?? theme.ts
+?? ui/
+?? utils/
+?? yarn.lock
+?? {
+
+---- package scripts ----
+name: courier
+version: 1.0.0
+scripts:
+  android: expo run:android
+  dev: expo start --dev-client --tunnel --port 8082
+  ios: expo run:ios
+  reset-project: node ./scripts/reset-project.js
+  start: expo start --dev-client --tunnel --port 8082
+
+---- env files (presence) ----
+/opt/delishafrica/monorepo/apps/courier/.env
+/opt/delishafrica/monorepo/apps/courier/.env.local
+/opt/delishafrica/monorepo/apps/courier/.env.development
+
+---- env vars used (code) ----
+USED:
+API_BASE_URL
+APP
+EXPO_OS
+EXPO_PUBLIC_API_BASE_URL
+EXPO_PUBLIC_API_URL
+
+MISSING (used - present):
+APP
+EXPO_OS
+
+==============================
+DIR: /opt/delishafrica/monorepo/apps/merchant
+package.json: yes
+GIT: yes
+BRANCH: master
+LAST: a66a41f (HEAD -> master) Initial commit
+STATUS:
+## master
+ M .npmrc
+ D app.json
+ M app/(tabs)/_layout.tsx
+ M app/_layout.tsx
+ M components/external-link.tsx
+ M components/haptic-tab.tsx
+ M components/ui/icon-symbol.ios.tsx
+ A eas.json
+ M package.json
+ M tsconfig.json
+?? .env
+?? .expo-run.log
+?? App.tsx
+?? app.config.ts
+?? app/_components/
+?? app/_layout.tsx.BAK.20251219-133347
+?? app/_layout.tsx.BAK.20251219-135357
+?? app/_layout.tsx.BAK.20251219_141555
+?? app/_layout.tsx.BAK_20251202-174643
+?? app/_layout.tsx.BAK_20251202-181441
+?? app/_layout.tsx.BAK_20251202-182843
+?? app/_layout.tsx.BAK_HEADERS_2025-11-14-1828
+?? app/auth/
+?? app/commande/
+?? app/demo-thieyp.tsx
+?? app/home.tsx
+?? app/index.tsx
+?? app/index.tsx.BAK_2025-11-14-1808
+?? app/index.tsx.BAK_20251202-163605
+?? app/index.tsx.BAK_HEADERS_2025-11-14-1828
+?? app/ops.tsx
+?? app/orders-demo.tsx.DISABLED.20251221-210617
+?? app/orders.tsx.DISABLED.20251221-210617
+?? app/orders/
+?? app/thieyp-demo.tsx
+?? assets/branding/
+?? assets/icon.png
+?? assets/logo.jpg
+?? assets/splash.png
+?? components/AppBackground.tsx
+?? components/BrandBackground.tsx
+?? components/HeroHeader.tsx
+?? components/MagicButton.tsx
+?? components/StatusPill.tsx
+?? components/brand.ts
+?? components/da/
+?? da/
+?? demoData.ts
+?? entry.sharedarraybuffer.js
+?? env.development.env
+?? expo-run.log
+?? export-ios-test/
+?? index.tsx
+?? lib/
+?? metro.config.js
+?? nettoyeur-v2.sh
+?? polyfills.js
+?? src/
+?? ui/
+?? yarn.lock
+
+---- package scripts ----
+name: merchant
+version: 1.0.0
+scripts:
+  android: expo run:android
+  dev: expo start --dev-client --tunnel --port 8083
+  ios: expo run:ios
+  reset-project: node ./scripts/reset-project.js
+  start: expo start --dev-client --tunnel --port 8083
+
+---- env files (presence) ----
+/opt/delishafrica/monorepo/apps/merchant/.env
+/opt/delishafrica/monorepo/apps/merchant/.env.local
+
+---- env vars used (code) ----
+USED:
+EXPO_PUBLIC_API_BASE_URL
+EXPO_PUBLIC_API_URL
+NEXT_PUBLIC_API_URL
+
+MISSING (used - present):
+NEXT_PUBLIC_API_URL
+
+Inventory saved to: /opt/delishafrica/monorepo/_snapshots/2026-01-11T05-19-47+01-00/inventory.txt

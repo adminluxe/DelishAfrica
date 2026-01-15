@@ -1,0 +1,4 @@
+// polyfills.js
+if (typeof globalThis.SharedArrayBuffer === 'undefined') {
+  globalThis.SharedArrayBuffer = globalThis.ArrayBuffer;
+}

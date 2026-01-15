@@ -14,11 +14,11 @@ set -euo pipefail
 
 # === Variables globales ===
 # Répertoire racine contenant les projets Expo Router
-ROOT_DIR="/opt/delishafrica/compose/apps"
+ROOT_DIR="/opt/delishafrica/monorepo/apps"
 # Liste des applications à traiter
 APPS=("courier" "merchant")
 # Point de terminaison de l'API à utiliser dans les builds
-API_BASE_URL="http://194.164.72.250:4001"
+API_BASE_URL=https://api.delishafrica.me
 # Identifiants EAS (à adapter en cas de modification dans le repo)
 declare -A EAS_PROJECT_IDS=(
   [courier]="b6ed6df5-cd75-48ff-99f9-fc5adcaec479"

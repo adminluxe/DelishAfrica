@@ -1,0 +1,34 @@
+
+[05:21:15] 🧪 TouchTrace HARDEN start
+
+[05:21:15] → app=client
+
+[05:21:15] 🧹 remove old route file: /opt/delishafrica/monorepo/apps/client/app/_components/TouchTrace.tsx
+
+[patched] /opt/delishafrica/monorepo/apps/client/app/(tabs)/_layout.tsx
+
+[patched] /opt/delishafrica/monorepo/apps/client/app/_layout.tsx
+
+[05:21:15] → app=courier
+
+[05:21:15] 🧹 remove old route file: /opt/delishafrica/monorepo/apps/courier/app/_components/TouchTrace.tsx
+
+[patched] /opt/delishafrica/monorepo/apps/courier/app/(tabs)/_layout.tsx
+
+[patched] /opt/delishafrica/monorepo/apps/courier/app/_layout.tsx
+
+[05:21:15] → app=merchant
+
+[05:21:15] 🧹 remove old route file: /opt/delishafrica/monorepo/apps/merchant/app/_components/TouchTrace.tsx
+
+[patched] /opt/delishafrica/monorepo/apps/merchant/app/(tabs)/_layout.tsx
+
+[patched] /opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx
+
+[05:21:15] ✅ Done
+
+[05:21:15] 📄 Report: /opt/delishafrica/monorepo/.tonton_reports/touchtrace_harden_20260114_052115.log
+
+[05:21:15] 📦 Backup: /opt/delishafrica/monorepo/.tonton_backups/touchtrace_harden_20260114_052115
+
+[05:21:15] 🧯 Rollback: restore from backup dir (or git checkout -- .)

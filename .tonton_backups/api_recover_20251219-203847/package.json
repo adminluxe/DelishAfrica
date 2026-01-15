@@ -1,0 +1,25 @@
+{
+  "name": "delishafrica-api-nest",
+  "private": true,
+  "version": "0.0.1",
+  "description": "DelishAfrica minimal NestJS API (Plan A)",
+  "scripts": {
+    "start:dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "build": "nest build"
+  },
+  "dependencies": {
+    "@nestjs/common": "^10.0.0",
+    "@nestjs/core": "^10.0.0",
+    "@nestjs/platform-express": "^10.0.0",
+    "reflect-metadata": "^0.1.13",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.0.0",
+    "@nestjs/schematics": "^10.0.0",
+    "@nestjs/testing": "^10.0.0",
+    "@types/node": "^20.11.30",
+    "typescript": "^5.4.5"
+  }
+}

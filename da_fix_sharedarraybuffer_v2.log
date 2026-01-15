@@ -1,0 +1,32 @@
+=== [DA] SharedArrayBuffer fix v2 - Fri Dec 12 10:08:41 CET 2025 ===
+ROOT=/opt/delishafrica/monorepo
+
+>>> apps/client
+✅ polyfills.js OK -> /opt/delishafrica/monorepo/apps/client/polyfills.js
+ℹ️ main actuel: expo-router/entry
+🧷 Backup: /opt/delishafrica/monorepo/apps/client/package.json.bak.20251212_100841
+✅ Wrapper créé: /opt/delishafrica/monorepo/apps/client/entry.sharedarraybuffer.js (require -> expo-router/entry)
+✅ package.json main = entry.sharedarraybuffer.js
+
+>>> apps/courier
+✅ polyfills.js OK -> /opt/delishafrica/monorepo/apps/courier/polyfills.js
+ℹ️ main actuel: expo-router/entry
+🧷 Backup: /opt/delishafrica/monorepo/apps/courier/package.json.bak.20251212_100841
+✅ Wrapper créé: /opt/delishafrica/monorepo/apps/courier/entry.sharedarraybuffer.js (require -> expo-router/entry)
+✅ package.json main = entry.sharedarraybuffer.js
+
+>>> apps/merchant
+✅ polyfills.js OK -> /opt/delishafrica/monorepo/apps/merchant/polyfills.js
+ℹ️ main actuel: expo-router/entry
+🧷 Backup: /opt/delishafrica/monorepo/apps/merchant/package.json.bak.20251212_100841
+✅ Wrapper créé: /opt/delishafrica/monorepo/apps/merchant/entry.sharedarraybuffer.js (require -> expo-router/entry)
+✅ package.json main = entry.sharedarraybuffer.js
+
+=== OK ===
+📌 Ensuite:
+1) Stop Metro si il tourne
+2) Relance avec cache clear (selon vos scripts):
+   - pnpm client:dev -- --clear
+   - ou: pnpm -C apps/client expo start --dev-client -c
+3) iPhone: force-quit l’app Client puis relance
+📄 Log: /opt/delishafrica/monorepo/da_fix_sharedarraybuffer_v2.log

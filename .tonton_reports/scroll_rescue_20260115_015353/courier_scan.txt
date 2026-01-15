@@ -1,0 +1,176 @@
+## SCAN courier
+
+-- pattern: PanResponder\.create
+/opt/delishafrica/monorepo/apps/courier/components/SignaturePad.tsx:10:  const pan = useMemo(() => PanResponder.create({
+
+-- pattern: onStartShouldSetResponder\s*:\s*\(\)\s*=>\s*true
+
+-- pattern: onMoveShouldSetResponder\s*:\s*\(\)\s*=>\s*true
+
+-- pattern: onStartShouldSetPanResponder\s*:\s*\(\)\s*=>\s*true
+
+-- pattern: onMoveShouldSetPanResponder\s*:\s*\(\)\s*=>\s*true
+
+-- pattern: pointerEvents\s*=\s*['"]auto['"]
+/opt/delishafrica/monorepo/apps/courier/ui/ui.tsx:36:      <SafeAreaView style={[styles.safe, style]} pointerEvents="auto">
+/opt/delishafrica/monorepo/apps/courier/ui/ui.tsx:50:    <SafeAreaView style={[styles.safe, style]} pointerEvents="auto">
+/opt/delishafrica/monorepo/apps/courier/ui/ui.tsx.bak_scrollfix:36:      <SafeAreaView style={[styles.safe, style]} pointerEvents="auto">
+/opt/delishafrica/monorepo/apps/courier/ui/ui.tsx.bak_scrollfix:50:    <SafeAreaView style={[styles.safe, style]} pointerEvents="auto">
+
+-- pattern: pointerEvents\s*=\s*['"]box-only['"]
+
+-- pattern: position\s*:\s*['"]absolute['"]
+/opt/delishafrica/monorepo/apps/courier/app/mission-demo.tsx.DISABLED.20251221-210617:185: <View pointerEvents="box-none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
+/opt/delishafrica/monorepo/apps/courier/src/ui/SnowOverlay.tsx:93:    position: "absolute",
+/opt/delishafrica/monorepo/apps/courier/components/RippleBtn.tsx:50:            position: 'absolute',
+/opt/delishafrica/monorepo/apps/courier/app/_components/DemoFab.tsx:18: position: "absolute",
+/opt/delishafrica/monorepo/apps/courier/components/Toast.tsx:44:          position: 'absolute',
+/opt/delishafrica/monorepo/apps/courier/components/AppBackground.tsx:60:    position: 'absolute',
+/opt/delishafrica/monorepo/apps/courier/components/AppBackground.tsx:69:    position: 'absolute',
+/opt/delishafrica/monorepo/apps/courier/components/AppBackground.tsx:82:    position: 'absolute',
+/opt/delishafrica/monorepo/apps/courier/components/ConfettiBurst.tsx:82:    position: 'absolute',
+
+-- pattern: <Modal\b
+/opt/delishafrica/monorepo/apps/courier/components/ProofPhotoModal.tsx:61:    <Modal animationType="slide" transparent visible={visible} onRequestClose={close}>
+/opt/delishafrica/monorepo/apps/courier/components/ProofModal.tsx:13:    <Modal visible={visible} animationType="slide" onRequestClose={onClose} transparent>
+/opt/delishafrica/monorepo/apps/courier/components/SignatureModal.tsx:9:    <Modal visible={visible} animationType="slide" transparent>
+/opt/delishafrica/monorepo/apps/courier/components/SignaturePadModal.tsx:35:    <Modal visible={visible} animationType="slide" transparent onRequestClose={onCancel}>
+
+-- pattern: createPortal|Portal
+
+-- pattern: BottomSheet|Sheet|GestureDetector|GestureHandlerRootView
+/opt/delishafrica/monorepo/apps/courier/src/ui/SnowOverlay.tsx:2:import { Animated, Dimensions, StyleSheet, View } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/src/ui/SnowOverlay.tsx:59:    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+/opt/delishafrica/monorepo/apps/courier/src/ui/SnowOverlay.tsx:91:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/components/MagicButton.tsx:2:import { Animated, Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/MagicButton.tsx:33:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/components/ProofPhotoModal.tsx:2:import { Modal, View, Text, Pressable, Image, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/ProofPhotoModal.tsx:81:const S = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/components/BrandBackground.tsx:2:import { Image, StyleSheet, View } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/components/BrandBackground.tsx:24:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/components/BrandBackground.tsx:26:  bg: { ...StyleSheet.absoluteFillObject, opacity: 0.9 },
+/opt/delishafrica/monorepo/apps/courier/components/BrandBackground.tsx:27:  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.25)" },
+/opt/delishafrica/monorepo/apps/courier/components/HeroHeader.tsx:2:import { StyleSheet, Text, View } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/HeroHeader.tsx:25:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/components/ProofModal.tsx:2:import { Modal, View, Text, Pressable, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/ProofModal.tsx:37:const S = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/components/SignatureModal.tsx:2:import { Modal, View, Pressable, Text, StyleSheet } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/SignatureModal.tsx:31:const S = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/components/SignaturePadModal.tsx:2:import { Modal, View, Pressable, Text, StyleSheet } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/SignaturePadModal.tsx:56:const S = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/components/themed-text.tsx:1:import { StyleSheet, Text, type TextProps } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/themed-text.tsx:36:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/components/MapPreview.tsx:2:import { View, StyleSheet } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/MapPreview.tsx:24:      <MapView style={StyleSheet.absoluteFill} initialRegion={region}} pointerEvents="none">
+/opt/delishafrica/monorepo/apps/courier/components/MapPreview.tsx:43:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/components/SignaturePad.tsx:2:import { View, StyleSheet, PanResponder, GestureResponderEvent, PanResponderGestureState, Pressable, Text } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/SignaturePad.tsx:41:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/components/AppBackground.tsx:2:import { Image, StyleSheet, useColorScheme, View } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/AppBackground.tsx:56:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/components/AppBackground.tsx:58:  layer: { ...StyleSheet.absoluteFillObject },
+/opt/delishafrica/monorepo/apps/courier/components/AppBackground.tsx:78:    ...StyleSheet.absoluteFillObject,
+/opt/delishafrica/monorepo/apps/courier/components/parallax-scroll-view.tsx:2:import { ScrollView, View, StyleSheet, StyleProp, ViewStyle } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/components/parallax-scroll-view.tsx:44:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/components/ui/collapsible.tsx:2:import { StyleSheet, TouchableOpacity } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/ui/collapsible.tsx:35:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/components/StatusPill.tsx:2:import { View, Text, StyleSheet } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/StatusPill.tsx:15:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/components/JobCard.tsx:2:import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/JobCard.tsx:59:const s = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/components/ConfettiBurst.tsx:3:import { Animated, Dimensions, StyleSheet, View } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/components/ConfettiBurst.tsx:48:    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+/opt/delishafrica/monorepo/apps/courier/components/ConfettiBurst.tsx:80:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/components/BrandBackground.tsx:2:import { Image, StyleSheet, View } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/components/BrandBackground.tsx:24:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/components/BrandBackground.tsx:26:  bg: { ...StyleSheet.absoluteFillObject, opacity: 0.9 },
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/components/BrandBackground.tsx:27:  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.25)" },
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/components/themed-text.tsx:1:import { StyleSheet, Text, type TextProps } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/components/themed-text.tsx:36:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/components/parallax-scroll-view.tsx:2:import { ScrollView, View, StyleSheet, StyleProp, ViewStyle } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/components/parallax-scroll-view.tsx:44:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/components/ui/collapsible.tsx:2:import { StyleSheet, TouchableOpacity } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/components/ui/collapsible.tsx:35:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/app/_layout.tsx:2:import { GestureHandlerRootView } from 'react-native-gesture-handler';
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/app/modal.tsx:2:import { StyleSheet } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/app/modal.tsx:18:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/app/(tabs)/explore.tsx:2:import { ScrollView, View, StyleSheet, StyleProp, ViewStyle } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/app/(tabs)/explore.tsx:44:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/app/(tabs)/index.tsx:2:import { ScrollView, View, StyleSheet, StyleProp, ViewStyle } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/appli-delishafrica-/app/(tabs)/index.tsx:44:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/ui/screens/Onboarding.tsx:2:import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/ui/screens/Onboarding.tsx:116:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/ui/screens/SignatureHomeCourier.tsx:7:  StyleSheet,
+/opt/delishafrica/monorepo/apps/courier/ui/screens/SignatureHomeCourier.tsx:128:      <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, styles.bgGlow]} />
+/opt/delishafrica/monorepo/apps/courier/ui/screens/SignatureHomeCourier.tsx:197:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/ui/_debug/TouchTrace.tsx:11: * qui NE capture PAS le responder (pas de PanResponder "true", pas de GestureDetector global).
+/opt/delishafrica/monorepo/apps/courier/ui/ui.tsx:7:  StyleSheet,
+/opt/delishafrica/monorepo/apps/courier/ui/ui.tsx:68:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/ui/ui.tsx.bak_scrollfix:7:  StyleSheet,
+/opt/delishafrica/monorepo/apps/courier/ui/ui.tsx.bak_scrollfix:68:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/app/_layout.tsx:2:import { GestureHandlerRootView } from 'react-native-gesture-handler';
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-205129:11:  StyleSheet,
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-205129:160:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/app/index.tsx:2:import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/app/index.tsx:70:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-1916:4:  Pressable, RefreshControl, SafeAreaView, StyleSheet, Text, View,
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-1916:177:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-210659:11:  StyleSheet,
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-210659:160:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/app/modal.tsx:2:import { StyleSheet } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/app/modal.tsx:18:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-210017:11:  StyleSheet,
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-210017:160:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-205551:11:  StyleSheet,
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-205551:160:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/app/(tabs)/explore.tsx:2:import { ScrollView, View, StyleSheet, StyleProp, ViewStyle } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/app/(tabs)/explore.tsx:44:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-1926:11:  StyleSheet,
+/opt/delishafrica/monorepo/apps/courier/app/.bak/home.tsx.2025-10-20-1926:144:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/app/(tabs)/index.tsx:2:import { ScrollView, View, StyleSheet, StyleProp, ViewStyle } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/app/(tabs)/index.tsx:44:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/app/home.tsx.BAK_2025-11-14-1717:2:import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/app/home.tsx.BAK_2025-11-14-1717:93:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/app/demoMissions.tsx:2:import { ScrollView, Text, View, StyleSheet } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/app/demoMissions.tsx:41:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/app/job/[id].tsx:2:import { View, Text, Pressable, StyleSheet } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/app/job/[id].tsx:19:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/app/mission.tsx:2:import { View, Text, Pressable, StyleSheet } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/app/mission.tsx:43:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/app/login.tsx:2:import { View, Text, TextInput, Pressable, StyleSheet, SafeAreaView, Alert, ActivityIndicator } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/app/login.tsx:47:const S = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/app/demo-thieyp.tsx:2:import { View, Text, ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/app/demo-thieyp.tsx:116:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/app/_layout.tsx:2:import { GestureHandlerRootView } from 'react-native-gesture-handler';
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/app/modal.tsx:2:import { StyleSheet } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/app/modal.tsx:18:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/app/(tabs)/explore.tsx:2:import { ScrollView, View, StyleSheet, StyleProp, ViewStyle } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/app/(tabs)/explore.tsx:44:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/app/(tabs)/index.tsx:2:import { ScrollView, View, StyleSheet, StyleProp, ViewStyle } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/app/(tabs)/index.tsx:44:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/components/BrandBackground.tsx:2:import { Image, StyleSheet, View } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/components/BrandBackground.tsx:24:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/components/BrandBackground.tsx:26:  bg: { ...StyleSheet.absoluteFillObject, opacity: 0.9 },
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/components/BrandBackground.tsx:27:  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.25)" },
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/components/themed-text.tsx:1:import { StyleSheet, Text, type TextProps } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/components/themed-text.tsx:36:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/app/_layout.tsx:2:import { GestureHandlerRootView } from 'react-native-gesture-handler';
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/components/parallax-scroll-view.tsx:2:import { ScrollView, View, StyleSheet, StyleProp, ViewStyle } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/components/parallax-scroll-view.tsx:44:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/app/modal.tsx:2:import { StyleSheet } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/app/modal.tsx:18:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/components/ui/collapsible.tsx:2:import { StyleSheet, TouchableOpacity } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/components/ui/collapsible.tsx:35:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/app/(tabs)/explore.tsx:2:import { ScrollView, View, StyleSheet, StyleProp, ViewStyle } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/app/(tabs)/explore.tsx:44:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/app/(tabs)/index.tsx:2:import { ScrollView, View, StyleSheet, StyleProp, ViewStyle } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/app/(tabs)/index.tsx:44:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/components/BrandBackground.tsx:2:import { Image, StyleSheet, View } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/components/BrandBackground.tsx:24:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/components/BrandBackground.tsx:26:  bg: { ...StyleSheet.absoluteFillObject, opacity: 0.9 },
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/components/BrandBackground.tsx:27:  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.25)" },
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/components/themed-text.tsx:1:import { StyleSheet, Text, type TextProps } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/components/themed-text.tsx:36:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/components/ui/collapsible.tsx:2:import { StyleSheet, TouchableOpacity } from 'react-native';
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/components/ui/collapsible.tsx:35:const styles = StyleSheet.create({
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/components/parallax-scroll-view.tsx:2:import { ScrollView, View, StyleSheet, StyleProp, ViewStyle } from "react-native";
+/opt/delishafrica/monorepo/apps/courier/delishafrica-client/delishafrica-merchant/components/parallax-scroll-view.tsx:44:const styles = StyleSheet.create({

@@ -1,0 +1,8 @@
+[21:00:18] === KILL PORT 3010 ===
+[21:00:18] lsof -nP -iTCP:3010 -sTCP:LISTEN
+COMMAND     PID USER   FD   TYPE    DEVICE SIZE/OFF NODE NAME
+node    1987437 root   18u  IPv4 117025380      0t0  TCP *:3010 (LISTEN)
+[21:00:18] ss -lntp | grep :3010
+LISTEN 0      511          0.0.0.0:3010       0.0.0.0:*    users:(("node",pid=1987437,fd=18))                                                                                                             
+[21:00:18] ⚠️ PIDs sur 3010: 1987437 
+[21:00:18] -> kill -TERM 1987437

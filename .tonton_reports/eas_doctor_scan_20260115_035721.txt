@@ -1,0 +1,3 @@
+ROOT=/opt/delishafrica/monorepo
+
+== Lockfiles trouvés (hors node_modules) ==
