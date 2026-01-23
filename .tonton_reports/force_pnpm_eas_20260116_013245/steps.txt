@@ -1,0 +1,8 @@
+== 1) Nettoyage lockfiles parasites (root + apps) ==
+
+== 2) Patch packageManager dans apps/*/package.json ==
+patched: /opt/delishafrica/monorepo/apps/client/package.json packageManager= pnpm@9.12.1
+patched: /opt/delishafrica/monorepo/apps/merchant/package.json packageManager= pnpm@9.12.1
+patched: /opt/delishafrica/monorepo/apps/courier/package.json packageManager= pnpm@9.12.1
+
+== 3) Patch corepack+pnpm dans apps/*/eas.json ==

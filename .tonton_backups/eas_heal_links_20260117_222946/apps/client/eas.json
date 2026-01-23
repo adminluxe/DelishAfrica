@@ -1,0 +1,27 @@
+{
+  "cli": {
+    "version": ">= 16.27.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "corepack": true,
+      "pnpm": "9.12.1"
+    },
+    "preview": {
+      "distribution": "internal",
+      "corepack": true,
+      "pnpm": "9.12.1"
+    },
+    "production": {
+      "autoIncrement": true,
+      "corepack": true,
+      "pnpm": "9.12.1"
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

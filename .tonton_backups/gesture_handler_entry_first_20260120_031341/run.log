@@ -1,0 +1,17 @@
+=== TONTON FIX: react-native-gesture-handler first import in entry files ===
+ROOT=/opt/delishafrica/monorepo
+BACKUP=/opt/delishafrica/monorepo/.tonton_backups/gesture_handler_entry_first_20260120_031341
+LOG=/opt/delishafrica/monorepo/.tonton_backups/gesture_handler_entry_first_20260120_031341/run.log
+
+=== Summary ===
+Patched entry files: 3
+ - apps/client/entry.sharedarraybuffer.js
+ - apps/courier/entry.sharedarraybuffer.js
+ - apps/merchant/entry.sharedarraybuffer.js
+Unchanged entry files: 0
+
+Restore command (if needed):
+  cp -a '/opt/delishafrica/monorepo/.tonton_backups/gesture_handler_entry_first_20260120_031341/files/.' '/opt/delishafrica/monorepo/'
+
+✅ Done. Backup saved in: /opt/delishafrica/monorepo/.tonton_backups/gesture_handler_entry_first_20260120_031341
+➡️ Now reload (tmux windows 5/6/7): press 'r'

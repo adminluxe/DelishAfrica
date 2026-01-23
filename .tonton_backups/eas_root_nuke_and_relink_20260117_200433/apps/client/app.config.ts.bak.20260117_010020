@@ -1,0 +1,25 @@
+import type { ExpoConfig, ConfigContext } from "expo/config";
+import appJson from "./app.json";
+
+export default ({ config }: ConfigContext): ExpoConfig => {
+  const base = (appJson as any).expo ?? (appJson as any);
+
+  const mergedExtra = {
+    ...(config.extra ?? {}),
+    ...(base.extra ?? {}),
+    eas: {
+      projectId: '394e7d6f-559b-4536-81a9-fbc0cdb0c68f',
+      ...(((config.extra ?? {}) as any).eas ?? {}),
+      ...(((base.extra ?? {}) as any).eas ?? {}),
+      
+    },
+  };
+
+  return {
+    ...config,
+    ...base,
+    owner: "delishafrica",
+    slug: "delishafrica-client",
+    extra: mergedExtra,
+  };
+};

@@ -1,0 +1,6 @@
+
+[02:07:13] ✅ tmux env cleaned: CI/GITHUB_ACTIONS/JENKINS_URL/BUILD_NUMBER unset
+
+[02:07:13] === PATCH SCROLL: contentContainerStyle flex:1 -> flexGrow:1 (safe) ===
+
+[02:07:22] ✅ Patch scroll appliqué (backups dans /opt/delishafrica/monorepo/.tonton_backups/master_doctor_20260121_020713).

@@ -1,0 +1,31 @@
+
+[00:29:48] 1) Ensure assets/lottie exists (fix metadata scandir warning)
+
+[00:29:48] 2) Locate workspace package name=@delishafrica/ui
+/opt/delishafrica/monorepo/packages/ui
+
+[00:29:48] 3) Ensure pnpm-workspace.yaml includes: packages/ui
+
+[00:29:48] Ajout explicite: - "packages/ui"
+
+[00:29:48] 4) Patch root .easignore to include workspace + assets
+
+[00:29:48] Aucun .easignore détecté -> création (safe)
+
+[00:29:48] 5) Local sanity: does pnpm see @delishafrica/ui in workspace?
+
+[00:29:48] ✅ Done.
+
+[00:29:48] Backups: /opt/delishafrica/monorepo/.tonton_backups/fix_workspace_ui_20260123_002948
+
+[00:29:48] Report:  /opt/delishafrica/monorepo/.tonton_reports/fix_workspace_ui_20260123_002948.log
+
+[00:29:48] 
+
+[00:29:48] NEXT:
+
+[00:29:48] cd /opt/delishafrica/monorepo && pnpm -w install
+
+[00:29:48] Puis relance 1 build (merchant) :
+
+[00:29:48] cd /opt/delishafrica/monorepo/apps/merchant && npx -y eas-cli@latest build -p ios --profile development --clear-cache

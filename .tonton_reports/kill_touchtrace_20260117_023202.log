@@ -1,0 +1,18 @@
+
+[02:32:02] 🏁 FINISHER3: remove TouchTrace wrappers + neutralize app route TouchTrace
+
+[02:32:02] Backup=/opt/delishafrica/monorepo/.tonton_backups/kill_touchtrace_20260117_023202
+
+[02:32:02] Report=/opt/delishafrica/monorepo/.tonton_reports/kill_touchtrace_20260117_023202.log
+
+[02:32:02] Layouts found: 6
+/opt/delishafrica/monorepo/apps/client/app/(tabs)/_layout.tsx
+/opt/delishafrica/monorepo/apps/client/app/_layout.tsx
+/opt/delishafrica/monorepo/apps/merchant/app/(tabs)/_layout.tsx
+/opt/delishafrica/monorepo/apps/merchant/app/_layout.tsx
+/opt/delishafrica/monorepo/apps/courier/app/(tabs)/_layout.tsx
+/opt/delishafrica/monorepo/apps/courier/app/_layout.tsx
+
+[02:32:03] ✅ Done.
+
+[02:32:03] 🧯 Rollback (1-liner): rsync -a "/opt/delishafrica/monorepo/.tonton_backups/kill_touchtrace_20260117_023202/" "/opt/delishafrica/monorepo/"

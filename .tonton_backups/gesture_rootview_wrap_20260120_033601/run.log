@@ -1,0 +1,14 @@
+=== TONTON FIX #2: Wrap root with GestureHandlerRootView ===
+ROOT=/opt/delishafrica/monorepo
+BACKUP=/opt/delishafrica/monorepo/.tonton_backups/gesture_rootview_wrap_20260120_033601
+LOG=/opt/delishafrica/monorepo/.tonton_backups/gesture_rootview_wrap_20260120_033601/run.log
+
+=== Summary ===
+Patched files: 1
+ - apps/client/index.js
+
+Restore command (if needed):
+  cp -a '/opt/delishafrica/monorepo/.tonton_backups/gesture_rootview_wrap_20260120_033601/files/.' '/opt/delishafrica/monorepo/'
+
+✅ Done. Backup saved in: /opt/delishafrica/monorepo/.tonton_backups/gesture_rootview_wrap_20260120_033601
+➡️ Reload: dans tmux windows 5/6/7 -> touche 'r'

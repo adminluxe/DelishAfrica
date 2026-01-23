@@ -1,0 +1,8 @@
+
+[00:38:41] Scan + patch: contentContainerStyle={{ flex: 1 }} -> flexGrow: 1
+
+[00:38:44] DONE. changed_files=0
+
+[00:38:44] Backups: /opt/delishafrica/monorepo/.tonton_backups/scroll_flexgrow_20260120_003841
+
+[00:38:44] Log: /opt/delishafrica/monorepo/.tonton_backups/scroll_flexgrow_20260120_003841/patch.log

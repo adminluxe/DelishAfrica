@@ -1,0 +1,256 @@
+✅ DA_REL absente (ok)
+
+[22:05:12] Patch configs Expo (3 apps)…
+✅ Config Expo client OK → /opt/delishafrica/monorepo/apps/client/app.json (slug=delishafrica-client, pid=394e7d6f-559b-4536-81a9-fbc0cdb0c68f, owner=purpleorchidgroup)
+✅ Config Expo merchant OK → /opt/delishafrica/monorepo/apps/merchant/app.json (slug=delishafrica-merchant, pid=ac87e7fa-1e43-4baa-813e-6174797314a1, owner=purpleorchidgroup)
+✅ Config Expo courier OK → /opt/delishafrica/monorepo/apps/courier/app.json (slug=delishafrica-courier, pid=b6ed6df5-cd75-48ff-99f9-fc5adcaec479, owner=purpleorchidgroup)
+
+[22:05:12] Nettoyage node_modules + caches (pour casser le conflit pnpm)…
+✅ Nettoyage terminé
+
+[22:05:26] pnpm -w install --force (prod+dev+optional)…
+[43m[30m WARN [39m[49m using --force I sure hope you know what you are doing
+Lockfile is up to date, resolution step is skipped
+Progress: resolved [96m1[39m, reused [96m0[39m, downloaded [96m0[39m, added [96m0[39m
+Packages: [32m+743[39m
+[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m[32m+[39m
+Progress: resolved [96m743[39m, reused [96m614[39m, downloaded [96m0[39m, added [96m0[39m
+Progress: resolved [96m743[39m, reused [96m742[39m, downloaded [96m0[39m, added [96m429[39m
+Progress: resolved [96m743[39m, reused [96m742[39m, downloaded [96m0[39m, added [96m743[39m, done
+
+[96mdependencies:[39m
+[32m+[39m @babel/runtime [90m7.28.4[39m
+[32m+[39m @expo/metro-runtime [90m6.1.2[39m
+[32m+[39m @radix-ui/react-compose-refs [90m1.1.2[39m
+[32m+[39m @radix-ui/react-slot [90m1.2.4[39m
+[32m+[39m @react-native/assets-registry [90m0.83.0[39m
+[32m+[39m @react-native/normalize-colors [90m0.83.0[39m
+[32m+[39m @react-native/virtualized-lists [90m0.83.0[39m
+[32m+[39m @react-navigation/bottom-tabs [90m7.8.11[39m
+[32m+[39m @react-navigation/elements [90m2.9.1[39m
+[32m+[39m @react-navigation/native [90m7.1.24[39m
+[32m+[39m @react-navigation/native-stack [90m7.8.5[39m
+[32m+[39m @react-navigation/routers [90m7.5.2[39m
+[32m+[39m @ungap/structured-clone [90m1.3.0[39m
+[32m+[39m abort-controller [90m3.0.0[39m
+[32m+[39m anser [90m2.3.3[39m
+[32m+[39m ansi-regex [90m6.2.2[39m
+[32m+[39m base64-js [90m1.5.1[39m
+[32m+[39m buffer [90m6.0.3[39m
+[32m+[39m color [90m5.0.3[39m
+[32m+[39m color-convert [90m3.1.3[39m
+[32m+[39m color-name [90m2.1.0[39m
+[32m+[39m color-string [90m2.1.4[39m
+[32m+[39m decode-uri-component [90m0.4.1[39m
+[32m+[39m escape-string-regexp [90m5.0.0[39m
+[32m+[39m event-target-shim [90m6.0.2[39m
+[32m+[39m expo-haptics [90m15.0.7[39m
+[32m+[39m fast-deep-equal [90m3.1.3[39m
+[32m+[39m filter-obj [90m6.1.0[39m
+[32m+[39m ieee754 [90m1.2.1[39m
+[32m+[39m invariant [90m2.2.4[39m
+[32m+[39m memoize-one [90m6.0.0[39m
+[32m+[39m metro-runtime [90m0.83.3[39m
+[32m+[39m nanoid [90m5.1.6[39m
+[32m+[39m nullthrows [90m1.1.1[39m
+[32m+[39m pretty-format [90m30.2.0[39m
+[32m+[39m promise [90m8.3.0[39m
+[32m+[39m punycode [90m2.3.1[39m
+[32m+[39m query-string [90m9.3.1[39m
+[32m+[39m react-freeze [90m1.0.4[39m
+[32m+[39m react-is [90m19.2.1[39m
+[32m+[39m react-native-gesture-handler [90m2.30.0[39m
+[32m+[39m react-native-safe-area-context [90m5.6.2[39m
+[32m+[39m react-refresh [90m0.18.0[39m
+[32m+[39m scheduler [90m0.27.0[39m
+[32m+[39m semver [90m7.7.3[39m
+[32m+[39m split-on-first [90m4.0.0[39m
+[32m+[39m stacktrace-parser [90m0.1.11[39m
+[32m+[39m use-latest-callback [90m0.3.3[39m
+[32m+[39m use-sync-external-store [90m1.6.0[39m
+[32m+[39m warn-once [90m0.1.1[39m
+[32m+[39m webidl-conversions [90m8.0.0[39m
+[32m+[39m whatwg-fetch [90m3.6.20[39m
+[32m+[39m whatwg-url-without-unicode [90m8.0.0-3[39m
+
+[96mdevDependencies:[39m
+[32m+[39m @babel/core [90m7.28.5[39m
+[32m+[39m @types/node [90m20.19.25[39m
+[32m+[39m babel-preset-expo [90m54.0.9[39m
+[32m+[39m prettier [90m3.7.4[39m
+[32m+[39m react-native-reanimated [90m4.1.5[39m
+[32m+[39m ts-node [90m10.9.2[39m
+[32m+[39m turbo [90m2.6.1[39m
+[32m+[39m typescript [90m5.9.3[39m
+
+Done in 3.9s
+✅ pnpm install OK
+
+[22:05:30] Vérif react-native-gesture-handler (RNGH)…
+⚠️  RNGH absent → ajout
+
+[22:05:31] Ajout RNGH dans apps/client…
+../..                                    |  WARN  `node_modules` is present. Lockfile only installation will make it out-of-date
+../..                                    | Progress: resolved 1, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 113, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 353, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 569, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 678, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 1039, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 1051, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 1283, reused 0, downloaded 0, added 0
+ WARN  4 deprecated subdependencies found: glob@7.2.3, inflight@1.0.6, rimraf@3.0.2, uuid@3.4.0
+../..                                    | Progress: resolved 1283, reused 0, downloaded 0, added 0, done
+
+ WARN  Issues with peer dependencies found
+.
+├─┬ expo-router 6.0.17
+│ └── ✕ unmet peer expo-linking@^8.0.10: found 8.0.9
+└─┬ @react-native/virtualized-lists 0.83.0
+  └── ✕ unmet peer @types/react@^19.2.0: found 19.1.17
+
+apps/client
+├─┬ expo-router 6.0.17
+│ ├── ✕ unmet peer expo-linking@^8.0.10: found 8.0.9
+│ └── ✕ unmet peer expo-constants@^18.0.11: found 18.0.10
+└─┬ @react-navigation/stack 7.6.12
+  ├── ✕ unmet peer @react-navigation/native@^7.1.25: found 7.1.24
+  └─┬ @react-navigation/elements 2.9.2
+    └── ✕ unmet peer @react-navigation/native@^7.1.25: found 7.1.24
+
+apps/courier
+├─┬ expo-router 6.0.17
+│ ├── ✕ unmet peer expo-linking@^8.0.10: found 8.0.9
+│ └── ✕ unmet peer expo-constants@^18.0.11: found 18.0.10
+└─┬ @react-navigation/stack 7.6.12
+  ├── ✕ unmet peer @react-navigation/native@^7.1.25: found 7.1.24
+  └─┬ @react-navigation/elements 2.9.2
+    └── ✕ unmet peer @react-navigation/native@^7.1.25: found 7.1.24
+
+apps/merchant
+├─┬ expo-router 6.0.17
+│ ├── ✕ unmet peer expo-linking@^8.0.10: found 8.0.9
+│ └── ✕ unmet peer expo-constants@^18.0.11: found 18.0.10
+└─┬ @react-navigation/stack 7.6.12
+  ├── ✕ unmet peer @react-navigation/native@^7.1.25: found 7.1.24
+  └─┬ @react-navigation/elements 2.9.2
+    └── ✕ unmet peer @react-navigation/native@^7.1.25: found 7.1.24
+
+../..                                    | +331 ++++++++++++++++++++++++++++++++
+Done in 11.6s
+
+[22:05:42] Ajout RNGH dans apps/merchant…
+../..                                    |  WARN  `node_modules` is present. Lockfile only installation will make it out-of-date
+../..                                    | Progress: resolved 1, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 115, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 429, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 811, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 1068, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 1128, reused 0, downloaded 0, added 0
+ WARN  4 deprecated subdependencies found: glob@7.2.3, inflight@1.0.6, rimraf@3.0.2, uuid@3.4.0
+../..                                    | Progress: resolved 1283, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 1283, reused 0, downloaded 0, added 0, done
+
+dependencies:
++ react-native-gesture-handler ^2.30.0
+
+ WARN  Issues with peer dependencies found
+.
+├─┬ expo-router 6.0.17
+│ └── ✕ unmet peer expo-linking@^8.0.10: found 8.0.9
+└─┬ @react-native/virtualized-lists 0.83.0
+  └── ✕ unmet peer @types/react@^19.2.0: found 19.1.17
+
+apps/client
+├─┬ expo-router 6.0.17
+│ ├── ✕ unmet peer expo-linking@^8.0.10: found 8.0.9
+│ └── ✕ unmet peer expo-constants@^18.0.11: found 18.0.10
+└─┬ @react-navigation/stack 7.6.12
+  ├── ✕ unmet peer @react-navigation/native@^7.1.25: found 7.1.24
+  └─┬ @react-navigation/elements 2.9.2
+    └── ✕ unmet peer @react-navigation/native@^7.1.25: found 7.1.24
+
+apps/courier
+├─┬ expo-router 6.0.17
+│ ├── ✕ unmet peer expo-linking@^8.0.10: found 8.0.9
+│ └── ✕ unmet peer expo-constants@^18.0.11: found 18.0.10
+└─┬ @react-navigation/stack 7.6.12
+  ├── ✕ unmet peer @react-navigation/native@^7.1.25: found 7.1.24
+  └─┬ @react-navigation/elements 2.9.2
+    └── ✕ unmet peer @react-navigation/native@^7.1.25: found 7.1.24
+
+apps/merchant
+├─┬ expo-router 6.0.17
+│ ├── ✕ unmet peer expo-linking@^8.0.10: found 8.0.9
+│ └── ✕ unmet peer expo-constants@^18.0.11: found 18.0.10
+└─┬ @react-navigation/stack 7.6.12
+  ├── ✕ unmet peer @react-navigation/native@^7.1.25: found 7.1.24
+  └─┬ @react-navigation/elements 2.9.2
+    └── ✕ unmet peer @react-navigation/native@^7.1.25: found 7.1.24
+
+../..                                    |  +57 ++++++
+Done in 7.8s
+
+[22:05:50] Ajout RNGH dans apps/courier…
+../..                                    |  WARN  `node_modules` is present. Lockfile only installation will make it out-of-date
+../..                                    | Progress: resolved 1, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 126, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 449, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 816, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 1095, reused 0, downloaded 0, added 0
+ WARN  4 deprecated subdependencies found: glob@7.2.3, inflight@1.0.6, rimraf@3.0.2, uuid@3.4.0
+../..                                    | Progress: resolved 1283, reused 0, downloaded 0, added 0
+../..                                    | Progress: resolved 1283, reused 0, downloaded 0, added 0, done
+
+dependencies:
++ react-native-gesture-handler ^2.30.0
+
+ WARN  Issues with peer dependencies found
+.
+├─┬ expo-router 6.0.17
+│ └── ✕ unmet peer expo-linking@^8.0.10: found 8.0.9
+└─┬ @react-native/virtualized-lists 0.83.0
+  └── ✕ unmet peer @types/react@^19.2.0: found 19.1.17
+
+apps/client
+├─┬ expo-router 6.0.17
+│ ├── ✕ unmet peer expo-linking@^8.0.10: found 8.0.9
+│ └── ✕ unmet peer expo-constants@^18.0.11: found 18.0.10
+└─┬ @react-navigation/stack 7.6.12
+  ├── ✕ unmet peer @react-navigation/native@^7.1.25: found 7.1.24
+  └─┬ @react-navigation/elements 2.9.2
+    └── ✕ unmet peer @react-navigation/native@^7.1.25: found 7.1.24
+
+apps/courier
+├─┬ expo-router 6.0.17
+│ ├── ✕ unmet peer expo-linking@^8.0.10: found 8.0.9
+│ └── ✕ unmet peer expo-constants@^18.0.11: found 18.0.10
+└─┬ @react-navigation/stack 7.6.12
+  ├── ✕ unmet peer @react-navigation/native@^7.1.25: found 7.1.24
+  └─┬ @react-navigation/elements 2.9.2
+    └── ✕ unmet peer @react-navigation/native@^7.1.25: found 7.1.24
+
+apps/merchant
+├─┬ expo-router 6.0.17
+│ ├── ✕ unmet peer expo-linking@^8.0.10: found 8.0.9
+│ └── ✕ unmet peer expo-constants@^18.0.11: found 18.0.10
+└─┬ @react-navigation/stack 7.6.12
+  ├── ✕ unmet peer @react-navigation/native@^7.1.25: found 7.1.24
+  └─┬ @react-navigation/elements 2.9.2
+    └── ✕ unmet peer @react-navigation/native@^7.1.25: found 7.1.24
+
+../..                                    |  +29 +++
+Done in 7.1s
+⚠️  RNGH pas détecté après install (on continue, mais EAS dev-client devra confirmer)
+
+[22:05:58] Libération ports classiques…
+✅ Port 3010 libéré (pids: 2932555)
+
+[22:05:59] Setup tmux session 'delishafrica' (10 fenêtres)…
+✅ Sentinel v3 terminé.
+
+[22:05:59] ➡️ Attache (si besoin) : tmux attach -t delishafrica
+
+[22:05:59] 🧾 Log: /opt/delishafrica/monorepo/.tonton_reports/sentinel_v3_20260120_220511.log
+
+[22:05:59] 🧰 Backup: /opt/delishafrica/monorepo/.tonton_backups/sentinel_v3_20260120_220511

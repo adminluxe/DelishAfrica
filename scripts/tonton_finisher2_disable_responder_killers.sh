@@ -4,92 +4,76 @@ IFS=$'\n\t'
 
 ROOT="/opt/delishafrica/monorepo"
 NOW="$(date +%Y%m%d_%H%M%S)"
-BACKUP_DIR="$ROOT/.tonton_backups/finisher2_responder_killers_$NOW"
+BACKUP_DIR="$ROOT/.tonton_backups/kill_touchtrace_$NOW"
 REPORT_DIR="$ROOT/.tonton_reports"
-REPORT="$REPORT_DIR/finisher2_responder_killers_$NOW.log"
+REPORT="$REPORT_DIR/kill_touchtrace_$NOW.log"
 
 mkdir -p "$BACKUP_DIR" "$REPORT_DIR"
+
 log(){ echo -e "\n[$(date '+%H:%M:%S')] $*" | tee -a "$REPORT"; }
 
-log "🏁 FINISHER2: Disable responder killers (simple => true -> => false)"
+relpath(){ python3 - <<PY
+import os
+print(os.path.relpath("$1","$ROOT"))
+PY
+}
+
+backup_file(){
+  local f="$1"
+  [[ -f "$f" ]] || return 0
+  local rel
+  rel="$(python3 -c "import os; print(os.path.relpath('$f','$ROOT'))")"
+  local dst="$BACKUP_DIR/$rel"
+  mkdir -p "$(dirname "$dst")"
+  cp -a "$f" "$dst"
+}
+
+log "🏁 FINISHER3: remove TouchTrace wrappers + neutralize app route TouchTrace"
 log "Backup=$BACKUP_DIR"
 log "Report=$REPORT"
 
-log "🔎 Evidence BEFORE (rg): responder + panResponder patterns"
-if command -v rg >/dev/null 2>&1; then
-  rg -n --hidden --glob '!**/node_modules/**' --glob '!**/.git/**' --glob '!**/.tonton_backups/**' \
-    "on(Start|Move)ShouldSetResponder(Capture)?\\s*=\\s*\\{\\s*\\([^)]*\\)\\s*=>\\s*true\\s*\\}" \
-    "$ROOT/apps" | tee -a "$REPORT" || true
+APPS=(client merchant courier)
 
-  rg -n --hidden --glob '!**/node_modules/**' --glob '!**/.git/**' --glob '!**/.tonton_backups/**' \
-    "on(Start|Move)ShouldSetPanResponder(Capture)?\\s*:\\s*\\([^)]*\\)\\s*=>\\s*true" \
-    "$ROOT/apps" | tee -a "$REPORT" || true
-fi
+# 1) Remove TouchTrace import + wrapper in layouts
+LAYOUT_FILES=()
+for a in "${APPS[@]}"; do
+  while IFS= read -r f; do LAYOUT_FILES+=("$f"); done < <(
+    find "$ROOT/apps/$a/app" -type f -name "_layout.tsx" 2>/dev/null || true
+  )
+done
+mapfile -t LAYOUT_FILES < <(printf "%s\n" "${LAYOUT_FILES[@]}" | awk 'NF && !seen[$0]++')
 
-python3 - "$ROOT" "$BACKUP_DIR" "$REPORT" <<'PY'
-import re, sys, pathlib
+log "Layouts found: ${#LAYOUT_FILES[@]}"
+printf "%s\n" "${LAYOUT_FILES[@]}" | tee -a "$REPORT" || true
 
-root = pathlib.Path(sys.argv[1])
-backup_root = pathlib.Path(sys.argv[2])
-report = pathlib.Path(sys.argv[3])
+for f in "${LAYOUT_FILES[@]}"; do
+  backup_file "$f"
 
-apps = ["client", "merchant", "courier"]
+  # remove any TouchTrace imports (default or named) pointing to ui/_debug or app/_components
+  perl -0777 -i -pe '
+    s/^\s*import\s+TouchTrace\s+from\s+["'\''][^"'\'']*TouchTrace[^"'\'']*["'\''];\s*\n//mg;
+    s/^\s*import\s+\{\s*TouchTrace\s*\}\s+from\s+["'\''][^"'\'']*TouchTrace[^"'\'']*["'\''];\s*\n//mg;
+  ' "$f"
 
-# --- regex (SAFE: only arrow functions directly returning true) ---
-# JSX props: onMoveShouldSetResponder={() => true}
-re_jsx_true = re.compile(
-    r'(on(?:Start|Move)ShouldSetResponder(?:Capture)?\s*=\s*\{\s*\([^)]*\)\s*=>\s*)true(\s*\})'
-)
+  # remove wrapper tags <TouchTrace ...> ... </TouchTrace>
+  perl -0777 -i -pe '
+    s/<TouchTrace\b[^>]*>\s*//mg;
+    s/\s*<\/TouchTrace>\s*//mg;
+    s/<TouchTrace\b[^\/]*\/>\s*//mg;
+  ' "$f"
+done
 
-# PanResponder config: onMoveShouldSetPanResponder: () => true
-re_pan_true = re.compile(
-    r'(on(?:Start|Move)ShouldSetPanResponder(?:Capture)?\s*:\s*\([^)]*\)\s*=>\s*)true(\b)'
-)
-
-def backup(p: pathlib.Path, before: str):
-    rel = p.relative_to(root)
-    dst = backup_root / rel
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    dst.write_text(before, encoding="utf-8", errors="ignore")
-
-changed = []
-
-for app in apps:
-    base = root / "apps" / app
-    if not base.exists():
-        continue
-
-    for p in base.rglob("*"):
-        if not p.is_file() or p.suffix not in (".ts", ".tsx"):
-            continue
-        sp = str(p)
-        if "/node_modules/" in sp or "/.git/" in sp or "/.tonton_backups/" in sp:
-            continue
-
-        before = p.read_text(encoding="utf-8", errors="ignore")
-        after = before
-
-        after = re_jsx_true.sub(r"\1false\2", after)
-        after = re_pan_true.sub(r"\1false\2", after)
-
-        if after != before:
-            backup(p, before)
-            p.write_text(after, encoding="utf-8", errors="ignore")
-            changed.append(str(p))
-
-with report.open("a", encoding="utf-8") as f:
-    f.write("\n[finisher2] changed files:\n")
-    for cf in changed:
-        f.write(f"  - {cf}\n")
-    f.write(f"[finisher2] total: {len(changed)}\n")
-PY
+# 2) Neutralize the Expo Router warning source: app/_components/TouchTrace.tsx (seen by router)
+# We rename to _TouchTrace.tsx (ignored by router) + leave a NOOP file if needed.
+for a in "${APPS[@]}"; do
+  SRC="$ROOT/apps/$a/app/_components/TouchTrace.tsx"
+  if [[ -f "$SRC" ]]; then
+    backup_file "$SRC"
+    DST="$ROOT/apps/$a/app/_components/_TouchTrace.tsx"
+    log "Rename route file: $SRC -> $DST"
+    mv "$SRC" "$DST"
+  fi
+done
 
 log "✅ Done."
 log "🧯 Rollback (1-liner): rsync -a \"$BACKUP_DIR/\" \"$ROOT/\""
-
-log "🔎 Evidence AFTER (rg): should now be empty or reduced"
-if command -v rg >/dev/null 2>&1; then
-  rg -n --hidden --glob '!**/node_modules/**' --glob '!**/.git/**' --glob '!**/.tonton_backups/**' \
-    "on(Start|Move)ShouldSetResponder(Capture)?\\s*=\\s*\\{\\s*\\([^)]*\\)\\s*=>\\s*true\\s*\\}" \
-    "$ROOT/apps" | tee -a "$REPORT" || true
-fi

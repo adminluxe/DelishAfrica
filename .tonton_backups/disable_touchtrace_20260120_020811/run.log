@@ -1,0 +1,7 @@
+=== TONTON disable TouchTrace (scroll hotfix) ===
+ROOT=/opt/delishafrica/monorepo
+BACKUP=/opt/delishafrica/monorepo/.tonton_backups/disable_touchtrace_20260120_020811
+LOG=/opt/delishafrica/monorepo/.tonton_backups/disable_touchtrace_20260120_020811/run.log
+
+Found 0 file(s) with <TouchTrace .../>
+✅ Rien à faire (aucun <TouchTrace trouvé).

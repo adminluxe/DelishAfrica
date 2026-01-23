@@ -1,0 +1,27 @@
+import 'dotenv/config';
+import type { ConfigContext, ExpoConfig } from 'expo/config';
+
+/**
+ * SAFE dynamic config:
+ * - spreads `config` (preserves app.json values)
+ * - forces slug
+ * - injects EAS projectId (required for stable EAS commands/builds)
+ */
+export default ({ config }: ConfigContext): ExpoConfig => {
+  const extra: any = config.extra ?? {};
+  const eas: any = extra.eas ?? {};
+
+  return {
+    ...config,
+    slug: "courier",
+    ios: { ...(config.ios ?? {}) },
+    android: { ...(config.android ?? {}) },
+    extra: {
+      ...extra,
+      eas: {
+        ...eas,
+        projectId: "dae37d7c-369e-436c-a4d1-ba62bfb8cbf6",
+      },
+    },
+  };
+};

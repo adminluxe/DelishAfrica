@@ -1,0 +1,53 @@
+{
+  "id": "3772ac8a-eaec-4e56-9175-48dd982ae300",
+  "status": "ERRORED",
+  "platform": "IOS",
+  "error": {
+    "errorCode": "UNKNOWN_ERROR",
+    "message": "Unknown error. See logs of the Install dependencies build phase for more information."
+  },
+  "artifacts": {
+    "xcodeBuildLogsUrl": "https://job-logs.eascdn.net/production-xcode-logs/3772ac8a-eaec-4e56-9175-48dd982ae300?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260115%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260115T042922Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=053641f31e11aa839cda850fad0e9e404acf9736a26df405b2477e88abdc36cf0f63c82ff9ff4759f2077de2f24737f93ef07e65e3a9c9abf2390cfcd3025aaf96452b05f7c3af4cbdeffa7a74d51fcdefed1f89ecd4ba60ee53d6e4990422304614c96c57e640cc95511bce2e98429b473825b38d15a308ff8ba030dcdd556d15d537957f2d55b02ccb5f01a29232b0a595cbc75c90c82bc6fd4e2d3ba8462eab71895efac1a03bcb3a806bc24be3f64c88855dabba0cf8245c87168d4d3ea8985413b723ebb429ca0ff4f190fe95d8bedcbafb7d797a4390cfab7c02ee1e82e5c43ea508c14d019c9c962d294b4f6b3f258496b0b4ea7a687ddbe6c106a804"
+  },
+  "fingerprint": {
+    "id": "019bbe4e-6529-786c-9c76-100cc93eafab",
+    "hash": "64f821ebd84f5dc1536a6f3d579b47da2aa03ee5"
+  },
+  "initiatingActor": {
+    "id": "82590ed3-c2b6-421c-a095-4eb614c8160c",
+    "displayName": "delishafrica"
+  },
+  "logFiles": [
+    "https://job-logs.eascdn.net/production/3772ac8a-eaec-4e56-9175-48dd982ae300/1768446513463-7820cdd1-9856-4926-a0b8-6481f3f63837.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260115%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260115T042922Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=aa3972db31114095c8e8d679fc074eb1edcdc8f6a18b5ada894121b59a61095a63ec6c10eb683ca7028fff7e3389e01c38a7219f30b2d87dce466611e66da5dc81ddcbc054962009e1a81eb375c9fa6aae6b1a50ef77d81963c78d6e21da7632ca75978a2489971fc6db14b5cbc53bef20a851f6a108449262aa42eacca13663bac9b4f81954b676bc1c5b015bd1029a38f634fef6542a16b809853fe02fe667623d2f27b1d2f1e25d3c0ca246bbf0880fe3fe1b7a99a63731bcb7822bff23a1bc5aa6fb2ced99ee421cf2e42499dd75cd291ffe548a40a0a38be4a75e44f80b48f1715127e1e16b731e2123c387639b11f36fccd8248bcc6b8adb86c53080ca",
+    "https://job-logs.eascdn.net/production/3772ac8a-eaec-4e56-9175-48dd982ae300/1768446516764-6f497f73-02b1-47b4-a312-d134339113d4.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260115%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260115T042922Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=281ad99e945db2a22a1393afedea90c9f96fa38bfa774cd688a26046a9145b915715ff30d4bb1400aa4f27c9680da54065725c950f10b3149bdbc03b1235328c5572bf000df3309ffdd58e8e2e478d2f1dedc1b9138cafcfdf79d622050d39bc9cdc7beee2ec9d8fd6c4aaab4d4a92113fbb8f210494183cbc22739e0ad9f2dc831e81520fd76cdaaa213d4db8bc97a973c52284051c3df198736c911f85514dea0e6c85141a5e9d8b7e4975de4259fdc1ee0afd7eac8b6f3cbd41002bb99c9ec759f97b367806b553ed1ff8d71cd228edf835eeebba51a350de859e77667c836500dbfb18b91710c442b974c1f7e8b3cb04d7f34f08683d342924a4d7da7472",
+    "https://job-logs.eascdn.net/production/3772ac8a-eaec-4e56-9175-48dd982ae300/1768446517000-0e349f27-181a-4499-9f6a-4decea9a09e6.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260115%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260115T042922Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=21fc81d7d997822d40b648e95586ffecde385d4b0f8c59e9b88db4b1a834afdaeba3bf14f402e9c009ccb6d9603d33e4363ba02b067326fead2d4087e2293c5dcb1511f0b6dd36622179052236b63382b14f0923d03eaae54f43ddc8e6c97a9fb05e2a96b6db0056d4ee5245a89f2c5396e174eb50168344443fa5f1dd9f42114d63a13d59c4a78bbfb4fe523f1f08896988146b6b72b004b72a90859b08ea3f52554e9f93bed27a47299da1493f0ddbb82d171d172ea181bc55229133de957c4281ab4dcd214c96834383d6b16608851777fc4e570579311f8686ab1bcceee82c6fba0146d412ab1d5428ca6df0c23eb46ff3f2c17da4ac5e22cdb38dfc01e9",
+    "https://job-logs.eascdn.net/production/3772ac8a-eaec-4e56-9175-48dd982ae300/1768446517206-b1629a59-f821-478d-a9b3-4a111ba92352.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260115%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260115T042922Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=14f2a11be7932cc327facdf80b1502e0180a08258aa639bfe0d79b606900cc9b190b9e9288d1a81bad39ed4956627144dccf2903ca5aeec1c50f2fada224777ff19d322c07a4a4793d357aa7f54a3b6a760cce4b97f50ff7979806d3c9733789d70b05fcc7818b3028b19cc493afbb24392840fdcfcd46949e9e0847f69b8081bcb6adec434d0bf7348c8f3b692acc7a8135c8c2a3c9e1f175562dc86dfcfb0bd608eb8d26f3709cfbd80c26c688078157312a77581b225731a581d5925bd701bab99ac2f48292c92e4ca8e36d3f483bced01a26ed633c62d10128e55bcbf39f15ff53215447b8fe6d3cccc0e29c278b3656161df1e3d5490e47642143034cc4"
+  ],
+  "project": {
+    "id": "de3e6023-5b7d-400a-8977-8008c096d555",
+    "name": "delishafrica-client",
+    "slug": "client",
+    "ownerAccount": {
+      "id": "afc2e0a9-a5d2-4988-8833-59a8ec52d64b",
+      "name": "delishafrica"
+    }
+  },
+  "distribution": "INTERNAL",
+  "buildProfile": "preview",
+  "sdkVersion": "54.0.0",
+  "appVersion": "1.0.0",
+  "appBuildVersion": "1",
+  "gitCommitHash": "c6a7c39c2c1cf826e07e9e4800eea182ade17835",
+  "gitCommitMessage": "Initial commit\n\nGenerated by create-expo-app 3.5.3.",
+  "priority": "HIGH",
+  "createdAt": "2026-01-15T03:08:33.216Z",
+  "updatedAt": "2026-01-15T03:09:35.273Z",
+  "completedAt": "2026-01-15T03:09:29.902Z",
+  "expirationDate": "2026-04-15T03:08:33.258Z",
+  "isForIosSimulator": false,
+  "metrics": {
+    "buildWaitTime": 121,
+    "buildQueueTime": 44012,
+    "buildDuration": 8426
+  }
+}

@@ -1,0 +1,62 @@
+
+[2026-01-19 23:38:56] ROOT=/opt/delishafrica/monorepo
+
+[2026-01-19 23:38:56] Node: v20.19.6
+
+[2026-01-19 23:38:56] npm:  11.7.0
+
+[2026-01-19 23:38:56] corepack: 0.34.1
+
+[2026-01-19 23:38:56] npm prefix: /usr/local
+
+[2026-01-19 23:38:56] === Snapshot pnpm (avant) ===
+pnpm is /usr/local/bin/pnpm
+pnpm is /usr/bin/pnpm
+pnpm is /bin/pnpm
+/usr/local/bin/pnpm
+/usr/bin/pnpm
+/bin/pnpm
+
+[2026-01-19 23:38:56] pnpm path: /usr/local/bin/pnpm
+lrwxrwxrwx 1 root root 37 Jan 19 23:34 /usr/local/bin/pnpm -> ../lib/node_modules/pnpm/bin/pnpm.cjs
+/usr/local/bin/pnpm: symbolic link to ../lib/node_modules/pnpm/bin/pnpm.cjs
+#!/usr/bin/env node
+const [major, minor] = process.version.slice(1).split('.')
+const COMPATIBILITY_PAGE = `Visit https://r.pnpm.io/comp to see the list of past pnpm versions with respective Node.js version support.`
+
+// We don't use the semver library here because:
+//  1. it is already bundled to dist/pnpm.cjs, so we would load it twice
+//  2. we want this file to support potentially older Node.js versions than what semver supports
+if (major < 18 || major == 18 && minor < 12) {
+  console.error(`ERROR: This version of pnpm requires at least Node.js v18.12
+The current version of Node.js is ${process.version}
+${COMPATIBILITY_PAGE}`)
+  process.exit(1)
+}
+
+// We need to load v8-compile-cache.js separately in order to have effect
+try {
+  require('v8-compile-cache');
+} catch {
+  // We don't have/need to care about v8-compile-cache failed
+}
+
+global['pnpm__startedAt'] = Date.now()
+require('../dist/pnpm.cjs')
+
+// if you want to debug at your local env, you can use this
+// require('../lib/pnpm')
+
+[2026-01-19 23:38:56] pnpm -v (test)
+
+[2026-01-19 23:38:56] 1) Mettre de côté configs potentiellement toxiques (.npmrc/.pnpmrc)
+
+[2026-01-19 23:38:56] Move aside: /root/.npmrc -> /opt/delishafrica/monorepo/.tonton_backups/pnpm_exorcist_20260119_233856/
+
+[2026-01-19 23:38:56] Move aside dir: /root/.config/pnpm -> /opt/delishafrica/monorepo/.tonton_backups/pnpm_exorcist_20260119_233856/pnpm_config_dir
+
+[2026-01-19 23:38:56] 2) Test pnpm dans environnement 'propre' (sans configs)
+
+[2026-01-19 23:38:57] pnpm toujours KO même en env propre -> nuke total.
+
+[2026-01-19 23:38:57] 3) NUKE total pnpm (bin + module + caches corepack/npm)

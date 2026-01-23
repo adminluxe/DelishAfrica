@@ -1,0 +1,24 @@
+
+[23:51:39] == TONTON RESCUE: clean CI + fix app.json schema + restart metros ==
+
+[23:51:39] Backup: /opt/delishafrica/monorepo/.tonton_backups/rescue_metros_20260120_235139
+
+[23:51:39] Report: /opt/delishafrica/monorepo/.tonton_reports/rescue_metros_20260120_235139.log
+
+[23:51:39] ✅ tmux env cleaned: CI/GITHUB_ACTIONS/JENKINS_URL/BUILD_NUMBER unset
+
+[23:51:39] == Fix app.json schema (android/ios root-level -> expo.android/expo.ios) ==
+
+[23:51:39] ✅ app.json schema patched (si nécessaire)
+
+[23:51:39] == Restart metros (NO CI !) ==
+
+[23:51:39] 🔁 Metro restarted in window 5 on port 8081 (/opt/delishafrica/monorepo/apps/client)
+
+[23:51:39] 🔁 Metro restarted in window 6 on port 8083 (/opt/delishafrica/monorepo/apps/merchant)
+
+[23:51:40] 🔁 Metro restarted in window 7 on port 8082 (/opt/delishafrica/monorepo/apps/courier)
+
+[23:51:40] ✅ Done. QR attendu dans 5/6/7.
+
+[23:51:40] NB: si tu vois encore 'Metro is running in CI mode' => il reste une variable CI dans le pane. Re-run ce script.

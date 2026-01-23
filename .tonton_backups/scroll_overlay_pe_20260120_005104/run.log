@@ -1,0 +1,12 @@
+
+[00:51:04] 1) Collecte candidats (Background/Overlay/Snow/TouchTrace + absoluteFill/absolute)
+
+[00:51:04] 2) Patch: inject pointerEvents="none" sur tags overlay (View/Animated.View/LinearGradient/BlurView/ImageBackground/Svg)
+
+[00:51:04] DONE patched_files=0
+
+[00:51:04] Backups: /opt/delishafrica/monorepo/.tonton_backups/scroll_overlay_pe_20260120_005104
+
+[00:51:04] Log: /opt/delishafrica/monorepo/.tonton_backups/scroll_overlay_pe_20260120_005104/run.log
+
+[00:51:04] WARN: TouchTrace détecté dans le code. Si scroll toujours KO, on le désactive/retire ensuite.

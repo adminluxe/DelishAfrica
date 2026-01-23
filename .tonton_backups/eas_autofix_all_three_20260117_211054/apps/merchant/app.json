@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "DelishAfrica Merchant",
+    "slug": "delishafrica-merchant",
+    "scheme": "delishafrica-merchant",
+    "version": "1.0.0",
+    "ios": {
+      "bundleIdentifier": "com.delishafrica.merchant",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.delishafrica.merchant"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "292e5d9e-9dbe-4dfb-baf7-ed80cf2e2bbc"
+      },
+      "router": {}
+    },
+    "owner": "delishafrica"
+  }
+}

@@ -1,0 +1,55 @@
+=== TONTON scroll unblock: responder/panResponder capture ===
+ROOT=/opt/delishafrica/monorepo
+BACKUP=/opt/delishafrica/monorepo/.tonton_backups/scroll_unblock_capture_20260120_022100
+LOG=/opt/delishafrica/monorepo/.tonton_backups/scroll_unblock_capture_20260120_022100/run.log
+
+== Quick scan (top suspects, aperçu) ==
+apps/merchant/src/ui/SnowOverlay.tsx:59:    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+apps/merchant/src/ui/SnowOverlay.tsx:72:          <Animated.View pointerEvents="none"
+apps/courier/src/ui/SnowOverlay.tsx:59:    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+apps/courier/src/ui/SnowOverlay.tsx:72:          <Animated.View pointerEvents="none"
+apps/merchant/ui/_debug/TouchTrace.tsx:5: * TouchTrace (NOOP)
+apps/merchant/ui/_debug/TouchTrace.tsx:10: * Réactivation future (si besoin) : créer un TouchTraceDebug séparé
+apps/merchant/ui/_debug/TouchTrace.tsx:13:export type TouchTraceProps = { children?: React.ReactNode };
+apps/merchant/ui/_debug/TouchTrace.tsx:15:export default function TouchTrace({ children }: TouchTraceProps) {
+apps/merchant/ui/_debug/TouchTrace.tsx:17:    <View style={{ flex: 1 }} pointerEvents="box-none">
+apps/merchant/components/BrandBackground.tsx:11:    <View pointerEvents="box-none" style={styles.root}>
+apps/merchant/components/BrandBackground.tsx:18:      <View pointerEvents="box-none" style={styles.overlay} />
+apps/merchant/components/BrandBackground.tsx:19:      <View pointerEvents="box-none" style={styles.content}>{children}</View>
+apps/merchant/components/BrandBackground.tsx:26:  bg: { ...StyleSheet.absoluteFillObject, opacity: 0.9 },
+apps/merchant/components/BrandBackground.tsx:27:  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.25)" },
+apps/merchant/components/AppBackground.tsx:29:    <View pointerEvents="box-none" style={[styles.root, { backgroundColor: colors[0] }]}>
+apps/merchant/components/AppBackground.tsx:31:      <View pointerEvents="none" style={[styles.layer, { backgroundColor: colors[0], opacity: 1 }]} />
+apps/merchant/components/AppBackground.tsx:32:      <View pointerEvents="none" style={[styles.layer, { backgroundColor: colors[1], opacity: 0.92 }]} />
+apps/merchant/components/AppBackground.tsx:33:      <View pointerEvents="none" style={[styles.layer, { backgroundColor: colors[2], opacity: 0.86 }]} />
+apps/merchant/components/AppBackground.tsx:40:      <View pointerEvents="none" style={[styles.vignette, { opacity: isDark ? 0.55 : 0.16 }]} />
+apps/merchant/components/AppBackground.tsx:46:        pointerEvents="none"
+apps/merchant/components/AppBackground.tsx:51:      <View pointerEvents="box-none" style={styles.content}>{children}</View>
+apps/merchant/components/AppBackground.tsx:58:  layer: { ...StyleSheet.absoluteFillObject },
+apps/merchant/components/AppBackground.tsx:78:    ...StyleSheet.absoluteFillObject,
+apps/merchant/ui/ui.tsx:36:      <SafeAreaView style={[styles.safe, style]} pointerEvents="box-none">
+apps/merchant/ui/ui.tsx:50:    <SafeAreaView style={[styles.safe, style]} pointerEvents="box-none">
+apps/merchant/components/parallax-scroll-view.tsx:34:        <View pointerEvents="box-none" style={styles.header}>
+apps/courier/components/BrandBackground.tsx:11:    <View pointerEvents="box-none" style={styles.root}>
+apps/courier/components/BrandBackground.tsx:18:      <View pointerEvents="box-none" style={styles.overlay} />
+apps/courier/components/BrandBackground.tsx:19:      <View pointerEvents="box-none" style={styles.content}>{children}</View>
+apps/courier/components/BrandBackground.tsx:26:  bg: { ...StyleSheet.absoluteFillObject, opacity: 0.9 },
+apps/courier/components/BrandBackground.tsx:27:  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.25)" },
+apps/courier/ui/screens/SignatureHomeCourier.tsx:128:      <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, styles.bgGlow]} />
+apps/courier/ui/screens/SignatureHomeCourier.tsx:201:    // léger glow décoratif, et surtout pointerEvents="none"
+apps/courier/components/RippleBtn.tsx:48:          pointerEvents="none"
+apps/courier/ui/_debug/TouchTrace.tsx:5: * TouchTrace (NOOP)
+apps/courier/ui/_debug/TouchTrace.tsx:10: * Réactivation future (si besoin) : créer un TouchTraceDebug séparé
+apps/courier/ui/_debug/TouchTrace.tsx:13:export type TouchTraceProps = { children?: React.ReactNode };
+apps/courier/ui/_debug/TouchTrace.tsx:15:export default function TouchTrace({ children }: TouchTraceProps) {
+apps/courier/ui/_debug/TouchTrace.tsx:17:    <View style={{ flex: 1 }} pointerEvents="box-none">
+apps/courier/components/Toast.tsx:42:        pointerEvents="none"
+
+=== Patch summary ===
+Changed files: 0
+Replacements: 0
+\nRestore command (if needed):
+  cp -a '/opt/delishafrica/monorepo/.tonton_backups/scroll_unblock_capture_20260120_022100/files/.' '/opt/delishafrica/monorepo/'
+
+✅ Done. Backup saved in: /opt/delishafrica/monorepo/.tonton_backups/scroll_unblock_capture_20260120_022100
+➡️ Reload: dans tmux (client/merchant/courier) appuie sur 'r'.

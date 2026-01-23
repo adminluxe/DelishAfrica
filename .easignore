@@ -1,0 +1,16 @@
+# DelishAfrica - EAS ignore (tonton)
+# Important: keep monorepo workspace packages included
+node_modules
+**/node_modules
+.expo
+**/.expo
+dist
+build
+coverage
+!pnpm-workspace.yaml
+!pnpm-lock.yaml
+!package.json
+!apps/**
+!packages/**
+!libs/**
+!assets/**

@@ -9,3 +9,8 @@ coverage
 android
 ios
 .eslintcache
+**/node_modules
+**/.expo
+**/.turbo
+**/dist
+**/build

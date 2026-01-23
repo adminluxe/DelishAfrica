@@ -1,0 +1,214 @@
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
+
+const API_BASE =
+  process.env.EXPO_PUBLIC_API_URL ?? "https://api.delishafrica.me/api/v1";
+
+type MissionStatus = "assigned" | "picked-up" | "delivered";
+
+type CourierMission = {
+  id: string;
+  restaurantName: string;
+  pickupAddress: string;
+  dropoffAddress: string;
+  amount: number;
+  currency: string;
+  status: MissionStatus;
+};
+
+export default function CourierHomeScreen() {
+  const [health, setHealth] = useState<"unknown" | "ok" | "nok">("unknown");
+  const [mission, setMission] = useState<CourierMission>({
+    id: "THIEYP-DEMO-CLIENT",
+    restaurantName: "Thiepy – Démo",
+    pickupAddress: "Rue du Marchand 5, 1000 Bruxelles",
+    dropoffAddress: "Rue de la Paix 10, 1000 Bruxelles",
+    amount: 24.9,
+    currency: "EUR",
+    status: "assigned",
+  });
+
+  // Health
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/health`);
+        if (!res.ok) throw new Error();
+        await res.json();
+        setHealth("ok");
+      } catch {
+        setHealth("nok");
+      }
+    };
+    run();
+  }, []);
+
+  const advanceStatus = () => {
+    if (mission.status === "assigned") {
+      setMission({ ...mission, status: "picked-up" });
+    } else if (mission.status === "picked-up") {
+      setMission({ ...mission, status: "delivered" });
+    }
+  };
+
+  const statusLabel =
+    mission.status === "assigned"
+      ? "À récupérer au restaurant"
+      : mission.status === "picked-up"
+      ? "En cours de livraison"
+      : "Livrée";
+
+  const nextLabel =
+    mission.status === "assigned"
+      ? "Je récupère la commande"
+      : mission.status === "picked-up"
+      ? "Je confirme la livraison"
+      : "Mission terminée";
+
+  const statusColor =
+    health === "ok" ? "#22c55e" : health === "nok" ? "#ef4444" : "#f97316";
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
+      <ScrollView
+        contentContainerStyle={{ padding: 16 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* HEADER */}
+        <View style={{ marginBottom: 16 }}>
+          <Text
+            style={{
+              fontSize: 24,
+              fontWeight: "700",
+              color: "#f9fafb",
+              marginBottom: 4,
+            }}
+          >
+            DelishAfrica – Coursier
+          </Text>
+          <Text style={{ color: "#9ca3af" }}>
+            Mission de livraison Thiepy (démo).
+          </Text>
+        </View>
+
+        {/* API STATUS */}
+        <View
+          style={{
+            borderRadius: 16,
+            padding: 12,
+            backgroundColor: "#020617",
+            borderWidth: 1,
+            borderColor: "#1e293b",
+            marginBottom: 16,
+          }}
+        >
+          <Text style={{ color: "#9ca3af", marginBottom: 4 }}>
+            API actuelle :
+          </Text>
+          <Text
+            style={{ color: "#e5e7eb", fontWeight: "500", marginBottom: 8 }}
+          >
+            {API_BASE}
+          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <View
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 999,
+                marginRight: 6,
+                backgroundColor: statusColor,
+              }}
+            />
+            <Text style={{ color: "#e5e7eb" }}>
+              Health :{" "}
+              {health === "ok"
+                ? "OK"
+                : health === "nok"
+                ? "KO"
+                : "en cours..."}
+            </Text>
+          </View>
+        </View>
+
+        {/* MISSION THIEYP */}
+        <View
+          style={{
+            borderRadius: 20,
+            padding: 16,
+            backgroundColor: "#020617",
+            borderWidth: 1,
+            borderColor: "#1f2937",
+            marginBottom: 24,
+          }}
+        >
+          <Text
+            style={{
+              color: "#a5b4fc",
+              fontSize: 13,
+              fontWeight: "600",
+              marginBottom: 6,
+            }}
+          >
+            Mission en cours
+          </Text>
+          <Text
+            style={{
+              color: "#f9fafb",
+              fontSize: 18,
+              fontWeight: "700",
+              marginBottom: 8,
+            }}
+          >
+            #{mission.id}
+          </Text>
+          <Text style={{ color: "#e5e7eb", marginBottom: 4 }}>
+            Restaurant : {mission.restaurantName}
+          </Text>
+          <Text style={{ color: "#e5e7eb", marginBottom: 4 }}>
+            Retrait : {mission.pickupAddress}
+          </Text>
+          <Text style={{ color: "#e5e7eb", marginBottom: 4 }}>
+            Livraison : {mission.dropoffAddress}
+          </Text>
+          <Text style={{ color: "#bbf7d0", marginBottom: 4 }}>
+            Montant : {mission.amount.toFixed(2)} {mission.currency}
+          </Text>
+          <Text style={{ color: "#bbf7d0", marginBottom: 12 }}>
+            Statut : {statusLabel}
+          </Text>
+
+          {mission.status !== "delivered" && (
+            <Pressable
+              onPress={advanceStatus}
+              style={({ pressed }) => ({
+                opacity: pressed ? 0.7 : 1,
+                backgroundColor: "#22c55e",
+                borderRadius: 999,
+                paddingVertical: 10,
+                alignItems: "center",
+              })}
+            >
+              <Text
+                style={{
+                  color: "#022c22",
+                  fontWeight: "700",
+                  fontSize: 15,
+                }}
+              >
+                {nextLabel}
+              </Text>
+            </Pressable>
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}

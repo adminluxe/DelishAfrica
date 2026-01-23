@@ -1,0 +1,68 @@
+
+[23:17:08] === TONTON: Force pnpm pour EAS remote ===
+
+[23:17:08] Aucun .easignore détecté (OK). On n'en crée pas.
+
+[23:17:08] pnpm-workspace.yaml déjà présent ✅
+
+[23:17:08] Recherche & déplacement des lockfiles non-pnpm (yarn/npm) vers backup
+
+[23:17:09] MOVE -> /opt/delishafrica/monorepo/.tonton_backups/eas_doctor_fix_20260115_040705/apps/courier/delishafrica-client/delishafrica-merchant/package-lock.json
+
+[23:17:09] MOVE -> /opt/delishafrica/monorepo/.tonton_backups/eas_doctor_fix_20260115_040705/backups/da_fix_scroll_routes_20251221-210617/apps/merchant/yarn.lock
+
+[23:17:09] MOVE -> /opt/delishafrica/monorepo/.tonton_backups/eas_doctor_fix_20260115_040705/backups/da_fix_scroll_routes_20251221-210617/apps/client/package-lock.json
+
+[23:17:09] MOVE -> /opt/delishafrica/monorepo/.tonton_backups/eas_doctor_fix_20260115_040705/backups/da_fix_scroll_routes_20251221-210617/apps/client/yarn.lock
+
+[23:17:09] MOVE -> /opt/delishafrica/monorepo/.tonton_backups/eas_doctor_fix_20260115_040705/backups/da_fix_scroll_routes_20251221-210617/apps/courier/appli-delishafrica-/package-lock.json
+
+[23:17:09] MOVE -> /opt/delishafrica/monorepo/.tonton_backups/eas_doctor_fix_20260115_040705/backups/da_fix_scroll_routes_20251221-210617/apps/courier/delishafrica-client/package-lock.json
+
+[23:17:09] MOVE -> /opt/delishafrica/monorepo/.tonton_backups/eas_doctor_fix_20260115_040705/backups/da_fix_scroll_routes_20251221-210617/apps/courier/delishafrica-client/delishafrica-merchant/package-lock.json
+
+[23:17:09] MOVE -> /opt/delishafrica/monorepo/.tonton_backups/eas_doctor_fix_20260115_040705/backups/da_fix_scroll_routes_20251221-210617/apps/courier/yarn.lock
+
+[23:17:09] MOVE -> /opt/delishafrica/monorepo/.tonton_backups/eas_doctor_fix_20260115_040705/.tonton_backups/eas_rescue_20260115_032625/apps/merchant/yarn.lock
+
+[23:17:09] MOVE -> /opt/delishafrica/monorepo/.tonton_backups/eas_doctor_fix_20260115_040705/.tonton_backups/eas_rescue_20260115_032625/apps/client/package-lock.json
+
+[23:17:09] MOVE -> /opt/delishafrica/monorepo/.tonton_backups/eas_doctor_fix_20260115_040705/.tonton_backups/eas_rescue_20260115_032625/apps/client/yarn.lock
+
+[23:17:09] MOVE -> /opt/delishafrica/monorepo/.tonton_backups/eas_doctor_fix_20260115_040705/.tonton_backups/eas_rescue_20260115_032625/apps/courier/appli-delishafrica-/package-lock.json
+
+[23:17:09] MOVE -> /opt/delishafrica/monorepo/.tonton_backups/eas_doctor_fix_20260115_040705/.tonton_backups/eas_rescue_20260115_032625/apps/courier/delishafrica-client/package-lock.json
+
+[23:17:09] MOVE -> /opt/delishafrica/monorepo/.tonton_backups/eas_doctor_fix_20260115_040705/.tonton_backups/eas_rescue_20260115_032625/apps/courier/yarn.lock
+
+[23:17:09] Lecture du packageManager root (package.json)
+{
+  name: 'delishafrica-monorepo',
+  packageManager: 'pnpm@9.15.4',
+  workspaces: true
+}
+
+[23:17:09] Vérifs pnpm-lock.yaml + pnpm-workspace.yaml
+
+[23:17:09] OK: pnpm-workspace.yaml ✅
+
+[23:17:09] OK: pnpm-lock.yaml ✅
+
+================= NEXT STEPS (à exécuter) =================
+
+1) Re-génère/valide lockfile pnpm (root) :
+   cd /opt/delishafrica/monorepo
+   pnpm -w install
+
+2) Relance UN SEUL build test (merchant par ex) et vérifie dans les logs EAS :
+   - On doit voir "pnpm install" (et PAS "yarn install")
+
+   cd /opt/delishafrica/monorepo/apps/merchant
+   npx -y eas-cli@latest build -p ios --profile development --clear-cache
+
+Si ça affiche encore yarn, alors on checkera la détection monorepo (workspaces) et la présence effective des fichiers dans l’archive EAS.
+
+Backup: /opt/delishafrica/monorepo/.tonton_backups/eas_force_pnpm_20260122_231708
+Report: /opt/delishafrica/monorepo/.tonton_reports/eas_force_pnpm_20260122_231708.log
+
+[23:17:09] ✅ Patch terminé.

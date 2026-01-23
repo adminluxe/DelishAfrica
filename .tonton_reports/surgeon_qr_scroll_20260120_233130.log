@@ -1,0 +1,10 @@
+
+[23:31:30] === TONTON SURGEON: QR + app.json schema + scroll scan ===
+
+[23:31:30] Backup: /opt/delishafrica/monorepo/.tonton_backups/surgeon_qr_scroll_20260120_233130
+
+[23:31:30] Report: /opt/delishafrica/monorepo/.tonton_reports/surgeon_qr_scroll_20260120_233130.log
+
+[23:31:30] ✅ tmux env cleaned: CI/GITHUB_ACTIONS/JENKINS_URL/BUILD_NUMBER unset
+
+[23:31:30] --- Fixing app.json schema/ids ---

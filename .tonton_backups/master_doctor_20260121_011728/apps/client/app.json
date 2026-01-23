@@ -1,0 +1,92 @@
+{
+  "expo": {
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#121212"
+    },
+    "ios": {
+      "splash": {
+        "backgroundColor": "#121212"
+      },
+      "bundleIdentifier": "com.delishafrica.client",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
+    },
+    "android": {
+      "splash": {
+        "backgroundColor": "#121212"
+      },
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon-adaptive-foreground.png",
+        "backgroundColor": "#121212"
+      },
+      "package": "com.delishafrica.client"
+    },
+    "extra": {
+      "apiBaseUrl": "/api",
+      "API_URL": "/api",
+      "baseUrl": "/api",
+      "eas": {
+        "projectId": "394e7d6f-559b-4536-81a9-fbc0cdb0c68f"
+      }
+    },
+    "scheme": "delishafricaclient",
+    "icon": "./assets/icon.png",
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "backgroundColor": "#121212",
+          "resizeMode": "contain"
+        }
+      ],
+      "expo-dev-client",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "backgroundColor": "#121212",
+          "resizeMode": "contain"
+        }
+      ],
+      "expo-dev-client",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "backgroundColor": "#121212",
+          "resizeMode": "contain"
+        }
+      ],
+      "expo-dev-client",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "backgroundColor": "#121212",
+          "resizeMode": "contain"
+        }
+      ],
+      "expo-dev-client",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "backgroundColor": "#121212",
+          "resizeMode": "contain"
+        }
+      ],
+      "expo-dev-client"
+    ],
+    "owner": "purpleorchidgroup",
+    "main": "expo-router/entry",
+    "slug": "delishafrica-client",
+    "name": "DelishAfrica Client"
+  }
+}

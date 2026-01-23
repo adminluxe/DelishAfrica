@@ -1,0 +1,144 @@
+
+[14:36:29] Backup dir: /opt/delishafrica/monorepo/.tonton_backups/eas_ids_slugs_20260120_143629
+
+[14:36:29] Client projectId: 394e7d6f-559b-4536-81a9-fbc0cdb0c68f
+
+[14:36:29] Patching courier → slug=delishafrica-courier projectId=b6ed6df5-cd75-48ff-99f9-fc5adcaec479
+
+[14:36:29] Patching merchant → slug=delishafrica-merchant projectId=ac87e7fa-1e43-4baa-813e-6174797314a1
+
+[14:36:29] Patching client → slug=delishafrica-client projectId=394e7d6f-559b-4536-81a9-fbc0cdb0c68f
+
+[14:36:29] SUMMARY (grep) :
+
+--- client ---
+CFG=/opt/delishafrica/monorepo/apps/client/app.config.ts
+18:      projectId: EAS_PROJECT_ID,
+25:    owner: OWNER,
+26:    slug: SLUG,
+EAS=/opt/delishafrica/monorepo/apps/client/eas.json
+{
+  "cli": {
+    "version": ">=16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "corepack": true,
+      "pnpm": "9.12.1",
+      "env": {
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+        "NPM_CONFIG_FUND": "false",
+        "NPM_CONFIG_AUDIT": "false",
+        "EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK": "1"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "corepack": true,
+      "pnpm": "9.12.1"
+    },
+    "production": {
+      "autoIncrement": true,
+      "corepack": true,
+      "pnpm": "9.12.1"
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
+
+--- courier ---
+CFG=/opt/delishafrica/monorepo/apps/courier/app.config.ts
+17:      projectId: EAS_PROJECT_ID,
+24:    owner: OWNER,
+25:    slug: SLUG,
+EAS=/opt/delishafrica/monorepo/apps/courier/eas.json
+{
+  "cli": {
+    "version": ">=16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "buildConfiguration": "Debug",
+        "simulator": false
+      },
+      "env": {
+        "EAS_NO_FROZEN_LOCKFILE": "1",
+        "EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK": "1",
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+        "NPM_CONFIG_FUND": "false",
+        "NPM_CONFIG_AUDIT": "false"
+      },
+      "corepack": true,
+      "pnpm": "9.12.1"
+    },
+    "production": {
+      "developmentClient": false,
+      "distribution": "store",
+      "ios": {
+        "buildConfiguration": "Release",
+        "simulator": false
+      },
+      "corepack": true,
+      "pnpm": "9.12.1"
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
+
+--- merchant ---
+CFG=/opt/delishafrica/monorepo/apps/merchant/app.config.ts
+17:      projectId: EAS_PROJECT_ID,
+24:    owner: OWNER,
+25:    slug: SLUG,
+EAS=/opt/delishafrica/monorepo/apps/merchant/eas.json
+{
+  "cli": {
+    "version": ">=16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "buildConfiguration": "Debug",
+        "simulator": false
+      },
+      "env": {
+        "EAS_NO_FROZEN_LOCKFILE": "1",
+        "EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK": "1",
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+        "NPM_CONFIG_FUND": "false",
+        "NPM_CONFIG_AUDIT": "false"
+      },
+      "corepack": true,
+      "pnpm": "9.12.1"
+    },
+    "production": {
+      "developmentClient": false,
+      "distribution": "store",
+      "ios": {
+        "buildConfiguration": "Release",
+        "simulator": false
+      },
+      "corepack": true,
+      "pnpm": "9.12.1"
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
+
+[14:36:29] OK ✅ Configs patchées + backups. Rapport: /opt/delishafrica/monorepo/.tonton_backups/eas_ids_slugs_20260120_143629/report.log

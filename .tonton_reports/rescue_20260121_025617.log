@@ -1,0 +1,16 @@
+
+[02:56:17] ✅ tmux env cleaned (CI/GITHUB_ACTIONS/JENKINS_URL/BUILD_NUMBER unset)
+
+[02:56:17] == Remove CI= from app .env files (avoid empty/invalid booleans) ==
+
+[02:56:17] ✅ CI= removed from .env* (backups in /opt/delishafrica/monorepo/.tonton_backups/rescue_20260121_025617)
+
+[02:56:17] == Patch scroll/responder patterns (backups) ==
+
+[02:56:17] ✅ Patch applied. Backups: /opt/delishafrica/monorepo/.tonton_backups/rescue_20260121_025617/files
+
+[02:56:17] Candidates: /opt/delishafrica/monorepo/.tonton_backups/rescue_20260121_025617/candidates.txt
+
+[02:56:18] ✅ tmux env cleaned (CI/GITHUB_ACTIONS/JENKINS_URL/BUILD_NUMBER unset)
+
+[02:56:18] ✅ Metros restarted (client/merchant/courier). Report: /opt/delishafrica/monorepo/.tonton_reports/rescue_20260121_025617.log

@@ -1,0 +1,2 @@
+npm warn config ignoring workspace config at /opt/delishafrica/monorepo/apps/client/.npmrc
+    Error: build:list command failed.
