@@ -1,4 +1,0 @@
-[DA] DelishAfrica Scroll Diagnostic
-[DA] Root directory: /opt/delishafrica/monorepo
-[DA] Report: /opt/delishafrica/monorepo/.tonton_backups/_reports/scroll_detector_20260113_192951.txt
-

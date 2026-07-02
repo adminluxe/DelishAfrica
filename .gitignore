@@ -1,16 +1,75 @@
-# cache/artefacts
 node_modules
-dist
-build
-coverage
-.pnpm-store
-.next
-.expo
-android
-ios
-.eslintcache
 **/node_modules
+.expo
 **/.expo
+.metro-cache
+**/.metro-cache
+.turbo
 **/.turbo
+.pnpm-store
+**/.pnpm-store
+dist
 **/dist
+build
 **/build
+coverage
+**/coverage
+.next
+**/.next
+.env
+.env.*
+**/.env
+**/.env.*
+*.log
+.DS_Store
+ios/Pods
+**/ios/Pods
+backups
+**/backups
+.backups
+**/.backups
+*.bak
+*.bak_*
+
+# ============================================================
+# DelishAfrica local cleanup guards
+# Added by da_git_cleanup_controlled_v1
+# ============================================================
+
+# Local backup vaults
+.backups/
+.tonton_backups/
+**/.backups/
+**/.tonton_backups/
+*.bak
+*.bak.*
+*.old
+*.orig
+*.tmp
+*.disabled_*
+
+# Local logs / reports / exports
+logs/
+*.log
+DA_EXPORTS/
+REPORT.md
+
+# Expo / Metro / JS build caches
+.expo/
+.expo-shared/
+.metro-cache/
+.turbo/
+.next/
+dist/
+build/
+coverage/
+
+# Runtime local API
+services/api-nest/.runtime/
+
+# Local secrets / credentials
+.env
+.env.*
+*.pem
+*.p12
+*.mobileprovision
