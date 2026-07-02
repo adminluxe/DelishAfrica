@@ -1,8 +1,0 @@
-[22:58:09] ROOT=/opt/delishafrica/monorepo
-[22:58:09] Scan lockfiles (yarn/npm) à neutraliser
-[22:58:09] OK: aucun yarn.lock / package-lock.json détecté
-[22:58:10] OK: pnpm-lock.yaml présent
-[22:58:10] Assure packageManager=pnpm@9.15.4 dans package.json (root)
-[22:58:10] ✅ Done.
-[22:58:10] Backups lockfiles déplacés -> /opt/delishafrica/monorepo/.tonton_backups/pkgmgr_fix_20260122_225809
-[22:58:10] Report -> /opt/delishafrica/monorepo/.tonton_reports/pkgmgr_fix_20260122_225809.log

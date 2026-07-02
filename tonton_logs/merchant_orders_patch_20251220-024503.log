@@ -1,8 +1,0 @@
-[02:45:03] === PATCH MERCHANT ORDERS SCREEN ===
-[02:45:03] APP=/opt/delishafrica/monorepo/apps/merchant
-[02:45:03] BK=/opt/delishafrica/monorepo/tonton_backups/merchant_orders_patch_20251220-024503
-[02:45:03] LOG=/opt/delishafrica/monorepo/tonton_logs/merchant_orders_patch_20251220-024503.log
-[02:45:03] ✅ Cible: /opt/delishafrica/monorepo/apps/merchant/app/home.tsx
-[02:45:03] Backup: /opt/delishafrica/monorepo/tonton_backups/merchant_orders_patch_20251220-024503/home.tsx.bak
-[02:45:03] ✅ Patch appliqué sur /opt/delishafrica/monorepo/apps/merchant/app/home.tsx
-[02:45:03] Next: relance Merchant ULTRA (clear + nouveau QR).

@@ -1,8 +1,0 @@
-
-[00:38:31] == TONTON EAS AUTOSYNC projectId ==
-
-[00:38:31] Backup: /opt/delishafrica/monorepo/.tonton_backups/eas_autosync_20260121_003831
-
-[00:38:31] Report: /opt/delishafrica/monorepo/.tonton_reports/eas_autosync_20260121_003831.log
-
-[00:38:31] ❌ Pas loggé EAS. Fais: npx -y eas-cli@latest login

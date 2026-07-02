@@ -1,9 +1,0 @@
-[21:05:25] === SMOKE E2E ===
-[21:05:25] BASE=http://127.0.0.1:3010
-[21:05:25] LOG=/opt/delishafrica/monorepo/.tonton_logs/smoke_e2e_20251219-210525.log
-[21:05:25] 1) Health
-{"status":"ok"}
-[21:05:25] 2) Create demo order
-{"ok":true,"order":{"id":"demo_mjdatwfb_lemraz","partnerSlug":"thieyp","status":"pending","items":[],"totals":{"itemsCount":0,"amount":0,"currency":"EUR"},"createdAt":"2025-12-19T20:05:25.991Z","updatedAt":"2025-12-19T20:05:25.991Z","timeline":[{"at":"2025-12-19T20:05:25.991Z","status":"pending","note":"created"}]}}
-
-[21:05:26] ❌ orderId introuvable dans la réponse create.

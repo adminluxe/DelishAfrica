@@ -1,6 +1,0 @@
-Backup=/opt/delishafrica/monorepo/.tonton_backups/touchtrace_scrollprobe_20260114_064514
-Patched: /opt/delishafrica/monorepo/apps/client/ui/_debug/TouchTrace.tsx
-Patched: /opt/delishafrica/monorepo/apps/courier/ui/_debug/TouchTrace.tsx
-Patched: /opt/delishafrica/monorepo/apps/merchant/ui/_debug/TouchTrace.tsx
-Report=/opt/delishafrica/monorepo/.tonton_reports/touchtrace_scrollprobe_20260114_064514.log
-Rollback: rsync -a /opt/delishafrica/monorepo/.tonton_backups/touchtrace_scrollprobe_20260114_064514/ /opt/delishafrica/monorepo/

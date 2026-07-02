@@ -1,9 +1,0 @@
-[01:51:53] === API SUPERVISOR 3010 ===
-[01:51:53] LOG=/opt/delishafrica/monorepo/tonton_logs/api_3010_20251220-015153.log
-[01:51:53] [1] Kill anything on :3010 (hard)
-[01:51:53] Listener(s) on 3010: 2171091
-[01:51:54] [2] Stop docker delish-api if exists (best effort)
-[01:51:54] [3] Build + start API (nohup) in /opt/delishafrica/monorepo/services/api-nest
-[01:51:59] Started node dist/main.js pid=2346353 (pidfile=/opt/delishafrica/monorepo/tonton_logs/tonton_api_3010.pid)
-[01:51:59] [4] Healthcheck loop
-[01:52:00] OK: API is UP

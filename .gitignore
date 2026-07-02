@@ -73,3 +73,31 @@ services/api-nest/.runtime/
 *.pem
 *.p12
 *.mobileprovision
+
+# ============================================================
+# DelishAfrica residual local noise guards
+# Added by da_git_residual_cleanup_controlled_v1
+# ============================================================
+
+# Local residual work dirs
+.da_*_backups/
+.logs/
+.reports/
+.quarantine/
+_audit_out/
+_da_backups/
+_reports/
+_ops/*.log
+
+# Local secrets vault
+.secrets/
+*.env.local
+*.env.development
+*.env.production
+
+# Local watcher
+.watchmanconfig
+
+# Local exported reports
+*_LATEST.tar.gz
+*_LATEST.md
