@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
+import { OrdersModule } from '../../orders/orders.module';
 import { DispatchHttpController } from './dispatch-http.controller';
 import { MissionsHttpController } from './missions-http.controller';
-import { ProxyDemoOrdersService } from './proxy-demo-orders.service';
 
 @Module({
+  imports: [OrdersModule],
   controllers: [DispatchHttpController, MissionsHttpController],
-  providers: [ProxyDemoOrdersService],
 })
 export class DispatchHttpModule {}

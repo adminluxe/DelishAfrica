@@ -1,51 +1,118 @@
-import { Body, Controller, Get, NotFoundException, Param, Patch, Post, Query } from '@nestjs/common';
-import { OrdersService } from './orders.service';
-import type { CreateOrderDto } from './dto/create-order.dto';
-import type { UpdateOrderStatusDto } from './dto/update-status.dto';
-import type { OrderStatus } from './orders.types';
+import { Body, Controller, Post } from '@nestjs/common';
+import {
+  createDemoOrder,
+  getDemoOrder,
+  listDemoOrders,
+  resetDemoOrders,
+  updateDemoOrderStatus,
+} from './orders.demo.store';
 
-/**
- * IMPORTANT:
- * - On ne met PAS "api/" dans les paths internes,
- * - On expose 2 bases pour compat:
- *    - /orders
- *    - /api/orders
- * Le globalPrefix (ex: /api/v1) s'applique au-dessus.
- * => Ça donne /api/v1/orders ET /api/v1/api/orders (compat)
- */
-@Controller(['orders', 'api/orders'])
+type AnyRecord = Record<string, any>;
+
+function resetResponse() {
+  resetDemoOrders();
+
+  return {
+    ok: true,
+    message: 'demo reset ok',
+    count: 0,
+    orders: [],
+    items: [],
+    data: [],
+  };
+}
+
+function createResponse(body: AnyRecord = {}) {
+  const order = createDemoOrder(body);
+
+  return {
+    ok: true,
+    order,
+    id: order.id,
+    orderId: order.orderId,
+  };
+}
+
+function listResponse(body: AnyRecord = {}) {
+  const orders = listDemoOrders(body);
+
+  return {
+    ok: true,
+    count: orders.length,
+    orders,
+    items: orders,
+    data: orders,
+  };
+}
+
+function getResponse(body: AnyRecord = {}) {
+  const id = body.id ?? body.orderId;
+  const order = getDemoOrder(id);
+
+  if (!order) {
+    return {
+      ok: false,
+      error: 'order_not_found',
+      id,
+      orderId: id,
+      order: null,
+    };
+  }
+
+  return {
+    ok: true,
+    order,
+    id: order.id,
+    orderId: order.orderId,
+  };
+}
+
+function statusResponse(body: AnyRecord = {}) {
+  const order = updateDemoOrderStatus(body);
+
+  if (!order) {
+    return {
+      ok: false,
+      error: 'order_not_found',
+      id: body.id,
+      orderId: body.orderId,
+      order: null,
+    };
+  }
+
+  return {
+    ok: true,
+    order,
+    id: order.id,
+    orderId: order.orderId,
+    status: order.status,
+  };
+}
+
+@Controller('orders')
 export class OrdersController {
-  constructor(private readonly orders: OrdersService) {}
-
-  @Post('_demo/reset')
+  @Post('demo/reset')
   reset() {
-    this.orders.resetForDemo();
-    this.orders.seedThieypDemo();
-    return { ok: true };
+    return resetResponse();
   }
 
-  @Post()
-  create(@Body() dto: CreateOrderDto) {
-    const order = this.orders.create(dto as any);
-    return { orderId: order.id, status: order.status, order };
+  @Post('demo/create')
+  create(@Body() body: AnyRecord = {}) {
+    return createResponse(body);
   }
 
-  @Get()
-  list(@Query('status') status?: OrderStatus, @Query('partnerSlug') partnerSlug?: string) {
-    return this.orders.list({ status, partnerSlug });
+  @Post('demo/list')
+  list(@Body() body: AnyRecord = {}) {
+    return listResponse(body);
   }
 
-  @Get(':id')
-  get(@Param('id') id: string) {
-    const order = this.orders.getById(id);
-    if (!order) throw new NotFoundException('Order not found');
-    return order;
+  @Post('demo/get')
+  get(@Body() body: AnyRecord = {}) {
+    return getResponse(body);
   }
 
-  @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body() dto: UpdateOrderStatusDto) {
-    const order = this.orders.updateStatus(id, (dto as any).status);
-    if (!order) throw new NotFoundException('Order not found');
-    return order;
+  @Post('demo/status')
+  status(@Body() body: AnyRecord = {}) {
+    return statusResponse(body);
   }
 }

@@ -1,14 +1,17 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
-
 import { OrdersModule } from './orders/orders.module';
-
 import { DispatchHttpModule } from './modules/dispatch-http/dispatch-http.module';
+import { CourierPlatformModule } from './courier-platform/courier-platform.module';
+import { PaymentsModule } from './payments/payments.module';
+import { StripeWebhookModule } from './stripe/stripe-webhook.module';
 
+import { AuthModule } from './auth/auth.module';
 @Module({
+  imports: [OrdersModule, DispatchHttpModule, CourierPlatformModule, PaymentsModule, StripeWebhookModule,
+    AuthModule,
+],
   controllers: [AppController],
-  imports: [OrdersModule,
-    DispatchHttpModule],
-
+  providers: [],
 })
 export class AppModule {}

@@ -1,16 +1,56 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { ProxyDemoOrdersService } from './proxy-demo-orders.service';
+import { OrdersService } from '../../orders/orders.service';
 
-@Controller(['/dispatch','/api/dispatch'])
+type AnyOrder = Record<string, any>;
+
+function norm(v: any): string {
+  return String(v ?? '').trim().toLowerCase();
+}
+
+function toMission(order: AnyOrder) {
+  if (!order) return null;
+
+  return {
+    id: order.id,
+    orderId: order.id,
+    partnerSlug: order.partnerSlug,
+    status: order.status,
+    customerName: order.customerName,
+    customerPhone: order.customerPhone,
+    customerAddress: order.customerAddress ?? null,
+    pickup: {
+      partnerSlug: order.partnerSlug,
+      name: order.partnerName ?? order.partnerSlug ?? 'Merchant',
+      address: order.pickupAddress ?? null,
+    },
+    dropoff: {
+      name: order.customerName ?? 'Client',
+      phone: order.customerPhone ?? null,
+      address: order.customerAddress ?? null,
+    },
+    items: order.items ?? [],
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+    order,
+  };
+}
+
+@Controller(['/dispatch', '/api/dispatch'])
 export class DispatchHttpController {
-  constructor(private readonly proxy: ProxyDemoOrdersService) {}
+  constructor(private readonly orders: OrdersService) {}
 
-  @Get('/active')
-  async active(@Query('partnerSlug') partnerSlug?: string) {
-    // MVP: "active" = first READY order (acts as active mission placeholder)
-    const resp = await this.proxy.listDemoOrders({ partnerSlug, status: 'READY' });
-    const items = resp?.json?.items ?? resp?.json?.orders ?? [];
-    const active = Array.isArray(items) && items.length ? items[0] : null;
-    return { ok: true, active, source: 'demo-orders', http: resp.status };
+  @Get('active')
+  active(@Query('partnerSlug') partnerSlug?: string) {
+    const all = this.orders.list({ partnerSlug } as any) as AnyOrder[];
+
+    const activeOrder =
+      all.find((o) => ['ready', 'accepted', 'picked_up'].includes(norm(o.status))) ??
+      null;
+
+    return {
+      ok: true,
+      active: toMission(activeOrder),
+      source: 'orders',
+    };
   }
 }

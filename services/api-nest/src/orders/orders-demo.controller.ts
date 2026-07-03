@@ -1,22 +1,23 @@
-import { Controller, Get, Post } from '@nestjs/common';
+import { Controller, Post } from '@nestjs/common';
+import { resetDemoOrders } from './orders.demo.store';
 
-class OrdersDemoBase {
+@Controller('orders/_demo')
+export class OrdersDemoController {
   @Post('reset')
   reset() {
-    return { ok: true, message: 'demo reset ok' };
-  }
+    resetDemoOrders();
 
-  @Get('health')
-  health() {
-    return { ok: true, message: 'demo health ok' };
+    return {
+      ok: true,
+      message: 'demo reset ok',
+      count: 0,
+      orders: [],
+      items: [],
+      data: [],
+    };
   }
 }
 
-@Controller('orders/demo')
-export class OrdersDemoController extends OrdersDemoBase {}
+export class OrdersDemoApiController extends OrdersDemoController {}
 
-@Controller('api/orders/demo')
-export class OrdersDemoApiController extends OrdersDemoBase {}
-
-@Controller('api/v1/orders/demo')
-export class OrdersDemoV1Controller extends OrdersDemoBase {}
+export class OrdersDemoV1Controller extends OrdersDemoController {}
