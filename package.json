@@ -12,9 +12,9 @@
     "test": "turbo run test",
     "format": "prettier -w .",
     "typecheck": "turbo run typecheck",
-    "client:dev:lan": "bash ./scripts/da_app_dev.sh client --lan",
-    "courier:dev:lan": "bash ./scripts/da_app_dev.sh courier --lan",
-    "merchant:dev:lan": "bash ./scripts/da_app_dev.sh merchant --lan",
+    "client:dev:lan": "bash scripts/da_expo_runner.sh client 8081 --lan",
+    "courier:dev:lan": "bash scripts/da_expo_runner.sh courier 8082 --lan",
+    "merchant:dev:lan": "bash scripts/da_expo_runner.sh merchant 8083 --lan",
     "client:lan": "bash scripts/da_expo_runner.sh client 8081 --lan",
     "courier:lan": "bash scripts/da_expo_runner.sh courier 8082 --lan",
     "merchant:lan": "bash scripts/da_expo_runner.sh merchant 8083 --lan"
