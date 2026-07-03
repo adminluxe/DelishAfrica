@@ -3,9 +3,9 @@
   "private": true,
   "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "client:dev": "pnpm --filter ./apps/client exec -- expo start --dev-client -c --tunnel --port 8081",
-    "courier:dev": "pnpm --filter ./apps/courier exec -- expo start --dev-client -c --tunnel --port 8082",
-    "merchant:dev": "pnpm --filter ./apps/merchant exec -- expo start --dev-client -c --tunnel --port 8083",
+    "client:dev": "bash scripts/da_expo_runner.sh client 8081 --tunnel",
+    "courier:dev": "bash scripts/da_expo_runner.sh courier 8082 --tunnel",
+    "merchant:dev": "bash scripts/da_expo_runner.sh merchant 8083 --tunnel",
     "dev": "turbo run dev --parallel",
     "build": "turbo run build",
     "lint": "turbo run lint",
@@ -14,7 +14,10 @@
     "typecheck": "turbo run typecheck",
     "client:dev:lan": "bash ./scripts/da_app_dev.sh client --lan",
     "courier:dev:lan": "bash ./scripts/da_app_dev.sh courier --lan",
-    "merchant:dev:lan": "bash ./scripts/da_app_dev.sh merchant --lan"
+    "merchant:dev:lan": "bash ./scripts/da_app_dev.sh merchant --lan",
+    "client:lan": "bash scripts/da_expo_runner.sh client 8081 --lan",
+    "courier:lan": "bash scripts/da_expo_runner.sh courier 8082 --lan",
+    "merchant:lan": "bash scripts/da_expo_runner.sh merchant 8083 --lan"
   },
   "devDependencies": {
     "@babel/core": "^7.28.5",
