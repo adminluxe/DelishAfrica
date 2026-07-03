@@ -1,0 +1,18 @@
+services:
+  api:
+    env_file:
+      - ./.env
+      - ./services/api-nest/.env
+    environment:
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
+      STRIPE_PUBLIC_KEY: ${STRIPE_PUBLIC_KEY}
+      STRIPE_PK: ${STRIPE_PK}
+      EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_SECRET: ${STRIPE_SECRET}
+      STRIPE_API_KEY: ${STRIPE_API_KEY}
+      STRIPE_SK: ${STRIPE_SK}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      PAYMENTS_PROVIDER: stripe
+      PAYMENTS_MODE: stripe_test
+      STRIPE_MOCK_MODE: "false"
