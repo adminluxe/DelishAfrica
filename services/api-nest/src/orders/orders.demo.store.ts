@@ -342,6 +342,147 @@ export function updateDemoOrderStatus(input: any, maybeStatus?: any): AnyOrder |
   return clone(orders[idx]);
 }
 
+
+export type DemoOrderCourierProposalInput = {
+orderId?: string;
+id?: string;
+publicId?: string;
+courierId?: string;
+courierName?: string;
+source?: string;
+decisionMode?: string;
+previewVersion?: string;
+score?: number;
+confidence?: number;
+totalEtaMin?: number;
+confirmed?: boolean;
+auditId?: string;
+};
+
+function makeProposalAuditId(): string {
+const tail = String(Date.now());
+const rnd = Math.floor(Math.random() * 9000 + 1000);
+return `da-proposal-${tail}-${rnd}`;
+}
+
+
+export function acceptDemoOrderCourier(input: any = {}): AnyOrder | null {
+boot();
+
+const orderId = String(input.orderId || input.id || '').trim();
+const courierId = String(input.courierId || '').trim();
+
+if (!orderId || !courierId) return null;
+
+const idx = orders.findIndex((order: any) => {
+const ids = [order.id, order.orderId, order.publicId].filter(Boolean).map(String);
+return ids.includes(orderId);
+});
+
+if (idx < 0) return null;
+
+const current = orders[idx] as any;
+const proposal = current.assignmentProposal || null;
+
+if (!proposal || proposal.status !== 'proposed') return null;
+if (String(proposal.courierId || '') !== courierId) return null;
+
+const now = nowIso();
+const auditId = input.auditId || `da-accept-${Date.now()}-${Math.floor(Math.random() * 9000 + 1000)}`;
+
+const acceptedProposal = {
+...proposal,
+status: 'accepted',
+acceptedAt: now,
+acceptedSource: input.source || 'courier-proposal-card',
+acceptDecisionMode: input.decisionMode || 'courier_confirmed',
+acceptAuditId: auditId,
+};
+
+const timeline = Array.isArray(current.timeline) ? current.timeline : [];
+
+orders[idx] = {
+...current,
+status: current.status,
+updatedAt: now,
+assignmentProposal: acceptedProposal,
+timeline: [
+...timeline,
+{
+status: current.status,
+at: now,
+changedAt: now,
+label: 'courier_accepted',
+note: `Proposition acceptée par ${proposal.courierName || courierId}`,
+courierId,
+auditId,
+},
+],
+} as AnyOrder;
+
+safeWrite(orders);
+
+return clone(orders[idx]);
+}
+
+export function proposeDemoOrderCourier(input: DemoOrderCourierProposalInput = {}): AnyOrder | null {
+boot();
+
+const id = extractId(input);
+if (!id) return null;
+
+const idx = orders.findIndex((order) => {
+return (
+String(order.id) === id ||
+String(order.orderId || '') === id ||
+String(order.publicId || '') === id
+);
+});
+
+if (idx < 0) return null;
+
+const at = nowIso();
+const auditId = input.auditId || makeProposalAuditId();
+const courierId = String(input.courierId || '').trim();
+const courierName = String(input.courierName || courierId || 'Coursier recommandé').trim();
+
+const previousTimeline = Array.isArray(orders[idx].timeline) ? orders[idx].timeline : [];
+
+orders[idx] = {
+...orders[idx],
+assignmentProposal: {
+status: 'proposed',
+courierId,
+courierName,
+proposedAt: at,
+source: input.source || 'dispatch-intelligence',
+decisionMode: input.decisionMode || 'human_confirmed',
+previewVersion: input.previewVersion || 'v1a_readonly',
+score: typeof input.score === 'number' ? input.score : undefined,
+confidence: typeof input.confidence === 'number' ? input.confidence : undefined,
+totalEtaMin: typeof input.totalEtaMin === 'number' ? input.totalEtaMin : undefined,
+auditId,
+},
+updatedAt: at,
+timeline: [
+...previousTimeline,
+{
+status: orders[idx].status,
+at,
+changedAt: at,
+label: 'courier_proposed',
+note: `Proposition envoyée à ${courierName}`,
+courierId,
+auditId,
+},
+],
+};
+
+safeWrite(orders);
+
+return clone(orders[idx]);
+}
+
 export function setDemoOrderStatus(input: any, maybeStatus?: any): AnyOrder | null {
   return updateDemoOrderStatus(input, maybeStatus);
 }
