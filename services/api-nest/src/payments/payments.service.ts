@@ -103,7 +103,7 @@ export class PaymentsService {
         paymentIntentId: mock.id,
         clientSecret: mock.client_secret,
         status: mock.status,
-        publishableKey: this.publishableKey() || 'pk_test_missing_configure_publishable_key',
+        publishableKey: this.publishableKey() || (process.env.STRIPE_PUBLISHABLE_KEY || ''),
       };
     }
 

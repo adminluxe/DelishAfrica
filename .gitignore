@@ -101,3 +101,25 @@ _ops/*.log
 # Local exported reports
 *_LATEST.tar.gz
 *_LATEST.md
+
+:USERPROFILEDownloads/
+
+**/probe_port_*.txt
+
+*.local
+
+!.env.example
+
+!.env.sample
+
+**/locate_dispatch_missions_*.txt
+
+.backup_*/
+
+_diag/
+
+_snapshots/
+
+.tonton_reports/
+
+backups/
