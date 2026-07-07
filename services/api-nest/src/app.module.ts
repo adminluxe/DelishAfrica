@@ -7,10 +7,12 @@ import { PaymentsModule } from './payments/payments.module';
 import { StripeWebhookModule } from './stripe/stripe-webhook.module';
 import { AuthModule } from './auth/auth.module';
 import { AssignmentIntelligenceModule } from './dispatch-intelligence/assignment-intelligence.module';
+import { RoutesPreviewModule } from './routes-preview/routes-preview.module';
 
 @Module({
   imports: [
     AssignmentIntelligenceModule,
+ RoutesPreviewModule,
     OrdersModule,
     DispatchHttpModule,
     CourierPlatformModule,
