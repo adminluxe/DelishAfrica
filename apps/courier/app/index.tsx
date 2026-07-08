@@ -338,6 +338,22 @@ Ouvrir Terrain OS →
 </Text>
 </View>
 </Pressable>
+
+      <Pressable
+        onPress={() => router.push("/delishafrica-signature" as any)}
+        style={{
+          marginTop: 18,
+          borderRadius: 28,
+          padding: 20,
+          borderWidth: 1,
+          borderColor: "rgba(245,190,107,0.36)",
+          backgroundColor: "rgba(8,18,15,0.86)",
+        }}
+      >
+        <Text style={{ color: "#F5BE6B", fontSize: 12, fontWeight: "900", letterSpacing: 1.4 }}>DELISHAFRICA® SIGNATURE</Text>
+        <Text style={{ marginTop: 8, color: "#FFF9EA", fontSize: 21, fontWeight: "900" }}>Signature Terrain</Text>
+        <Text style={{ marginTop: 6, color: "rgba(255,249,234,0.68)", fontSize: 13, lineHeight: 19 }}>Mission claire, ETA lisible et Route Oracle preservee.</Text>
+      </Pressable>
 </ScrollView>
     </SafeAreaView>
   );
