@@ -199,7 +199,30 @@ export default function DelishAfricaSignatureMerchant() {
         <ActionCard title="Voir les commandes" body="Piloter la file cuisine sans bruit technique." to="/orders" />
         <ActionCard title="Ops & suivi" body="Lire la qualité de service et garder le restaurant prêt." to="/ops-dashboard" />
         <ActionCard title="Espace partenaire" body="Retrouver le profil restaurant et la session progressive." to="/partner-space" />
-        <Text style={styles.footer}>Kitchen Intelligence front-only · aucune action automatique.</Text>
+        
+      <Pressable
+        onPress={() => router.push("/service-oracle" as any)}
+        style={{
+          marginTop: 24,
+          borderRadius: 28,
+          padding: 24,
+          borderWidth: 1,
+          borderColor: "rgba(245,190,107,0.42)",
+          backgroundColor: "rgba(245,190,107,0.10)",
+        }}
+      >
+        <Text style={{ color: "#F5BE6B", fontSize: 12, fontWeight: "900", letterSpacing: 4 }}>
+          SERVICE ORACLE
+        </Text>
+        <Text style={{ marginTop: 10, color: "#FFF9EA", fontSize: 30, lineHeight: 36, fontWeight: "900" }}>
+          Voir la prochaine décision
+        </Text>
+        <Text style={{ marginTop: 8, color: "rgba(255,249,234,0.66)", fontSize: 17, lineHeight: 25, fontWeight: "800" }}>
+          Pression cuisine, risque retard et action claire.
+        </Text>
+      </Pressable>
+
+<Text style={styles.footer}>Kitchen Intelligence · service clair · cuisine prête.</Text>
       </ScrollView>
     </SafeAreaView>
   );
