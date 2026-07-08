@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
@@ -187,7 +188,23 @@ export default function DelishAfricaSignatureScreen() {
         <ActionCard title="Paiement sécurisé" body="Finaliser avec la validation bancaire DelishAfrica®." onPress={() => router.push("/checkout-preflight" as any)} />
       </View>
 
-      <Pressable style={styles.refreshButton} onPress={load}>
+      
+      <Pressable
+        onPress={() => router.push("/living-order" as any)}
+        style={{
+          marginTop: 22,
+          borderRadius: 34,
+          padding: 26,
+          borderWidth: 1,
+          borderColor: "rgba(245,190,107,0.40)",
+          backgroundColor: "rgba(245,190,107,0.14)",
+        }}
+      >
+        <Text style={{ color: "#F5BE6B", fontSize: 12, fontWeight: "900", letterSpacing: 3 }}>{"LIVING ORDER OS"}</Text>
+        <Text style={{ marginTop: 10, color: "#FFF9EA", fontSize: 30, fontWeight: "900", lineHeight: 34 }}>{"Voir la commande vivante"}</Text>
+        <Text style={{ marginTop: 8, color: "rgba(255,249,234,0.70)", fontSize: 16, lineHeight: 24 }}>{"Paiement, cuisine, route et reception deviennent un recit en mouvement."}</Text>
+      </Pressable>
+<Pressable style={styles.refreshButton} onPress={load}>
         {loading ? <ActivityIndicator /> : <Text style={styles.refreshText}>Rafraîchir la signature</Text>}
       </Pressable>
 
