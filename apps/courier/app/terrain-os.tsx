@@ -1,337 +1,260 @@
-import React from "react";
-import { Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
-import { router } from "expo-router";
+import React from 'react';
+import { Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
 
-const APP_LABEL = `Courier`;
-const SCREEN_TITLE = `Terrain OS Courier`;
-const KICKER = `MISSION MESH`;
-const HEADLINE = `Chaque mission devient un cockpit terrain.`;
-const SUBTITLE = `Route, ETA, charge, confiance et guidage lisibles en quelques secondes.`;
-const PROMISE = `Promesse coursier`;
-const PROMISE_TEXT = `Moins d’hésitation. Plus de précision. Un terrain maîtrisé.`;
-const CTA_LABEL = `Retour missions terrain`;
-const ROUTE_STEPS = ["Vous","Thieyp","Client","Preuve"];
-
-const C = {
-bg: "#001D12",
-accent: "#67E69B",
-accent2: "#B8FFD2",
-card: "#082718",
-light: "#DDFBEA",
-darkText: "#00160D",
+const c = {
+  bg: '#00120F',
+  panel: '#001B17',
+  panel2: '#062820',
+  line: 'rgba(117, 255, 223, 0.34)',
+  lineSoft: 'rgba(255,255,255,0.11)',
+  cream: '#FFF8EA',
+  ink: '#00120F',
+  mint: '#E8FFFB',
+  mintTile: '#D2F2EF',
+  mintStrong: '#66F0AA',
+  text: '#FFF8EA',
+  muted: 'rgba(255,248,234,0.68)',
+  mutedDark: 'rgba(0,18,15,0.50)',
+  gold: '#F8C15F',
 };
 
-function Node({ label, active }: { label: string; active?: boolean }) {
-return (
-<View style={[styles.node, active ? styles.nodeActive : null]}>
-<Text style={[styles.nodeText, active ? styles.nodeTextActive : null]}>{label}</Text>
-</View>
-);
+function go(to: string) {
+  router.push(to as never);
 }
 
-function Metric({ label, value, hint }: { label: string; value: string; hint: string }) {
-return (
-<View style={styles.metric}>
-<Text style={styles.metricValue}>{value}</Text>
-<Text style={styles.metricLabel}>{label}</Text>
-<Text style={styles.metricHint}>{hint}</Text>
-</View>
-);
+function MetricTile({ value, label }: { value: string; label: string }) {
+  return (
+    <View style={styles.metricTile}>
+      <Text style={styles.metricValue}>{value}</Text>
+      <Text style={styles.metricLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function ActionCard({ title, body, to }: { title: string; body: string; to: string }) {
+  return (
+    <Pressable style={styles.actionCard} onPress={() => go(to)}>
+      <Text style={styles.actionTitle}>{title}</Text>
+      <Text style={styles.actionBody}>{body}</Text>
+    </Pressable>
+  );
 }
 
 export default function TerrainOSScreen() {
-return (
-<SafeAreaView style={styles.safe}>
-<StatusBar barStyle="light-content" />
+  return (
+    <SafeAreaView style={styles.safe}>
+      <StatusBar barStyle="light-content" />
+      <View pointerEvents="none" style={styles.orbTop} />
+      <View pointerEvents="none" style={styles.orbSide} />
 
-<View pointerEvents="none" style={styles.aquaVeil} />
-<View pointerEvents="none" style={styles.aquaRipple} />
-<View pointerEvents="none" style={styles.aquaFoam} />
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.hero}>
+          <Text style={styles.brand}>DELISHAFRICA® COURIER</Text>
+          <Text style={styles.heroTitle}>Terrain en 3 secondes.</Text>
+          <Text style={styles.heroText}>
+            Une mission claire, une route lisible, une action unique. Le coursier sent la précision avant de démarrer.
+          </Text>
 
-<ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-<Text style={styles.brand}>DELISHAFRICA® · {APP_LABEL}</Text>
-<Text style={styles.screenTitle}>{SCREEN_TITLE}</Text>
+          <View style={styles.nextBox}>
+            <Text style={styles.nextLabel}>PROCHAINE ACTION</Text>
+            <Text style={styles.nextValue}>Suivre la mission</Text>
+          </View>
+        </View>
 
-<View style={styles.hero}>
-<Text style={styles.kicker}>{KICKER}</Text>
-<Text style={styles.headline}>{HEADLINE}</Text>
-<Text style={styles.sub}>{SUBTITLE}</Text>
+        <View style={styles.missionCard}>
+          <Text style={styles.missionLabel}>MISSION PRIORITAIRE</Text>
+          <Text style={styles.missionTitle}>Rice and Peace</Text>
+          <Text style={styles.missionMeta}>DA-9P3QH0 · En route · 21,90 €</Text>
 
-<View style={styles.routePanel}>
-<View style={styles.routeLine} />
-<View style={styles.routeNodes}>
-{ROUTE_STEPS.map((item, index) => (
-<Node key={item} label={item} active={index === 1} />
-))}
-</View>
-</View>
-</View>
+          <View style={styles.metricRow}>
+            <MetricTile value="A+" label="CLARTÉ" />
+            <MetricTile value="15 min" label="ETA" />
+            <MetricTile value="Guidé" label="MODE" />
+          </View>
+        </View>
 
-<View style={styles.grid}>
-<Metric label="ETA prédite" value="31 min" hint="Préparation + route" />
-<Metric label="Confiance" value="92%" hint="Terrain stable" />
-<Metric label="Rythme" value="Fluide" hint="Fenêtre maîtrisée" />
-<Metric label="Signal" value="Live" hint="Sans stress" />
-</View>
+        <ActionCard title="Route Oracle" body="Voir la meilleure route validable avant départ." to="/route-oracle" />
+        <ActionCard title="ETA mission" body="Lire le temps, la distance et la précision terrain." to="/eta-mission" />
+        <ActionCard title="Missions" body="Revenir au cockpit opérationnel du coursier." to="/orders" />
 
-<View style={styles.lightCard}>
-<Text style={styles.lightKicker}>{PROMISE}</Text>
-<Text style={styles.lightTitle}>{PROMISE_TEXT}</Text>
-<Text style={styles.lightText}>
-Prochain palier : Google Routes côté backend, clé serveur protégée, puis ETA synchronisée entre Client, Merchant et Courier.
-</Text>
-</View>
-
-<View style={styles.deepCard}>
-<Text style={styles.deepKicker}>NEXT GEN</Text>
-<Text style={styles.deepTitle}>Terrain OS n’est pas une carte.</Text>
-<Text style={styles.deepText}>
-C’est un cerveau opérationnel : il comprend la cuisine, le coursier, le client et le temps réel pour proposer la bonne décision au bon moment.
-</Text>
-</View>
-
-<Pressable style={styles.back} onPress={() => router.back()}>
-<Text style={styles.backText}>{CTA_LABEL}</Text>
-</Pressable>
-</ScrollView>
-</SafeAreaView>
-);
+        <Text style={styles.footer}>Terrain clair · ETA lisible · action maîtrisée.</Text>
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-safe: { flex: 1, backgroundColor: C.bg },
-content: { paddingHorizontal: 18, paddingTop: 34, paddingBottom: 54 },
-
-aquaVeil: {
-position: "absolute",
-top: -112,
-right: -136,
-width: 190,
-height: 190,
-borderRadius: 999,
-backgroundColor: "rgba(120,245,255,0.018)",
-borderWidth: 1,
-borderColor: "rgba(230,255,250,0.040)",
-transform: [{ scaleX: 1.3 }],
-},
-aquaRipple: {
-position: "absolute",
-top: 268,
-left: -94,
-width: 154,
-height: 32,
-borderRadius: 999,
-borderWidth: 1,
-borderColor: "rgba(230,255,250,0.040)",
-backgroundColor: "rgba(120,245,255,0.012)",
-transform: [{ rotate: "-17deg" }, { scaleX: 1.25 }],
-},
-aquaFoam: {
-position: "absolute",
-bottom: 108,
-right: -78,
-width: 122,
-height: 122,
-borderRadius: 999,
-borderWidth: 1,
-borderColor: "rgba(230,255,250,0.032)",
-backgroundColor: "rgba(255,255,255,0.010)",
-},
-
-brand: {
-color: C.accent,
-fontSize: 18,
-fontWeight: "900",
-letterSpacing: 5.5,
-},
-screenTitle: {
-color: "rgba(255,255,255,0.76)",
-fontSize: 18,
-fontWeight: "800",
-marginTop: 7,
-marginBottom: 22,
-},
-
-hero: {
-borderRadius: 34,
-padding: 24,
-backgroundColor: C.card,
-borderWidth: 1,
-borderColor: "rgba(255,255,255,0.12)",
-},
-kicker: {
-color: C.accent2,
-fontSize: 13,
-fontWeight: "900",
-letterSpacing: 4.5,
-marginBottom: 14,
-},
-headline: {
-color: "#FFFFFF",
-fontSize: 37,
-lineHeight: 42,
-fontWeight: "900",
-letterSpacing: -0.5,
-},
-sub: {
-color: "rgba(255,255,255,0.74)",
-fontSize: 17,
-lineHeight: 26,
-fontWeight: "700",
-marginTop: 16,
-},
-
-routePanel: {
-marginTop: 24,
-borderRadius: 28,
-minHeight: 160,
-padding: 18,
-backgroundColor: "rgba(255,255,255,0.055)",
-overflow: "hidden",
-},
-routeLine: {
-position: "absolute",
-left: 38,
-right: 38,
-top: 79,
-height: 3,
-borderRadius: 999,
-backgroundColor: "rgba(255,255,255,0.18)",
-},
-routeNodes: {
-flexDirection: "row",
-justifyContent: "space-between",
-alignItems: "center",
-minHeight: 124,
-},
-node: {
-minWidth: 62,
-minHeight: 50,
-borderRadius: 999,
-paddingHorizontal: 10,
-alignItems: "center",
-justifyContent: "center",
-backgroundColor: "rgba(255,255,255,0.12)",
-borderWidth: 1,
-borderColor: "rgba(255,255,255,0.14)",
-},
-nodeActive: {
-backgroundColor: C.accent,
-borderColor: C.accent,
-transform: [{ scale: 1.08 }],
-},
-nodeText: {
-color: "rgba(255,255,255,0.82)",
-fontSize: 11,
-fontWeight: "900",
-textAlign: "center",
-},
-nodeTextActive: {
-color: C.darkText,
-},
-
-grid: {
-flexDirection: "row",
-flexWrap: "wrap",
-gap: 12,
-marginTop: 18,
-},
-metric: {
-width: "48%",
-borderRadius: 24,
-padding: 16,
-minHeight: 116,
-backgroundColor: "rgba(255,255,255,0.08)",
-borderWidth: 1,
-borderColor: "rgba(255,255,255,0.10)",
-},
-metricValue: {
-color: "#FFFFFF",
-fontSize: 25,
-fontWeight: "900",
-},
-metricLabel: {
-color: C.accent,
-fontSize: 13,
-fontWeight: "900",
-marginTop: 8,
-},
-metricHint: {
-color: "rgba(255,255,255,0.64)",
-fontSize: 12,
-fontWeight: "700",
-lineHeight: 17,
-marginTop: 6,
-},
-
-lightCard: {
-marginTop: 18,
-borderRadius: 34,
-padding: 24,
-backgroundColor: C.light,
-},
-lightKicker: {
-color: "rgba(0,0,0,0.52)",
-fontSize: 13,
-fontWeight: "900",
-letterSpacing: 4.5,
-},
-lightTitle: {
-color: C.darkText,
-fontSize: 29,
-lineHeight: 35,
-fontWeight: "900",
-marginTop: 12,
-},
-lightText: {
-color: "rgba(0,0,0,0.62)",
-fontSize: 16,
-lineHeight: 24,
-fontWeight: "700",
-marginTop: 12,
-},
-
-deepCard: {
-marginTop: 18,
-borderRadius: 30,
-padding: 22,
-backgroundColor: "rgba(255,255,255,0.06)",
-borderWidth: 1,
-borderColor: "rgba(255,255,255,0.10)",
-},
-deepKicker: {
-color: C.accent,
-fontSize: 13,
-fontWeight: "900",
-letterSpacing: 4.5,
-},
-deepTitle: {
-color: "#FFFFFF",
-fontSize: 28,
-lineHeight: 34,
-fontWeight: "900",
-marginTop: 12,
-},
-deepText: {
-color: "rgba(255,255,255,0.70)",
-fontSize: 16,
-lineHeight: 24,
-fontWeight: "700",
-marginTop: 10,
-},
-
-back: {
-marginTop: 18,
-borderRadius: 22,
-paddingVertical: 16,
-alignItems: "center",
-backgroundColor: "rgba(255,255,255,0.10)",
-borderWidth: 1,
-borderColor: "rgba(255,255,255,0.12)",
-},
-backText: {
-color: "#FFFFFF",
-fontSize: 16,
-fontWeight: "900",
-},
+  safe: {
+    flex: 1,
+    backgroundColor: c.bg,
+  },
+  content: {
+    paddingHorizontal: 18,
+    paddingTop: 34,
+    paddingBottom: 42,
+  },
+  orbTop: {
+    position: 'absolute',
+    top: -120,
+    right: -130,
+    width: 230,
+    height: 230,
+    borderRadius: 999,
+    backgroundColor: 'rgba(102,240,170,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(102,240,170,0.06)',
+  },
+  orbSide: {
+    position: 'absolute',
+    top: 520,
+    left: -120,
+    width: 190,
+    height: 190,
+    borderRadius: 999,
+    backgroundColor: 'rgba(117,255,223,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(117,255,223,0.08)',
+  },
+  hero: {
+    borderRadius: 34,
+    padding: 26,
+    backgroundColor: c.panel,
+    borderWidth: 1.2,
+    borderColor: c.line,
+  },
+  brand: {
+    color: '#75FFDF',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 5.4,
+    marginBottom: 34,
+  },
+  heroTitle: {
+    color: c.text,
+    fontSize: 42,
+    lineHeight: 49,
+    fontWeight: '900',
+    letterSpacing: -1.1,
+  },
+  heroText: {
+    color: c.muted,
+    fontSize: 18,
+    lineHeight: 30,
+    marginTop: 24,
+    fontWeight: '500',
+  },
+  nextBox: {
+    marginTop: 28,
+    borderRadius: 26,
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+    backgroundColor: '#07342D',
+    borderWidth: 1.2,
+    borderColor: c.line,
+  },
+  nextLabel: {
+    color: 'rgba(255,248,234,0.70)',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 5.6,
+    marginBottom: 18,
+  },
+  nextValue: {
+    color: c.text,
+    fontSize: 30,
+    lineHeight: 35,
+    fontWeight: '900',
+    letterSpacing: -0.7,
+  },
+  missionCard: {
+    marginTop: 26,
+    borderRadius: 31,
+    padding: 24,
+    backgroundColor: c.mint,
+  },
+  missionLabel: {
+    color: '#006D69',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 5.4,
+    marginBottom: 22,
+  },
+  missionTitle: {
+    color: c.ink,
+    fontSize: 34,
+    lineHeight: 39,
+    fontWeight: '900',
+    letterSpacing: -0.8,
+  },
+  missionMeta: {
+    color: 'rgba(0,18,15,0.46)',
+    fontSize: 17,
+    lineHeight: 25,
+    fontWeight: '800',
+    marginTop: 16,
+  },
+  metricRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 34,
+  },
+  metricTile: {
+    flex: 1,
+    minHeight: 112,
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    justifyContent: 'center',
+    backgroundColor: c.mintTile,
+    borderWidth: 1,
+    borderColor: 'rgba(0,18,15,0.06)',
+  },
+  metricValue: {
+    color: c.ink,
+    fontSize: 27,
+    lineHeight: 32,
+    fontWeight: '900',
+    letterSpacing: -0.7,
+  },
+  metricLabel: {
+    color: 'rgba(0,18,15,0.62)',
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '900',
+    letterSpacing: 3.6,
+    marginTop: 8,
+  },
+  actionCard: {
+    marginTop: 18,
+    borderRadius: 25,
+    paddingHorizontal: 22,
+    paddingVertical: 24,
+    minHeight: 126,
+    backgroundColor: 'rgba(255,255,255,0.055)',
+    borderWidth: 1,
+    borderColor: c.lineSoft,
+  },
+  actionTitle: {
+    color: c.text,
+    fontSize: 29,
+    lineHeight: 34,
+    fontWeight: '900',
+    letterSpacing: -0.6,
+  },
+  actionBody: {
+    color: c.muted,
+    fontSize: 17,
+    lineHeight: 26,
+    marginTop: 13,
+    fontWeight: '500',
+  },
+  footer: {
+    color: 'rgba(255,248,234,0.42)',
+    textAlign: 'center',
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '700',
+    marginTop: 24,
+  },
 });

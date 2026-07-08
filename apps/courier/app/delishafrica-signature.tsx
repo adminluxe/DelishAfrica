@@ -194,10 +194,10 @@ export default function DelishAfricaSignatureCourier() {
           </View>
         </View>
 
-        <ActionCard title="Route Oracle" body="Proposer et accepter sans auto-pickup ni livraison automatique." to="/route-oracle" />
-        <ActionCard title="ETA mission" body="Voir distance, précision et temps estimé." to="/courier-eta" />
-        <ActionCard title="Missions" body="Revenir au cockpit terrain opérationnel." to="/orders" />
-        <Text style={styles.footer}>Terrain front-only · aucune mutation automatique · Route Oracle préservé.</Text>
+        <ActionCard title="Route Oracle" body="Lire la recommandation terrain et confirmer chaque décision à la main." to="/route-oracle" />
+        <ActionCard title="ETA mission" body="Voir le temps utile, la distance et le point d’arrivée." to="/courier-eta" />
+        <ActionCard title="Missions" body="Retrouver les missions prêtes, en route et livrées." to="/orders" />
+        <Text style={styles.footer}>Terrain clair · ETA lisible · action maîtrisée.</Text>
       </ScrollView>
     </SafeAreaView>
   );

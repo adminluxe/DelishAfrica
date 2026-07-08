@@ -352,7 +352,7 @@ Ouvrir Terrain OS →
       >
         <Text style={{ color: "#F5BE6B", fontSize: 12, fontWeight: "900", letterSpacing: 1.4 }}>DELISHAFRICA® SIGNATURE</Text>
         <Text style={{ marginTop: 8, color: "#FFF9EA", fontSize: 21, fontWeight: "900" }}>Signature Terrain</Text>
-        <Text style={{ marginTop: 6, color: "rgba(255,249,234,0.68)", fontSize: 13, lineHeight: 19 }}>Mission claire, ETA lisible et Route Oracle preservee.</Text>
+        <Text style={{ marginTop: 6, color: "rgba(255,249,234,0.68)", fontSize: 13, lineHeight: 19 }}>Mission claire, ETA lisible et action terrain maîtrisée.</Text>
       </Pressable>
 </ScrollView>
     </SafeAreaView>
