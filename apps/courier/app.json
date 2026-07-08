@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "DelishAfrica Courier DEV54",
+    "slug": "delishafrica-courier",
+    "scheme": "delishafrica-courier-dev54",
+    "version": "3.0.0",
+    "ios": {
+      "bundleIdentifier": "com.delishafrica.courier.dev54",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsArbitraryLoadsInWebContent": true
+        }
+      },
+      "buildNumber": "1772244486"
+    },
+    "android": {
+      "package": "com.delishafrica.courier",
+      "versionCode": 1770770572
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
+    "extra": {
+      "router": {},
+      "EXPO_PUBLIC_API_URL": "https://api.delishafrica.me",
+      "eas": {
+        "projectId": "5d1b6b85-9e64-4cc2-9cbe-7d698feccc84"
+      }
+    },
+    "owner": "delishafrica"
+  }
+}

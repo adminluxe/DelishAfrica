@@ -1,0 +1,6 @@
+# DelishAfrica note:
+# La source de vérité EAS est /opt/delishafrica/monorepo/.easignore.
+# Ce fichier app-level reste volontairement minimal.
+node_modules
+.expo
+.metro-cache

@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "DelishAfrica Merchant DEV54",
+    "slug": "delishafrica-merchant",
+    "scheme": "delishafrica-merchant-dev54",
+    "version": "3.0.0",
+    "ios": {
+      "bundleIdentifier": "com.delishafrica.merchant.dev54",
+      "buildNumber": "1772244486",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsArbitraryLoadsInWebContent": true
+        }
+      }
+    },
+    "android": {
+      "package": "com.delishafrica.merchant.dev54",
+      "versionCode": 1770770572
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
+    "extra": {
+      "router": {},
+      "DA_MARKER": "MERCHANT_DEV54_2026-02-28_A",
+      "EXPO_PUBLIC_API_URL": "https://api.delishafrica.me",
+      "eas": {
+        "projectId": "394e7d6f-559b-4536-81a9-fbc0cdb0c68f"
+      }
+    },
+    "owner": "delishafrica"
+  }
+}

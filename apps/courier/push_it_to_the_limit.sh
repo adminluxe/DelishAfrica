@@ -1,0 +1,221 @@
+#!/usr/bin/env bash
+
+# Ce script configure Nginx pour api.delishafrica.me avec SSL (Cloudflare Origin ou auto-signé) et proxy_pass.
+# Il doit être exécuté en tant que root (sudo).
+# Variables optionnelles pour l'API Cloudflare (à exporter avant exécution ou à remplir ci-dessous) :
+# CF_API_EMAIL : email du compte Cloudflare (si utilisation de X-Auth-Key)
+# CF_API_KEY   : clé API globale Cloudflare associée à l'email (nécessaire si pas de token ou Origin CA Key)
+# CF_API_TOKEN : token API Cloudflare avec droits "SSL:Edit" sur la zone (facultatif, alternative à API Key)
+# CF_ORIGIN_CA_KEY : Origin CA Key Cloudflare (clé de service utilisateur pour l'API Origin CA)
+# Si aucune variable n’est fournie, le script utilisera un certificat auto-signé en repli.
+
+### 1. Prérequis et vérifications initiales ###
+set -u  # erreur si utilisation de variable non définie
+# Vérifier exécution en root
+if [[ $EUID -ne 0 ]]; then
+    echo "Erreur: ce script doit être exécuté en tant que root (utilisez sudo)." >&2
+    exit 1
+fi
+
+# Vérifier la présence des commandes nécessaires (nginx, curl, openssl, jq)
+for cmd in nginx curl openssl jq; do
+    if ! command -v $cmd >/dev/null 2>&1; then
+        echo "Le programme '$cmd' est requis mais n'est pas installé. Installation..." 
+        apt-get update -y && apt-get install -y $cmd
+        if ! command -v $cmd >/dev/null 2>&1; then
+            echo "Erreur: '$cmd' ne peut pas être installé automatiquement. Abandon." >&2
+            exit 1
+        fi
+    fi
+done
+
+# Vérifier que les ports 80 et 443 ne sont pas occupés par un autre service qu'Nginx
+for port in 80 443; do
+    if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
+        # Il y a un processus à l'écoute sur ce port
+        if pgrep -x "nginx" >/dev/null 2>&1; then
+            # Si c'est nginx, on considère que c'est le même service (on fera un reload plus tard)
+            echo "Info: Le port $port est déjà utilisé par Nginx (OK)."
+        else
+            echo "Erreur: Le port $port est déjà utilisé par un autre processus. Veuillez le libérer avant de continuer." >&2
+            exit 1
+        fi
+    fi
+done
+
+### 2. Génération du certificat Cloudflare Origin (ou auto-signé en fallback) ###
+CF_CERT="/etc/ssl/certs/delishafrica.pem"
+CF_KEY="/etc/ssl/private/delishafrica.key"
+
+# Créer les répertoires SSL si inexistants
+mkdir -p /etc/ssl/certs /etc/ssl/private
+
+if [[ -f "$CF_CERT" && -f "$CF_KEY" ]]; then
+    echo "Certificat existant trouvé pour delishafrica.me, pas de nouvelle génération nécessaire."
+else
+    echo "Aucun certificat SSL existant pour delishafrica.me. Génération d'un nouveau certificat..."
+    # Tenter de générer un certificat Origin via l'API Cloudflare si les infos sont disponibles
+    if [[ -n "${CF_API_TOKEN:-}" || ( -n "${CF_API_EMAIL:-}" && -n "${CF_API_KEY:-}" ) || -n "${CF_ORIGIN_CA_KEY:-}" ]]; then
+        echo "Tentative de génération d’un certificat Cloudflare Origin via l’API..."
+        # Préparation de l'appel API
+        CF_API_URL="https://api.cloudflare.com/client/v4/certificates"
+        # Préparer le header d'authentification selon la méthode disponible
+        authHeader=""
+        if [[ -n "${CF_API_TOKEN:-}" ]]; then
+            authHeader="Authorization: Bearer $CF_API_TOKEN"
+        elif [[ -n "${CF_ORIGIN_CA_KEY:-}" ]]; then
+            authHeader="X-Auth-User-Service-Key: $CF_ORIGIN_CA_KEY"
+        elif [[ -n "${CF_API_EMAIL:-}" && -n "${CF_API_KEY:-}" ]]; then
+            authHeader="X-Auth-Email: $CF_API_EMAIL"
+            authHeader2="X-Auth-Key: $CF_API_KEY"
+        fi
+
+        # Corps de la requête JSON pour un certificat RSA (Origin CA) valide 15 ans (5475 jours)
+        read -r -d '' CF_API_PAYLOAD <<EOF
+{
+  "hostnames": ["api.delishafrica.me"],
+  "requested_validity": 5475,
+  "request_type": "origin-rsa",
+  "csr": null
+}
+EOF
+
+        # Appel de l'API Cloudflare Origin CA
+        CF_API_RESP=$(mktemp)
+        HTTP_CODE=$(curl -s -o "$CF_API_RESP" -w "%{http_code}" -X POST "$CF_API_URL" \
+            -H "Content-Type: application/json" \
+            -H "$authHeader" ${authHeader2:+ -H "$authHeader2"} \
+            --data "$CF_API_PAYLOAD")
+        if [[ "$HTTP_CODE" == "200" ]]; then
+            # Vérifier si succès dans la réponse JSON
+            CF_SUCCESS=$(jq -r '.success' < "$CF_API_RESP" 2>/dev/null)
+            if [[ "$CF_SUCCESS" == "true" ]]; then
+                # Extraire la clé privée et le certificat
+                CF_PRIVKEY=$(jq -r '.result.private_key' < "$CF_API_RESP")
+                CF_CERT_PEM=$(jq -r '.result.certificate' < "$CF_API_RESP")
+                if [[ -n "$CF_PRIVKEY" && "$CF_PRIVKEY" == -----BEGIN\ PRIVATE\ KEY* && -n "$CF_CERT_PEM" && "$CF_CERT_PEM" == -----BEGIN\ CERTIFICATE* ]]; then
+                    # Sauvegarder le certificat et la clé dans les fichiers
+                    echo "$CF_CERT_PEM" > "$CF_CERT"
+                    echo "$CF_PRIVKEY" > "$CF_KEY"
+                    chmod 600 "$CF_KEY"
+                    echo "✅ Certificat Cloudflare Origin généré et enregistré (valide pour api.delishafrica.me)."
+                else
+                    echo "⚠️ Réponse de l'API Cloudflare reçue, mais extraction du certificat/clé a échoué. On utilisera un certificat auto-signé en repli."
+                fi
+            else
+                echo "⚠️ L'API Cloudflare a répondu, mais avec un statut d'échec (success=false). Utilisation d'un certificat auto-signé en fallback."
+                # Afficher le message d'erreur de l'API si disponible
+                jq -r '.errors[].message' < "$CF_API_RESP" 2>/dev/null
+            fi
+        else
+            echo "⚠️ Échec de l'appel API Cloudflare (code HTTP $HTTP_CODE). Passage au certificat auto-signé."
+        fi
+        rm -f "$CF_API_RESP"
+    fi
+
+    # Si le certificat Cloudflare n'a pas été généré, utiliser OpenSSL pour auto-signé
+    if [[ ! -f "$CF_CERT" || ! -f "$CF_KEY" ]]; then
+        echo "Génération d'un certificat auto-signé RSA 2048 bits, valide 1 an, pour api.delishafrica.me..."
+        openssl req -x509 -nodes -newkey rsa:2048 -sha256 -days 365 \
+            -subj "/CN=api.delishafrica.me" \
+            -keyout "$CF_KEY" -out "$CF_CERT"
+        chmod 600 "$CF_KEY"
+        if [[ -f "$CF_CERT" && -f "$CF_KEY" ]]; then
+            echo "✅ Certificat auto-signé généré et installé."
+        else
+            echo "Erreur: la génération du certificat auto-signé a échoué." >&2
+            exit 1
+        fi
+    fi
+fi
+
+### 3. Configuration d’un hôte Nginx pour api.delishafrica.me ###
+NGINX_CONF="/etc/nginx/sites-available/api.delishafrica.me.conf"
+# Sauvegarde de l'ancienne configuration s'il y en a une
+if [[ -f "$NGINX_CONF" ]]; then
+    cp "$NGINX_CONF" "$NGINX_CONF.bak_$(date +%Y%m%d%H%M%S)" 
+    echo "Ancienne configuration Nginx sauvegardée dans $NGINX_CONF.bak_$(date +%Y%m%d%H%M%S)"
+fi
+
+echo "Création de la configuration Nginx pour api.delishafrica.me..."
+cat > "$NGINX_CONF" <<'ENDNGINXCONF'
+# Configuration Nginx pour api.delishafrica.me
+# Redirection HTTP vers HTTPS
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api.delishafrica.me;
+    # Rediriger tout le trafic HTTP vers HTTPS
+    return 301 https://api.delishafrica.me$request_uri;
+}
+
+# Serveur principal en HTTPS
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name api.delishafrica.me;
+
+    # Certificats SSL (Cloudflare Origin ou auto-signé installé par le script)
+    ssl_certificate     /etc/ssl/certs/delishafrica.pem;
+    ssl_certificate_key /etc/ssl/private/delishafrica.key;
+    # (Optionnel) Paramètres SSL complémentaires pour renforcer la sécurité
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+
+    # En-têtes de sécurité HTTP recommandés
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # Configuration du proxy vers le backend local
+    location / {
+        proxy_pass http://127.0.0.1:3010;
+        proxy_http_version 1.1;
+        # Conserver les en-têtes du client
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Support des WebSocket
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+ENDNGINXCONF
+
+# Activer le site en créant le lien symbolique dans sites-enabled (si pas déjà activé)
+if [[ ! -L "/etc/nginx/sites-enabled/api.delishafrica.me.conf" ]]; then
+    ln -s "$NGINX_CONF" /etc/nginx/sites-enabled/ 2>/dev/null || true
+fi
+
+### 4. Redémarrage (ou rechargement) de Nginx avec la nouvelle config ###
+echo "Vérification de la syntaxe de configuration Nginx..."
+if ! nginx -t; then
+    echo "❌ La vérification de la configuration Nginx a échoué. Veuillez corriger les erreurs ci-dessus." >&2
+    exit 1
+fi
+
+# Rechargement gracieux de Nginx pour appliquer les changements
+echo "Redémarrage de Nginx avec la nouvelle configuration..."
+systemctl reload nginx 2>/dev/null || systemctl restart nginx
+if ! systemctl is-active --quiet nginx; then
+    echo "❌ Échec du démarrage de Nginx. Consultez les logs pour en savoir plus." >&2
+    exit 1
+fi
+
+### 5. Test automatique de l'endpoint /api/health en HTTPS ###
+echo "Test de l'endpoint de santé de l'API via HTTPS..."
+HTTP_CODE=$(curl -sk -o /dev/null -w "%{http_code}" https://api.delishafrica.me/api/health)
+if [[ "$HTTP_CODE" == "200" ]]; then
+    echo "✅ Test réussi : l'endpoint /api/health est accessible en HTTPS (code 200)."
+else
+    if [[ "$HTTP_CODE" == "000" ]]; then
+        echo "❌ Échec de la requête HTTPS (pas de réponse). Vérifiez la résolution DNS, les paramètres Cloudflare ou les règles de pare-feu."
+    else
+        echo "⚠️ L'endpoint /api/health a répondu avec le code HTTP $HTTP_CODE. (Attendu 200)"
+    fi
+fi
+
+echo "Script terminé."

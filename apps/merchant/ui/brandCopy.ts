@@ -1,0 +1,15 @@
+export const DA_BRAND_COPY = {
+  appName: "DelishAfrica",
+  baseline: "Le goût de l’Afrique, livré avec élégance.",
+  clientHero: "Explore les restaurants, découvre les histoires, suis ta commande en direct.",
+  partnerSpotlight: "Partenaire en lumière",
+  menusAndStories: "Menus & histoires",
+  explorePartners: "Découvrir nos partenaires",
+  exploreRestaurants: "Explorer les restaurants",
+  trackOrder: "Suivre ma commande",
+  orderNow: "Commander",
+  merchantTitle: "Espace Partenaire",
+  merchantSubtitle: "Pilote les commandes, la cuisine et la qualité de service.",
+  courierTitle: "Courier",
+  courierSubtitle: "Missions claires, progression fluide, livraison maîtrisée.",
+} as const;
