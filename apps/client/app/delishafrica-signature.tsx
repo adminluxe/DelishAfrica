@@ -208,7 +208,7 @@ export default function DelishAfricaSignatureScreen() {
         {loading ? <ActivityIndicator /> : <Text style={styles.refreshText}>Rafraîchir la signature</Text>}
       </Pressable>
 
-      <Text style={styles.footer}>Signature front-only · aucune mutation automatique · paiement préservé.</Text>
+      <Text style={styles.footer}>Signature DelishAfrica® · paiement sécurisé · expérience fluide.</Text>
     </ScrollView>
   );
 }

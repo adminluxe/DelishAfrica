@@ -657,7 +657,7 @@ Route Oracle analyse les missions, l’ETA, la charge et la fiabilité terrain p
 Aucun départ automatique · validation coursier obligatoire
 </Text>
 <Text style={styles.guardText}>
-Aucune livraison automatique. Seule la proposition coursier peut être confirmée manuellement.
+Validation manuelle obligatoire. Le coursier garde le contrôle de chaque étape depuis son cockpit.
 </Text>
 </View>
 
