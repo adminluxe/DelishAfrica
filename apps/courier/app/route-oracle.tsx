@@ -60,10 +60,10 @@ source: "courier-route-oracle",
 
 function routeProviderLabel(provider?: string | null) {
 if (provider === "google_routes") return "Google Routes";
-if (provider === "fallback_haversine") return "Fallback Haversine";
-if (provider === "fallback_google_unavailable") return "Fallback API";
-if (provider === "fallback_invalid_input") return "Fallback coordonnées";
-return "Route API";
+if (provider === "fallback_haversine") return "Estimation sécurisée";
+if (provider === "fallback_google_unavailable") return "Estimation protégée";
+if (provider === "fallback_invalid_input") return "Coordonnées à confirmer";
+return "Itinéraire estimé";
 }
 
 function routeDistanceLabel(meters?: number) {
@@ -193,6 +193,7 @@ return "Annulée";
 default:
 return status || "Indisponible";
 }
+
 }
 
 function vehicleLabel(vehicle?: string) {
@@ -265,7 +266,7 @@ const text = await response.text();
 const json = text ? JSON.parse(text) : null;
 
 if (!response.ok || !json) {
-throw new Error("Route API indisponible");
+throw new Error("Itinéraire momentanément indisponible");
 }
 
 setRoutePreviewState({
@@ -278,11 +279,39 @@ updatedAt: new Date().toISOString(),
 setRoutePreviewState((current) => ({
 loading: false,
 data: current.data,
-error: error instanceof Error ? error.message : "Route API indisponible",
+error: error instanceof Error ? error.message : "Itinéraire momentanément indisponible",
 updatedAt: new Date().toISOString(),
 }));
 }
 }, []);
+
+
+const humanizeRouteOracleWarning = (value?: string | null) => {
+const raw = String(value || "");
+const statusMap: Record<string, string> = {
+delivered: "déjà livrée",
+picked_up: "déjà en route",
+ready: "prête",
+accepted: "acceptée",
+pending: "envoyée",
+};
+let result = raw.replace(
+/Commande\s+([^\s:]+)\s+en statut\s+(delivered|picked_up|ready|accepted|pending)\s*:\s*recommandation informative uniquement\.?/gi,
+(_, orderId: string, status: string) => {
+const label = statusMap[String(status).toLowerCase()] || "déjà traitée";
+return `Commande ${orderId} ${label} :\nlecture informative uniquement.`;
+}
+);
+result = result
+.replace(/\brecommandation informative uniquement\b/gi, "lecture informative uniquement")
+.replace(/\bdelivered\b/g, "livrée")
+.replace(/\bpicked_up\b/g, "en route")
+.replace(/\bready\b/g, "prête")
+.replace(/\baccepted\b/g, "acceptée")
+.replace(/\bpending\b/g, "envoyée")
+.replace(/\bstatus commande\b/g, "statut de la commande");
+return result;
+};
 
 useEffect(() => {
 void loadRoutePreview();
@@ -643,7 +672,7 @@ Route Oracle analyse les missions, l’ETA, la charge et la fiabilité terrain p
 
 <View style={styles.heroBadges}>
 <View style={styles.badgeGold}>
-<Text style={styles.badgeGoldText}>Recommandation IA</Text>
+<Text style={styles.badgeGoldText}>Lecture terrain</Text>
 </View>
 <View style={styles.badgeDark}>
 <Text style={styles.badgeDarkText}>Validation humaine</Text>
@@ -708,7 +737,7 @@ letterSpacing: 0.8,
 textTransform: "uppercase",
 }}
 >
-Route terrain API
+Itinéraire estimé
 </Text>
 <Text
 style={{
@@ -721,7 +750,7 @@ marginTop: 6,
 {routePreviewState.loading
 ? "Synchronisation ETA terrain…"
 : routePreviewState.error && !routePreviewState.data
-? "Fallback local actif"
+? "Estimation locale sécurisée"
 : `${routePreviewState.data?.etaMinutes || "—"} min · ${routeDistanceLabel(routePreviewState.data?.distanceMeters)}`}
 </Text>
 <Text
@@ -841,7 +870,7 @@ onPress={confirmProposal}
 <Text style={styles.statusPill}>{statusLabel(state.data?.orderStatus)}</Text>
 </View>
 <Text style={styles.bodyText}>
-{state.data?.reason || "Recommandation calculée par Route Oracle."}
+{String(state.data?.reason || "Recommandation calculée par Route Oracle.").replace(/status commande/g, "statut de la commande").replace(/\bdelivered\b/g, "livrée").replace(/\bpicked_up\b/g, "en route").replace(/\bready\b/g, "prête").replace(/\baccepted\b/g, "acceptée").replace(/\bpending\b/g, "envoyée")}
 </Text>
 <Text style={styles.miniText}>
 Oracle livraison · MAJ {updatedLabel}
@@ -895,7 +924,7 @@ Oracle livraison · MAJ {updatedLabel}
 <View style={styles.warningCard}>
 <Text style={styles.warningTitle}>Garde-fous actifs</Text>
 {warnings.slice(0, 5).map((warning, index) => (
-<Text key={`${warning}-${index}`} style={styles.warningText}>• {warning}</Text>
+<Text key={`${humanizeRouteOracleWarning(warning)}-${index}`} style={styles.warningText}>• {humanizeRouteOracleWarning(warning)}</Text>
 ))}
 </View>
 ) : null}

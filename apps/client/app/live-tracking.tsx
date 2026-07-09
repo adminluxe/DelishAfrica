@@ -304,7 +304,7 @@ refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
 >
 <View style={styles.header}>
 <Text style={styles.kicker}>DELISHAFRICA® · CLIENT</Text>
-<Text style={styles.title}>Suivi intelligent</Text>
+<Text style={styles.title}>Suivi principal</Text>
 <Text style={styles.subtitle}>
 Votre commande, la cuisine et le coursier dans une lecture simple et rassurante.
 </Text>
@@ -317,15 +317,15 @@ Votre commande, la cuisine et le coursier dans une lecture simple et rassurante.
 <View style={styles.metricsRow}>
 <View style={styles.metric}>
 <Text style={styles.metricValue}>{orders.length}</Text>
-<Text style={styles.metricLabel}>total</Text>
+<Text style={styles.metricLabel}>commandes</Text>
 </View>
 <View style={styles.metric}>
 <Text style={styles.metricValue}>{activeCount}</Text>
-<Text style={styles.metricLabel}>live</Text>
+<Text style={styles.metricLabel}>actives</Text>
 </View>
 <View style={styles.metric}>
 <Text style={styles.metricValue}>{deliveredCount}</Text>
-<Text style={styles.metricLabel}>done</Text>
+<Text style={styles.metricLabel}>livrées</Text>
 </View>
 </View>
 </View>
@@ -378,7 +378,7 @@ Votre commande, la cuisine et le coursier dans une lecture simple et rassurante.
 </View>
 
 <View style={styles.etaCard}>
-<Text style={styles.cardKicker}>ETA live</Text>
+<Text style={styles.cardKicker}>Statut livraison</Text>
 <Text style={styles.etaValue}>{etaFor(selectedOrder)}</Text>
 <Text style={styles.etaText}>{etaDetail(selectedOrder)}</Text>
 <Text style={styles.etaSmall}>Estimation sécurisée · aucun suivi en arrière-plan.</Text>
@@ -397,8 +397,8 @@ Votre commande, la cuisine et le coursier dans une lecture simple et rassurante.
 )}
 
 <View style={styles.recentCard}>
-<Text style={styles.blockTitle}>Total récentes</Text>
-<Text style={styles.blockSubtitle}>Touchez une commande pour afficher son suivi intelligent.</Text>
+<Text style={styles.blockTitle}>Commandes récentes</Text>
+<Text style={styles.blockSubtitle}>Touchez une commande pour afficher son suivi principal.</Text>
 
 {orders.slice(0, 5).map((order) => {
 const id = publicIdOf(order);
@@ -421,20 +421,12 @@ onPress={() => setSelectedId(id)}
 })}
 </View>
 
-<TouchableOpacity activeOpacity={0.86} style={styles.secondaryButton} onPress={() => router.push("/order-tracking" as any)}>
-<Text style={styles.secondaryButtonText}>Voir le suivi classique</Text>
-</TouchableOpacity>
-
-<TouchableOpacity activeOpacity={0.86} style={styles.secondaryButton} onPress={() => router.push("/notifications" as any)}>
-<Text style={styles.secondaryButtonText}>Mes alertes</Text>
-</TouchableOpacity>
-
 <TouchableOpacity activeOpacity={0.86} style={styles.ghostButton} onPress={() => router.back()}>
 <Text style={styles.ghostButtonText}>Retour</Text>
 </TouchableOpacity>
 
 <Text style={styles.footer}>
-Suivi estimatif · paiement et checkout intacts.
+Suivi estimatif · paiement sécurisé inclus.
 </Text>
 </ScrollView>
 </SafeAreaView>
@@ -456,7 +448,7 @@ paddingBottom: 44,
 gap: 16,
 },
 header: {
-paddingTop: 12,
+paddingTop: 0,
 gap: 10,
 },
 kicker: {

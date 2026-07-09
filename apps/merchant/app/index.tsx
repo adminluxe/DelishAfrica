@@ -292,7 +292,7 @@ refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
 </View>
 
 <Text style={styles.subtitle}>
-Les alertes internes suivent les commandes en temps réel, sans notification native ni rebuild.
+Vos commandes, alertes et priorités cuisine restent lisibles en temps réel.
 </Text>
 
 <View style={styles.syncRow}>
@@ -357,7 +357,7 @@ Les alertes internes suivent les commandes en temps réel, sans notification nat
 <Text style={styles.sectionKicker}>Espace partenaire</Text>
 <Text style={styles.sectionTitle}>Compte restaurateur</Text>
 </View>
-<Text style={styles.totalText}>Lite</Text>
+<Text style={styles.totalText}>Actif</Text>
 </View>
 
 <Text style={styles.partnerSpaceText}>
@@ -365,7 +365,7 @@ Session, informations restaurant, profil partenaire et suivi opérationnel.
 </Text>
 
 <View style={styles.quickGrid}>
-<Pressable style={styles.quickButton} onPress={() => go("/auth-session")}>
+<Pressable style={styles.quickButton} onPress={() => go("/partner-space")}>
 <Text style={styles.quickButtonTitle}>Session</Text>
 <Text style={styles.quickButtonText}>Connexion</Text>
 </Pressable>
@@ -386,8 +386,8 @@ Session, informations restaurant, profil partenaire et suivi opérationnel.
 </Pressable>
 
 <Pressable style={styles.quickButtonWide} onPress={() => go("/ops-dashboard")}>
-<Text style={styles.quickButtonTitle}>Ops Lite</Text>
-<Text style={styles.quickButtonText}>Suivi activité</Text>
+<Text style={styles.quickButtonTitle}>Pilotage service</Text>
+<Text style={styles.quickButtonText}>Suivi du service</Text>
 </Pressable>
 </View>
 </View>
@@ -417,7 +417,7 @@ Session, informations restaurant, profil partenaire et suivi opérationnel.
 </Pressable>
 
 <Pressable
-onPress={() => go("/kitchen-oracle")}
+onPress={() => go("/service-oracle")}
 style={{
 borderRadius: 24,
 padding: 20,
@@ -434,7 +434,7 @@ marginBottom: 18
 ORACLE CUISINE
 </Text>
 <Text style={{ color: "#FFF8EF", fontSize: 26, fontWeight: "900", marginBottom: 8 }}>
-Kitchen Oracle
+Oracle cuisine
 </Text>
 <Text style={{ color: "rgba(255,248,239,0.72)", fontSize: 15, lineHeight: 22, fontWeight: "700" }}>
 Priorités cuisine, pression de service et coordination coursier.
@@ -455,7 +455,7 @@ marginBottom: 18
 }}
 >
 <Text style={{ color: "#F7B267", fontSize: 11, fontWeight: "900", letterSpacing: 2.4, marginBottom: 8 }}>
-KITCHEN PULSE
+PULSE CUISINE
 </Text>
 <Text style={{ color: "#FFF8EF", fontSize: 26, fontWeight: "900", marginBottom: 8 }}>
 Pulse cuisine
@@ -505,108 +505,10 @@ Le cockpit reste prêt dès qu’une nouvelle commande arrive.
 </View>
 
 <Text style={styles.footer}>
-Alertes internes · suivi restaurateur · sans dépendance native
+Alertes internes · suivi restaurateur · service maîtrisé
 </Text>
 
 <Pressable
-onPress={() => go("/terrain-os")}
-accessibilityRole="button"
-style={{
-marginTop: 18,
-marginBottom: 4,
-borderRadius: 30,
-padding: 22,
-minHeight: 152,
-backgroundColor: "#35170E",
-borderWidth: 1,
-borderColor: "rgba(255,255,255,0.13)",
-overflow: "hidden",
-}}
->
-<View
-pointerEvents="none"
-style={{
-position: "absolute",
-top: -44,
-right: -52,
-width: 126,
-height: 126,
-borderRadius: 999,
-backgroundColor: "rgba(120,245,255,0.025)",
-borderWidth: 1,
-borderColor: "rgba(230,255,250,0.055)",
-}}
-/>
-<View
-pointerEvents="none"
-style={{
-position: "absolute",
-bottom: 18,
-left: -42,
-width: 118,
-height: 26,
-borderRadius: 999,
-backgroundColor: "rgba(255,255,255,0.018)",
-borderWidth: 1,
-borderColor: "rgba(230,255,250,0.045)",
-transform: [{ rotate: "-12deg" }],
-}}
-/>
-<Text
-style={{
-color: "#F7B267",
-fontSize: 12,
-fontWeight: "900",
-letterSpacing: 5,
-}}
->
-TERRAIN OS
-</Text>
-<Text
-style={{
-color: "#FFF8EF",
-fontSize: 28,
-lineHeight: 33,
-fontWeight: "900",
-marginTop: 10,
-}}
->
-Cuisine + route synchronisées
-</Text>
-<Text
-style={{
-color: "rgba(255,248,239,0.76)",
-fontSize: 15,
-lineHeight: 22,
-fontWeight: "700",
-marginTop: 8,
-}}
->
-Fenêtre coursier, pression service et timing cuisine dans un cockpit.
-</Text>
-<View
-style={{
-alignSelf: "flex-start",
-marginTop: 16,
-borderRadius: 999,
-paddingHorizontal: 16,
-paddingVertical: 10,
-backgroundColor: "#F7B267",
-}}
->
-<Text
-style={{
-color: "#160805",
-fontSize: 14,
-fontWeight: "900",
-}}
->
-Ouvrir Terrain OS →
-</Text>
-</View>
-</Pressable>
-
-      <Pressable
         onPress={() => router.push("/delishafrica-signature" as any)}
         style={{
           marginTop: 18,
@@ -618,8 +520,8 @@ Ouvrir Terrain OS →
         }}
       >
         <Text style={{ color: "#F5BE6B", fontSize: 12, fontWeight: "900", letterSpacing: 1.4 }}>DELISHAFRICA® SIGNATURE</Text>
-        <Text style={{ marginTop: 8, color: "#FFF9EA", fontSize: 21, fontWeight: "900" }}>Kitchen Intelligence</Text>
-        <Text style={{ marginTop: 6, color: "rgba(255,249,234,0.68)", fontSize: 13, lineHeight: 19 }}>Priorites, clarté cuisine et prochaine meilleure action.</Text>
+        <Text style={{ marginTop: 8, color: "#FFF9EA", fontSize: 21, fontWeight: "900" }}>Intelligence cuisine</Text>
+        <Text style={{ marginTop: 6, color: "rgba(255,249,234,0.68)", fontSize: 13, lineHeight: 19 }}>Priorités, clarté cuisine et prochaine meilleure action.</Text>
       </Pressable>
 </ScrollView>
 </SafeAreaView>

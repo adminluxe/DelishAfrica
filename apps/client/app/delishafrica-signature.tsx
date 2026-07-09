@@ -1,7 +1,5 @@
-import { router } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
 
 type OrderLike = {
   id?: string;
@@ -99,7 +97,6 @@ function sortOrders(orders: OrderLike[]) {
 }
 
 export default function DelishAfricaSignatureScreen() {
-  const router = useRouter();
   const [orders, setOrders] = useState<OrderLike[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -180,30 +177,6 @@ export default function DelishAfricaSignatureScreen() {
           ))}
         </View>
       </View>
-
-      <View style={styles.actionStack}>
-        <ActionCard title="Menu signature" body="Voir les plats comme une galerie culturelle." onPress={() => router.push("/menu" as any)} />
-        <ActionCard title="Panier intelligent" body="Vérifier montant, adresse et prochaine étape." onPress={() => router.push("/cart" as any)} />
-        <ActionCard title="Suivi vivant" body="Voir la commande comme une histoire en mouvement." onPress={() => router.push("/live-story" as any)} />
-        <ActionCard title="Paiement sécurisé" body="Finaliser avec la validation bancaire DelishAfrica®." onPress={() => router.push("/checkout-preflight" as any)} />
-      </View>
-
-      
-      <Pressable
-        onPress={() => router.push("/living-order" as any)}
-        style={{
-          marginTop: 22,
-          borderRadius: 34,
-          padding: 26,
-          borderWidth: 1,
-          borderColor: "rgba(245,190,107,0.40)",
-          backgroundColor: "rgba(245,190,107,0.14)",
-        }}
-      >
-        <Text style={{ color: "#F5BE6B", fontSize: 12, fontWeight: "900", letterSpacing: 3 }}>{"LIVING ORDER OS"}</Text>
-        <Text style={{ marginTop: 10, color: "#FFF9EA", fontSize: 30, fontWeight: "900", lineHeight: 34 }}>{"Voir la commande vivante"}</Text>
-        <Text style={{ marginTop: 8, color: "rgba(255,249,234,0.70)", fontSize: 16, lineHeight: 24 }}>{"Paiement, cuisine, route et reception deviennent un recit en mouvement."}</Text>
-      </Pressable>
 <Pressable style={styles.refreshButton} onPress={load}>
         {loading ? <ActivityIndicator /> : <Text style={styles.refreshText}>Rafraîchir la signature</Text>}
       </Pressable>
@@ -213,18 +186,10 @@ export default function DelishAfricaSignatureScreen() {
   );
 }
 
-function ActionCard({ title, body, onPress }: { title: string; body: string; onPress: () => void }) {
-  return (
-    <Pressable style={styles.actionCard} onPress={onPress}>
-      <Text style={styles.actionTitle}>{title}</Text>
-      <Text style={styles.actionBody}>{body}</Text>
-    </Pressable>
-  );
-}
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#020A07" },
-  content: { paddingHorizontal: 20, paddingTop: 38, paddingBottom: 42, gap: 22 },
+  content: { paddingHorizontal: 20, paddingTop: 62, paddingBottom: 42, gap: 22 },
   orbOne: { position: "absolute", top: -70, right: -80, width: 260, height: 260, borderRadius: 999, backgroundColor: "rgba(245,190,107,0.18)" },
   orbTwo: { position: "absolute", top: 320, left: -110, width: 220, height: 220, borderRadius: 999, backgroundColor: "rgba(47,211,190,0.14)" },
   heroCard: { borderRadius: 30, borderWidth: 1, borderColor: "rgba(245,190,107,0.42)", backgroundColor: "rgba(2,24,15,0.92)", padding: 28, gap: 22, overflow: "hidden" },
@@ -247,10 +212,6 @@ const styles = StyleSheet.create({
   stepDot: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "#100805" },
   stepDotText: { color: "#F5BE67", fontSize: 18, fontWeight: "900" },
   stepText: { color: "#100805", fontSize: 22, fontWeight: "900" },
-  actionStack: { gap: 16 },
-  actionCard: { borderRadius: 24, borderWidth: 1, borderColor: "rgba(255,249,236,0.12)", backgroundColor: "rgba(255,255,255,0.06)", padding: 24, gap: 10 },
-  actionTitle: { color: "#FFF9EC", fontSize: 27, lineHeight: 31, fontWeight: "900", letterSpacing: -1 },
-  actionBody: { color: "rgba(255,249,236,0.62)", fontSize: 18, lineHeight: 27, fontWeight: "700" },
   refreshButton: { borderRadius: 999, minHeight: 58, alignItems: "center", justifyContent: "center", backgroundColor: "#FFF9EC", marginTop: 4 },
   refreshText: { color: "#06110C", fontSize: 19, fontWeight: "900" },
   footer: { textAlign: "center", color: "rgba(255,249,236,0.35)", fontSize: 13, lineHeight: 20, marginTop: 4 },

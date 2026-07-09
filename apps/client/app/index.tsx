@@ -189,6 +189,10 @@ Le goût de l’Afrique, livré avec élégance.
 ) : null}
 
 <Pressable style={styles.partnerCard} onPress={() => router.push("/menu" as any)}>
+<View pointerEvents="none" style={styles.partnerGlow} />
+<View pointerEvents="none" style={styles.partnerPlate}>
+<View style={styles.partnerPlateCore} />
+</View>
 <Text style={styles.partnerKicker}>PARTENAIRE EN LUMIÈRE</Text>
 <Text style={styles.partnerTitle}>{thieyp && thieyp.name ? thieyp.name : "Thieyp"}</Text>
 <Text style={styles.partnerText}>
@@ -212,114 +216,17 @@ Rice and Peace · Attiéké · Yassa · Mafé · Bissap · Gingembre · Baobab
 
 <View style={styles.actionRow}>
 <Pressable style={styles.actionGold} onPress={() => router.push("/menu" as any)}>
+<View pointerEvents="none" style={styles.commandGlow} />
+<View pointerEvents="none" style={styles.commandSpice} />
 <Text style={styles.actionSmallDark}>COMMANDE</Text>
 <Text style={styles.actionTitleDark}>Commander Thieyp</Text>
 <Text style={styles.actionTextDark}>Menu Thieyp, panier, paiement sécurisé.</Text>
 </Pressable>
 
-<Pressable style={styles.actionDark} onPress={() => router.push("/order-tracking" as any)}>
+<Pressable style={styles.actionDark} onPress={() => router.push("/live-tracking" as any)}>
 <Text style={styles.actionSmallGold}>SUIVI</Text>
-<Text style={styles.actionTitleLight}>Suivre ma commande</Text>
+<Text style={styles.actionTitleLight}>Suivi principal</Text>
 <Text style={styles.actionTextLight}>Client → Merchant → Courier → Livré.</Text>
-</Pressable>
-<Pressable
-style={{
-marginTop: 6,
-borderRadius: 26,
-paddingVertical: 19,
-paddingHorizontal: 18,
-backgroundColor: "#EAF3FF",
-borderWidth: 1,
-borderColor: "rgba(125,180,255,0.72)",
-marginBottom: 20,
-}}
-onPress={() => router.push("/live-tracking" as any)}
->
-<Text
-style={{
-color: "#07101E",
-fontSize: 25,
-fontWeight: "900",
-textAlign: "center",
-}}
->
-Suivi intelligent
-</Text>
-<Text
-style={{
-color: "rgba(7,16,30,0.70)",
-fontSize: 15,
-fontWeight: "800",
-textAlign: "center",
-marginTop: 6,
-lineHeight: 21,
-}}
->
-ETA, cuisine, coursier et étapes.
-</Text>
-</Pressable>
-
-
-
-<Pressable
-style={{
-marginTop: 6,
-borderRadius: 26,
-paddingVertical: 19,
-paddingHorizontal: 18,
-backgroundColor: "#101A38",
-borderWidth: 1,
-borderColor: "rgba(255,209,102,0.38)",
-marginBottom: 12,
-}}
-onPress={() => router.push("/live-story" as any)}
->
-<Text
-style={{
-color: "#FFD166",
-fontSize: 12,
-fontWeight: "900",
-letterSpacing: 3,
-marginBottom: 8,
-}}
->
-LIVE STORY
-</Text>
-<Text
-style={{
-color: "#FFFFFF",
-fontSize: 26,
-fontWeight: "900",
-lineHeight: 31,
-}}
->
-Histoire de ma commande
-</Text>
-<Text
-style={{
-color: "rgba(255,255,255,0.72)",
-fontSize: 15,
-fontWeight: "800",
-lineHeight: 22,
-marginTop: 8,
-}}
->
-Cuisine, coursier et livraison racontés en temps réel.
-</Text>
-</Pressable><Pressable style={styles.actionGold} onPress={() => router.push("/taste-oracle" as any)}>
-<Text style={styles.actionSmallDark}>MAGIE</Text>
-<Text style={styles.actionTitleDark}>AfroTaste Oracle</Text>
-<Text style={styles.actionTextDark}>Une émotion, une assiette, une expérience DelishAfrica.</Text>
-</Pressable>
-
-<Pressable style={styles.actionDark} onPress={() => router.push("/notifications" as any)}>
-<Text style={styles.actionTitleLight}>Mes alertes</Text>
-<Text style={styles.actionTextLight}>Paiement, cuisine, livraison.</Text>
-</Pressable>
-
-<Pressable style={styles.actionDark} onPress={() => router.push("/delivery-intelligence" as any)}>
-<Text style={styles.actionTitleLight}>This is DelishAfrica®</Text>
-<Text style={styles.actionTextLight}>Paiement, cuisine, coursier et suivi live dans un même élan.</Text>
 </Pressable>
 
 </View>
@@ -349,105 +256,8 @@ Cuisine, coursier et livraison racontés en temps réel.
 </View>
 ) : null}
 
-<Pressable
-onPress={() => router.push("/terrain-os" as any)}
-accessibilityRole="button"
-style={{
-marginTop: 18,
-marginBottom: 4,
-borderRadius: 30,
-padding: 22,
-minHeight: 152,
-backgroundColor: "#101A38",
-borderWidth: 1,
-borderColor: "rgba(255,255,255,0.13)",
-overflow: "hidden",
-}}
->
-<View
-pointerEvents="none"
-style={{
-position: "absolute",
-top: -44,
-right: -52,
-width: 126,
-height: 126,
-borderRadius: 999,
-backgroundColor: "rgba(120,245,255,0.025)",
-borderWidth: 1,
-borderColor: "rgba(230,255,250,0.055)",
-}}
-/>
-<View
-pointerEvents="none"
-style={{
-position: "absolute",
-bottom: 18,
-left: -42,
-width: 118,
-height: 26,
-borderRadius: 999,
-backgroundColor: "rgba(255,255,255,0.018)",
-borderWidth: 1,
-borderColor: "rgba(230,255,250,0.045)",
-transform: [{ rotate: "-12deg" }],
-}}
-/>
-<Text
-style={{
-color: "#F8C76A",
-fontSize: 12,
-fontWeight: "900",
-letterSpacing: 5,
-}}
->
-TERRAIN OS
-</Text>
-<Text
-style={{
-color: "#FFFFFF",
-fontSize: 28,
-lineHeight: 33,
-fontWeight: "900",
-marginTop: 10,
-}}
->
-Live terrain augmenté
-</Text>
-<Text
-style={{
-color: "rgba(255,255,255,0.76)",
-fontSize: 15,
-lineHeight: 22,
-fontWeight: "700",
-marginTop: 8,
-}}
->
-Carte, ETA, cuisine et livraison dans un seul cerveau client.
-</Text>
-<View
-style={{
-alignSelf: "flex-start",
-marginTop: 16,
-borderRadius: 999,
-paddingHorizontal: 16,
-paddingVertical: 10,
-backgroundColor: "#F8C76A",
-}}
->
-<Text
-style={{
-color: "#080B13",
-fontSize: 14,
-fontWeight: "900",
-}}
->
-Ouvrir Terrain OS →
-</Text>
-</View>
-</Pressable>
 
-      <Pressable
+<Pressable
         onPress={() => router.push("/delishafrica-signature" as any)}
         style={{
           marginTop: 18,
@@ -460,7 +270,7 @@ Ouvrir Terrain OS →
       >
         <Text style={{ color: "#F5BE6B", fontSize: 12, fontWeight: "900", letterSpacing: 1.4 }}>DELISHAFRICA® SIGNATURE</Text>
         <Text style={{ marginTop: 8, color: "#FFF9EA", fontSize: 21, fontWeight: "900" }}>DelishAfrica® Signature</Text>
-        <Text style={{ marginTop: 6, color: "rgba(255,249,234,0.68)", fontSize: 13, lineHeight: 19 }}>Menu, paiement, cuisine, coursier et suivi dans une experience vivante.</Text>
+        <Text style={{ marginTop: 6, color: "rgba(255,249,234,0.68)", fontSize: 13, lineHeight: 19 }}>La signature DelishAfrica® présente l’expérience complète, sans ralentir la commande.</Text>
       </Pressable>
 </ScrollView>
 );
@@ -489,7 +299,7 @@ darkButton: { flex: 1, backgroundColor: "rgba(255,255,255,0.10)", borderRadius: 
 darkButtonText: { color: "#FFF", fontWeight: "900", fontSize: 14 },
 errorBox: { borderRadius: 18, backgroundColor: "rgba(255,90,90,0.12)", padding: 14, marginBottom: 14 },
 errorText: { color: "#FFB6B6", fontWeight: "800" },
-partnerCard: { borderRadius: 28, padding: 20, backgroundColor: "#FFF5DE", marginBottom: 16 },
+partnerCard: {borderRadius: 28, padding: 20, backgroundColor: "#FFF5DE", marginBottom: 16, position: "relative", overflow: "hidden", borderWidth: 1, borderColor: "rgba(245,190,107,0.34)"},
 partnerKicker: { color: "#7A4A00", fontSize: 12, fontWeight: "900", letterSpacing: 2.5, marginBottom: 8 },
 partnerTitle: { color: "#151515", fontSize: 30, fontWeight: "900", marginBottom: 8 },
 partnerText: { color: "rgba(0,0,0,0.68)", fontSize: 15, lineHeight: 21, marginTop: 4 },
@@ -498,7 +308,7 @@ metaBox: { backgroundColor: "rgba(0,0,0,0.08)", borderRadius: 18, padding: 12, m
 metaValue: { color: "#151515", fontSize: 20, fontWeight: "900" },
 metaLabel: { color: "rgba(0,0,0,0.55)", fontSize: 12, fontWeight: "800", marginTop: 2 },
 actionRow: { marginBottom: 16 },
-actionGold: { borderRadius: 24, padding: 20, backgroundColor: "#F5BE6B", marginBottom: 12 },
+actionGold: {borderRadius: 24, padding: 20, backgroundColor: "#F5BE6B", marginBottom: 12, position: "relative", overflow: "hidden", borderWidth: 1, borderColor: "rgba(255,255,255,0.30)"},
 actionDark: { borderRadius: 24, padding: 20, backgroundColor: "#121A34", borderWidth: 1, borderColor: "rgba(255,255,255,0.10)", marginBottom: 12 },
 actionSmallDark: { color: "rgba(0,0,0,0.55)", fontSize: 11, fontWeight: "900", letterSpacing: 2 },
 actionSmallGold: { color: "#F5BE6B", fontSize: 11, fontWeight: "900", letterSpacing: 2 },
@@ -506,7 +316,7 @@ actionTitleDark: { color: "#111", fontSize: 23, fontWeight: "900", marginTop: 8,
 actionTitleLight: { color: "#FFF", fontSize: 23, fontWeight: "900", marginTop: 8, lineHeight: 28 },
 actionTextDark: { color: "rgba(0,0,0,0.62)", fontSize: 15, lineHeight: 22, marginTop: 8 },
 actionTextLight: { color: "rgba(255,255,255,0.72)", fontSize: 15, lineHeight: 22, marginTop: 8 },
-orderCard: { borderRadius: 26, padding: 20, backgroundColor: "rgba(255,255,255,0.94)", marginBottom: 16 },
+orderCard: {borderRadius: 26, padding: 20, backgroundColor: "rgba(255,255,255,0.94)", marginBottom: 16, borderWidth: 1, borderColor: "rgba(245,190,107,0.18)"},
 orderKicker: { color: "#6B4B00", fontSize: 11, fontWeight: "900", letterSpacing: 2.5, marginBottom: 8 },
 orderTitle: { color: "#101010", fontSize: 25, fontWeight: "900", marginBottom: 8 },
 orderText: { color: "rgba(0,0,0,0.68)", fontSize: 14, lineHeight: 20 },
@@ -517,6 +327,12 @@ discoveryTitle: { color: "#FFF", fontSize: 23, fontWeight: "900", marginBottom: 
 discoveryText: { color: "rgba(255,255,255,0.72)", fontSize: 15, lineHeight: 22 },
 discoveryButton: { flex: 1, borderRadius: 16, paddingVertical: 13, alignItems: "center", backgroundColor: "rgba(255,255,255,0.10)", marginRight: 8 },
 discoveryButtonText: { color: "#FFF", fontWeight: "900" },
+partnerGlow: { position: "absolute", top: -42, right: -52, width: 152, height: 152, borderRadius: 999, backgroundColor: "rgba(245,190,107,0.16)", borderWidth: 1, borderColor: "rgba(245,190,107,0.20)" },
+partnerPlate: { position: "absolute", right: 20, bottom: 20, width: 74, height: 74, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.34)", borderWidth: 1, borderColor: "rgba(122,74,0,0.18)", alignItems: "center", justifyContent: "center" },
+partnerPlateCore: { width: 44, height: 44, borderRadius: 999, backgroundColor: "rgba(245,190,107,0.38)", borderWidth: 1, borderColor: "rgba(122,74,0,0.16)" },
+commandGlow: { position: "absolute", top: -36, right: -44, width: 140, height: 140, borderRadius: 999, backgroundColor: "rgba(255,249,234,0.24)", borderWidth: 1, borderColor: "rgba(255,255,255,0.30)" },
+commandSpice: { position: "absolute", bottom: 16, right: 18, width: 58, height: 14, borderRadius: 999, backgroundColor: "rgba(17,17,17,0.10)", transform: [{ rotate: "-12deg" }] },
+
 loading: { marginTop: 18, alignItems: "center" },
 loadingText: { color: "rgba(255,255,255,0.65)", marginTop: 8 }
 });

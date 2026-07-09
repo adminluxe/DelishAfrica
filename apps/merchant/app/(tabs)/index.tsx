@@ -70,7 +70,7 @@ export default function MerchantHome() {
           <Text style={styles.arrowLight}>→</Text>
         </Pressable>
 
-        <Pressable style={[styles.card, styles.dark]} onPress={() => go("/thieyp-demo")}>
+        <Pressable style={[styles.card, styles.dark]} onPress={() => go("/partner-space")}>
           <View>
             <Text style={styles.kicker}>PARTENAIRE ACTIF</Text>
             <Text style={styles.cardTitle}>Thieyp</Text>

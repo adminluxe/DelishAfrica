@@ -25,7 +25,7 @@ export default function CourierHome() {
             <Text style={styles.subtitle}>Terrain & livraison</Text>
           </View>
           <View style={styles.livePill}>
-            <Text style={styles.liveText}>READY</Text>
+            <Text style={styles.liveText}>PRÊT</Text>
           </View>
         </View>
 
@@ -45,7 +45,7 @@ export default function CourierHome() {
           </View>
         </View>
 
-        <Pressable style={styles.primaryCard} onPress={() => go("/orders-demo")}>
+        <Pressable style={styles.primaryCard} onPress={() => go("/orders")}>
           <View>
             <Text style={styles.kickerLight}>MISSIONS</Text>
             <Text style={styles.cardTitle}>Voir les missions</Text>

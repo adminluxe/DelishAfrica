@@ -380,7 +380,7 @@ return;
         [
           {
             text: "Suivre",
-            onPress: () => router.push("/order-tracking" as any),
+            onPress: () => router.push("/live-tracking" as any),
           },
         ]
       );
@@ -495,7 +495,7 @@ return;
           <Text style={styles.secondaryButtonText}>Voir mon espace Client</Text>
         </Pressable>
 
-        <Pressable style={styles.secondaryButton} onPress={() => router.push("/order-tracking" as any)}>
+        <Pressable style={styles.secondaryButton} onPress={() => router.push("/live-tracking" as any)}>
           <Text style={styles.secondaryButtonText}>Voir le suivi live</Text>
         </Pressable>
 

@@ -56,20 +56,20 @@ const STORY_STEPS = [
 {
 key: "pending",
 label: "Commande envoyée",
-title: "Le voyage commence.",
-text: "Votre commande entre dans le flux DelishAfrica. Le restaurant reçoit le signal et prépare la suite.",
+title: "Le signal part en cuisine.",
+text: "Votre commande est transmise au restaurant. La cuisine reçoit le signal et prépare le premier geste.",
 },
 {
 key: "accepted",
 label: "Cuisine éveillée",
-title: "La cuisine prend le relais.",
+title: "La cuisine entre en scène.",
 text: "Le restaurant confirme la commande. La préparation devient le cœur de l’expérience.",
 },
 {
 key: "ready",
 label: "Prête au départ",
 title: "Le plat attend son coursier.",
-text: "La commande est prête. La passerelle cuisine → livraison se met en place.",
+text: "Votre plat est prêt. La passerelle entre la cuisine et la livraison s’ouvre.",
 },
 {
 key: "picked_up",
@@ -80,8 +80,8 @@ text: "Le coursier transporte la commande. Le dernier segment rapproche les save
 {
 key: "delivered",
 label: "Livrée",
-title: "L’histoire arrive à destination.",
-text: "La commande est livrée. Le voyage se termine, l’expérience commence.",
+title: "Le voyage touche à sa porte.",
+text: "La commande est livrée. Le voyage s’achève, le moment peut commencer.",
 },
 ];
 
@@ -159,19 +159,19 @@ function etaValueOnly(order?: DemoOrder): string {
 
 function storyPulse(order?: DemoOrder): string {
 const s = statusOf(order);
-if (s === "pending") return "Le restaurant reçoit la commande.";
-if (s === "accepted") return "La cuisine prépare l’assiette.";
-if (s === "ready") return "La commande attend la prise en charge.";
-if (s === "picked_up") return "Le coursier avance vers la destination.";
-if (s === "delivered") return "La livraison est terminée.";
+if (s === "pending") return "Le restaurant reçoit le signal.";
+if (s === "accepted") return "La cuisine donne vie à l’assiette.";
+if (s === "ready") return "Le plat attend le relais du coursier.";
+if (s === "picked_up") return "Le coursier rapproche la commande de vous.";
+if (s === "delivered") return "La livraison est arrivée.";
 return "Le suivi reste actif.";
 }
 
 function storyTitle(order?: DemoOrder): string {
 const s = statusOf(order);
-if (s === "pending") return "Votre commande vient d’entrer dans l’histoire.";
+if (s === "pending") return "Votre commande vient d’entrer dans le voyage.";
 if (s === "accepted") return "La cuisine est en mouvement.";
-if (s === "ready") return "La passerelle livraison s’ouvre.";
+if (s === "ready") return "Le relais livraison s’ouvre.";
 if (s === "picked_up") return "Le dernier trajet est lancé.";
 if (s === "delivered") return "Le voyage est arrivé.";
 return "Votre suivi reste vivant.";
@@ -294,9 +294,9 @@ showsVerticalScrollIndicator={false}
 <View style={styles.hero}>
 <Text style={styles.brand}>DELISHAFRICA®</Text>
 <Text style={styles.kicker}>LIVE STORY TRACKING</Text>
-<Text style={styles.title}>Votre commande devient une histoire.</Text>
+<Text style={styles.title}>Votre commande devient un voyage vivant.</Text>
 <Text style={styles.subtitle}>
-Cuisine, préparation, coursier et arrivée : une histoire claire, sans toucher au paiement ni au statut.
+Cuisine, préparation, coursier et arrivée : chaque minute devient lisible, rassurante et vivante.
 </Text>
 </View>
 
@@ -321,7 +321,7 @@ Cuisine, préparation, coursier et arrivée : une histoire claire, sans toucher 
 {refreshing && !loading ? (
 <ActivityIndicator color="#07101E" />
 ) : (
-<Text style={styles.refreshButtonText}>{loading ? "Lecture de l’histoire…" : "Rafraîchir l’histoire"}</Text>
+<Text style={styles.refreshButtonText}>{loading ? "Lecture du voyage…" : "Rafraîchir le voyage"}</Text>
 )}
 </Pressable>
 
@@ -359,7 +359,7 @@ Cuisine, préparation, coursier et arrivée : une histoire claire, sans toucher 
 <View style={styles.timelineCard}>
 <Text style={styles.blockTitle}>Chronique de livraison</Text>
 <Text style={styles.blockSubtitle}>
-Chaque étape garde le client dans une histoire claire, rassurante et premium.
+Chaque étape transforme l’attente en lecture claire, chaleureuse et premium.
 </Text>
 <StoryRail order={selectedOrder} />
 </View>
