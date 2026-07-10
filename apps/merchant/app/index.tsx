@@ -419,48 +419,48 @@ Session, informations restaurant, profil partenaire et suivi opérationnel.
 <Pressable
 onPress={() => go("/service-oracle")}
 style={{
-borderRadius: 24,
-padding: 20,
+borderRadius: 20,
+padding: 15,
 backgroundColor: "#32180D",
 borderWidth: 1,
 borderColor: "rgba(247,178,103,0.20)",
 width: "100%",
 alignSelf: "stretch",
 marginTop: 0,
-marginBottom: 18
+marginBottom: 10
  }}
 >
-<Text style={{ color: "#F7B267", fontSize: 11, fontWeight: "900", letterSpacing: 2.4, marginBottom: 8 }}>
+<Text style={{ color: "#F7B267", fontSize: 10, fontWeight: "900", letterSpacing: 2.1, marginBottom: 6 }}>
 ORACLE CUISINE
 </Text>
-<Text style={{ color: "#FFF8EF", fontSize: 26, fontWeight: "900", marginBottom: 8 }}>
+<Text style={{ color: "#FFF8EF", fontSize: 21, fontWeight: "900", marginBottom: 6 }}>
 Oracle cuisine
 </Text>
-<Text style={{ color: "rgba(255,248,239,0.72)", fontSize: 15, lineHeight: 22, fontWeight: "700" }}>
+<Text style={{ color: "rgba(255,248,239,0.72)", fontSize: 13, lineHeight: 19, fontWeight: "700" }}>
 Priorités cuisine, pression de service et coordination coursier.
 </Text>
 </Pressable>
 <Pressable
 onPress={() => go("/kitchen-pulse")}
 style={{
-borderRadius: 24,
-padding: 20,
+borderRadius: 20,
+padding: 15,
 backgroundColor: "#3A1C0F",
 borderWidth: 1,
 borderColor: "rgba(247,178,103,0.24)",
 width: "100%",
 alignSelf: "stretch",
-marginTop: -6,
-marginBottom: 18
+marginTop: 0,
+marginBottom: 10
 }}
 >
-<Text style={{ color: "#F7B267", fontSize: 11, fontWeight: "900", letterSpacing: 2.4, marginBottom: 8 }}>
+<Text style={{ color: "#F7B267", fontSize: 10, fontWeight: "900", letterSpacing: 2.1, marginBottom: 6 }}>
 PULSE CUISINE
 </Text>
-<Text style={{ color: "#FFF8EF", fontSize: 26, fontWeight: "900", marginBottom: 8 }}>
+<Text style={{ color: "#FFF8EF", fontSize: 21, fontWeight: "900", marginBottom: 6 }}>
 Pulse cuisine
 </Text>
-<Text style={{ color: "rgba(255,248,239,0.72)", fontSize: 15, lineHeight: 22, fontWeight: "700" }}>
+<Text style={{ color: "rgba(255,248,239,0.72)", fontSize: 13, lineHeight: 19, fontWeight: "700" }}>
 Pression de service, file active et priorités en lecture seule.
 </Text>
 </Pressable>
