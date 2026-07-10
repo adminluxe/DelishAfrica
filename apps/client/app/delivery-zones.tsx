@@ -39,9 +39,9 @@ Avant le paiement, DelishAfrica vérifie que la ville ou l’adresse correspond 
 </View>
 
 <View style={styles.card}>
-<Text style={styles.cardTitle}>Google Maps plus tard</Text>
+<Text style={styles.cardTitle}>Guidage intelligent</Text>
 <Text style={styles.cardText}>
-Le SDK natif Google Maps nécessitera une clé protégée, app.config et un rebuild. Pour l’instant, on reste en text-only safe.
+DelishAfrica prépare un guidage cartographique sécurisé. Aujourd’hui, la zone est validée simplement pour garder une commande claire, fiable et livrable.
 </Text>
 </View>
 
