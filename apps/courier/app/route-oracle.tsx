@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
 ActivityIndicator,
 Alert,
+Linking,
 Pressable,
 RefreshControl,
 SafeAreaView,
@@ -73,6 +74,30 @@ return km >= 1 ? `${km.toFixed(1).replace(".", ",")} km` : `${Math.round(Number(
 }
 
 
+
+
+type TerrainMapProvider = "apple" | "google" | "waze";
+
+function formatTerrainPoint(point: { lat: number; lng: number }) {
+return `${point.lat},${point.lng}`;
+}
+
+function buildTerrainMapUrl(provider: TerrainMapProvider) {
+const origin = formatTerrainPoint(ROUTE_PREVIEW_SAMPLE.origin);
+const restaurant = formatTerrainPoint(ROUTE_PREVIEW_SAMPLE.waypoints[0]);
+const destination = formatTerrainPoint(ROUTE_PREVIEW_SAMPLE.destination);
+const restaurantLabel = encodeURIComponent("Thieyp");
+
+if (provider === "apple") {
+return `http://maps.apple.com/?saddr=${origin}&daddr=${restaurant}&dirflg=d&q=${restaurantLabel}`;
+}
+
+if (provider === "google") {
+return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${restaurant}&travelmode=driving`;
+}
+
+return `https://www.waze.com/ul?ll=${restaurant}&navigate=yes&zoom=17&utm_source=delishafrica`;
+}
 
 type Factor = {
 label?: string;
@@ -285,6 +310,18 @@ updatedAt: new Date().toISOString(),
 }
 }, []);
 
+
+const openTerrainMap = useCallback(async (provider: TerrainMapProvider) => {
+try {
+const url = buildTerrainMapUrl(provider);
+await Linking.openURL(url);
+} catch {
+Alert.alert(
+"Navigation indisponible",
+"Impossible d’ouvrir l’application de navigation pour le moment."
+);
+}
+}, []);
 
 const humanizeRouteOracleWarning = (value?: string | null) => {
 const raw = String(value || "");
@@ -799,6 +836,32 @@ marginTop: 6,
 <Text style={styles.metricHint}>{numberLabel(candidate.deliveryDistanceKm, " km")}</Text>
 </View>
 </View>
+</View>
+
+<View style={styles.terrainCard}>
+<Text style={styles.terrainKicker}>MAPS TERRAIN</Text>
+<Text style={styles.terrainTitle}>Ouvrir la route terrain</Text>
+<Text style={styles.terrainText}>
+Lancez la navigation externe sans quitter le contrôle DelishAfrica®. Le coursier choisit son outil terrain.
+</Text>
+
+<View style={styles.terrainButtons}>
+<Pressable style={styles.terrainButton} onPress={() => void openTerrainMap("apple")}>
+<Text style={styles.terrainButtonText}>Apple Plans</Text>
+</Pressable>
+
+<Pressable style={styles.terrainButton} onPress={() => void openTerrainMap("google")}>
+<Text style={styles.terrainButtonText}>Google Maps</Text>
+</Pressable>
+
+<Pressable style={styles.terrainButton} onPress={() => void openTerrainMap("waze")}>
+<Text style={styles.terrainButtonText}>Waze</Text>
+</Pressable>
+</View>
+
+<Text style={styles.terrainHint}>
+Trajet indicatif : coursier → Thieyp → client. La mission reste validée manuellement.
+</Text>
 </View>
 
 <View style={proposalSent ? styles.proposalCardSuccess : styles.proposalCard}>
@@ -1334,6 +1397,59 @@ color: "#B9F6CA",
 fontWeight: "900",
 fontSize: 12,
 textAlign: "center",
+},
+terrainCard: {
+borderRadius: 24,
+padding: 17,
+backgroundColor: "rgba(125, 249, 255, 0.08)",
+borderWidth: 1,
+borderColor: "rgba(125, 249, 255, 0.28)",
+marginBottom: 14,
+},
+terrainKicker: {
+color: "#7DF9FF",
+fontSize: 11,
+fontWeight: "900",
+letterSpacing: 3,
+textTransform: "uppercase",
+marginBottom: 8,
+},
+terrainTitle: {
+color: "#FFFFFF",
+fontSize: 19,
+fontWeight: "900",
+marginBottom: 8,
+},
+terrainText: {
+color: "rgba(226, 232, 240, 0.78)",
+fontSize: 13,
+lineHeight: 19,
+},
+terrainButtons: {
+flexDirection: "row",
+flexWrap: "wrap",
+gap: 10,
+marginTop: 14,
+},
+terrainButton: {
+borderRadius: 16,
+paddingVertical: 12,
+paddingHorizontal: 13,
+backgroundColor: "rgba(125, 249, 255, 0.14)",
+borderWidth: 1,
+borderColor: "rgba(125, 249, 255, 0.30)",
+},
+terrainButtonText: {
+color: "#DDFEFF",
+fontSize: 13,
+fontWeight: "900",
+},
+terrainHint: {
+color: "rgba(226, 232, 240, 0.62)",
+fontSize: 11,
+fontWeight: "700",
+lineHeight: 16,
+marginTop: 12,
 },
 actions: {
 gap: 10,
