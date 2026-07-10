@@ -17,7 +17,14 @@ type OrderLike = {
   createdAt?: string;
 };
 
-const API_BASE = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000').replace(/\/$/, '');
+const RAW_API =
+process.env.EXPO_PUBLIC_API_BASE_URL ||
+process.env.EXPO_PUBLIC_API_URL ||
+'https://api.delishafrica.me/api/v1';
+
+const API_BASE = RAW_API.replace(/\/$/, '').endsWith('/api/v1')
+? RAW_API.replace(/\/$/, '')
+: `${RAW_API.replace(/\/$/, '')}/api/v1`;
 
 function asArray(payload: any): OrderLike[] {
   if (Array.isArray(payload)) return payload;
@@ -69,7 +76,11 @@ export default function MerchantServiceOracleScreen() {
   const load = useCallback(async () => {
     try {
       setRefreshing(true);
-      const res = await fetch(`${API_BASE}/orders/demo/list`);
+      const res = await fetch(`${API_BASE}/orders/demo/list`, {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({}),
+});
       const json = await res.json().catch(() => []);
       setOrders(asArray(json));
     } catch {
