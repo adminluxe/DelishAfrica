@@ -293,7 +293,7 @@ fontWeight: "900",
 letterSpacing: 5,
 }}
 >
-TERRAIN OS
+RADAR TERRAIN
 </Text>
 <Text
 style={{
@@ -304,7 +304,7 @@ fontWeight: "900",
 marginTop: 10,
 }}
 >
-Pilotage terrain intelligent
+Radar terrain intelligent
 </Text>
 <Text
 style={{
@@ -334,7 +334,7 @@ fontSize: 14,
 fontWeight: "900",
 }}
 >
-Ouvrir Terrain OS →
+Ouvrir Radar terrain →
 </Text>
 </View>
 </Pressable>
