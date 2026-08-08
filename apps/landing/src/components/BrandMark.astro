@@ -1,0 +1,16 @@
+---
+interface Props { compact?: boolean; inverted?: boolean }
+const { compact = false, inverted = false } = Astro.props;
+---
+<a class:list={["brand", compact && "brand-compact", inverted && "brand-inverted"]} href="/" aria-label="Accueil DelishAfrica">
+  <img
+    class="brand-symbol brand-symbol-image"
+    src="/media/brand/delishafrica-mark-gold-256.webp"
+    width="42"
+    height="42"
+    alt=""
+    loading="eager"
+    decoding="async"
+  />
+  <span class="brand-wordmark"><span>DELISH</span><span>AFRICA</span><sup>®</sup></span>
+</a>

@@ -1,0 +1,40 @@
+---
+import { appGateways } from "../config/site";
+interface Props { lang?: "fr" | "en"; initialRole?: "client" | "merchant" | "courier" }
+const { lang = "fr", initialRole = "client" } = Astro.props;
+const roles = Object.entries(appGateways) as Array<[keyof typeof appGateways, (typeof appGateways)[keyof typeof appGateways]]>;
+---
+<section class="interaction-lab" data-smart-link-lab data-initial-role={initialRole}>
+  <div class="lab-header">
+    <div>
+      <p class="eyebrow">{lang === "en" ? "PRIVATE SMART LINK LAB" : "LABORATOIRE SMART LINK PRIVÉ"}</p>
+      <h2>{lang === "en" ? "A deliberate bridge. Never a forced redirect." : "Un pont choisi. Jamais une redirection forcée."}</h2>
+      <p>{lang === "en" ? "Every app opening requires a user gesture. Web fallback remains visible and no association file is public in C4." : "Chaque ouverture d’application exige un geste utilisateur. Le fallback web reste visible et aucun fichier d’association n’est public en C4."}</p>
+    </div>
+    <div class="privacy-receipt">
+      <span>{lang === "en" ? "C4 GUARANTEES" : "GARANTIES C4"}</span>
+      <strong>{lang === "en" ? "NO AUTO OPEN" : "AUCUNE OUVERTURE AUTO"}</strong>
+      <small>{lang === "en" ? "NO TRACKING · NO STORAGE" : "AUCUN TRACKING · AUCUN STOCKAGE"}</small>
+    </div>
+  </div>
+  <div class="smart-role-grid" role="list">
+    {roles.map(([role, gateway]) => (
+      <article class:list={["smart-role-card", `smart-role-${role}`]} role="listitem" data-role-card={role}>
+        <span>{role.toUpperCase()}</span>
+        <h3>{gateway.label}</h3>
+        <p>{lang === "en" ? "Prepared application scheme and explicit web fallback." : "Scheme applicatif préparé et fallback web explicite."}</p>
+        <dl>
+          <div><dt>SCHEME</dt><dd><code>{gateway.scheme}</code></dd></div>
+          <div><dt>WEB</dt><dd><code>{gateway.web}</code></dd></div>
+        </dl>
+        <div class="smart-actions">
+          <button type="button" class="button button-primary" data-copy-scheme={gateway.scheme} data-role={role}>{lang === "en" ? "Copy app scheme" : "Copier le scheme"}</button>
+          <a class="button button-ghost" href={gateway.scheme}>{lang === "en" ? "Open app manually" : "Ouvrir l’app manuellement"}</a>
+          <a class="text-link" href={gateway.web}>{lang === "en" ? "Use web fallback" : "Utiliser le fallback web"}</a>
+        </div>
+      </article>
+    ))}
+  </div>
+  <div class="lab-status" aria-live="polite" data-smart-status>{lang === "en" ? "Ready. Select a manual action." : "Prêt. Choisissez une action manuelle."}</div>
+</section>
+<script is:inline src="/scripts/private-interactions.js"></script>

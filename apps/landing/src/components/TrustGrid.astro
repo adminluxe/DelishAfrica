@@ -1,0 +1,24 @@
+---
+import { trustPrinciples } from "../data/trust";
+interface Props { lang?: "fr" | "en" }
+const { lang = "fr" } = Astro.props;
+const enText = [
+  ["Culture stays visible", "Restaurant, dish and origin remain identifiable throughout the journey."],
+  ["Payments stay separate", "The landing prepares intent; secure payment operations remain inside dedicated flows."],
+  ["Human status language", "Received, cooking, ready, on the way, delivered: each step avoids technical jargon."],
+  ["Data minimisation", "Sensitive data and identity documents never belong in public editorial pages."],
+  ["Guided onboarding", "Merchant and Courier onboarding remain progressive and controlled."],
+  ["Accessible by design", "Contrast, keyboard navigation, reduced motion and semantic structure are product requirements."],
+] as const;
+const principleItems = trustPrinciples.map((item, index) => {
+  const translated = enText[index];
+  return {
+    code: item.code,
+    title: lang === "en" && translated ? translated[0] : item.title,
+    text: lang === "en" && translated ? translated[1] : item.text,
+  };
+});
+---
+<div class="trust-grid">
+  {principleItems.map((item) => <article><span>{item.code}</span><h3>{item.title}</h3><p>{item.text}</p></article>)}
+</div>

@@ -1,0 +1,57 @@
+---
+interface Props { lang?: "fr" | "en" }
+const { lang = "fr" } = Astro.props;
+const docs = [
+  ["selfie", lang === "en" ? "Synthetic selfie marker" : "Marqueur selfie synthétique"],
+  ["id_front", lang === "en" ? "Identity front marker" : "Marqueur identité recto"],
+  ["id_back", lang === "en" ? "Identity back marker" : "Marqueur identité verso"],
+  ["license", lang === "en" ? "Licence if required" : "Permis si nécessaire"],
+  ["proof_address", lang === "en" ? "Address proof marker" : "Marqueur justificatif d’adresse"],
+] as const;
+---
+<section class="intake-simulator" data-intake-simulator data-lang={lang}>
+  <div class="simulator-copy">
+    <p class="eyebrow">{lang === "en" ? "SYNTHETIC INTAKE · PRIVATE" : "INTAKE SYNTHÉTIQUE · PRIVÉ"}</p>
+    <h2>{lang === "en" ? "Test the journey without collecting a person." : "Tester le parcours sans collecter une personne."}</h2>
+    <p>{lang === "en" ? "C4 uses synthetic profiles, in-memory state and document readiness markers. No real identity, file, network call or persistence." : "C4 utilise des profils synthétiques, un état en mémoire et des marqueurs de préparation documentaire. Aucune identité réelle, aucun fichier, aucun appel réseau et aucune persistance."}</p>
+    <div class="simulator-guardrail"><strong>{lang === "en" ? "PRIVATE SAFETY RECEIPT" : "REÇU DE SÉCURITÉ PRIVÉ"}</strong><span>NO FETCH</span><span>NO STORAGE</span><span>NO FILE INPUT</span><span>NO REAL PII</span></div>
+  </div>
+  <div class="simulator-board">
+    <div class="sim-progress" aria-hidden="true"><i data-progress-bar></i></div>
+    <div class="sim-step" data-step="profile">
+      <span>01</span><h3>{lang === "en" ? "Synthetic profile" : "Profil synthétique"}</h3>
+      <div class="choice-grid">
+        <button type="button" data-choice="profile" data-value="A">PROFILE A</button>
+        <button type="button" data-choice="profile" data-value="B">PROFILE B</button>
+      </div>
+    </div>
+    <div class="sim-step" data-step="city">
+      <span>02</span><h3>{lang === "en" ? "Pilot city" : "Ville pilote"}</h3>
+      <div class="choice-grid">
+        <button type="button" data-choice="city" data-value="Bruxelles">BRUXELLES</button>
+        <button type="button" data-choice="city" data-value="Paris">PARIS · PREVIEW</button>
+      </div>
+    </div>
+    <div class="sim-step" data-step="mobility">
+      <span>03</span><h3>{lang === "en" ? "Mobility" : "Mobilité"}</h3>
+      <div class="choice-grid choice-grid-three">
+        <button type="button" data-choice="mobility" data-value="Bike">BIKE</button>
+        <button type="button" data-choice="mobility" data-value="Scooter">SCOOTER</button>
+        <button type="button" data-choice="mobility" data-value="Car">CAR</button>
+      </div>
+    </div>
+    <div class="sim-step sim-documents" data-step="documents">
+      <span>04</span><h3>{lang === "en" ? "Readiness markers" : "Marqueurs de préparation"}</h3>
+      <div class="document-toggle-grid">
+        {docs.map(([key, label]) => <button type="button" data-document={key} aria-pressed="false"><i></i>{label}</button>)}
+      </div>
+    </div>
+    <div class="sim-review" aria-live="polite">
+      <span>{lang === "en" ? "PRIVATE DOSSIER" : "DOSSIER PRIVÉ"}</span>
+      <strong data-sim-status>{lang === "en" ? "Waiting for synthetic choices" : "En attente des choix synthétiques"}</strong>
+      <p data-sim-summary>{lang === "en" ? "Nothing has left this page." : "Aucune donnée n’a quitté cette page."}</p>
+      <button type="button" class="button button-ghost" data-sim-reset>{lang === "en" ? "Reset simulator" : "Réinitialiser le simulateur"}</button>
+    </div>
+  </div>
+</section>
+<script is:inline src="/scripts/private-interactions.js"></script>

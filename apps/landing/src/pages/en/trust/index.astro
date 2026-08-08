@@ -1,0 +1,11 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import TrustGrid from "../../../components/TrustGrid.astro";
+import StatusTimeline from "../../../components/StatusTimeline.astro";
+import { release } from "../../../config/site";
+---
+<BaseLayout lang="en" title="Trust and transparency — DelishAfrica®" description="Trust principles and product transparency." alternatePath="/trust/">
+  <section class="page-hero shell compact-hero"><p class="eyebrow">TRUST SYSTEM</p><h1>Trust should not be hidden in a footer.</h1><p class="hero-lead">It belongs in language, transitions and the separation of sensitive data.</p></section>
+  <section class="section shell"><p class="eyebrow">PRINCIPLES</p><h2>Six rules for responsible growth.</h2><p>{release.production ? "Trust is treated as a product function, not as an abstract promise." : "This private stage documents the product intention before public activation."}</p><TrustGrid lang="en"/></section>
+  <section class="section shell"><p class="eyebrow">STATUS LANGUAGE</p><h2>Tracking is reassuring when it remains understandable.</h2><StatusTimeline lang="en"/></section>
+</BaseLayout>

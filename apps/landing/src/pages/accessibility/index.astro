@@ -1,0 +1,8 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { release } from "../../config/site";
+---
+<BaseLayout title="Accessibilité — DelishAfrica®" description="Démarche d’accessibilité de la landing DelishAfrica." alternatePath="/en/accessibility/">
+  <section class="page-hero shell compact-hero"><p class="eyebrow">ACCESSIBILITY BY DESIGN</p><h1>La magie n’a de valeur que si elle reste accessible.</h1><p class="hero-lead">{release.production ? "Nous visons une expérience compatible avec les exigences WCAG 2.2 AA et améliorée en continu." : "C6 vérifie les fondamentaux sans revendiquer encore une déclaration formelle de conformité."}</p></section>
+  <section class="section shell policy-grid"><article><h2>Navigation</h2><p>Hiérarchie sémantique, lien d’évitement, clavier et focus visibles.</p></article><article><h2>Mouvement</h2><p>Respect de `prefers-reduced-motion` et absence d’animation indispensable à la compréhension.</p></article><article><h2>Contraste</h2><p>Contrôle automatisé et manuel des textes, CTA, bordures et états interactifs.</p></article><article><h2>Responsive</h2><p>Lecture prévue de 320 px au grand écran sans zoom imposé.</p></article></section>
+</BaseLayout>

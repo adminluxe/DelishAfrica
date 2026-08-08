@@ -1,0 +1,24 @@
+{
+  "version": "c4-private-v1",
+  "publicDomainAssociationActive": false,
+  "automaticRedirect": false,
+  "requiresUserGesture": true,
+  "privacyMode": "no-storage-no-analytics",
+  "roles": {
+    "client": {
+      "scheme": "delishafricaclient://",
+      "webFallback": "https://client.delishafrica.me",
+      "preparedPath": "/open/client/"
+    },
+    "merchant": {
+      "scheme": "delishafricamerchant://",
+      "webFallback": "https://merchant.delishafrica.me",
+      "preparedPath": "/open/merchant/"
+    },
+    "courier": {
+      "scheme": "delishafricacourier://",
+      "webFallback": "https://courier.delishafrica.me",
+      "preparedPath": "/open/courier/"
+    }
+  }
+}

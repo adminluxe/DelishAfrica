@@ -1,0 +1,74 @@
+---
+import "../styles/global.css";
+import TopNav from "../components/TopNav.astro";
+import BrandMark from "../components/BrandMark.astro";
+import WaterLayer from "../components/WaterLayer.astro";
+import { site, release } from "../config/site";
+interface Props {
+  title?: string;
+  description?: string;
+  eyebrow?: string;
+  lang?: "fr" | "en";
+  alternatePath?: string;
+  noindex?: boolean;
+}
+const {
+  title = site.title,
+  description = site.description,
+  eyebrow = site.mode,
+  lang = "fr",
+  alternatePath,
+  noindex = false,
+} = Astro.props;
+const canonical = new URL(Astro.url.pathname, site.url);
+const robots = noindex || !site.indexable ? "noindex,nofollow,noarchive" : "index,follow,max-image-preview:large";
+const alternate = alternatePath ? new URL(alternatePath, site.url) : undefined;
+---
+<!doctype html>
+<html lang={lang}>
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="theme-color" content="#070707"/>
+  <meta name="color-scheme" content="dark"/>
+  <meta name="robots" content={robots}/>
+  <meta name="description" content={description}/>
+  <meta property="og:type" content="website"/>
+  <meta property="og:site_name" content={site.name}/>
+  <meta property="og:title" content={title}/>
+  <meta property="og:description" content={description}/>
+  <meta property="og:url" content={canonical.toString()}/>
+  <meta property="og:image" content={`${site.url}/og-preview.svg`}/>
+  <meta name="twitter:card" content="summary_large_image"/>
+  <link rel="canonical" href={canonical.toString()}/>
+  {alternate && <link rel="alternate" hreflang={lang === "fr" ? "en" : "fr"} href={alternate.toString()}/>}
+  <link rel="alternate" hreflang="x-default" href={site.url}/>
+  <link rel="icon" href="/media/brand/favicon.png" type="image/png"/>
+  <link rel="manifest" href="/site.webmanifest"/>
+  <title>{title}</title>
+</head>
+<body class="water-signature-v11-enabled water-signature-v11-final">
+  <a class="skip-link" href="#main">{lang === "en" ? "Skip to content" : "Aller au contenu"}</a>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="ambient ambient-a" aria-hidden="true"></div>
+  <div class="ambient ambient-b" aria-hidden="true"></div>
+  <WaterLayer/>
+  <TopNav eyebrow={eyebrow} lang={lang}/>
+  <main id="main"><slot /></main>
+  <footer class="site-footer shell">
+    <div class="footer-brand"><BrandMark compact/><p>{lang === "en" ? "A digital house built to amplify African food cultures without diluting their voices." : "Une maison numérique pour faire rayonner les cuisines africaines sans diluer leurs voix."}</p></div>
+    <div class="footer-links">
+      <a href={lang === "en" ? "/en/restaurants/" : "/restaurants/"}>Restaurants</a>
+      <a href={lang === "en" ? "/en/trust/" : "/trust/"}>{lang === "en" ? "Trust" : "Confiance"}</a>
+      <a href={lang === "en" ? "/en/support/" : "/support/"}>Support</a>
+      <a href={lang === "en" ? "/en/accessibility/" : "/accessibility/"}>{lang === "en" ? "Accessibility" : "Accessibilité"}</a>
+      <a href={lang === "en" ? "/en/privacy/" : "/privacy/"}>{lang === "en" ? "Privacy" : "Confidentialité"}</a>
+    </div>
+    <div class="footer-meta"><span>{release.production ? "AFRICAN FOOD, FORWARD" : "C6 · PRODUCTION CANDIDATE PREVIEW"}</span><span>{lang === "en" ? "EN · FR" : "FR · EN"}</span><span>© 2026 DelishAfrica®</span></div>
+    <div class="footer-powered">
+      <span class="footer-powered-kicker">{lang === "en" ? "A PURPLE ORCHID GROUP EXPERIENCE" : "UNE EXPÉRIENCE PURPLE ORCHID GROUP"}</span>
+      <strong>{lang === "en" ? "Premium digital house" : "Maison numérique premium"}</strong>
+    </div>
+  </footer>
+</body>
+</html>

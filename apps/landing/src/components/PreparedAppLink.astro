@@ -1,0 +1,35 @@
+---
+import { appGateways, release } from "../config/site";
+interface Props { role: "client" | "merchant" | "courier"; label: string; detail: string; lang?: "fr" | "en" }
+const { role, label, detail, lang = "fr" } = Astro.props;
+const gateway = appGateways[role];
+const publicLabels = {
+  fr: {
+    client: ["Continuer avec Client", "Ouvrez l’application explicitement ou poursuivez sur le web. Aucune redirection automatique."],
+    merchant: ["Continuer avec Merchant", "Accédez au cockpit Merchant explicitement ou utilisez le fallback web."],
+    courier: ["Continuer avec Courier", "Ouvrez Courier explicitement ou utilisez l’espace web disponible."],
+  },
+  en: {
+    client: ["Continue with Client", "Open the app explicitly or continue on the web. There is no automatic redirect."],
+    merchant: ["Continue with Merchant", "Open the Merchant cockpit explicitly or use the web fallback."],
+    courier: ["Continue with Courier", "Open Courier explicitly or use the available web space."],
+  },
+} as const;
+const publicCopy = publicLabels[lang][role];
+---
+<article class:list={["prepared-link", `prepared-${role}`]}>
+  <span>{role.toUpperCase()}</span>
+  <h3>{release.production ? publicCopy[0] : label}</h3>
+  <p>{release.production ? publicCopy[1] : detail}</p>
+  {release.production ? (
+    <div class="hero-actions">
+      <a class="button button-primary" href={gateway.scheme}>{lang === "en" ? "Open the app" : "Ouvrir l’app"}</a>
+      <a class="button button-ghost" href={gateway.web}>{lang === "en" ? "Continue on the web" : "Continuer sur le web"}</a>
+    </div>
+  ) : (
+    <>
+      <div class="prepared-status"><i></i>{lang === "en" ? "SMART LINK CONTRACT PREPARED · NOT PUBLICLY ACTIVATED" : "CONTRAT SMART LINK PRÉPARÉ · NON ACTIVÉ PUBLIQUEMENT"}</div>
+      <a class="prepared-lab-link" href={lang === "en" ? `/en/lab/smart-links/?role=${role}` : `/lab/smart-links/?role=${role}`}>{lang === "en" ? "Open private link lab" : "Ouvrir le laboratoire privé"}</a>
+    </>
+  )}
+</article>

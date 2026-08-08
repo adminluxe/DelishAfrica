@@ -1,0 +1,11 @@
+---
+import { release } from "../config/site";
+interface Props { name: string; origin: string; family: string; note: string; price: string; tone: string }
+const { name, origin, family, note, price, tone } = Astro.props;
+---
+<article class:list={["product-card", `product-${tone}`]}>
+  <div class="product-visual" aria-hidden="true"><span></span><i></i></div>
+  <div class="product-meta"><span>{origin}</span><span>{family}</span></div>
+  <h3>{name}</h3><p>{note}</p>
+  <div class="product-footer"><strong>{release.production ? "Voir le menu" : price}</strong><span>{release.production ? "DANS L’EXPÉRIENCE CLIENT" : "APERÇU PRIVÉ"}</span></div>
+</article>

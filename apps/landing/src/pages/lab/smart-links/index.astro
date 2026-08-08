@@ -1,0 +1,10 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import PrivateSmartLinkLab from "../../../components/PrivateSmartLinkLab.astro";
+const role = Astro.url.searchParams.get("role");
+const initialRole = role === "merchant" || role === "courier" ? role : "client";
+---
+<BaseLayout title="Laboratoire Smart Links — DelishAfrica®" description="Prévisualisation privée des contrats d’ouverture des trois applications." alternatePath="/en/lab/smart-links/">
+  <section class="page-hero shell compact-hero"><p class="eyebrow">C4 · PRIVATE INTERACTION</p><h1>Relier le web et les apps sans piéger l’utilisateur.</h1><p class="hero-lead">Aucune ouverture automatique, aucun tracking et aucune association publique du domaine. Chaque action reste visible et volontaire.</p></section>
+  <PrivateSmartLinkLab initialRole={initialRole}/>
+</BaseLayout>

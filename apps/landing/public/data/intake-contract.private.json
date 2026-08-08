@@ -1,0 +1,28 @@
+{
+  "version": "c4-private-simulator-v1",
+  "mode": "synthetic-only",
+  "networkEnabled": false,
+  "persistenceEnabled": false,
+  "fileUploadEnabled": false,
+  "realCandidateDataAllowed": false,
+  "steps": [
+    "profile",
+    "city",
+    "mobility",
+    "document-readiness",
+    "review"
+  ],
+  "documentKinds": [
+    "selfie",
+    "id_front",
+    "id_back",
+    "license_if_required",
+    "proof_address"
+  ],
+  "futureBoundary": {
+    "landing": "public UX and intent",
+    "bff": "same-origin validation and anti-abuse",
+    "intakeApi": "candidate and KYC contract",
+    "ops": "authenticated review and provisioning"
+  }
+}

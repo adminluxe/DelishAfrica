@@ -1,0 +1,13 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ProductCard from "../../components/ProductCard.astro";
+import PreparedAppLink from "../../components/PreparedAppLink.astro";
+import StatusTimeline from "../../components/StatusTimeline.astro";
+import { dishes } from "../../data/catalog";
+---
+<BaseLayout title="Expérience Client — DelishAfrica®" description="Découverte, choix, paiement sécurisé et suivi dans une expérience culturelle." alternatePath="/en/client/">
+  <section class="gateway-v3 shell gateway-client"><div><p class="eyebrow">CLIENT · TASTE THE CONTINENT</p><h1>Choisir avec les yeux. Comprendre avec l’histoire. Commander avec confiance.</h1><p class="hero-lead">La porte Client relie restaurants, menus, panier, paiement et suivi sans exposer la complexité technique.</p><div class="hero-actions"><a class="button button-primary" href="/restaurants/">Explorer les restaurants</a><a class="button button-ghost" href="/trust/">Comprendre la confiance</a></div></div><div class="gateway-panel client-panel"><span>DELIVERY INTELLIGENCE</span><strong>DESIRE<br/>TO TABLE</strong><small>DISCOVERY · PAYMENT · TRACKING</small></div></section>
+  <section class="section shell"><p class="eyebrow">PRODUCT PREVIEW</p><h2>Le choix commence par le goût, pas par une grille anonyme.</h2><div class="product-grid product-grid-three">{dishes.slice(0,3).map((dish) => <ProductCard {...dish}/>)}</div></section>
+  <section class="section shell"><p class="eyebrow">LIVE TRACKING LANGUAGE</p><h2>Cinq états qui se comprennent en une seconde.</h2><StatusTimeline/></section>
+  <section class="section shell"><PreparedAppLink role="client" label="Ouverture Client préparée" detail="Le scheme et le fallback web sont documentés, mais aucun Universal Link public n’est activé en C3."/></section>
+</BaseLayout>

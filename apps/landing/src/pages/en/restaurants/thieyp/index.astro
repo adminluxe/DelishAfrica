@@ -1,0 +1,27 @@
+---
+import BaseLayout from "../../../../layouts/BaseLayout.astro";
+import ProductCard from "../../../../components/ProductCard.astro";
+import { featuredPartner, dishes } from "../../../../data/catalog";
+import { release } from "../../../../config/site";
+---
+<BaseLayout
+  lang="en"
+  title="Thieyp in Brussels — DelishAfrica®"
+  description={release.production ? "Discover Thieyp in Brussels, its Senegalese cuisine and signature menu on DelishAfrica®." : "Private preview of Thieyp and its menu."}
+  alternatePath="/restaurants/thieyp/"
+>
+  <section class="restaurant-hero shell">
+    <div>
+      <p class="eyebrow">FEATURED PARTNER · BRUSSELS</p>
+      <h1>{featuredPartner.name}</h1>
+      <p class="hero-lead">Senegalese signature cuisine. A table where rice, sauces and West African drinks keep their origin visible.</p>
+      <div class="partner-facts">
+        <span>{featuredPartner.address}</span>
+        <span>Service subject to availability</span>
+        <span>{release.production ? "Menu available through Client" : "Private menu preview"}</span>
+      </div>
+    </div>
+    <div class="restaurant-monogram"><span>T</span><strong>RICE &amp; PEACE</strong><small>SENEGAL · BRUSSELS</small></div>
+  </section>
+  <section class="section shell"><div class="product-grid">{dishes.map((dish) => <ProductCard {...dish}/>)}</div></section>
+</BaseLayout>
