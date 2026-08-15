@@ -88,7 +88,7 @@ export default function MerchantHome() {
           <Text style={styles.arrow}>→</Text>
         </Pressable>
 
-        <Pressable style={[styles.card, styles.ops]} onPress={() => go("/ops")}>
+        <Pressable style={[styles.card, styles.ops]} onPress={() => go("/ops-dashboard")}>
           <View>
             <Text style={styles.kickerDark}>QUALITÉ</Text>
             <Text style={styles.opsTitle}>Ops & suivi</Text>

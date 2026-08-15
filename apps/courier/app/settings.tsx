@@ -29,13 +29,6 @@ function RowBtn({
         gap: 4,
       }}
     >
-      {/* DA_J7B_LEGAL_LINK */}
-      <DaLegalLink
-        href={"/legal" as any}
-        style={{ alignSelf: "flex-start", marginBottom: 16, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 999, overflow: "hidden", backgroundColor: "#FFF4E8", color: "#7A421D", fontWeight: "800" }}
-      >
-        Confidentialité · Conditions · Assistance
-      </DaLegalLink>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
         {loading ? <ActivityIndicator /> : null}
         <Text style={{ fontWeight: "900" }}>{title}</Text>
@@ -66,6 +59,27 @@ export default function SettingsScreen() {
         <RowBtn title="Diagnostics" desc="Vérifier la configuration." onPress={fakeSave} loading={busy} />
         <RowBtn title="Déconnexion (bientôt)" desc="Fermer la session sur cet appareil." onPress={() => {}} disabled />
       </View>
+
+      {/* DA_J8UX_S0_LEGAL_ENTRY */}
+      <DaLegalLink
+        href={"/legal" as any}
+        style={{
+          alignSelf: "stretch",
+          marginTop: 8,
+          paddingVertical: 14,
+          paddingHorizontal: 16,
+          borderRadius: 16,
+          overflow: "hidden",
+          backgroundColor: "rgba(103,230,155,0.12)",
+          borderWidth: 1,
+          borderColor: "rgba(103,230,155,0.28)",
+          color: "#0B5B34",
+          fontWeight: "900",
+          textAlign: "center",
+        }}
+      >
+        Confidentialité · Conditions · Assistance
+      </DaLegalLink>
     </ScrollView>
   );
 }
