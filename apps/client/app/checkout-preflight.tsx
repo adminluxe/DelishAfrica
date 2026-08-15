@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { cartItemSummary, clearCart, formatCartEuro, getCartSnapshot } from "../utils/daCart";
+import { cartItemSummary, clearCart, formatCartEuro, getCartSnapshot, waitForCartPersistence } from "../utils/daCart";
 import { deliveryZoneSummary, validateDeliveryZone } from "../utils/daDeliveryZones";
 import { daAttestIdentityProof, daResolveAddress, DaIdentityProof, DaResolvedAddress } from "../utils/daTrustNetwork";
 declare const require: any;
@@ -572,6 +572,7 @@ export default function CheckoutPreflightScreen() {
     await clearPendingPaymentCommit();
     setPendingCommit(null);
     clearCart();
+    await waitForCartPersistence();
     setPhase("Commande payée, relue et transmise. Ouverture du suivi live.");
     Alert.alert(
       "Commande confirmée",

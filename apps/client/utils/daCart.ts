@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { DARestaurantCartContext } from "./daRestaurantCatalog";
 
 export type DACartItem = {
@@ -22,6 +23,12 @@ deliveryFee: number;
 total: number;
 };
 
+type DAPersistedCartV1 = {
+version: 1;
+updatedAt: string;
+cart: DACartState;
+};
+
 export const DEFAULT_CART_RESTAURANT: DARestaurantCartContext = {
 restaurantId: "thieyp",
 restaurantSlug: "thieyp",
@@ -30,7 +37,12 @@ minimumOrderAmount: 0,
 serviceAreaLabel: "Bruxelles / Ixelles",
 };
 
+const CART_STORAGE_KEY = "@delishafrica/client/cart/v1";
+const CART_STORAGE_VERSION = 1 as const;
+
 let cartState: DACartState = createEmptyCart(DEFAULT_CART_RESTAURANT);
+let hydrationPromise: Promise<DACartState> | null = null;
+let persistenceQueue: Promise<void> = Promise.resolve();
 
 function cloneItem(item: DACartItem): DACartItem {
 return { ...item };
@@ -114,11 +126,99 @@ throw err;
 return next;
 }
 
+function sanitizePersistedItem(input: unknown): DACartItem | null {
+if (!input || typeof input !== "object") return null;
+const value = input as Record<string, unknown>;
+const id = String(value.id || value.sku || value.name || "").trim();
+const name = String(value.name || "").trim();
+if (!id || !name) return null;
+const quantity = Math.max(0, Math.round(Number(value.quantity) || 0));
+if (quantity <= 0) return null;
+return {
+id,
+sku: value.sku == null ? undefined : String(value.sku),
+name,
+category: value.category == null ? undefined : String(value.category),
+description: value.description == null ? undefined : String(value.description),
+quantity,
+unitPrice: Math.max(0, Math.round(Number(value.unitPrice) || 0)),
+};
+}
+
+function sanitizePersistedCart(input: unknown): DACartState | null {
+if (!input || typeof input !== "object") return null;
+const envelope = input as Partial<DAPersistedCartV1> & { cart?: unknown; version?: unknown };
+if (Number(envelope.version) !== CART_STORAGE_VERSION || !envelope.cart || typeof envelope.cart !== "object") {
+return null;
+}
+
+const raw = envelope.cart as Record<string, unknown>;
+const restaurant = normalizeRestaurant({
+restaurantId: String(raw.restaurantId || raw.restaurantSlug || DEFAULT_CART_RESTAURANT.restaurantId),
+restaurantSlug: String(raw.restaurantSlug || raw.restaurantId || DEFAULT_CART_RESTAURANT.restaurantSlug),
+restaurantName: String(raw.restaurantName || DEFAULT_CART_RESTAURANT.restaurantName),
+minimumOrderAmount: Math.max(0, Math.round(Number(raw.minimumOrderAmount) || 0)),
+serviceAreaLabel: String(raw.serviceAreaLabel || DEFAULT_CART_RESTAURANT.serviceAreaLabel),
+});
+const items = Array.isArray(raw.items)
+? raw.items.map(sanitizePersistedItem).filter((item): item is DACartItem => Boolean(item))
+: [];
+
+return recalculate({
+...createEmptyCart(restaurant),
+items,
+deliveryFee: Math.max(0, Math.round(Number(raw.deliveryFee) || 0)),
+});
+}
+
+function persistedEnvelope(snapshot: DACartState): DAPersistedCartV1 {
+return {
+version: CART_STORAGE_VERSION,
+updatedAt: new Date().toISOString(),
+cart: snapshot,
+};
+}
+
+function schedulePersist(): void {
+const snapshot = getCartSnapshot();
+const serialized = JSON.stringify(persistedEnvelope(snapshot));
+persistenceQueue = persistenceQueue
+.catch(() => undefined)
+.then(() => AsyncStorage.setItem(CART_STORAGE_KEY, serialized))
+.catch(() => undefined);
+}
+
 export function getCartSnapshot(): DACartState {
 return {
 ...cartState,
 items: cartState.items.map(cloneItem),
 };
+}
+
+export function hydrateCartFromStorage(): Promise<DACartState> {
+if (hydrationPromise) return hydrationPromise;
+
+hydrationPromise = (async () => {
+try {
+const serialized = await AsyncStorage.getItem(CART_STORAGE_KEY);
+if (!serialized) return getCartSnapshot();
+const restored = sanitizePersistedCart(JSON.parse(serialized));
+if (!restored) {
+await AsyncStorage.removeItem(CART_STORAGE_KEY).catch(() => undefined);
+return getCartSnapshot();
+}
+cartState = restored;
+return getCartSnapshot();
+} catch {
+return getCartSnapshot();
+}
+})();
+
+return hydrationPromise;
+}
+
+export function waitForCartPersistence(): Promise<void> {
+return persistenceQueue.catch(() => undefined);
 }
 
 export function clearCart(restaurant?: Partial<DARestaurantCartContext> | null): DACartState {
@@ -129,6 +229,7 @@ restaurantName: cartState.restaurantName,
 minimumOrderAmount: cartState.minimumOrderAmount,
 serviceAreaLabel: cartState.serviceAreaLabel,
 });
+schedulePersist();
 return getCartSnapshot();
 }
 
@@ -145,6 +246,7 @@ restaurantName: next.restaurantName,
 minimumOrderAmount: next.minimumOrderAmount,
 serviceAreaLabel: next.serviceAreaLabel,
 });
+schedulePersist();
 return getCartSnapshot();
 }
 
@@ -182,6 +284,7 @@ unitPrice,
 }
 
 cartState = recalculate(cartState);
+schedulePersist();
 return getCartSnapshot();
 }
 
@@ -190,6 +293,7 @@ export const addCartItem = addToCart;
 export function removeFromCart(itemId: string): DACartState {
 cartState.items = cartState.items.filter((item) => item.id !== itemId);
 cartState = recalculate(cartState);
+schedulePersist();
 return getCartSnapshot();
 }
 
@@ -199,6 +303,7 @@ export function incrementCartItem(itemId: string): DACartState {
 const item = cartState.items.find((entry) => entry.id === itemId);
 if (item) item.quantity += 1;
 cartState = recalculate(cartState);
+schedulePersist();
 return getCartSnapshot();
 }
 
@@ -206,6 +311,7 @@ export function decrementCartItem(itemId: string): DACartState {
 const item = cartState.items.find((entry) => entry.id === itemId);
 if (item) item.quantity -= 1;
 cartState = recalculate(cartState);
+schedulePersist();
 return getCartSnapshot();
 }
 
@@ -213,6 +319,7 @@ export function updateCartItemQuantity(itemId: string, quantity: number): DACart
 const item = cartState.items.find((entry) => entry.id === itemId);
 if (item) item.quantity = Math.max(0, Math.round(Number(quantity) || 0));
 cartState = recalculate(cartState);
+schedulePersist();
 return getCartSnapshot();
 }
 
