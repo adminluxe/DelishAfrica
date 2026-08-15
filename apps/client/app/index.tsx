@@ -616,7 +616,7 @@ export default function GlobalMarketplaceHome() {
       return;
     }
     if (!partner.slug) return;
-    router.push({ pathname: "/menu" as never, params: { restaurantSlug: partner.slug } } as never);
+    router.push({ pathname: "/restaurant/[id]" as never, params: { id: partner.slug } } as never);
   }
   function openHorizon() {
     rememberMarketplaceFocus();
