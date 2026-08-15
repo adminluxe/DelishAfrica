@@ -1,85 +1,72 @@
-/* DA_V5_1_PAGE */
-import React, { useState } from "react";
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
+/* DA_J8UX_S1A_S2A_SETTINGS_CANONICAL_PILOT */
+import React from "react";
+import { View } from "react-native";
+import { router } from "expo-router";
 
-import { Link as DaLegalLink } from "expo-router";
-function RowBtn({
-  title,
-  desc,
-  onPress,
-  loading,
-  disabled,
-}: {
-  title: string;
-  desc: string;
-  onPress: () => void;
-  loading?: boolean;
-  disabled?: boolean;
-}) {
-  const off = !!disabled || !!loading;
-  return (
-    <Pressable
-      disabled={off}
-      onPress={onPress}
-      style={{
-        padding: 12,
-        borderRadius: 12,
-        borderWidth: 1,
-        opacity: off ? 0.45 : 0.95,
-        gap: 4,
-      }}
-    >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-        {loading ? <ActivityIndicator /> : null}
-        <Text style={{ fontWeight: "900" }}>{title}</Text>
-      </View>
-      <Text style={{ opacity: 0.85 }}>{desc}</Text>
-    </Pressable>
-  );
+import { Screen } from "../ui/da/Screen";
+import { DAHeader } from "../ui/da/DAHeader";
+import { DAInlineNotice } from "../ui/da/DAInlineNotice";
+import { DAListItem } from "../ui/da/DAListItem";
+import { StatusPill } from "../ui/da/StatusPill";
+import type { DAApp } from "../ui/da/tokens";
+import { getDATheme } from "../ui/da/theme";
+
+const APP: DAApp = "courier";
+
+function go(path: string) {
+  router.push(path as any);
 }
 
 export default function SettingsScreen() {
-  const [busy, setBusy] = useState(false);
-
-  const fakeSave = () => {
-    setBusy(true);
-    setTimeout(() => setBusy(false), 700);
-  };
+  const t = getDATheme(APP);
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
-      <Text style={{ fontSize: 22, fontWeight: "900" }}>Paramètres</Text>
-      <Text style={{ opacity: 0.9 }}>
-        Profil, véhicule, et diagnostics (sans exposer de données sensibles).
-      </Text>
+    <Screen app={APP} pad="lg" scroll>
+      <DAHeader
+        app={APP}
+        title="Paramètres"
+        subtitle="Profil, session, véhicule et informations légales."
+      />
 
-      <View style={{ gap: 10 }}>
-        <RowBtn title="Profil (bientôt)" desc="Nom, téléphone, zone." onPress={() => {}} disabled />
-        <RowBtn title="Véhicule (bientôt)" desc="Type, plaque, assurance." onPress={() => {}} disabled />
-        <RowBtn title="Diagnostics" desc="Vérifier la configuration." onPress={fakeSave} loading={busy} />
-        <RowBtn title="Déconnexion (bientôt)" desc="Fermer la session sur cet appareil." onPress={() => {}} disabled />
+      <DAInlineNotice
+        app={APP}
+        kind="info"
+        title="Accès vérifiés"
+        body="Seules les fonctions reliées à un écran ou service réel sont actionnables."
+      />
+
+      <View style={{ gap: t.space.x3, marginTop: t.space.x4 }}>
+        <DAListItem
+          app={APP}
+          title="Profil coursier"
+          subtitle="Identité, disponibilité et informations du compte."
+          onPress={() => go("/courier-profile")}
+          right={<StatusPill app={APP} status="ONLINE" label="Actif" />}
+        />
+
+        <DAListItem
+          app={APP}
+          title="Session"
+          subtitle="Vérifier la session progressive et l’accès au compte."
+          onPress={() => go("/auth-session")}
+          right={<StatusPill app={APP} status="ONLINE" label="Disponible" />}
+        />
+
+        <DAListItem
+          app={APP}
+          title="Véhicule"
+          subtitle="Les informations véhicule seront activées avec leur contrat métier réel."
+          right={<StatusPill app={APP} status="WARN" label="À venir" />}
+        />
+
+        <DAListItem
+          app={APP}
+          title="Confidentialité · Conditions · Assistance"
+          subtitle="Consulter les informations légales et les canaux d’assistance disponibles."
+          onPress={() => go("/legal")}
+          right={<StatusPill app={APP} status="ONLINE" label="Disponible" />}
+        />
       </View>
-
-      {/* DA_J8UX_S0_LEGAL_ENTRY */}
-      <DaLegalLink
-        href={"/legal" as any}
-        style={{
-          alignSelf: "stretch",
-          marginTop: 8,
-          paddingVertical: 14,
-          paddingHorizontal: 16,
-          borderRadius: 16,
-          overflow: "hidden",
-          backgroundColor: "rgba(103,230,155,0.12)",
-          borderWidth: 1,
-          borderColor: "rgba(103,230,155,0.28)",
-          color: "#0B5B34",
-          fontWeight: "900",
-          textAlign: "center",
-        }}
-      >
-        Confidentialité · Conditions · Assistance
-      </DaLegalLink>
-    </ScrollView>
+    </Screen>
   );
 }
