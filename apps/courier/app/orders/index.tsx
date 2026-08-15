@@ -1,460 +1,627 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { daOrdersFetch } from "../../utils/daOrdersApi";
+import { loadCourierPresence, syncCourierPresence } from "../../utils/daPresenceStore";
+// DA_A5A3A7S16R8_COURIER_MISSION_DETAIL_REPAIR_V1
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-ActivityIndicator,
-Alert,
-Pressable,
-RefreshControl,
-SafeAreaView,
-ScrollView,
-StyleSheet,
-Text,
-View,
+  AccessibilityInfo,
+  ActivityIndicator,
+  Animated,
+  Alert,
+  Pressable,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 import { router } from "expo-router";
 
-type OrderStatus = "pending" | "accepted" | "ready" | "picked_up" | "delivered" | string;
-
-type DemoOrder = {
-id?: string;
-orderId?: string;
-status?: OrderStatus;
-customerName?: string;
-clientName?: string;
-customer?: {
-name?: string;
-address?: string;
-city?: string;
-phone?: string;
-instructions?: string;
-};
-restaurantName?: string;
-merchantName?: string;
-items?: any[];
-total?: number;
-amount?: number;
-deliveryAddress?: string;
-deliveryInstructions?: string;
+type Order = {
+  id?: string;
+  orderId?: string;
+  publicId?: string;
+  status?: string;
+  customerName?: string;
+  clientName?: string;
+  customer?: { name?: string; address?: string; city?: string };
+  restaurantName?: string;
+  restaurant?: string;
+  merchantName?: string;
+  deliveryAddress?: string;
+  items?: Array<{ name?: string; title?: string; quantity?: number; qty?: number }>;
+  assignmentProposal?: {
+    status?: string;
+    courierId?: string;
+    courierName?: string;
+  };
 };
 
 const RAW_API =
-process.env.EXPO_PUBLIC_API_BASE_URL ||
-process.env.EXPO_PUBLIC_API_URL ||
-"https://api.delishafrica.me/api/v1";
+  process.env.EXPO_PUBLIC_API_BASE_URL ||
+  process.env.EXPO_PUBLIC_API_URL ||
+  "https://api.delishafrica.me/api/v1";
 
-function apiBase(value: string): string {
-const clean = String(value || "").replace(/\/+$/, "");
-if (clean.endsWith("/api/v1")) return clean;
-if (clean === "https://api.delishafrica.me") return `${clean}/api/v1`;
-return clean;
+const API_BASE_URL = RAW_API.replace(/\/$/, "").endsWith("/api/v1")
+  ? RAW_API.replace(/\/$/, "")
+  : `${RAW_API.replace(/\/$/, "")}/api/v1`;
+
+function orderId(order: Order) {
+  return String(order.publicId || order.orderId || order.id || "DA-MISSION");
 }
-
-const API_BASE_URL = apiBase(RAW_API);
-
-function orderId(order: DemoOrder): string {
-return String(order.orderId || order.id || "DA-MISSION");
+function statusOf(order: Order) {
+  return String(order.status || "ready").toLowerCase();
 }
-
-function statusOf(order: DemoOrder): string {
-return String(order.status || "ready").toLowerCase();
+function assignmentStatusOf(order: Order) {
+  return String(order.assignmentProposal?.status || "").toLowerCase();
 }
-
-function customerName(order: DemoOrder): string {
-return order.customer?.name || order.customerName || order.clientName || "Client DelishAfrica®";
+function assignmentAccepted(order: Order) {
+  return assignmentStatusOf(order) === "accepted" && Boolean(order.assignmentProposal?.courierId);
 }
-
-function restaurantName(order: DemoOrder): string {
-return order.restaurantName || order.merchantName || "Thieyp";
+function customerName(order: Order) {
+  return String(order.customer?.name || order.customerName || order.clientName || "Client DelishAfrica");
 }
-
-function addressOf(order: DemoOrder): string {
-return order.deliveryAddress || order.customer?.address || "Adresse de livraison à compléter";
+function restaurantName(order: Order) {
+  return String(order.restaurantName || order.restaurant || order.merchantName || "Restaurant partenaire");
 }
-
-function firstItem(order: DemoOrder): string {
-const item = Array.isArray(order.items) ? order.items[0] : null;
-if (!item) return "1× Thieboudienne royal";
-const qty = item.quantity || item.qty || 1;
-const name = item.name || item.title || "Plat signature";
-return `${qty}× ${name}`;
+function addressOf(order: Order) {
+  return String(order.deliveryAddress || order.customer?.address || "Adresse de livraison");
 }
-
+function firstItem(order: Order) {
+  const items = Array.isArray(order.items) ? order.items : [];
+  const item = items[0] || null;
+  if (!item) return "Commande à livrer";
+  const first = `${Number(item.quantity || item.qty || 1)}× ${item.name || item.title || "Plat"}`;
+  const remaining = Math.max(0, items.length - 1);
+  return remaining ? `${first} + ${remaining} autre${remaining > 1 ? "s" : ""}` : first;
+}
+function extractOrders(payload: any): Order[] {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.orders)) return payload.orders;
+  if (Array.isArray(payload?.data?.orders)) return payload.data.orders;
+  if (Array.isArray(payload?.items)) return payload.items;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
+}
 async function postJson(path: string, body: Record<string, unknown> = {}) {
-const res = await fetch(`${API_BASE_URL}${path}`, {
-method: "POST",
-headers: { "Content-Type": "application/json", Accept: "application/json" },
-body: JSON.stringify(body),
-});
-
-const text = await res.text();
-let json: any = null;
-
-try {
-json = text ? JSON.parse(text) : null;
-} catch {
-throw new Error(`Réponse non JSON (${res.status}): ${text.slice(0, 220)}`);
+  const response = await daOrdersFetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.message || payload?.error || `HTTP ${response.status}`);
+  return payload;
+}
+function statusLabel(status: string) {
+  if (status === "ready") return "À récupérer";
+  if (status === "picked_up") return "En route";
+  if (status === "delivered") return "Livrée";
+  return "À venir";
 }
 
-if (!res.ok) {
-throw new Error(json?.message || json?.error || `HTTP ${res.status}`);
+function courierFlowIndex(status: string) {
+  if (status === "delivered") return 2;
+  if (status === "picked_up") return 1;
+  return 0;
 }
 
-return json;
+function useReduceMotionPreference() {
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    void AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
+      if (mounted) setReduceMotion(enabled);
+    });
+
+    const subscription = AccessibilityInfo.addEventListener(
+      "reduceMotionChanged",
+      setReduceMotion,
+    );
+
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, []);
+
+  return reduceMotion;
 }
 
-function extractOrders(payload: any): DemoOrder[] {
-if (Array.isArray(payload)) return payload;
-if (Array.isArray(payload?.orders)) return payload.orders;
-if (Array.isArray(payload?.data)) return payload.data;
-if (Array.isArray(payload?.items)) return payload.items;
-if (payload?.order) return [payload.order];
-return [];
-}
-
-export default function CourierOrdersPremiumV1() {
-const [orders, setOrders] = useState<DemoOrder[]>([]);
-const [refreshing, setRefreshing] = useState(false);
-const [busyId, setBusyId] = useState<string | null>(null);
-const [message, setMessage] = useState("Terrain prêt.");
-
-const load = useCallback(async () => {
-setRefreshing(true);
-try {
-const payload = await postJson("/orders/demo/list", {});
-const list = extractOrders(payload);
-setOrders(list);
-setMessage(`${list.length} mission(s) synchronisée(s).`);
-} catch (error: any) {
-setMessage(`Erreur sync : ${error?.message || String(error)}`);
-} finally {
-setRefreshing(false);
-}
-}, []);
-
-useEffect(() => {
-load();
-}, [load]);
-
-const buckets = useMemo(() => {
-const ready = orders.filter((o) => statusOf(o) === "ready");
-const picked = orders.filter((o) => statusOf(o) === "picked_up");
-const upcoming = orders.filter((o) => ["pending", "accepted"].includes(statusOf(o)));
-const history = orders.filter((o) => statusOf(o) === "delivered");
-return { ready, picked, upcoming, history };
-}, [orders]);
-
-const priority = buckets.ready[0] || buckets.picked[0] || null;
-
-async function updateStatus(order: DemoOrder, status: "picked_up" | "delivered") {
-const id = orderId(order);
-setBusyId(id);
-setMessage(status === "picked_up" ? "Récupération au restaurant..." : "Confirmation livraison...");
-try {
-await postJson("/orders/demo/status", { orderId: id, id, status });
-await load();
-setMessage(status === "picked_up" ? "Mission récupérée." : "Livraison confirmée.");
-} catch (error: any) {
-Alert.alert("Action impossible", error?.message || String(error));
-setMessage(`Erreur : ${error?.message || String(error)}`);
-} finally {
-setBusyId(null);
-}
-}
-
-function actionFor(order: DemoOrder) {
-const st = statusOf(order);
-if (st === "ready") return { label: "Récupérer", next: "picked_up" as const };
-if (st === "picked_up") return { label: "Livrer", next: "delivered" as const };
-return null;
-}
-
-function MissionCard({ order, priorityCard = false }: { order: DemoOrder; priorityCard?: boolean }) {
-const id = orderId(order);
-const st = statusOf(order);
-const action = actionFor(order);
-const busy = busyId === id;
-
-return (
-<View style={[styles.missionCard, priorityCard && styles.priorityCard]}>
-<View style={styles.missionTop}>
-<View style={{ flex: 1 }}>
-<Text style={priorityCard ? styles.priorityKicker : styles.missionKicker}>
-{priorityCard ? "MISSION PRIORITAIRE" : st === "delivered" ? "HISTORIQUE" : "MISSION"}
-</Text>
-<Text style={priorityCard ? styles.priorityId : styles.missionId}>{id}</Text>
-</View>
-<View style={styles.statusPill}>
-<Text style={styles.statusText}>
-{st === "ready"
-? "À récupérer"
-: st === "picked_up"
-? "En route"
-: st === "delivered"
-? "Livrée"
-: "À venir"}
-</Text>
-</View>
-</View>
-
-<Text style={priorityCard ? styles.priorityRestaurant : styles.restaurant}>
-{restaurantName(order)}
-</Text>
-<Text style={styles.client}>Client : {customerName(order)}</Text>
-<Text style={styles.address}>📍 {addressOf(order)}</Text>
-
-{priorityCard ? (
-<View style={styles.stepBox}>
-<Text style={styles.stepKicker}>{st === "picked_up" ? "ÉTAPE 2" : "ÉTAPE 1"}</Text>
-<Text style={styles.stepTitle}>
-{st === "picked_up" ? "Le client t’attend." : "Le restaurant t’attend."}
-</Text>
-</View>
-) : null}
-
-<Text style={styles.item}>{firstItem(order)}</Text>
-
-{action ? (
-<Pressable
-disabled={busy}
-style={[styles.actionButton, busy && styles.disabledButton]}
-onPress={() => updateStatus(order, action.next)}
->
-{busy ? <ActivityIndicator /> : <Text style={styles.actionText}>{action.label}</Text>}
-</Pressable>
-) : null}
-</View>
-);
-}
-
-function Section({
-title,
-subtitle,
-count,
-children,
+function FlowPulse({
+  active,
+  reduceMotion,
+  color,
 }: {
-title: string;
-subtitle: string;
-count: number;
-children: React.ReactNode;
+  active: boolean;
+  reduceMotion: boolean;
+  color: string;
 }) {
-return (
-<View style={styles.section}>
-<View style={styles.sectionHead}>
-<View>
-<Text style={styles.sectionTitle}>{title}</Text>
-<Text style={styles.sectionSubtitle}>{subtitle}</Text>
-</View>
-<View style={styles.countBubble}>
-<Text style={styles.countText}>{count}</Text>
-</View>
-</View>
-{children}
-</View>
-);
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    progress.stopAnimation();
+    progress.setValue(0);
+
+    if (!active || reduceMotion) return;
+
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(progress, {
+          toValue: 1,
+          duration: 1150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(progress, {
+          toValue: 0,
+          duration: 1150,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    loop.start();
+    return () => loop.stop();
+  }, [active, progress, reduceMotion]);
+
+  if (!active || reduceMotion) return null;
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.flowPulse,
+        {
+          backgroundColor: color,
+          opacity: progress.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0.32, 0],
+          }),
+          transform: [
+            {
+              scale: progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 1.68],
+              }),
+            },
+          ],
+        },
+      ]}
+    />
+  );
 }
 
-return (
-<SafeAreaView style={styles.safe}>
-<View pointerEvents="none" style={styles.aquaVeil} />
-<View pointerEvents="none" style={styles.aquaDrop} />
-<View pointerEvents="none" style={styles.aquaRipple} />
-<View pointerEvents="none" style={styles.aquaFoam} />
-<ScrollView
-contentContainerStyle={styles.page}
-refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} />}
->
-<View style={styles.hero}>
-<View style={styles.heroTop}>
-<Text style={styles.brand}>DELISHAFRICA®</Text>
-<Text style={styles.live}>TERRAIN</Text>
-</View>
-<Text style={styles.title}>Mission Cockpit</Text>
-<Text style={styles.subtitle}>
-Une mission claire, un geste rapide, une livraison maîtrisée.
-</Text>
+function HandoffRail({ status, compact = false, reduceMotion = false }: { status: string; compact?: boolean; reduceMotion?: boolean }) {
+  const current = courierFlowIndex(status);
+  const steps = ["Prendre", "Rouler", "Livrer"];
+  return (
+    <View style={[styles.handoffRail, compact && styles.handoffRailCompact]}>
+      {steps.map((label, index) => {
+        const done = index < current || status === "delivered";
+        const active = index === current && status !== "delivered";
+        return (
+          <React.Fragment key={label}>
+            <View style={styles.handoffStep}>
+              <View style={styles.handoffNodeWrap}>
+                <FlowPulse
+                  active={active}
+                  reduceMotion={reduceMotion}
+                  color="rgba(117,239,164,0.48)"
+                />
+                <View style={[styles.handoffNode, (done || active) && styles.handoffNodeActive]}>
+                  <Text style={[styles.handoffNodeText, (done || active) && styles.handoffNodeTextActive]}>
+                    {done ? "✓" : index + 1}
+                  </Text>
+                </View>
+              </View>
+              <Text style={[styles.handoffLabel, compact && styles.handoffLabelCompact, active && styles.handoffLabelActive]}>
+                {label}
+              </Text>
+            </View>
+            {index < steps.length - 1 ? <View style={[styles.handoffLine, index < current && styles.handoffLineActive]} /> : null}
+          </React.Fragment>
+        );
+      })}
+    </View>
+  );
+}
 
-<View style={styles.stats}>
-<View style={styles.statBox}>
-<Text style={styles.statValue}>{buckets.ready.length}</Text>
-<Text style={styles.statLabel}>À récupérer</Text>
-</View>
-<View style={styles.statBox}>
-<Text style={styles.statValue}>{buckets.picked.length}</Text>
-<Text style={styles.statLabel}>En route</Text>
-</View>
-<View style={styles.statBox}>
-<Text style={styles.statValue}>{buckets.history.length}</Text>
-<Text style={styles.statLabel}>Terminées</Text>
-</View>
-</View>
-</View>
+// DA_SPRINT5_REALTIME_HANDOFF_ESSENTIAL_V1
+// DA_SPRINT6_MOTION_CONTINUITY_ESSENTIAL_V1
+// DA_SPRINT14_OPERATION_ORBITS_V1
+// DA_SPRINT30_ACTION_COMMIT_TRUTH_V1
+export default function CourierOrdersFocus() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [message, setMessage] = useState("Terrain prêt.");
+  const [selectedMissionId, setSelectedMissionId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const reduceMotion = useReduceMotionPreference();
+  const statusMutationRef = useRef<string | null>(null);
 
-<Text style={styles.sync}>{message}</Text>
+  const readOrders = useCallback(async () => {
+    const profile = await loadCourierPresence<Record<string, any>>();
+    if (profile?.available) await syncCourierPresence(profile);
+    const payload = await postJson("/orders/demo/list", {});
+    const list = extractOrders(payload);
+    setOrders(list);
+    return list;
+  }, []);
 
-{priority ? (
-<MissionCard order={priority} priorityCard />
-) : (
-<View style={styles.emptyHero}>
-<Text style={styles.emptyEmoji}>🛵</Text>
-<Text style={styles.emptyTitle}>Aucune mission active</Text>
-<Text style={styles.emptyText}>
-Reste prêt. Les commandes marquées prêtes par les restaurants apparaîtront ici.
-</Text>
-</View>
-)}
+  const load = useCallback(async () => {
+    if (statusMutationRef.current) return;
+    setRefreshing(true);
+    try {
+      const list = await readOrders();
+      setMessage(`${list.length} mission${list.length > 1 ? "s" : ""} synchronisée${list.length > 1 ? "s" : ""}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Synchronisation indisponible");
+    } finally {
+      setRefreshing(false);
+    }
+  }, [readOrders]);
 
-<Section title="Missions prêtes" subtitle="À récupérer au restaurant" count={buckets.ready.length}>
-{buckets.ready.length > 1 ? (
-buckets.ready.slice(1).map((order) => <MissionCard key={orderId(order)} order={order} />)
-) : buckets.ready.length === 1 && priority === buckets.ready[0] ? (
-<Text style={styles.empty}>Mission prioritaire affichée ci-dessus.</Text>
-) : (
-<Text style={styles.empty}>Aucune autre mission prête.</Text>
-)}
-</Section>
+  useEffect(() => {
+    void load();
+    const timer = setInterval(() => {
+      if (!statusMutationRef.current) void load();
+    }, 15000);
+    return () => clearInterval(timer);
+  }, [load]);
 
-<Section title="En route" subtitle="Missions déjà récupérées" count={buckets.picked.length}>
-{buckets.picked.length && priority !== buckets.picked[0] ? (
-buckets.picked.map((order) => <MissionCard key={orderId(order)} order={order} />)
-) : buckets.picked.length === 1 && priority === buckets.picked[0] ? (
-<Text style={styles.empty}>Mission prioritaire affichée ci-dessus.</Text>
-) : (
-<Text style={styles.empty}>Aucune autre mission en route.</Text>
-)}
-</Section>
+  const ready = useMemo(() => orders.filter((order) => statusOf(order) === "ready"), [orders]);
+  const picked = useMemo(() => orders.filter((order) => statusOf(order) === "picked_up"), [orders]);
+  const upcoming = useMemo(() => orders.filter((order) => ["pending", "accepted"].includes(statusOf(order))), [orders]);
+  const history = useMemo(() => orders.filter((order) => statusOf(order) === "delivered"), [orders]);
+  const missionPool = useMemo(() => [...picked, ...ready, ...upcoming], [picked, ready, upcoming]);
+  const lockedMission = picked[0] || null;
+  const priority = lockedMission || ready[0] || upcoming[0] || null;
+  const priorityId = priority ? orderId(priority) : "";
+  const focusMission = useMemo(
+    () => lockedMission || missionPool.find((order) => orderId(order) === selectedMissionId) || priority,
+    [lockedMission, missionPool, priority, selectedMissionId],
+  );
+  const focusMissionId = focusMission ? orderId(focusMission) : "";
+  const lockedMissionId = lockedMission ? orderId(lockedMission) : "";
+  const restaurants = useMemo(() => Array.from(new Set(missionPool.map(restaurantName))), [missionPool]);
 
-<Section title="À venir" subtitle="Encore en préparation côté restaurant" count={buckets.upcoming.length}>
-{buckets.upcoming.length ? (
-buckets.upcoming.map((order) => <MissionCard key={orderId(order)} order={order} />)
-) : (
-<Text style={styles.empty}>Aucune mission en attente.</Text>
-)}
-</Section>
+  useEffect(() => {
+    if (!missionPool.length) {
+      if (selectedMissionId !== null) setSelectedMissionId(null);
+      return;
+    }
+    if (lockedMissionId) {
+      if (selectedMissionId !== lockedMissionId) setSelectedMissionId(lockedMissionId);
+      return;
+    }
+    if (!selectedMissionId || !missionPool.some((order) => orderId(order) === selectedMissionId)) {
+      setSelectedMissionId(priorityId);
+    }
+  }, [lockedMissionId, missionPool, priorityId, selectedMissionId]);
 
-<Section title="Historique" subtitle="Livraisons terminées" count={buckets.history.length}>
-{buckets.history.length ? (
-buckets.history.map((order) => <MissionCard key={orderId(order)} order={order} />)
-) : (
-<Text style={styles.empty}>Aucune livraison terminée récemment.</Text>
-)}
-</Section>
+  async function updateStatus(order: Order, next: "picked_up" | "delivered") {
+    const id = orderId(order);
+    if (statusMutationRef.current) return;
 
-<Pressable style={styles.backButton} onPress={() => router.replace("/")}>
-<Text style={styles.backText}>Retour terrain</Text>
-</Pressable>
-</ScrollView>
-</SafeAreaView>
-);
+    if (next === "picked_up" && !assignmentAccepted(order)) {
+      setMessage("Acceptez d’abord l’offre DelishAfrica avant le retrait au restaurant.");
+      return;
+    }
+
+    const mutationId = `courier:${id}:${next}:${Date.now()}`;
+    statusMutationRef.current = mutationId;
+    setBusyId(id);
+    setMessage("Confirmation en cours · écriture puis relecture.");
+
+    try {
+      await postJson("/orders/demo/status", {
+        orderId: id,
+        id,
+        status: next,
+        clientMutationId: mutationId,
+      });
+
+      let confirmedStatus = "missing";
+      for (const waitMs of [0, 350, 900]) {
+        if (waitMs > 0) {
+          await new Promise<void>((resolve) => setTimeout(resolve, waitMs));
+        }
+        const confirmedOrders = await readOrders();
+        const confirmedOrder = confirmedOrders.find((candidate) => orderId(candidate) === id);
+        confirmedStatus = confirmedOrder ? statusOf(confirmedOrder) : "missing";
+        if (confirmedStatus === next) break;
+      }
+
+      if (confirmedStatus !== next) {
+        setMessage("État non confirmé · dernière vérité restaurée.");
+        Alert.alert(
+          "Confirmation incomplète",
+          "La mission a été relue sans le nouvel état. DelishAfrica conserve la dernière vérité confirmée.",
+        );
+        return;
+      }
+
+      setMessage(`${id} · ${statusLabel(next)} confirmé.`);
+    } catch (error) {
+      setMessage("Action non confirmée · dernière vérité conservée.");
+      Alert.alert("Action impossible", error instanceof Error ? error.message : "Erreur inconnue");
+      try {
+        await readOrders();
+      } catch {
+        // La dernière liste déjà affichée reste la seule vérité disponible.
+      }
+    } finally {
+      if (statusMutationRef.current === mutationId) statusMutationRef.current = null;
+      setBusyId(null);
+    }
+  }
+
+  async function decideOffer(order: Order, decision: "accept" | "reject") {
+    const id = orderId(order);
+    if (statusMutationRef.current) return;
+    const mutationId = `courier:${id}:offer:${decision}:${Date.now()}`;
+    statusMutationRef.current = mutationId;
+    setBusyId(id);
+    setMessage(decision === "accept" ? "Acceptation de l’offre…" : "Refus de l’offre…");
+    try {
+      await postJson(`/orders/demo/courier/offers/${decision}`, { orderId: id, id });
+      await readOrders();
+      setMessage(decision === "accept" ? `${id} · mission acceptée.` : `${id} · offre refusée.`);
+    } catch (error) {
+      setMessage("Décision non confirmée · dernière vérité conservée.");
+      Alert.alert("Décision impossible", error instanceof Error ? error.message : "Erreur inconnue");
+      await readOrders().catch(() => undefined);
+    } finally {
+      if (statusMutationRef.current === mutationId) statusMutationRef.current = null;
+      setBusyId(null);
+    }
+  }
+
+  function MissionCard({ order, compact = false }: { order: Order; compact?: boolean }) {
+    const id = orderId(order);
+    const status = statusOf(order);
+    const busy = busyId === id;
+    const mutationBusy = busyId !== null;
+    const proposalStatus = assignmentStatusOf(order);
+    const accepted = assignmentAccepted(order);
+    const offered = status === "ready" && proposalStatus === "proposed";
+    const next = status === "ready" && accepted ? "picked_up" : status === "picked_up" ? "delivered" : null;
+    const textColor = compact ? "#F3FFF7" : "#03170C";
+    const mutedColor = compact ? "rgba(227,255,236,0.62)" : "rgba(3,23,12,0.62)";
+    return (
+      <View style={[styles.card, compact && styles.cardCompact]}>
+        <View style={styles.cardTop}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.cardKicker, compact && styles.cardKickerCompact]}>{status === "picked_up" ? "VERS LE CLIENT" : status === "ready" ? "VERS LE RESTAURANT" : "MISSION"}</Text>
+            <Text style={[styles.cardId, { color: textColor }]}>{id}</Text>
+          </View>
+          <Text style={[styles.status, compact && styles.statusCompact]}>{statusLabel(status)}</Text>
+        </View>
+        <Text style={[styles.restaurant, { color: textColor }]}>{restaurantName(order)}</Text>
+        <Text style={[styles.client, { color: mutedColor }]}>{customerName(order)}</Text>
+        <Text style={[styles.address, { color: mutedColor }]}>📍 {addressOf(order)}</Text>
+        <Text style={[styles.item, { color: textColor }]}>{firstItem(order)}</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Vérifier le contenu complet de la mission ${id}`}
+          style={[styles.detailButton, compact && styles.detailButtonCompact]}
+          onPress={() => router.push({ pathname: "/mission-detail" as any, params: { orderId: id } })}
+        >
+          <Text style={[styles.detailButtonText, compact && styles.detailButtonTextCompact]}>Voir la commande complète</Text>
+          <Text style={[styles.detailButtonArrow, compact && styles.detailButtonTextCompact]}>→</Text>
+        </Pressable>
+        <HandoffRail status={status} compact={compact} reduceMotion={reduceMotion} />
+        {status === "picked_up" || (status === "ready" && accepted) ? (
+          <Pressable style={styles.mapButton} onPress={() => router.push({ pathname: "/courier-real-map" as any, params: { orderId: id } })}>
+            <Text style={styles.mapButtonText}>{status === "picked_up" ? "Voir le trajet vivant" : "Voir le guidage vers le restaurant"}</Text>
+          </Pressable>
+        ) : null}
+        {offered ? (
+          <View style={styles.offerActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Accepter l’offre ${id}`}
+              disabled={mutationBusy}
+              style={[styles.action, styles.offerAccept, mutationBusy && styles.disabled]}
+              onPress={() => decideOffer(order, "accept")}
+            >
+              <Text style={styles.actionText}>Accepter la mission</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Refuser l’offre ${id}`}
+              disabled={mutationBusy}
+              style={[styles.mapButton, mutationBusy && styles.disabled]}
+              onPress={() => decideOffer(order, "reject")}
+            >
+              <Text style={styles.mapButtonText}>Pas maintenant</Text>
+            </Pressable>
+          </View>
+        ) : null}
+        {next ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: mutationBusy, busy }}
+            accessibilityLabel={next === "picked_up" ? "Commande récupérée" : "Commande remise"}
+            disabled={mutationBusy}
+            style={[styles.action, mutationBusy && styles.disabled]}
+            onPress={() => updateStatus(order, next)}
+          >
+            {busy ? (
+              <View style={{ alignItems: "center", gap: 4 }}>
+                <ActivityIndicator color="#FFFFFF" />
+                <Text style={styles.actionText}>Écriture puis relecture</Text>
+              </View>
+            ) : (
+              <Text style={styles.actionText}>{next === "picked_up" ? "Commande récupérée" : "Commande remise"}</Text>
+            )}
+          </Pressable>
+        ) : null}
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <ScrollView contentContainerStyle={styles.page} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} />}>
+        <View style={styles.header}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.brand}>DELISHAFRICA® · COURIER</Text>
+            <Text style={styles.title}>Mission maintenant</Text>
+            <Text style={styles.subtitle}>{Math.max(restaurants.length, 1)} restaurant{restaurants.length > 1 ? "s" : ""} · {message}</Text>
+          </View>
+          <Pressable style={styles.closeButton} onPress={() => router.replace("/")}><Text style={styles.closeText}>Fermer</Text></Pressable>
+        </View>
+
+        <View style={styles.metricRow}>
+          <View style={styles.metric}><Text style={styles.metricValue}>{ready.length}</Text><Text style={styles.metricLabel}>À récupérer</Text></View>
+          <View style={styles.metric}><Text style={styles.metricValue}>{picked.length}</Text><Text style={styles.metricLabel}>En route</Text></View>
+          <View style={styles.metric}><Text style={styles.metricValue}>{history.length}</Text><Text style={styles.metricLabel}>Terminées</Text></View>
+        </View>
+
+        <Text style={styles.sectionKicker}>UNE MISSION À LA FOIS</Text>
+        {focusMission ? <MissionCard order={focusMission} /> : <View style={styles.empty}><Text style={styles.emptyEmoji}>🛵</Text><Text style={styles.emptyTitle}>Aucune mission active</Text><Text style={styles.emptyText}>Les commandes prêtes apparaîtront ici automatiquement.</Text></View>}
+
+        {missionPool.length > 1 ? (
+          <View style={styles.orbitShell}>
+            <View style={styles.orbitHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.orbitKicker}>{lockedMission ? "TRAJET VERROUILLÉ" : "MISSIONS À PORTÉE"}</Text>
+                <Text style={styles.orbitTitle}>
+                  {lockedMission ? "Le trajet en cours reste au premier plan." : "Touchez la mission à préparer."}
+                </Text>
+              </View>
+              <Text style={styles.orbitCount}>{missionPool.length}</Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.orbitRail}
+              accessibilityRole="tablist"
+            >
+              {missionPool.map((order) => {
+                const id = orderId(order);
+                const selected = id === focusMissionId;
+                const status = statusOf(order);
+                const disabled = Boolean(lockedMissionId && id !== lockedMissionId);
+                return (
+                  <Pressable
+                    key={id}
+                    disabled={disabled}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected, disabled }}
+                    accessibilityLabel={`${restaurantName(order)}, ${statusLabel(status)}, mission ${id}`}
+                    onPress={() => setSelectedMissionId(id)}
+                    style={({ pressed }) => [
+                      styles.orbitTab,
+                      selected && styles.orbitTabSelected,
+                      disabled && styles.orbitTabDisabled,
+                      pressed && !disabled && styles.orbitTabPressed,
+                    ]}
+                  >
+                    <View style={[styles.orbitDot, selected && styles.orbitDotSelected]} />
+                    <View style={{ flex: 1 }}>
+                      <Text numberOfLines={1} style={[styles.orbitRestaurant, selected && styles.orbitRestaurantSelected]}>
+                        {restaurantName(order)}
+                      </Text>
+                      <Text numberOfLines={1} style={[styles.orbitMeta, selected && styles.orbitMetaSelected]}>
+                        {statusLabel(status)} · {id.slice(-8)}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        ) : null}
+
+        <Pressable style={styles.toggle} onPress={() => setShowHistory((value) => !value)}>
+          <View><Text style={styles.toggleKicker}>HISTORIQUE</Text><Text style={styles.toggleTitle}>{history.length} livraison{history.length > 1 ? "s" : ""} terminée{history.length > 1 ? "s" : ""}</Text></View>
+          <Text style={styles.toggleIcon}>{showHistory ? "−" : "+"}</Text>
+        </Pressable>
+        {showHistory ? history.slice(0, 8).map((order) => <MissionCard key={orderId(order)} order={order} compact />) : null}
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-aquaRipple: { position: "absolute", top: 226, right: -28, width: 126, height: 22, borderRadius: 999, backgroundColor: "rgba(111, 255, 210, 0.022)", borderWidth: 1, borderColor: "rgba(220, 255, 240, 0.052)", transform: [{ rotate: "-14deg" }, { scaleX: 1.22 }] },
-aquaFoam: { position: "absolute", top: 408, left: -118, width: 126, height: 126, borderRadius: 999, backgroundColor: "rgba(212, 255, 236, 0.014)", borderWidth: 1, borderColor: "rgba(224, 255, 241, 0.040)" },
-aquaVeil: { position: "absolute", top: -84, right: -132, width: 168, height: 168, borderRadius: 999, backgroundColor: "rgba(111, 255, 210, 0.022)", borderWidth: 1, borderColor: "rgba(200, 255, 232, 0.052)", transform: [{ scaleX: 1.24 }] },
-aquaDrop: { position: "absolute", top: 126, left: -34, width: 44, height: 44, borderRadius: 999, backgroundColor: "rgba(255, 255, 255, 0.014)", borderWidth: 1, borderColor: "rgba(210, 255, 238, 0.042)" },
-safe: { flex: 1, backgroundColor: "#00160D" },
-page: { padding: 18, paddingBottom: 84 },
-hero: {
-backgroundColor: "#062B18",
-borderColor: "rgba(89,232,145,0.34)",
-borderWidth: 1,
-borderRadius: 34,
-padding: 24,
-marginBottom: 18,
-},
-heroTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-brand: { color: "#A5F7BD", fontSize: 18, fontWeight: "900", letterSpacing: 6 },
-live: {
-color: "#A5F7BD",
-borderColor: "rgba(89,232,145,0.55)",
-borderWidth: 1,
-borderRadius: 999,
-paddingHorizontal: 16,
-paddingVertical: 8,
-fontSize: 14,
-fontWeight: "900",
-letterSpacing: 3,
-},
-title: { color: "#F4FFF7", fontSize: 38, lineHeight: 44, fontWeight: "900", marginTop: 18 },
-subtitle: { color: "#BDD3C5", fontSize: 16, lineHeight: 24, fontWeight: "600", marginTop: 10 },
-stats: { flexDirection: "row", gap: 10, marginTop: 20 },
-statBox: {
-flex: 1,
-backgroundColor: "rgba(255,255,255,0.07)",
-borderColor: "rgba(255,255,255,0.10)",
-borderWidth: 1,
-borderRadius: 20,
-padding: 15,
-},
-statValue: { color: "#FFFFFF", fontSize: 30, fontWeight: "900" },
-statLabel: { color: "#A8BDAF", fontSize: 13, marginTop: 6, fontWeight: "700" },
-sync: { color: "#A5F7BD", fontSize: 14, lineHeight: 20, fontWeight: "800", marginBottom: 18 },
-priorityCard: { backgroundColor: "#F0FFF4" },
-missionCard: {
-backgroundColor: "#10261A",
-borderColor: "rgba(255,255,255,0.10)",
-borderWidth: 1,
-borderRadius: 28,
-padding: 20,
-marginBottom: 14,
-},
-missionTop: { flexDirection: "row", justifyContent: "space-between", gap: 12, alignItems: "flex-start" },
-priorityKicker: { color: "#748278", fontSize: 14, fontWeight: "900", letterSpacing: 4 },
-missionKicker: { color: "#94D9A9", fontSize: 13, fontWeight: "900", letterSpacing: 4 },
-priorityId: { color: "#00160D", fontSize: 32, fontWeight: "900", marginTop: 8 },
-missionId: { color: "#F4FFF7", fontSize: 28, fontWeight: "900", marginTop: 8 },
-statusPill: {
-backgroundColor: "#07351E",
-borderRadius: 999,
-paddingHorizontal: 16,
-paddingVertical: 10,
-},
-statusText: { color: "#B9FFD0", fontSize: 15, fontWeight: "900" },
-priorityRestaurant: { color: "#00160D", fontSize: 24, fontWeight: "900", marginTop: 26 },
-restaurant: { color: "#F4FFF7", fontSize: 22, fontWeight: "900", marginTop: 18 },
-client: { color: "#6B7E72", fontSize: 18, lineHeight: 26, fontWeight: "900", marginTop: 6 },
-address: { color: "#596D61", fontSize: 17, lineHeight: 26, fontWeight: "800", marginTop: 12 },
-stepBox: {
-backgroundColor: "rgba(0,22,13,0.08)",
-borderColor: "rgba(0,22,13,0.12)",
-borderWidth: 1,
-borderRadius: 22,
-padding: 18,
-marginTop: 20,
-},
-stepKicker: { color: "#00160D", fontSize: 14, fontWeight: "900", letterSpacing: 3 },
-stepTitle: { color: "#00160D", fontSize: 24, fontWeight: "900", marginTop: 8 },
-item: { color: "#6B7E72", fontSize: 18, fontWeight: "900", marginTop: 20 },
-actionButton: { backgroundColor: "#11964E", borderRadius: 20, paddingVertical: 15, alignItems: "center", marginTop: 22 },
-disabledButton: { opacity: 0.55 },
-actionText: { color: "#FFFFFF", fontSize: 20, fontWeight: "900" },
-section: { marginTop: 20 },
-sectionHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-sectionTitle: { color: "#F4FFF7", fontSize: 32, fontWeight: "900" },
-sectionSubtitle: { color: "#87998D", fontSize: 17, marginTop: 4, fontWeight: "700" },
-countBubble: {
-width: 48,
-height: 48,
-borderRadius: 24,
-backgroundColor: "#07351E",
-borderColor: "rgba(89,232,145,0.45)",
-borderWidth: 1,
-alignItems: "center",
-justifyContent: "center",
-},
-countText: { color: "#B9FFD0", fontSize: 18, fontWeight: "900" },
-emptyHero: {
-backgroundColor: "#10261A",
-borderColor: "rgba(255,255,255,0.10)",
-borderWidth: 1,
-borderRadius: 28,
-padding: 26,
-alignItems: "center",
-marginBottom: 18,
-},
-emptyEmoji: { fontSize: 34, marginBottom: 10 },
-emptyTitle: { color: "#F4FFF7", fontSize: 28, fontWeight: "900", textAlign: "center" },
-emptyText: { color: "#9DAFA3", fontSize: 18, lineHeight: 28, textAlign: "center", marginTop: 10 },
-empty: { color: "#87998D", fontSize: 17, lineHeight: 26, fontWeight: "700", marginBottom: 8 },
-backButton: { alignItems: "center", paddingVertical: 24 },
-backText: { color: "#A5F7BD", fontSize: 17, fontWeight: "900" },
+  safe: { flex: 1, backgroundColor: "#00140B" },
+  page: { padding: 18, paddingBottom: 72 },
+  header: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginTop: 8, marginBottom: 18 },
+  brand: { color: "#75EFA4", fontSize: 11, fontWeight: "900", letterSpacing: 2.6 },
+  title: { color: "#F3FFF7", fontSize: 32, lineHeight: 37, fontWeight: "900", marginTop: 8 },
+  subtitle: { color: "rgba(227,255,236,0.60)", fontSize: 13, lineHeight: 19, marginTop: 7, fontWeight: "700" },
+  closeButton: { borderRadius: 999, backgroundColor: "rgba(117,239,164,0.10)", borderWidth: 1, borderColor: "rgba(117,239,164,0.24)", paddingHorizontal: 14, paddingVertical: 9 },
+  closeText: { color: "#A8FBC5", fontSize: 12, fontWeight: "900" },
+  metricRow: { flexDirection: "row", gap: 9, marginBottom: 22 },
+  metric: { flex: 1, borderRadius: 18, padding: 14, backgroundColor: "#072318", borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" },
+  metricValue: { color: "#F3FFF7", fontSize: 26, fontWeight: "900" },
+  metricLabel: { color: "rgba(227,255,236,0.56)", fontSize: 11, fontWeight: "800", marginTop: 5 },
+  sectionKicker: { color: "#75EFA4", fontSize: 10, fontWeight: "900", letterSpacing: 2.5, marginBottom: 9 },
+  card: { borderRadius: 28, padding: 20, backgroundColor: "#EFFFF4", borderWidth: 1, borderColor: "#75EFA4", marginBottom: 12 },
+  cardCompact: { backgroundColor: "#072318", borderColor: "rgba(255,255,255,0.06)" },
+  cardTop: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  cardKicker: { color: "#21623B", fontSize: 10, fontWeight: "900", letterSpacing: 2.2 },
+  cardKickerCompact: { color: "#75EFA4" },
+  cardId: { fontSize: 26, fontWeight: "900", marginTop: 7 },
+  status: { color: "#EFFFF4", backgroundColor: "#0B6A36", borderRadius: 999, overflow: "hidden", paddingHorizontal: 12, paddingVertical: 8, fontSize: 11, fontWeight: "900" },
+  statusCompact: { color: "#A8FBC5", backgroundColor: "rgba(117,239,164,0.10)" },
+  restaurant: { fontSize: 22, fontWeight: "900", marginTop: 18 },
+  client: { fontSize: 14, fontWeight: "900", marginTop: 6 },
+  address: { fontSize: 14, lineHeight: 20, fontWeight: "800", marginTop: 10 },
+  item: { fontSize: 16, fontWeight: "900", marginTop: 15 },
+  handoffRail: { flexDirection: "row", alignItems: "flex-start", marginTop: 18, marginBottom: 2 },
+  handoffRailCompact: { opacity: 0.96 },
+  handoffStep: { width: 64, alignItems: "center" },
+  handoffNodeWrap: { width: 29, height: 29, alignItems: "center", justifyContent: "center" },
+  flowPulse: { position: "absolute", width: 27, height: 27, borderRadius: 999 },
+  handoffNode: { width: 27, height: 27, borderRadius: 99, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(3,23,12,0.09)", borderWidth: 1, borderColor: "rgba(3,23,12,0.14)" },
+  handoffNodeActive: { backgroundColor: "#75EFA4", borderColor: "#75EFA4" },
+  handoffNodeText: { color: "rgba(3,23,12,0.52)", fontSize: 11, fontWeight: "900" },
+  handoffNodeTextActive: { color: "#03170C" },
+  handoffLabel: { color: "rgba(3,23,12,0.54)", fontSize: 10, fontWeight: "900", marginTop: 7 },
+  handoffLabelCompact: { color: "rgba(227,255,236,0.54)" },
+  handoffLabelActive: { color: "#0B9C50" },
+  handoffLine: { flex: 1, height: 2, backgroundColor: "rgba(3,23,12,0.10)", marginTop: 13, marginHorizontal: -7 },
+  handoffLineActive: { backgroundColor: "#75EFA4" },
+  mapButton: { borderRadius: 18, alignItems: "center", paddingVertical: 13, backgroundColor: "rgba(11,106,54,0.10)", borderWidth: 1, borderColor: "rgba(11,106,54,0.20)", marginTop: 16 },
+  mapButtonText: { color: "#0B6A36", fontSize: 15, fontWeight: "900" },
+  action: { borderRadius: 18, alignItems: "center", paddingVertical: 14, backgroundColor: "#0B9C50", marginTop: 10 },
+  actionText: { color: "#FFFFFF", fontSize: 16, fontWeight: "900" },
+  offerActions: { gap: 10, marginTop: 12 },
+  offerAccept: { marginTop: 0 },
+  disabled: { opacity: 0.55 },
+  empty: { borderRadius: 26, padding: 22, backgroundColor: "#072318", borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", alignItems: "center", marginBottom: 12 },
+  emptyEmoji: { fontSize: 34 },
+  emptyTitle: { color: "#F3FFF7", fontSize: 21, fontWeight: "900", marginTop: 11 },
+  emptyText: { color: "rgba(227,255,236,0.60)", textAlign: "center", lineHeight: 20, marginTop: 7 },
+  orbitShell: { borderRadius: 24, padding: 16, backgroundColor: "#052016", borderWidth: 1, borderColor: "rgba(117,239,164,0.14)", marginBottom: 12 },
+  orbitHeader: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 13 },
+  orbitKicker: { color: "#75EFA4", fontSize: 9, fontWeight: "900", letterSpacing: 2.1 },
+  orbitTitle: { color: "#F3FFF7", fontSize: 16, lineHeight: 21, fontWeight: "900", marginTop: 5 },
+  orbitCount: { minWidth: 36, height: 36, borderRadius: 18, textAlign: "center", textAlignVertical: "center", color: "#03170C", backgroundColor: "#75EFA4", fontSize: 14, fontWeight: "900", overflow: "hidden" },
+  orbitRail: { gap: 10, paddingRight: 2 },
+  orbitTab: { width: 184, minHeight: 68, borderRadius: 18, paddingHorizontal: 13, paddingVertical: 12, flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "#072318", borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" },
+  orbitTabSelected: { backgroundColor: "#EFFFF4", borderColor: "#75EFA4" },
+  orbitTabDisabled: { opacity: 0.38 },
+  orbitTabPressed: { transform: [{ scale: 0.985 }], opacity: 0.92 },
+  orbitDot: { width: 9, height: 9, borderRadius: 99, backgroundColor: "rgba(227,255,236,0.24)" },
+  orbitDotSelected: { backgroundColor: "#0B9C50" },
+  orbitRestaurant: { color: "#F3FFF7", fontSize: 13, fontWeight: "900" },
+  orbitRestaurantSelected: { color: "#03170C" },
+  orbitMeta: { color: "rgba(227,255,236,0.52)", fontSize: 10, fontWeight: "800", marginTop: 4 },
+  orbitMetaSelected: { color: "rgba(3,23,12,0.58)" },
+  detailButton: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, borderRadius: 18, paddingHorizontal: 15, paddingVertical: 13, marginTop: 14, backgroundColor: "rgba(3,23,12,0.08)", borderWidth: 1, borderColor: "rgba(3,23,12,0.14)" },
+  detailButtonCompact: { backgroundColor: "rgba(117,239,164,0.08)", borderColor: "rgba(117,239,164,0.18)" },
+  detailButtonText: { color: "#06351D", fontSize: 13, fontWeight: "900" },
+  detailButtonTextCompact: { color: "#75EFA4" },
+  detailButtonArrow: { color: "#06351D", fontSize: 20, fontWeight: "900" },
+  toggle: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderRadius: 22, padding: 17, backgroundColor: "#062718", borderWidth: 1, borderColor: "rgba(117,239,164,0.13)", marginTop: 10, marginBottom: 9 },
+  toggleKicker: { color: "#75EFA4", fontSize: 10, fontWeight: "900", letterSpacing: 2.2 },
+  toggleTitle: { color: "#F3FFF7", fontSize: 17, fontWeight: "900", marginTop: 5 },
+  toggleIcon: { color: "#75EFA4", fontSize: 26, fontWeight: "800" },
 });

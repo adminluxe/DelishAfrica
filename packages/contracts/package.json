@@ -1,0 +1,36 @@
+{
+  "name": "@delishafrica/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Canonical domain contracts for DelishAfrica applications and services.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./order": {
+      "types": "./src/order.ts",
+      "default": "./src/order.ts"
+    },
+    "./legacy": {
+      "types": "./src/legacy.ts",
+      "default": "./src/legacy.ts"
+    },
+    "./projections": {
+      "types": "./src/projections.ts",
+      "default": "./src/projections.ts"
+    },
+    "./live-location": {
+      "types": "./src/live-location.ts",
+      "default": "./src/live-location.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}

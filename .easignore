@@ -51,3 +51,77 @@ npm-shrinkwrap.json
 !packages/**
 !services
 !services/**
+
+# BEGIN DELISHAFRICA EAS SECURITY PATCH V1B — 2026-08-04
+# Final deny rules. Keep this block after every workspace re-inclusion.
+# Secrets and environment files
+.secrets
+.secrets/**
+**/.secrets
+**/.secrets/**
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Runtime state, local EAS state and dependencies
+.runtime
+.runtime/**
+**/.runtime
+**/.runtime/**
+.eas
+.eas/**
+**/.eas
+**/.eas/**
+node_modules
+node_modules/**
+**/node_modules
+**/node_modules/**
+
+# Credential material that must never enter an EAS archive
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.p8
+**/*.pem
+**/*.key
+**/*.mobileprovision
+**/credentials.json
+**/id_rsa
+**/id_rsa.pub
+**/id_ed25519
+**/id_ed25519.pub
+
+# Generated application and diagnostic archives
+**/*.zip
+**/*.tar
+**/*.tgz
+**/*.tar.gz
+**/*.ipa
+**/*.apk
+**/*.aab
+
+# Historical diagnostics, snapshots, exports and backups
+_audit_out
+_audit_out/**
+**/_audit_out
+**/_audit_out/**
+_diag
+_diag/**
+**/_diag
+**/_diag/**
+_snapshots
+_snapshots/**
+**/_snapshots
+**/_snapshots/**
+DA_AUDITS
+DA_AUDITS/**
+DA_EXPORTS
+DA_EXPORTS/**
+DA_RUNTIME
+DA_RUNTIME/**
+backups
+backups/**
+**/backups
+**/backups/**
+# END DELISHAFRICA EAS SECURITY PATCH V1B

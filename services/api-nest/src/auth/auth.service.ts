@@ -2,7 +2,16 @@ import { Injectable } from '@nestjs/common';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
-import type { DaAuthRole, DaAuthTokenPayload, DaAuthUser } from './auth.types';
+import type {
+  DaAuthPrincipal,
+  DaAuthPrincipalResolution,
+  DaAuthRole,
+  DaAuthTokenPayload,
+  DaAuthTokenSource,
+  DaAuthUser,
+  DaResolvedAuthSource,
+} from './auth.types';
+import { ExternalJwksVerifierService } from './external-jwks-verifier.service';
 
 type DevLoginInput = {
   role?: DaAuthRole | string;
@@ -19,6 +28,8 @@ export class AuthService {
   private readonly audience = 'delishafrica-apps';
   private readonly ttlSeconds = 60 * 60 * 24 * 7;
 
+  constructor(private readonly trustedIdentity: ExternalJwksVerifierService) {}
+
   health() {
     return {
       ok: true,
@@ -26,13 +37,21 @@ export class AuthService {
       mode: 'progressive_nonblocking',
       roles: ['client', 'merchant', 'courier', 'ops'],
       required: false,
+      ownershipEligibleSources: ['external'],
+      devLoginOwnershipEligible: false,
+      trustedIdentity: this.trustedIdentity.health(),
     };
+  }
+
+  trustedIdentityHealth() {
+    return this.trustedIdentity.health();
   }
 
   devLogin(input: DevLoginInput = {}) {
     const user = this.makeUser(input);
-    const token = this.signUser(user);
-    const payload = this.verifyToken(token);
+    const token = this.signUser(user, 'dev-login');
+    const payload = this.verifyInternalToken(token);
+    const authSource = this.resolveAuthSource(payload?.authSource);
 
     return {
       ok: true,
@@ -42,29 +61,21 @@ export class AuthService {
       accessToken: token,
       token,
       user,
+      authSource,
+      ownershipEligible: this.isOwnershipEligibleSource(authSource),
       expiresAt: payload ? new Date(payload.exp * 1000).toISOString() : null,
     };
   }
 
-  meFromAuthorization(authorization?: string) {
-    const token = this.extractBearer(authorization);
-    if (!token) {
-      return {
-        ok: false,
-        authenticated: false,
-        required: false,
-        reason: 'missing_bearer_token',
-        user: null,
-      };
-    }
+  async meFromAuthorization(authorization?: string) {
+    const resolution = await this.resolvePrincipalFromAuthorization(authorization);
 
-    const payload = this.verifyToken(token);
-    if (!payload) {
+    if ('reason' in resolution) {
       return {
         ok: false,
         authenticated: false,
         required: false,
-        reason: 'invalid_or_expired_token',
+        reason: resolution.reason,
         user: null,
       };
     }
@@ -73,28 +84,79 @@ export class AuthService {
       ok: true,
       authenticated: true,
       required: false,
-      user: this.payloadToUser(payload),
-      payload,
+      user: this.payloadToUser(resolution.payload),
+      principal: resolution.principal,
+      payload: resolution.payload,
+      authSource: resolution.principal.authSource,
+      ownershipEligible: resolution.principal.ownershipEligible,
     };
   }
 
-  verify(input: { token?: string; accessToken?: string } = {}) {
+  async verify(input: { token?: string; accessToken?: string } = {}) {
     const token = input.token || input.accessToken || '';
-    const payload = this.verifyToken(token);
+    const resolution = await this.resolveToken(token);
 
-    if (!payload) {
+    if ('reason' in resolution) {
       return {
         ok: false,
         authenticated: false,
-        reason: 'invalid_or_expired_token',
+        reason: resolution.reason,
       };
     }
 
     return {
       ok: true,
       authenticated: true,
-      user: this.payloadToUser(payload),
-      payload,
+      user: this.payloadToUser(resolution.payload),
+      principal: resolution.principal,
+      payload: resolution.payload,
+      authSource: resolution.principal.authSource,
+      ownershipEligible: resolution.principal.ownershipEligible,
+    };
+  }
+
+  async resolvePrincipalFromAuthorization(
+    authorization?: string,
+  ): Promise<DaAuthPrincipalResolution> {
+    const token = this.extractBearer(authorization);
+    if (!token) {
+      return {
+        ok: false,
+        authenticated: false,
+        reason: 'missing_bearer_token',
+        principal: null,
+      };
+    }
+
+    return this.resolveToken(token);
+  }
+
+  async resolveToken(token: string): Promise<DaAuthPrincipalResolution> {
+    const internalPayload = this.verifyInternalToken(token);
+    if (internalPayload) {
+      return {
+        ok: true,
+        authenticated: true,
+        principal: this.payloadToPrincipal(internalPayload),
+        payload: internalPayload,
+      };
+    }
+
+    const external = await this.trustedIdentity.verifyToken(token);
+    if (external.ok) {
+      return {
+        ok: true,
+        authenticated: true,
+        principal: this.payloadToPrincipal(external.payload),
+        payload: external.payload,
+      };
+    }
+
+    return {
+      ok: false,
+      authenticated: false,
+      reason: 'invalid_or_expired_token',
+      principal: null,
     };
   }
 
@@ -162,7 +224,7 @@ export class AuthService {
     return 'client';
   }
 
-  private signUser(user: DaAuthUser): string {
+  private signUser(user: DaAuthUser, authSource: DaAuthTokenSource): string {
     const now = Math.floor(Date.now() / 1000);
     const payload: DaAuthTokenPayload = {
       sub: user.id,
@@ -173,6 +235,7 @@ export class AuthService {
       courierId: user.courierId,
       clientId: user.clientId,
       opsScope: user.opsScope,
+      authSource,
       iat: now,
       exp: now + this.ttlSeconds,
       iss: this.issuer,
@@ -191,7 +254,7 @@ export class AuthService {
     return `${encodedHeader}.${encodedPayload}.${signature}`;
   }
 
-  private verifyToken(token: string): DaAuthTokenPayload | null {
+  private verifyInternalToken(token: string): DaAuthTokenPayload | null {
     try {
       const parts = String(token || '').split('.');
       if (parts.length !== 3) return null;
@@ -231,6 +294,37 @@ export class AuthService {
     };
   }
 
+  private payloadToPrincipal(payload: DaAuthTokenPayload): DaAuthPrincipal {
+    const authSource = this.resolveAuthSource(payload.authSource);
+
+    return {
+      issuer: String(payload.iss || ''),
+      subject: payload.sub,
+      role: payload.role,
+      name: payload.name,
+      email: payload.email,
+      merchantSlug: payload.merchantSlug,
+      courierId: payload.courierId,
+      clientId: payload.clientId,
+      opsScope: payload.opsScope,
+      authSource,
+      ownershipEligible: this.isOwnershipEligibleSource(authSource),
+      expiresAt: new Date(payload.exp * 1000).toISOString(),
+    };
+  }
+
+  private resolveAuthSource(
+    value: DaAuthTokenSource | undefined,
+  ): DaResolvedAuthSource {
+    if (value === 'dev-login') return 'dev-login';
+    if (value === 'external') return 'external';
+    return 'legacy-unknown';
+  }
+
+  private isOwnershipEligibleSource(source: DaResolvedAuthSource): boolean {
+    return source === 'external';
+  }
+
   private extractBearer(authorization?: string): string {
     const value = String(authorization || '').trim();
     if (!value) return '';
@@ -251,39 +345,37 @@ export class AuthService {
   }
 
   private safeEqual(a: string, b: string): boolean {
-    const left = Buffer.from(String(a));
-    const right = Buffer.from(String(b));
-
-    if (left.length !== right.length) return false;
-
-    return crypto.timingSafeEqual(left, right);
+    try {
+      const left = Buffer.from(a);
+      const right = Buffer.from(b);
+      if (left.length !== right.length) return false;
+      return crypto.timingSafeEqual(left, right);
+    } catch {
+      return false;
+    }
   }
 
   private secret(): string {
-    const fromEnv =
-      process.env.DA_AUTH_DEV_SECRET ||
-      process.env.JWT_SECRET ||
-      process.env.AUTH_SECRET;
+    const explicit = String(process.env.DA_AUTH_SECRET || '').trim();
+    if (explicit) return explicit;
 
-    if (fromEnv && fromEnv.trim().length >= 24) {
-      return fromEnv.trim();
+    const filePath = String(
+      process.env.DA_AUTH_SECRET_FILE || '/run/secrets/delishafrica-auth-secret',
+    ).trim();
+
+    try {
+      const fileSecret = fs.readFileSync(filePath, 'utf8').trim();
+      if (fileSecret) return fileSecret;
+    } catch {
+      // Progressive fallback below.
     }
 
-    const file = path.join(process.cwd(), '.runtime', 'auth-dev-secret.txt');
-    const dir = path.dirname(file);
-
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-
-    if (fs.existsSync(file)) {
-      const existing = fs.readFileSync(file, 'utf8').trim();
-      if (existing.length >= 32) return existing;
-    }
-
-    const generated = crypto.randomBytes(48).toString('hex');
-    fs.writeFileSync(file, generated, { encoding: 'utf8', mode: 0o600 });
-
-    return generated;
+    const host = String(process.env.HOSTNAME || 'local');
+    return crypto
+      .createHash('sha256')
+      .update(path.resolve(process.cwd()))
+      .update('|')
+      .update(host)
+      .digest('hex');
   }
 }

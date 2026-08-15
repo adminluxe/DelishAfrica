@@ -1,3 +1,4 @@
+import { daOrdersFetch } from "../../utils/daOrdersApi";
 import React, { useEffect, useState } from "react";
 import {
 ActivityIndicator,
@@ -119,7 +120,7 @@ const partnersRes = await fetch(API_ORIGIN + "/api/partners?t=" + Date.now());
 const partnersJson = await partnersRes.json();
 setPartners(Array.isArray(partnersJson) ? partnersJson : []);
 
-const ordersRes = await fetch(API_V1 + "/orders/demo/list", {
+const ordersRes = await daOrdersFetch(API_V1 + "/orders/demo/list", {
 method: "POST",
 headers: { "Content-Type": "application/json" },
 body: JSON.stringify({})

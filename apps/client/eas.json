@@ -16,6 +16,9 @@
       "cache": {
         "key": "delishafrica-pnpm-9.15.4-v2"
       }
+    },
+    "production": {
+      "autoIncrement": true
     }
   },
   "submit": {

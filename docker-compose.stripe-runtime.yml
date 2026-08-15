@@ -16,3 +16,15 @@ services:
       PAYMENTS_PROVIDER: stripe
       PAYMENTS_MODE: stripe_test
       STRIPE_MOCK_MODE: "false"
+      DA_GOOGLE_LOCATION_CONFIG_FILE: /run/secrets/da-google-location-v1.json
+      DA_IDENTITY_PROOF_SIGNING_SECRET_FILE: /run/secrets/da-identity-proof-signing-v1
+      DA_IDENTITY_PROVIDERS_FILE: /run/secrets/da-identity-providers-v1.json
+      DA_POSTMARK_CONFIG_FILE: /run/secrets/da-postmark-v1.json
+      DA_PROVIDER_BRIDGE_EXTERNAL_CALLS: "0"
+      DA_SMS_PRIMARY_PROVIDER: sinch
+      DA_SMS_SECONDARY_PROVIDER: twilio
+    volumes:
+      - "/opt/delishafrica/secrets/da_identity_proof_signing_v1.key:/run/secrets/da-identity-proof-signing-v1:ro"
+      - "/opt/delishafrica/secrets/da_identity_providers_v1.json:/run/secrets/da-identity-providers-v1.json:ro"
+      - "/opt/delishafrica/secrets/da_postmark_v1.json:/run/secrets/da-postmark-v1.json:ro"
+      - "/opt/delishafrica/secrets/da_google_location_v1.json:/run/secrets/da-google-location-v1.json:ro"

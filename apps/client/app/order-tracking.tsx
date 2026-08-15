@@ -1,3 +1,4 @@
+import { daOrdersFetch } from "../utils/daOrdersApi";
 import React from "react";
 import {
   ActivityIndicator,
@@ -127,7 +128,7 @@ function pickOrders(payload: unknown): DemoOrder[] {
 }
 
 async function postJson(path: string, body: Record<string, unknown> = {}) {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const res = await daOrdersFetch(`${API_BASE_URL}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

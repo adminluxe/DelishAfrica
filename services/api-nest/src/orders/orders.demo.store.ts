@@ -288,9 +288,11 @@ export function createDemoOrder(input: any = {}): AnyOrder {
   const existingIndex = orders.findIndex((item) => String(item.id) === String(order.id));
 
   if (existingIndex >= 0) {
+    const immutableOwnership = orders[existingIndex]?.daOwnership || order.daOwnership;
     orders[existingIndex] = {
       ...orders[existingIndex],
       ...order,
+      ...(immutableOwnership ? { daOwnership: immutableOwnership } : {}),
       updatedAt: nowIso(),
     };
   } else {
@@ -357,6 +359,9 @@ confidence?: number;
 totalEtaMin?: number;
 confirmed?: boolean;
 auditId?: string;
+expiresAt?: string;
+territoryKey?: string;
+offerAttempt?: number;
 };
 
 function makeProposalAuditId(): string {
@@ -462,6 +467,9 @@ score: typeof input.score === 'number' ? input.score : undefined,
 confidence: typeof input.confidence === 'number' ? input.confidence : undefined,
 totalEtaMin: typeof input.totalEtaMin === 'number' ? input.totalEtaMin : undefined,
 auditId,
+expiresAt: input.expiresAt,
+territoryKey: input.territoryKey,
+offerAttempt: input.offerAttempt,
 },
 updatedAt: at,
 timeline: [
@@ -481,6 +489,69 @@ auditId,
 safeWrite(orders);
 
 return clone(orders[idx]);
+}
+
+export function rejectDemoOrderCourier(input: any = {}): AnyOrder | null {
+  boot();
+  const orderId = String(input.orderId || input.id || input.publicId || '').trim();
+  const courierId = String(input.courierId || '').trim();
+  if (!orderId || !courierId) return null;
+  const idx = orders.findIndex((order: any) => [order.id, order.orderId, order.publicId].filter(Boolean).map(String).includes(orderId));
+  if (idx < 0) return null;
+  const current = orders[idx] as any;
+  const proposal = current.assignmentProposal || null;
+  if (!proposal || proposal.status !== 'proposed' || String(proposal.courierId || '') !== courierId) return null;
+  const now = nowIso();
+  const auditId = `da-reject-${Date.now()}-${Math.floor(Math.random() * 9000 + 1000)}`;
+  orders[idx] = {
+    ...current,
+    updatedAt: now,
+    assignmentProposal: {
+      ...proposal,
+      status: 'rejected',
+      rejectedAt: now,
+      rejectedReason: input.reason || 'courier_declined',
+      rejectAuditId: auditId,
+    },
+    timeline: [
+      ...(Array.isArray(current.timeline) ? current.timeline : []),
+      { status: current.status, at: now, changedAt: now, label: 'courier_rejected', note: 'Offre refusée par le coursier', courierId, auditId },
+    ],
+  } as AnyOrder;
+  safeWrite(orders);
+  return clone(orders[idx]);
+}
+
+export function releaseDemoOrderCourierAssignment(input: any = {}): AnyOrder | null {
+  boot();
+  const orderId = String(input.orderId || input.id || input.publicId || '').trim();
+  const courierId = String(input.courierId || '').trim();
+  if (!orderId) return null;
+  const idx = orders.findIndex((order: any) => [order.id, order.orderId, order.publicId].filter(Boolean).map(String).includes(orderId));
+  if (idx < 0) return null;
+  const current = orders[idx] as any;
+  const proposal = current.assignmentProposal || null;
+  if (!proposal) return clone(current);
+  if (courierId && String(proposal.courierId || '') !== courierId) return null;
+  const now = nowIso();
+  const auditId = `da-release-${Date.now()}-${Math.floor(Math.random() * 9000 + 1000)}`;
+  orders[idx] = {
+    ...current,
+    updatedAt: now,
+    assignmentProposal: {
+      ...proposal,
+      status: 'released',
+      releasedAt: now,
+      releaseReason: input.reason || 'dispatch_reconcile',
+      releaseAuditId: auditId,
+    },
+    timeline: [
+      ...(Array.isArray(current.timeline) ? current.timeline : []),
+      { status: current.status, at: now, changedAt: now, label: 'courier_assignment_released', note: input.reason || 'Assignation libérée', courierId: proposal.courierId, auditId },
+    ],
+  } as AnyOrder;
+  safeWrite(orders);
+  return clone(orders[idx]);
 }
 
 export function setDemoOrderStatus(input: any, maybeStatus?: any): AnyOrder | null {

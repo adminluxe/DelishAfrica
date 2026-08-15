@@ -1,3 +1,10 @@
+import {
+  daMerchantOidcAccessToken,
+  daMerchantOidcLogout,
+  daMerchantOidcSession,
+  type MerchantOidcSession,
+} from './daMerchantOidc';
+
 type DaRole = 'client' | 'merchant' | 'courier' | 'ops';
 
 export type DaAuthUser = {
@@ -18,23 +25,22 @@ export type DaAuthSession = {
   accessToken?: string;
   user?: DaAuthUser | null;
   reason?: string;
+  source?: 'external' | 'development' | 'none';
+  ownershipEligible?: boolean;
 };
 
-const ACCESS_KEY = 'da_auth_access_token_v1';
-const REFRESH_KEY = 'da_auth_refresh_token_v1';
-
+const DEV_ACCESS_KEY = 'da_auth_access_token_v1';
+const DEV_REFRESH_KEY = 'da_auth_refresh_token_v1';
 const MEMORY: Record<string, string> = {};
 
 function apiBase(): string {
-  const extra = (globalThis as any)?.process?.env || {};
+  const env = (globalThis as any)?.process?.env || {};
   const raw =
-    extra.EXPO_PUBLIC_API_BASE_URL ||
-    extra.EXPO_PUBLIC_API_URL ||
+    env.EXPO_PUBLIC_API_BASE_URL ||
+    env.EXPO_PUBLIC_API_URL ||
     'https://api.delishafrica.me/api/v1';
-
-  return String(raw).replace(/\/+$/, '').endsWith('/api/v1')
-    ? String(raw).replace(/\/+$/, '')
-    : String(raw).replace(/\/+$/, '') + '/api/v1';
+  const normalized = String(raw).replace(/\/+$/, '');
+  return normalized.endsWith('/api/v1') ? normalized : `${normalized}/api/v1`;
 }
 
 function getSecureStore(): any | null {
@@ -48,39 +54,49 @@ function getSecureStore(): any | null {
 
 async function setItem(key: string, value: string): Promise<void> {
   const SecureStore = getSecureStore();
-
   if (SecureStore?.setItemAsync) {
     await SecureStore.setItemAsync(key, value);
     return;
   }
-
   MEMORY[key] = value;
 }
 
 async function getItem(key: string): Promise<string | null> {
   const SecureStore = getSecureStore();
-
-  if (SecureStore?.getItemAsync) {
-    return await SecureStore.getItemAsync(key);
-  }
-
+  if (SecureStore?.getItemAsync) return await SecureStore.getItemAsync(key);
   return MEMORY[key] || null;
 }
 
 async function deleteItem(key: string): Promise<void> {
   const SecureStore = getSecureStore();
-
   if (SecureStore?.deleteItemAsync) {
     await SecureStore.deleteItemAsync(key);
     return;
   }
-
   delete MEMORY[key];
 }
 
+async function requestSession(path: string, init?: RequestInit): Promise<DaAuthSession> {
+  const response = await fetch(`${apiBase()}${path}`, init);
+  const data = await response.json();
+  return data as DaAuthSession;
+}
+
+function externalToDaSession(session: MerchantOidcSession): DaAuthSession {
+  return {
+    ok: session.authenticated,
+    authenticated: session.authenticated,
+    required: false,
+    source: session.authenticated ? 'external' : 'none',
+    reason: session.reason,
+    user: session.user,
+    ownershipEligible: session.authenticated,
+  };
+}
+
 export async function daAuthHealth(): Promise<any> {
-  const res = await fetch(`${apiBase()}/auth/health`);
-  return await res.json();
+  const response = await fetch(`${apiBase()}/auth/health`);
+  return await response.json();
 }
 
 export async function daDevLogin(payload?: {
@@ -91,7 +107,7 @@ export async function daDevLogin(payload?: {
   courierId?: string;
   clientId?: string;
 }): Promise<DaAuthSession> {
-  const res = await fetch(`${apiBase()}/auth/dev-login`, {
+  const response = await fetch(`${apiBase()}/auth/dev-login`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -100,56 +116,82 @@ export async function daDevLogin(payload?: {
       ...(payload || {}),
     }),
   });
-
-  const data = await res.json();
-
+  const data = (await response.json()) as DaAuthSession;
   const token = data.accessToken || data.token;
-  if (token) {
-    await setItem(ACCESS_KEY, token);
-  }
-
-  return data;
+  if (token) await setItem(DEV_ACCESS_KEY, token);
+  return { ...data, source: 'development', ownershipEligible: false };
 }
 
 export async function daGetToken(): Promise<string | null> {
-  return await getItem(ACCESS_KEY);
+  const external = await daMerchantOidcSession();
+  if (external.authenticated) return await daMerchantOidcAccessToken();
+  return await getItem(DEV_ACCESS_KEY);
 }
 
 export async function daLogout(): Promise<void> {
-  await deleteItem(ACCESS_KEY);
-  await deleteItem(REFRESH_KEY);
+  try {
+    const ordersApi = require('./daOrdersApi');
+    await ordersApi.daPurgeOrdersAccountState?.();
+  } catch {
+    // Best effort account-bound cache purge.
+  }
+  await deleteItem(DEV_ACCESS_KEY);
+  await deleteItem(DEV_REFRESH_KEY);
+}
+
+export async function daLogoutAll(): Promise<void> {
+  try {
+    await daMerchantOidcLogout();
+  } finally {
+    await daLogout();
+  }
 }
 
 export async function daMe(): Promise<DaAuthSession> {
-  const token = await daGetToken();
+  const external = await daMerchantOidcSession();
+  if (external.authenticated) {
+    const token = await daMerchantOidcAccessToken();
+    if (token) {
+      const api = await requestSession('/auth/me', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return { ...api, source: 'external', ownershipEligible: true };
+    }
+    return externalToDaSession(external);
+  }
 
-  const headers: Record<string, string> = {};
-  if (token) headers.Authorization = `Bearer ${token}`;
-
-  const res = await fetch(`${apiBase()}/auth/me`, { headers });
-  return await res.json();
+  const devToken = await getItem(DEV_ACCESS_KEY);
+  if (!devToken) return externalToDaSession(external);
+  const api = await requestSession('/auth/me', {
+    headers: { Authorization: `Bearer ${devToken}` },
+  });
+  return { ...api, source: 'development', ownershipEligible: false };
 }
 
 export async function daVerify(): Promise<DaAuthSession> {
-  const token = await daGetToken();
-
+  const externalToken = await daMerchantOidcAccessToken();
+  const token = externalToken || (await getItem(DEV_ACCESS_KEY));
   if (!token) {
     return {
       ok: false,
       authenticated: false,
       required: false,
+      source: 'none',
+      ownershipEligible: false,
       reason: 'missing_local_token',
       user: null,
     };
   }
-
-  const res = await fetch(`${apiBase()}/auth/verify`, {
+  const api = await requestSession('/auth/verify', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ token }),
   });
-
-  return await res.json();
+  return {
+    ...api,
+    source: externalToken ? 'external' : 'development',
+    ownershipEligible: Boolean(externalToken),
+  };
 }
 
 export function daAuthRole(): DaRole {

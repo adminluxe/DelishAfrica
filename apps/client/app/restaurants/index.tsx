@@ -58,7 +58,7 @@ refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
 <Text style={styles.kicker}>DELISHAFRICA®</Text>
 <Text style={styles.title}>Restaurants</Text>
 <Text style={styles.subtitle}>
-Une sélection africaine premium, avec Thieyp actif aujourd’hui et de nouveaux partenaires préparés proprement.
+Deux tables partenaires, deux identités culinaires : explorez Thieyp et La Boule Bleue dans la sélection DelishAfrica®.
 </Text>
 <Text style={styles.message}>{message}</Text>
 </View>

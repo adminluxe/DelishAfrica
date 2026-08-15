@@ -1,3 +1,4 @@
+import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useEffect, useMemo, useState } from "react";
 import {
 ActivityIndicator,
@@ -185,7 +186,7 @@ return found?.note || found?.label;
 }
 
 async function readOrders(): Promise<DemoOrder[]> {
-const res = await fetch(`${API_BASE_URL}/api/v1/orders/demo/list`, {
+const res = await daOrdersFetch(`${API_BASE_URL}/api/v1/orders/demo/list`, {
 method: "POST",
 headers: { "Content-Type": "application/json", Accept: "application/json" },
 body: JSON.stringify({ scope: "client-live-story-v1-readonly" }),

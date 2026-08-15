@@ -1,5 +1,7 @@
+import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { AquaticSignature } from "../components/aquatic/AquaticSignature";
+import { AccessibilityInfo, ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 type OrderLike = {
   id?: string;
@@ -99,11 +101,12 @@ function sortOrders(orders: OrderLike[]) {
 export default function DelishAfricaSignatureScreen() {
   const [orders, setOrders] = useState<OrderLike[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reduceMotion, setReduceMotion] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/orders/demo/list`, {
+      const res = await daOrdersFetch(`${API_BASE_URL}/orders/demo/list`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scope: "client-signature-v1e-readonly" }),
@@ -118,6 +121,18 @@ export default function DelishAfricaSignatureScreen() {
   }, []);
 
   useEffect(() => {
+    let mounted = true;
+    AccessibilityInfo.isReduceMotionEnabled().then((value) => {
+      if (mounted) setReduceMotion(value);
+    });
+    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
     load();
   }, [load]);
 
@@ -128,11 +143,18 @@ export default function DelishAfricaSignatureScreen() {
   const status = statusOf(active);
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <View style={styles.orbOne} />
-      <View style={styles.orbTwo} />
+    <AquaticSignature reduceMotion={reduceMotion}>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.orbOne} pointerEvents="none" />
+      <View style={styles.orbTwo} pointerEvents="none" />
+      <View pointerEvents="none" style={styles.signatureCurrentLayer}>
+        <View style={[styles.signatureCurrent, styles.signatureCurrentOne]} />
+        <View style={[styles.signatureCurrent, styles.signatureCurrentTwo]} />
+        <View style={[styles.signatureCurrent, styles.signatureCurrentThree]} />
+      </View>
 
       <View style={styles.heroCard}>
+        <View pointerEvents="none" style={styles.heroRefraction} />
         <Text style={styles.kicker}>DELISHAFRICA® SIGNATURE</Text>
         <Text style={styles.title}>Le voyage culinaire vivant.</Text>
         <Text style={styles.subtitle}>
@@ -158,6 +180,7 @@ export default function DelishAfricaSignatureScreen() {
       </View>
 
       <View style={styles.oracleCard}>
+        <View pointerEvents="none" style={styles.oracleSheen} />
         <Text style={styles.oracleKicker}>AFROTASTE ORACLE</Text>
         <Text style={styles.oracleTitle}>{itemName(active)}</Text>
         <Text style={styles.oracleCopy}>
@@ -182,28 +205,120 @@ export default function DelishAfricaSignatureScreen() {
       </Pressable>
 
       <Text style={styles.footer}>Signature DelishAfrica® · paiement sécurisé · expérience fluide.</Text>
-    </ScrollView>
+      </ScrollView>
+    </AquaticSignature>
   );
 }
 
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#020A07" },
+  screen: { flex: 1, backgroundColor: "transparent" },
   content: { paddingHorizontal: 20, paddingTop: 62, paddingBottom: 42, gap: 22 },
-  orbOne: { position: "absolute", top: -70, right: -80, width: 260, height: 260, borderRadius: 999, backgroundColor: "rgba(245,190,107,0.18)" },
-  orbTwo: { position: "absolute", top: 320, left: -110, width: 220, height: 220, borderRadius: 999, backgroundColor: "rgba(47,211,190,0.14)" },
-  heroCard: { borderRadius: 30, borderWidth: 1, borderColor: "rgba(245,190,107,0.42)", backgroundColor: "rgba(2,24,15,0.92)", padding: 28, gap: 22, overflow: "hidden" },
+  orbOne: {
+    position: "absolute",
+    top: -72,
+    right: -82,
+    width: 264,
+    height: 264,
+    borderRadius: 999,
+    backgroundColor: "rgba(121,239,226,0.13)",
+    borderWidth: 1,
+    borderColor: "rgba(204,255,244,0.14)",
+  },
+  orbTwo: {
+    position: "absolute",
+    top: 320,
+    left: -112,
+    width: 224,
+    height: 224,
+    borderRadius: 999,
+    backgroundColor: "rgba(245,190,107,0.13)",
+    borderWidth: 1,
+    borderColor: "rgba(245,221,177,0.12)",
+  },
+  signatureCurrentLayer: {
+    position: "absolute",
+    top: 118,
+    left: -54,
+    right: -54,
+    height: 520,
+    overflow: "hidden",
+  },
+  signatureCurrent: {
+    position: "absolute",
+    height: 1,
+    borderRadius: 999,
+    backgroundColor: "rgba(184,255,242,0.16)",
+    transform: [{ rotate: "-8deg" }],
+  },
+  signatureCurrentOne: { top: 34, left: 12, width: 430 },
+  signatureCurrentTwo: { top: 164, right: -24, width: 360, opacity: 0.7 },
+  signatureCurrentThree: { top: 328, left: -22, width: 390, opacity: 0.5 },
+  heroCard: {
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: "rgba(156,241,222,0.28)",
+    backgroundColor: "rgba(3,29,25,0.86)",
+    padding: 28,
+    gap: 22,
+    overflow: "hidden",
+    shadowColor: "#8CF7EA",
+    shadowOpacity: 0.12,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 12 },
+  },
+  heroRefraction: {
+    position: "absolute",
+    width: 320,
+    height: 112,
+    borderRadius: 999,
+    top: -62,
+    right: -96,
+    backgroundColor: "rgba(208,255,246,0.11)",
+    borderWidth: 1,
+    borderColor: "rgba(208,255,246,0.12)",
+    transform: [{ rotate: "-10deg" }],
+  },
   kicker: { color: "#F6BE67", fontSize: 13, fontWeight: "900", letterSpacing: 9, lineHeight: 24 },
   title: { color: "#FFF9EC", fontSize: 46, lineHeight: 48, fontWeight: "900", letterSpacing: -2 },
-  subtitle: { color: "rgba(255,249,236,0.70)", fontSize: 20, lineHeight: 32, fontWeight: "600" },
-  signalBand: { borderRadius: 24, borderWidth: 1, borderColor: "rgba(255,249,236,0.16)", backgroundColor: "rgba(255,255,255,0.045)", padding: 16, gap: 12 },
-  signalLeft: { borderRadius: 20, backgroundColor: "rgba(255,249,236,0.08)", padding: 16 },
-  signalMiddle: { borderRadius: 20, backgroundColor: "rgba(255,249,236,0.08)", padding: 16 },
-  signalRight: { borderRadius: 20, backgroundColor: "rgba(255,249,236,0.08)", padding: 16 },
+  subtitle: { color: "rgba(255,249,236,0.72)", fontSize: 20, lineHeight: 32, fontWeight: "600" },
+  signalBand: {
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(192,255,243,0.15)",
+    backgroundColor: "rgba(211,255,246,0.045)",
+    padding: 16,
+    gap: 12,
+  },
+  signalLeft: { borderRadius: 20, backgroundColor: "rgba(255,249,236,0.075)", padding: 16 },
+  signalMiddle: { borderRadius: 20, backgroundColor: "rgba(148,238,223,0.075)", padding: 16 },
+  signalRight: { borderRadius: 20, backgroundColor: "rgba(255,249,236,0.075)", padding: 16 },
   signalLabel: { color: "rgba(255,249,236,0.62)", fontSize: 12, fontWeight: "900", letterSpacing: 4, textTransform: "uppercase" },
   signalValue: { color: "#FFF9EC", fontSize: 34, lineHeight: 38, fontWeight: "900", marginTop: 8 },
   signalHint: { color: "rgba(255,249,236,0.55)", fontSize: 15, fontWeight: "700", marginTop: 5 },
-  oracleCard: { borderRadius: 30, backgroundColor: "#F5BE67", padding: 28, gap: 18 },
+  oracleCard: {
+    borderRadius: 30,
+    backgroundColor: "rgba(245,190,103,0.95)",
+    borderWidth: 1,
+    borderColor: "rgba(255,241,205,0.48)",
+    padding: 28,
+    gap: 18,
+    overflow: "hidden",
+    shadowColor: "#F5BE67",
+    shadowOpacity: 0.14,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 10 },
+  },
+  oracleSheen: {
+    position: "absolute",
+    top: -42,
+    left: -38,
+    right: -38,
+    height: 88,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.20)",
+    transform: [{ rotate: "4deg" }],
+  },
   oracleKicker: { color: "#130B05", fontSize: 14, fontWeight: "900", letterSpacing: 7, lineHeight: 24 },
   oracleTitle: { color: "#100805", fontSize: 38, lineHeight: 42, fontWeight: "900", letterSpacing: -1.5 },
   oracleCopy: { color: "rgba(16,8,5,0.76)", fontSize: 20, lineHeight: 30, fontWeight: "800" },
@@ -212,7 +327,16 @@ const styles = StyleSheet.create({
   stepDot: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "#100805" },
   stepDotText: { color: "#F5BE67", fontSize: 18, fontWeight: "900" },
   stepText: { color: "#100805", fontSize: 22, fontWeight: "900" },
-  refreshButton: { borderRadius: 999, minHeight: 58, alignItems: "center", justifyContent: "center", backgroundColor: "#FFF9EC", marginTop: 4 },
+  refreshButton: {
+    borderRadius: 999,
+    minHeight: 58,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,249,236,0.96)",
+    borderWidth: 1,
+    borderColor: "rgba(189,255,245,0.22)",
+    marginTop: 4,
+  },
   refreshText: { color: "#06110C", fontSize: 19, fontWeight: "900" },
-  footer: { textAlign: "center", color: "rgba(255,249,236,0.35)", fontSize: 13, lineHeight: 20, marginTop: 4 },
+  footer: { textAlign: "center", color: "rgba(226,255,247,0.42)", fontSize: 13, lineHeight: 20, marginTop: 4 },
 });

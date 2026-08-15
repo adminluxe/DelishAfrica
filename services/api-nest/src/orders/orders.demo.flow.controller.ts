@@ -6,6 +6,10 @@ import {
   resetDemoOrders,
   updateDemoOrderStatus,
 } from './orders.demo.store';
+import { UseInterceptors } from "@nestjs/common";
+import { canonicalGetInterceptor, canonicalListInterceptor } from "./orders.canonical.response";
+
+
 
 type AnyRecord = Record<string, any>;
 
@@ -38,6 +42,7 @@ export class OrdersDemoFlowController {
   }
 
   @Post('list')
+  @UseInterceptors(canonicalListInterceptor)
   list(@Body() body: AnyRecord = {}) {
     const orders = listDemoOrders(body);
 
@@ -51,6 +56,7 @@ export class OrdersDemoFlowController {
   }
 
   @Post('get')
+  @UseInterceptors(canonicalGetInterceptor)
   get(@Body() body: AnyRecord = {}) {
     const id = body.id ?? body.orderId;
     const order = getDemoOrder(id);

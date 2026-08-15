@@ -116,6 +116,12 @@ export async function daGetToken(): Promise<string | null> {
 }
 
 export async function daLogout(): Promise<void> {
+  try {
+    const ordersApi = require('./daOrdersApi');
+    await ordersApi.daPurgeOrdersAccountState?.();
+  } catch {
+    // Best effort account-bound cache purge.
+  }
   await deleteItem(ACCESS_KEY);
   await deleteItem(REFRESH_KEY);
 }

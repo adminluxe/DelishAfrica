@@ -1,3 +1,4 @@
+import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useEffect, useMemo, useState } from "react";
 import {
 ActivityIndicator,
@@ -11,6 +12,8 @@ View,
 } from "react-native";
 import { router } from "expo-router";
 
+import { MotionHero } from "../components/motion/MotionHero";
+import { MotionScene } from "../components/motion/MotionScene";
 type OrderStatus = "pending" | "accepted" | "ready" | "picked_up" | "delivered" | string;
 
 type DemoOrder = {
@@ -202,14 +205,14 @@ function etaDetail(order?: DemoOrder) {
 const s = statusOf(order);
 if (s === "pending") return "Le restaurant doit accepter.";
 if (s === "accepted") return "La cuisine prépare votre commande.";
-if (s === "ready") return "Un coursier peut récupérer chez Thieyp.";
+if (s === "ready") return `Un coursier peut récupérer chez ${restaurantOf(order)}.`;
 if (s === "picked_up") return "Le coursier est en route vers vous.";
 if (s === "delivered") return "Commande terminée.";
 return "Suivi en cours.";
 }
 
 async function loadOrders() {
-const res = await fetch(`${API_BASE_URL}/orders/demo/list`, {
+const res = await daOrdersFetch(`${API_BASE_URL}/orders/demo/list`, {
 method: "POST",
 headers: { "Content-Type": "application/json" },
 body: JSON.stringify({}),
@@ -257,6 +260,13 @@ const [loading, setLoading] = useState(true);
 const [refreshing, setRefreshing] = useState(false);
 const [error, setError] = useState<string | null>(null);
 
+  // DA_V3C11H2_FINAL_FOCUS_POLISH_V1B
+  const [showDeliverySteps, setShowDeliverySteps] = useState(false);
+  const [showRecentOrders, setShowRecentOrders] = useState(false);
+
+  // DA_V3C11H4_ZERO_SCROLL_PREMIUM
+  const [showOrderDetails, setShowOrderDetails] = useState(false);
+
 const selectedOrder = useMemo(() => {
 if (selectedId) {
 const found = orders.find((order) => publicIdOf(order) === selectedId || order.id === selectedId || order.orderId === selectedId);
@@ -294,10 +304,8 @@ refresh();
 
 return (
 <SafeAreaView style={styles.safe}>
-<View pointerEvents="none" style={styles.aquaVeil} />
-<View pointerEvents="none" style={styles.aquaDrop} />
-<View pointerEvents="none" style={styles.aquaRipple} />
-<View pointerEvents="none" style={styles.aquaFoam} />
+{/* DA_P2C2_MOTION_SCENE_ENGINE_RUNTIME_V2_V1 */}
+<MotionScene />
 <ScrollView
 contentContainerStyle={styles.container}
 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
@@ -310,33 +318,37 @@ Votre commande, la cuisine et le coursier dans une lecture simple et rassurante.
 </Text>
 </View>
 
-<View style={styles.syncCard}>
-<Text style={styles.cardKicker}>Connexion sécurisée</Text>
-<Text style={styles.syncTitle}>Service DelishAfrica® synchronisé</Text>
-
-<View style={styles.metricsRow}>
-<View style={styles.metric}>
-<Text style={styles.metricValue}>{orders.length}</Text>
-<Text style={styles.metricLabel}>commandes</Text>
-</View>
-<View style={styles.metric}>
-<Text style={styles.metricValue}>{activeCount}</Text>
-<Text style={styles.metricLabel}>actives</Text>
-</View>
-<View style={styles.metric}>
-<Text style={styles.metricValue}>{deliveredCount}</Text>
-<Text style={styles.metricLabel}>livrées</Text>
-</View>
+<View style={styles.compactSyncCard}>
+<View style={styles.compactSyncTopRow}>
+<View style={styles.compactSyncIdentity}>
+<View style={styles.compactSyncDot} />
+<View style={{ flex: 1 }}>
+<Text style={styles.compactSyncTitle}>Service synchronisé</Text>
+<Text style={styles.compactSyncSubtitle}>DelishAfrica® sécurisé</Text>
 </View>
 </View>
 
-<TouchableOpacity activeOpacity={0.86} style={styles.refreshButton} onPress={refresh}>
+<TouchableOpacity
+activeOpacity={0.82}
+style={styles.compactRefreshButton}
+onPress={refresh}
+>
 {refreshing && !loading ? (
-<ActivityIndicator />
+<ActivityIndicator size="small" />
 ) : (
-<Text style={styles.refreshButtonText}>{loading ? "Lecture du suivi…" : "Actualiser le suivi"}</Text>
+<Text style={styles.compactRefreshText}>
+{loading ? "Lecture…" : "Actualiser"}
+</Text>
 )}
 </TouchableOpacity>
+</View>
+
+<Text style={styles.compactMetricsText}>
+{orders.length} commandes · {activeCount} active{activeCount > 1 ? "s" : ""} · {deliveredCount} livrée{deliveredCount > 1 ? "s" : ""}
+</Text>
+</View>
+
+
 
 {error ? (
 <View style={styles.errorCard}>
@@ -347,46 +359,83 @@ Votre commande, la cuisine et le coursier dans une lecture simple et rassurante.
 
 {selectedOrder ? (
 <>
-<View style={styles.heroCard}>
+<View style={styles.compactOrderCard}>
 <View style={styles.rowBetween}>
-<Text style={styles.cardKicker}>Votre commande</Text>
+<View style={{ flex: 1, paddingRight: 12 }}>
+<Text style={styles.cardKicker}>Commande active</Text>
+<Text style={styles.compactOrderTitle}>{primaryItem(selectedOrder)}</Text>
+<Text style={styles.compactOrderId}>{publicIdOf(selectedOrder)}</Text>
+</View>
 <Text style={styles.statusPill}>{statusLabel(selectedOrder)}</Text>
 </View>
 
-<Text style={styles.orderTitle}>{primaryItem(selectedOrder)}</Text>
-<Text style={styles.orderId}>{publicIdOf(selectedOrder)}</Text>
-
-<View style={styles.infoBlock}>
-<Text style={styles.infoLabel}>Restaurant</Text>
-<Text style={styles.infoText}>{restaurantOf(selectedOrder)}</Text>
+<View style={styles.compactRestaurantRow}>
+<Text style={styles.compactRestaurantLabel}>Restaurant</Text>
+<Text style={styles.compactRestaurantValue}>{restaurantOf(selectedOrder)}</Text>
 </View>
 
-<View style={styles.infoBlock}>
-<Text style={styles.infoLabel}>Client</Text>
-<Text style={styles.infoText}>{clientOf(selectedOrder)}</Text>
+<TouchableOpacity
+activeOpacity={0.84}
+style={styles.compactDetailsToggle}
+onPress={() => setShowOrderDetails((value) => !value)}
+>
+<Text style={styles.compactDetailsToggleText}>
+{showOrderDetails ? "Masquer les détails" : "Voir les détails"}
+</Text>
+<Text style={styles.compactDetailsArrow}>{showOrderDetails ? "↑" : "↓"}</Text>
+</TouchableOpacity>
+
+{showOrderDetails ? (
+<View style={styles.compactDetailsPanel}>
+<View style={styles.compactDetailRow}>
+<Text style={styles.compactDetailLabel}>Client</Text>
+<Text style={styles.compactDetailValue}>{clientOf(selectedOrder)}</Text>
+</View>
+<View style={styles.compactDetailRow}>
+<Text style={styles.compactDetailLabel}>Adresse</Text>
+<Text style={styles.compactDetailValue}>{addressOf(selectedOrder)}</Text>
+</View>
+<View style={styles.compactDetailRow}>
+<Text style={styles.compactDetailLabel}>Total</Text>
+<Text style={styles.compactDetailValue}>{amountOf(selectedOrder)}</Text>
+</View>
+</View>
+) : null}
 </View>
 
-<View style={styles.infoBlock}>
-<Text style={styles.infoLabel}>Adresse</Text>
-<Text style={styles.infoText}>{addressOf(selectedOrder)}</Text>
-</View>
-
-<View style={styles.infoBlock}>
-<Text style={styles.infoLabel}>Total</Text>
-<Text style={styles.infoText}>{amountOf(selectedOrder)}</Text>
-</View>
-</View>
-
-<View style={styles.etaCard}>
-<Text style={styles.cardKicker}>Statut livraison</Text>
-<Text style={styles.etaValue}>{etaFor(selectedOrder)}</Text>
-<Text style={styles.etaText}>{etaDetail(selectedOrder)}</Text>
-<Text style={styles.etaSmall}>Estimation sécurisée · aucun suivi en arrière-plan.</Text>
+<View style={styles.compactStatusStrip}>
+<View style={styles.compactStatusDot} />
+<Text style={styles.compactStatusText}>{etaDetail(selectedOrder)}</Text>
 </View>
 
 <View style={styles.timelineCard}>
 <Text style={styles.blockTitle}>Parcours de livraison</Text>
-<ProgressRail order={selectedOrder} />
+              {/* DA_V3C11H_LIVE_HERO */}
+              {isActive(selectedOrder) ? (
+                <MotionHero
+                  eta={etaFor(selectedOrder)}
+                  status={String(selectedOrder?.status || "")}
+                  onPress={() => {
+                    const id = publicIdOf(selectedOrder);
+                    router.push({
+                      pathname: "/maps-live-lab",
+                      params: { orderId: id, publicId: id },
+                    } as never);
+                  }}
+                />
+              ) : null}
+
+              <TouchableOpacity
+                activeOpacity={0.86}
+                style={styles.secondaryButton}
+                onPress={() => setShowDeliverySteps((value) => !value)}
+              >
+                <Text style={styles.secondaryButtonText}>
+                  {showDeliverySteps ? "Masquer les étapes" : "Voir les étapes de livraison"}
+                </Text>
+              </TouchableOpacity>
+
+              {showDeliverySteps ? <ProgressRail order={selectedOrder} /> : null}
 </View>
 </>
 ) : (
@@ -396,10 +445,21 @@ Votre commande, la cuisine et le coursier dans une lecture simple et rassurante.
 </View>
 )}
 
-<View style={styles.recentCard}>
-<Text style={styles.blockTitle}>Commandes récentes</Text>
-<Text style={styles.blockSubtitle}>Touchez une commande pour afficher son suivi principal.</Text>
+{/* DA_V3C11H6_RECENT_ORDERS_COMPACT */}
+<View style={styles.recentCardCompact}>
+          <Text style={styles.recentTitleCompact}>Commandes récentes ({orders.length})</Text>
+          <TouchableOpacity
+            activeOpacity={0.86}
+            style={styles.recentButtonCompact}
+            onPress={() => setShowRecentOrders((value) => !value)}
+          >
+            <Text style={styles.recentButtonCompactText}>
+              {showRecentOrders ? "Masquer les commandes récentes" : "Voir mes commandes récentes"}
+            </Text>
+          </TouchableOpacity>
 
+          {showRecentOrders ? (
+            <>
 {orders.slice(0, 5).map((order) => {
 const id = publicIdOf(order);
 const selected = publicIdOf(selectedOrder) === id;
@@ -419,7 +479,9 @@ onPress={() => setSelectedId(id)}
 </TouchableOpacity>
 );
 })}
-</View>
+            </>
+          ) : null}
+        </View>
 
 <TouchableOpacity activeOpacity={0.86} style={styles.ghostButton} onPress={() => router.back()}>
 <Text style={styles.ghostButtonText}>Retour</Text>
@@ -469,6 +531,184 @@ fontSize: 19,
 lineHeight: 29,
 fontWeight: "800",
 },
+// DA_V3C11H4_ZERO_SCROLL_PREMIUM_STYLES
+compactSyncCard: {
+backgroundColor: "rgba(255,255,255,0.92)",
+borderRadius: 18,
+paddingHorizontal: 16,
+paddingVertical: 12,
+marginBottom: 10,
+borderWidth: 1,
+borderColor: "rgba(17,73,55,0.10)",
+},
+compactSyncTopRow: {
+flexDirection: "row",
+alignItems: "center",
+justifyContent: "space-between",
+gap: 10,
+},
+compactSyncIdentity: {
+flex: 1,
+flexDirection: "row",
+alignItems: "center",
+gap: 10,
+},
+compactSyncDot: {
+width: 9,
+height: 9,
+borderRadius: 999,
+backgroundColor: "#2FCF83",
+},
+compactSyncTitle: {
+fontSize: 15,
+fontWeight: "800",
+color: "#123D31",
+},
+compactSyncSubtitle: {
+fontSize: 11,
+fontWeight: "600",
+color: "#6D7F78",
+marginTop: 1,
+},
+compactMetricsText: {
+fontSize: 12,
+fontWeight: "700",
+color: "#556B63",
+marginTop: 8,
+},
+compactRefreshButton: {
+minHeight: 34,
+paddingHorizontal: 12,
+borderRadius: 12,
+alignItems: "center",
+justifyContent: "center",
+backgroundColor: "#EEF5F1",
+},
+compactRefreshText: {
+fontSize: 12,
+fontWeight: "800",
+color: "#165A46",
+},
+compactOrderCard: {
+backgroundColor: "#FFFFFF",
+borderRadius: 22,
+padding: 16,
+marginBottom: 10,
+borderWidth: 1,
+borderColor: "rgba(17,73,55,0.10)",
+shadowColor: "#09261D",
+shadowOpacity: 0.06,
+shadowRadius: 12,
+shadowOffset: { width: 0, height: 6 },
+elevation: 2,
+},
+compactOrderTitle: {
+fontSize: 23,
+lineHeight: 28,
+fontWeight: "900",
+color: "#163B31",
+marginTop: 5,
+},
+compactOrderId: {
+fontSize: 12,
+fontWeight: "700",
+color: "#7B8B85",
+marginTop: 2,
+},
+compactRestaurantRow: {
+flexDirection: "row",
+alignItems: "center",
+justifyContent: "space-between",
+marginTop: 12,
+paddingTop: 10,
+borderTopWidth: 1,
+borderTopColor: "rgba(17,73,55,0.08)",
+gap: 16,
+},
+compactRestaurantLabel: {
+fontSize: 11,
+fontWeight: "800",
+textTransform: "uppercase",
+letterSpacing: 0.8,
+color: "#87968F",
+},
+compactRestaurantValue: {
+flex: 1,
+fontSize: 14,
+fontWeight: "800",
+color: "#183E33",
+textAlign: "right",
+},
+compactDetailsToggle: {
+flexDirection: "row",
+alignItems: "center",
+justifyContent: "space-between",
+marginTop: 10,
+paddingVertical: 8,
+},
+compactDetailsToggleText: {
+fontSize: 13,
+fontWeight: "800",
+color: "#176247",
+},
+compactDetailsArrow: {
+fontSize: 15,
+fontWeight: "900",
+color: "#176247",
+},
+compactDetailsPanel: {
+marginTop: 4,
+paddingTop: 10,
+borderTopWidth: 1,
+borderTopColor: "rgba(17,73,55,0.08)",
+gap: 9,
+},
+compactDetailRow: {
+flexDirection: "row",
+alignItems: "flex-start",
+justifyContent: "space-between",
+gap: 16,
+},
+compactDetailLabel: {
+fontSize: 11,
+fontWeight: "800",
+textTransform: "uppercase",
+letterSpacing: 0.6,
+color: "#8A9892",
+},
+compactDetailValue: {
+flex: 1,
+fontSize: 13,
+fontWeight: "700",
+color: "#334F46",
+textAlign: "right",
+},
+compactStatusStrip: {
+flexDirection: "row",
+alignItems: "center",
+gap: 9,
+backgroundColor: "rgba(255,255,255,0.82)",
+borderRadius: 16,
+paddingHorizontal: 14,
+paddingVertical: 10,
+marginBottom: 10,
+borderWidth: 1,
+borderColor: "rgba(17,73,55,0.08)",
+},
+compactStatusDot: {
+width: 8,
+height: 8,
+borderRadius: 999,
+backgroundColor: "#F1A12E",
+},
+compactStatusText: {
+flex: 1,
+fontSize: 13,
+lineHeight: 18,
+fontWeight: "700",
+color: "#4B625A",
+},
+
 syncCard: {
 borderRadius: 30,
 padding: 20,
@@ -714,6 +954,40 @@ lineHeight: 24,
 fontWeight: "800",
 marginTop: 8,
 },
+// DA_V3C11H6_RECENT_ORDERS_COMPACT_STYLES
+recentCardCompact: {
+  borderRadius: 24,
+  paddingHorizontal: 16,
+  paddingVertical: 14,
+  backgroundColor: "#101D33",
+  borderWidth: 1,
+  borderColor: "rgba(125,180,255,0.24)",
+},
+recentTitleCompact: {
+  color: "#FFFFFF",
+  fontSize: 22,
+  lineHeight: 27,
+  fontWeight: "900",
+  marginBottom: 10,
+},
+recentButtonCompact: {
+  minHeight: 50,
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: "rgba(255,255,255,0.06)",
+  borderRadius: 18,
+  borderWidth: 1,
+  borderColor: "rgba(255,255,255,0.10)",
+  paddingHorizontal: 16,
+},
+recentButtonCompactText: {
+  color: "#FFFFFF",
+  fontSize: 16,
+  lineHeight: 20,
+  fontWeight: "900",
+  textAlign: "center",
+},
+
 recentCard: {
 borderRadius: 30,
 padding: 20,
@@ -751,6 +1025,87 @@ color: "#7DB4FF",
 fontSize: 28,
 fontWeight: "900",
 },
+
+  liveHeroCard: {
+    marginTop: 18,
+    marginBottom: 22,
+    padding: 22,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: "#D6A84F",
+    backgroundColor: "#071A18",
+    shadowColor: "#000000",
+    shadowOpacity: 0.22,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
+  },
+  liveHeroTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 14,
+  },
+  liveHeroBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(47, 213, 137, 0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(47, 213, 137, 0.42)",
+  },
+  liveHeroDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 999,
+    backgroundColor: "#2FD589",
+  },
+  liveHeroBadgeText: {
+    color: "#7FF0B9",
+    fontSize: 13,
+    fontWeight: "900",
+    letterSpacing: 2.2,
+  },
+  liveHeroEta: {
+    color: "#F7C66A",
+    fontSize: 18,
+    fontWeight: "900",
+  },
+  liveHeroTitle: {
+    marginTop: 20,
+    color: "#FFFFFF",
+    fontSize: 27,
+    lineHeight: 32,
+    fontWeight: "900",
+    letterSpacing: -0.7,
+  },
+  liveHeroSubtitle: {
+    marginTop: 10,
+    color: "#C9D7D4",
+    fontSize: 16,
+    lineHeight: 23,
+    fontWeight: "600",
+  },
+  liveHeroButton: {
+    marginTop: 20,
+    minHeight: 62,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 20,
+    backgroundColor: "#F7C66A",
+    borderWidth: 1,
+    borderColor: "#FFE0A2",
+  },
+  liveHeroButtonText: {
+    color: "#071A18",
+    fontSize: 18,
+    fontWeight: "900",
+    letterSpacing: 0.2,
+  },
+
 secondaryButton: {
 backgroundColor: "rgba(255,255,255,0.06)",
 borderRadius: 22,

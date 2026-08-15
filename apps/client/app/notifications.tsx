@@ -1,3 +1,4 @@
+import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
 ActivityIndicator,
@@ -187,7 +188,7 @@ const [error, setError] = useState("");
 const load = useCallback(async () => {
 setError("");
 try {
-const response = await fetch(`${API_BASE_URL}/orders/demo/list`, {
+const response = await daOrdersFetch(`${API_BASE_URL}/orders/demo/list`, {
 method: "POST",
 headers: { "Content-Type": "application/json" },
 body: JSON.stringify({ scope: "client-inapp-notifications-v1a" }),

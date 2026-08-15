@@ -1,3 +1,4 @@
+// DA_A5A3A7S16R4_DISPATCH_CONTRACT_REPAIR_V1
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
 ActivityIndicator,
@@ -11,7 +12,9 @@ StyleSheet,
 Text,
 View,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import * as Location from "expo-location";
+import { daOrdersFetch } from "../utils/daOrdersApi";
 
 const API_BASE_URL =
 process.env.EXPO_PUBLIC_API_BASE_URL ||
@@ -50,14 +53,159 @@ error: string | null;
 updatedAt: string | null;
 };
 
-const ROUTE_PREVIEW_SAMPLE = {
-origin: { lat: 50.83312, lng: 4.37142, label: "Coursier Ixelles" },
-waypoints: [{ lat: 50.83397, lng: 4.36588, label: "Thieyp" }],
-destination: { lat: 50.84673, lng: 4.35247, label: "Client Bruxelles" },
-mode: "TWO_WHEELER",
-orderId: "DA-ROUTE-ORACLE",
-source: "courier-route-oracle",
+type RouteGeoPoint = {
+lat: number;
+lng: number;
 };
+
+type RoutePartnerEntry = {
+id?: string;
+slug?: string;
+name?: string;
+address?: unknown;
+location?: unknown;
+latitude?: number;
+longitude?: number;
+lat?: number;
+lng?: number;
+};
+
+type TerrainContext = {
+restaurantName: string;
+restaurantAddress: string;
+clientAddress: string;
+restaurantPoint: RouteGeoPoint | null;
+clientPoint: RouteGeoPoint | null;
+originPoint: RouteGeoPoint | null;
+};
+
+function routeText(value: unknown) {
+return String(value || "").trim();
+}
+
+function routeKey(value: unknown) {
+return routeText(value)
+.toLocaleLowerCase("fr")
+.normalize("NFD")
+.replace(/[\u0300-\u036f]/g, "")
+.replace(/[^a-z0-9]+/g, "-")
+.replace(/^-|-$/g, "");
+}
+
+function routeAddressText(value: unknown): string {
+if (typeof value === "string") return value.trim();
+if (!value || typeof value !== "object") return "";
+const record = value as Record<string, unknown>;
+return [record.label, record.line1, record.line2, record.postalCode, record.city, record.countryCode]
+.filter(Boolean)
+.map((part) => routeText(part))
+.filter((part, index, all) => part && all.indexOf(part) === index)
+.join(", ");
+}
+
+function routePoint(value: unknown): RouteGeoPoint | null {
+if (!value || typeof value !== "object") return null;
+const record = value as Record<string, unknown>;
+const lat = Number(record.lat ?? record.latitude);
+const lng = Number(record.lng ?? record.longitude);
+if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+return { lat, lng };
+}
+
+function routeRestaurantName(order: Record<string, any> | null | undefined) {
+const restaurant = order?.restaurant;
+const objectRestaurant = restaurant && typeof restaurant === "object" ? restaurant : null;
+return routeText(
+order?.restaurantName ||
+objectRestaurant?.name ||
+(typeof restaurant === "string" ? restaurant : "") ||
+order?.merchantName ||
+order?.partnerName ||
+"Restaurant partenaire"
+);
+}
+
+function routeRestaurantIdentity(order: Record<string, any> | null | undefined) {
+const restaurant = order?.restaurant;
+const objectRestaurant = restaurant && typeof restaurant === "object" ? restaurant : null;
+return {
+ id: routeText(order?.restaurantId || objectRestaurant?.id || objectRestaurant?.slug),
+ name: routeRestaurantName(order),
+};
+}
+
+function routePartnerForOrder(order: Record<string, any> | null | undefined, partners: RoutePartnerEntry[]) {
+const identity = routeRestaurantIdentity(order);
+const wanted = new Set([routeKey(identity.id), routeKey(identity.name)].filter(Boolean));
+return partners.find((partner) => {
+const keys = [partner.id, partner.slug, partner.name].map(routeKey).filter(Boolean);
+return keys.some((key) => wanted.has(key));
+}) || null;
+}
+
+function routeRestaurantAddress(order: Record<string, any> | null | undefined, partner: RoutePartnerEntry | null) {
+const restaurant = order?.restaurant;
+const objectRestaurant = restaurant && typeof restaurant === "object" ? restaurant : null;
+return (
+routeAddressText(order?.restaurantAddress) ||
+routeAddressText(objectRestaurant?.address) ||
+routeAddressText(partner?.address) ||
+routeRestaurantName(order)
+);
+}
+
+function routeClientAddress(order: Record<string, any> | null | undefined) {
+return (
+routeAddressText(order?.delivery?.address) ||
+routeAddressText(order?.deliveryAddress) ||
+routeAddressText(order?.customerAddress) ||
+routeAddressText(order?.customer?.address) ||
+routeText(order?.customer?.city) ||
+"Adresse client"
+);
+}
+
+function routeRestaurantPoint(order: Record<string, any> | null | undefined, partner: RoutePartnerEntry | null) {
+const restaurant = order?.restaurant;
+const objectRestaurant = restaurant && typeof restaurant === "object" ? restaurant : null;
+return (
+routePoint(order?.restaurantLocation) ||
+routePoint(objectRestaurant?.location) ||
+routePoint(objectRestaurant) ||
+routePoint(partner?.location) ||
+routePoint(partner)
+);
+}
+
+function routeClientPoint(order: Record<string, any> | null | undefined) {
+return (
+routePoint(order?.delivery?.location) ||
+routePoint(order?.customer?.location) ||
+routePoint(order?.delivery?.address) ||
+routePoint(order?.customer?.address)
+);
+}
+
+async function routeGeocode(address: string): Promise<RouteGeoPoint | null> {
+if (!address || address === "Adresse client") return null;
+try {
+const matches = await Location.geocodeAsync(address);
+const first = matches[0];
+if (!first) return null;
+return routePoint(first);
+} catch {
+return null;
+}
+}
+
+function normalizeRoutePartners(payload: any): RoutePartnerEntry[] {
+if (Array.isArray(payload)) return payload;
+if (Array.isArray(payload?.partners)) return payload.partners;
+if (Array.isArray(payload?.items)) return payload.items;
+if (Array.isArray(payload?.data)) return payload.data;
+return [];
+}
 
 function routeProviderLabel(provider?: string | null) {
 if (provider === "google_routes") return "Google Routes";
@@ -82,21 +230,32 @@ function formatTerrainPoint(point: { lat: number; lng: number }) {
 return `${point.lat},${point.lng}`;
 }
 
-function buildTerrainMapUrl(provider: TerrainMapProvider) {
-const origin = formatTerrainPoint(ROUTE_PREVIEW_SAMPLE.origin);
-const restaurant = formatTerrainPoint(ROUTE_PREVIEW_SAMPLE.waypoints[0]);
-const destination = formatTerrainPoint(ROUTE_PREVIEW_SAMPLE.destination);
-const restaurantLabel = encodeURIComponent("Thieyp");
+function buildTerrainMapUrl(provider: TerrainMapProvider, context: TerrainContext) {
+const restaurantTarget = encodeURIComponent(
+context.restaurantAddress ||
+(context.restaurantPoint ? formatTerrainPoint(context.restaurantPoint) : context.restaurantName)
+);
+const clientTarget = encodeURIComponent(
+context.clientAddress ||
+(context.clientPoint ? formatTerrainPoint(context.clientPoint) : "")
+);
+const restaurantLabel = encodeURIComponent(context.restaurantName || "Restaurant partenaire");
 
 if (provider === "apple") {
-return `http://maps.apple.com/?saddr=${origin}&daddr=${restaurant}&dirflg=d&q=${restaurantLabel}`;
+return `http://maps.apple.com/?daddr=${restaurantTarget}&dirflg=d&q=${restaurantLabel}`;
 }
 
 if (provider === "google") {
-return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${restaurant}&travelmode=driving`;
+if (clientTarget) {
+return `https://www.google.com/maps/dir/?api=1&destination=${clientTarget}&waypoints=${restaurantTarget}&travelmode=driving`;
+}
+return `https://www.google.com/maps/dir/?api=1&destination=${restaurantTarget}&travelmode=driving`;
 }
 
-return `https://www.waze.com/ul?ll=${restaurant}&navigate=yes&zoom=17&utm_source=delishafrica`;
+if (context.restaurantPoint) {
+return `https://www.waze.com/ul?ll=${formatTerrainPoint(context.restaurantPoint)}&navigate=yes&utm_source=delishafrica`;
+}
+return `https://www.waze.com/ul?q=${restaurantTarget}&navigate=yes&utm_source=delishafrica`;
 }
 
 type Factor = {
@@ -237,6 +396,12 @@ return vehicle || "Terrain";
 }
 
 export default function RouteOracleScreen() {
+const routeParams = useLocalSearchParams<{ orderId?: string | string[]; publicId?: string | string[] }>();
+const requestedOrderId = String(
+Array.isArray(routeParams.publicId)
+? routeParams.publicId[0]
+: routeParams.publicId || (Array.isArray(routeParams.orderId) ? routeParams.orderId[0] : routeParams.orderId) || "",
+).trim();
 const [state, setState] = useState<ScreenState>({
 loading: true,
 refreshing: false,
@@ -272,8 +437,21 @@ data: null,
 error: null,
 updatedAt: null,
 });
+const [terrainContext, setTerrainContext] = useState<TerrainContext | null>(null);
 
 const loadRoutePreview = useCallback(async () => {
+const order = (state.data?.order || null) as Record<string, any> | null;
+if (!order) {
+setTerrainContext(null);
+setRoutePreviewState({
+loading: false,
+data: null,
+error: "Mission synchronisée requise pour calculer l’itinéraire.",
+updatedAt: new Date().toISOString(),
+});
+return;
+}
+
 setRoutePreviewState((current) => ({
 ...current,
 loading: true,
@@ -281,10 +459,68 @@ error: null,
 }));
 
 try {
+let partners: RoutePartnerEntry[] = [];
+try {
+const partnerResponse = await fetch(daApiV1("/partners"), { headers: { Accept: "application/json" } });
+const partnerText = await partnerResponse.text();
+const partnerJson = partnerText ? JSON.parse(partnerText) : null;
+if (partnerResponse.ok) partners = normalizeRoutePartners(partnerJson);
+} catch {
+partners = [];
+}
+
+const partner = routePartnerForOrder(order, partners);
+const restaurantName = routeRestaurantName(order);
+const restaurantAddress = routeRestaurantAddress(order, partner);
+const clientAddress = routeClientAddress(order);
+let restaurantPointValue = routeRestaurantPoint(order, partner);
+let clientPointValue = routeClientPoint(order);
+
+if (!restaurantPointValue) restaurantPointValue = await routeGeocode(restaurantAddress);
+if (!clientPointValue) clientPointValue = await routeGeocode(clientAddress);
+
+let originPointValue: RouteGeoPoint | null = null;
+try {
+const permission = await Location.requestForegroundPermissionsAsync();
+if (permission.status === "granted") {
+const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+originPointValue = routePoint(current.coords);
+}
+} catch {
+originPointValue = null;
+}
+
+const context: TerrainContext = {
+restaurantName,
+restaurantAddress,
+clientAddress,
+restaurantPoint: restaurantPointValue,
+clientPoint: clientPointValue,
+originPoint: originPointValue,
+};
+setTerrainContext(context);
+
+if (!originPointValue || !restaurantPointValue || !clientPointValue) {
+setRoutePreviewState({
+loading: false,
+data: null,
+error: `Itinéraire ${restaurantName} prêt dans Mission Live ; coordonnées détaillées à confirmer ici.`,
+updatedAt: new Date().toISOString(),
+});
+return;
+}
+
 const response = await fetch(daApiV1("/routes/preview"), {
 method: "POST",
 headers: { "Content-Type": "application/json" },
-body: JSON.stringify(ROUTE_PREVIEW_SAMPLE),
+body: JSON.stringify({
+origin: { ...originPointValue, label: "Coursier" },
+waypoints: [{ ...restaurantPointValue, label: restaurantName }],
+destination: { ...clientPointValue, label: "Client" },
+mode: "TWO_WHEELER",
+orderId: state.data?.orderId || requestedOrderId || "",
+source: "courier-route-oracle",
+}),
 });
 
 const text = await response.text();
@@ -308,12 +544,16 @@ error: error instanceof Error ? error.message : "Itinéraire momentanément indi
 updatedAt: new Date().toISOString(),
 }));
 }
-}, []);
+}, [requestedOrderId, state.data?.order, state.data?.orderId]);
 
 
 const openTerrainMap = useCallback(async (provider: TerrainMapProvider) => {
 try {
-const url = buildTerrainMapUrl(provider);
+if (!terrainContext) {
+router.push({ pathname: "/courier-real-map" as any, params: state.data?.orderId ? { orderId: state.data.orderId } : {} });
+return;
+}
+const url = buildTerrainMapUrl(provider, terrainContext);
 await Linking.openURL(url);
 } catch {
 Alert.alert(
@@ -321,7 +561,7 @@ Alert.alert(
 "Impossible d’ouvrir l’application de navigation pour le moment."
 );
 }
-}, []);
+}, [state.data?.orderId, terrainContext]);
 
 const humanizeRouteOracleWarning = (value?: string | null) => {
 const raw = String(value || "");
@@ -351,8 +591,8 @@ return result;
 };
 
 useEffect(() => {
-void loadRoutePreview();
-}, [loadRoutePreview]);
+if (state.data?.order) void loadRoutePreview();
+}, [loadRoutePreview, state.data?.order]);
 
 const loadPreview = useCallback(async (refreshing = false) => {
 setProposalState((current) => ({ ...current, error: null }));
@@ -365,14 +605,16 @@ error: null,
 }));
 
 try {
-const response = await fetch(daApiV1("/dispatch/assignment/preview"), {
+const response = await daOrdersFetch(daApiV1("/dispatch/assignment/preview"), {
 method: "POST",
 headers: {
 "Content-Type": "application/json",
 },
-body: JSON.stringify({
-allowDeliveredPreview: true,
-}),
+body: JSON.stringify(
+requestedOrderId
+? { orderId: requestedOrderId }
+: { allowDeliveredPreview: true },
+),
 });
 
 const text = await response.text();
@@ -403,7 +645,7 @@ refreshing: false,
 error: error instanceof Error ? error.message : "Erreur Route Oracle.",
 }));
 }
-}, []);
+}, [requestedOrderId]);
 
 useEffect(() => {
 loadPreview(false);
@@ -445,6 +687,9 @@ proposalState.result?.proposalStatus ||
 
 const proposalAccepted = proposalStatus === "accepted";
 const proposalPending = proposalStatus === "proposed";
+const displayedActiveMissions = proposalAccepted
+? Math.max(1, Number(candidate?.activeMissions || 0))
+: candidate?.activeMissions ?? "--";
 const proposalSent =
 proposalState.result?.ok === true ||
 proposalPending ||
@@ -471,13 +716,7 @@ latestProposal?.courierName ||
 candidate?.name ||
 "coursier recommandé";
 
-const canPropose =
-Boolean(state.data?.eligibleForAssignment) &&
-Boolean(state.data?.orderId) &&
-Boolean(candidate?.id) &&
-!proposalState.loading &&
-!acceptState.loading &&
-!proposalSent;
+const canPropose = false; // Server Dispatch is the only proposal authority. Courier cannot self-propose.
 
 const canAcceptProposal =
 Boolean(state.data?.eligibleForAssignment) &&
@@ -487,6 +726,21 @@ proposalPending &&
 !proposalAccepted &&
 !proposalState.loading &&
 !acceptState.loading;
+
+const orderStatus = String(state.data?.orderStatus || "").toLowerCase();
+const assignmentUnavailableReason =
+orderStatus === "picked_up"
+? "Cette mission est déjà en route. Elle a dépassé le point où Route Oracle peut proposer un coursier."
+: orderStatus === "delivered"
+? "Cette mission est déjà livrée. Route Oracle reste en lecture seule."
+: orderStatus && orderStatus !== "ready"
+? "La proposition sera disponible dès que le restaurant aura marqué la commande prête."
+: null;
+
+const openMissionGuidance = useCallback(() => {
+if (!state.data?.orderId) return;
+router.push({ pathname: "/courier-real-map" as any, params: { orderId: state.data.orderId } });
+}, [state.data?.orderId]);
 
 const submitProposal = useCallback(async () => {
 if (!state.data?.orderId || !candidate?.id) {
@@ -860,7 +1114,7 @@ Lancez la navigation externe sans quitter le contrôle DelishAfrica®. Le coursi
 </View>
 
 <Text style={styles.terrainHint}>
-Trajet indicatif : coursier → Thieyp → client. La mission reste validée manuellement.
+Trajet indicatif : coursier → {terrainContext?.restaurantName || routeRestaurantName(state.data?.order)} → client. La mission reste validée manuellement.
 </Text>
 </View>
 
@@ -904,7 +1158,7 @@ onPress={confirmAccept}
 </Pressable>
 ) : null}
 
-{!proposalPending && !proposalAccepted ? (
+{!proposalPending && !proposalAccepted && state.data?.eligibleForAssignment ? (
 <Pressable
 style={[
 styles.proposeButton,
@@ -919,10 +1173,21 @@ onPress={confirmProposal}
 </Pressable>
 ) : null}
 
+{!proposalPending && !proposalAccepted && !state.data?.eligibleForAssignment && assignmentUnavailableReason ? (
+<View style={styles.acceptedBadge}>
+<Text style={styles.acceptedBadgeText}>{assignmentUnavailableReason}</Text>
+</View>
+) : null}
+
 {proposalAccepted ? (
+<>
 <View style={styles.acceptedBadge}>
 <Text style={styles.acceptedBadgeText}>Mission confirmée · statut commande conservé prêt</Text>
 </View>
+<Pressable style={styles.acceptButton} onPress={openMissionGuidance}>
+<Text style={styles.acceptButtonText}>Ouvrir le guidage mission</Text>
+</Pressable>
+</>
 ) : null}
 </View>
 
@@ -962,7 +1227,7 @@ Oracle livraison · MAJ {updatedLabel}
 <Text style={styles.sectionLabel}>Charge & fiabilité</Text>
 <View style={styles.oracleStatsGrid}>
 <View style={styles.oracleStatCard}>
-<Text style={[styles.metricValue, styles.metricValueOracleDark]}>{candidate.activeMissions ?? "--"}</Text>
+<Text style={[styles.metricValue, styles.metricValueOracleDark]}>{displayedActiveMissions}</Text>
 <Text style={[styles.metricLabel, styles.metricLabelOracleDark]}>Mission active</Text>
 </View>
 

@@ -1,5 +1,16 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Post,
+  Req,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
+import { PaymentsAuthGuard } from './payments.auth.guard';
 import { PaymentsService } from './payments.service';
+import type { PaymentsRequest } from './payments.types';
 
 @Controller('payments')
 export class PaymentsController {
@@ -16,7 +27,19 @@ export class PaymentsController {
   }
 
   @Post('create-intent')
-  createIntent(@Body() body: Record<string, any> = {}) {
-    return this.payments.createPaymentIntent(body);
+  @UseGuards(PaymentsAuthGuard)
+  createIntent(
+    @Req() request: PaymentsRequest,
+    @Body() body: Record<string, any> = {},
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    if (!request.daPaymentsPrincipal) {
+      throw new UnauthorizedException({ ok: false, code: 'payments_principal_missing' });
+    }
+    return this.payments.createPaymentIntent(
+      body,
+      idempotencyKey,
+      request.daPaymentsPrincipal,
+    );
   }
 }

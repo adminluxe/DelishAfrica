@@ -1,3 +1,4 @@
+import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useEffect, useMemo, useState } from "react";
 import {
 ActivityIndicator,
@@ -319,7 +320,7 @@ setLoadingMission(true);
 setMissionError(null);
 
 try {
-const res = await fetch(`${API_BASE_URL}/orders/demo/list`, {
+const res = await daOrdersFetch(`${API_BASE_URL}/orders/demo/list`, {
 method: "POST",
 headers: {
 "Content-Type": "application/json",

@@ -23,11 +23,11 @@ export class ProxyDemoOrdersService {
   }
 
   async listDemoOrders(filter: AnyObj) {
-    // relies on existing demo flow endpoints (already used by apps)
-    return this.postJson('/api/v1/orders/demo/list', filter);
+    // P0-A1: dispatch internal proxy uses production Orders surface; demo route remains compatibility-only.
+    return this.postJson('/api/v1/orders/list', filter);
   }
 
   async getDemoOrder(filter: AnyObj) {
-    return this.postJson('/api/v1/orders/demo/get', filter);
+    return this.postJson('/api/v1/orders/get', filter);
   }
 }

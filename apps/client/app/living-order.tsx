@@ -1,3 +1,4 @@
+import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -9,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { router } from "expo-router";
+import type { CanonicalOrderTruth } from "../../../packages/contracts/src/order";
 
 type DemoOrder = {
   id?: string;
@@ -35,10 +37,17 @@ type DemoOrder = {
 
 type OrderResponse = {
   ok?: boolean;
+  canonicalSchemaVersion?: number;
+  canonicalOrders?: CanonicalOrderTruth[];
   orders?: DemoOrder[];
   items?: DemoOrder[];
   data?: DemoOrder[];
   order?: DemoOrder;
+};
+
+type LivingOrder = {
+  canonical?: CanonicalOrderTruth;
+  legacy?: DemoOrder;
 };
 
 const RAW_API =
@@ -65,7 +74,7 @@ const FLOW = [
   { key: "receive", label: "Recevoir", hint: "Le voyage arrive." },
 ];
 
-function extractOrders(payload: OrderResponse): DemoOrder[] {
+function extractLegacyOrders(payload: OrderResponse): DemoOrder[] {
   if (Array.isArray(payload?.orders)) return payload.orders;
   if (Array.isArray(payload?.items)) return payload.items;
   if (Array.isArray(payload?.data)) return payload.data;
@@ -73,33 +82,83 @@ function extractOrders(payload: OrderResponse): DemoOrder[] {
   return [];
 }
 
-function statusOf(order?: DemoOrder | null): string {
-  return String(order?.status || "pending").toLowerCase();
+function extractLivingOrders(payload: OrderResponse): LivingOrder[] {
+  if (
+    payload?.canonicalSchemaVersion === 1 &&
+    Array.isArray(payload?.canonicalOrders) &&
+    payload.canonicalOrders.length > 0
+  ) {
+    return payload.canonicalOrders.map((canonical) => ({ canonical }));
+  }
+
+  return extractLegacyOrders(payload).map((legacy) => ({ legacy }));
 }
 
-function orderId(order?: DemoOrder | null): string {
-  return String(order?.publicId || order?.orderId || order?.id || "DA-LIVE");
+function statusOf(order?: LivingOrder | null): string {
+  return String(
+    order?.canonical?.status?.business ||
+      order?.legacy?.status ||
+      "pending",
+  ).toLowerCase();
 }
 
-function restaurantOf(order?: DemoOrder | null): string {
-  return String(order?.restaurantName || order?.merchantName || order?.restaurant || "Thieyp");
+function orderId(order?: LivingOrder | null): string {
+  return String(
+    order?.canonical?.identity?.publicId ||
+      order?.legacy?.publicId ||
+      order?.legacy?.orderId ||
+      order?.legacy?.id ||
+      "DA-LIVE",
+  );
 }
 
-function itemOf(order?: DemoOrder | null): string {
-  const first = Array.isArray(order?.items) ? order?.items?.[0] : undefined;
-  return String(order?.itemName || order?.item || first?.name || first?.title || "Rice and Peace");
+function restaurantOf(order?: LivingOrder | null): string {
+  return String(
+    order?.canonical?.restaurant?.name ||
+      order?.legacy?.restaurantName ||
+      order?.legacy?.merchantName ||
+      order?.legacy?.restaurant ||
+      "Thieyp",
+  );
 }
 
-function amountRaw(order?: DemoOrder | null): number {
+function itemOf(order?: LivingOrder | null): string {
+  const canonicalFirst = order?.canonical?.items?.[0];
+  const legacyFirst = Array.isArray(order?.legacy?.items)
+    ? order?.legacy?.items?.[0]
+    : undefined;
+
+  return String(
+    canonicalFirst?.name ||
+      order?.legacy?.itemName ||
+      order?.legacy?.item ||
+      legacyFirst?.name ||
+      legacyFirst?.title ||
+      "Rice and Peace",
+  );
+}
+
+function amountRaw(order?: LivingOrder | null): number {
+  const canonicalAmount = order?.canonical?.pricing?.total?.amountMinor;
+
+  if (Number.isFinite(canonicalAmount)) {
+    return Number(canonicalAmount);
+  }
+
+  const legacy = order?.legacy;
   const raw =
-    order?.totalAmount ??
-    order?.total ??
-    order?.amount ??
-    order?.totalCents ??
-    order?.items?.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0) ??
+    legacy?.totalAmount ??
+    legacy?.total ??
+    legacy?.amount ??
+    legacy?.totalCents ??
+    legacy?.items?.reduce(
+      (sum, item) =>
+        sum + Number(item.price || 0) * Number(item.quantity || 1),
+      0,
+    ) ??
     0;
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : 0;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : 0;
 }
 
 function formatMoney(value: number): string {
@@ -130,24 +189,37 @@ function stageIndex(status: string): number {
   return 0;
 }
 
-function isActive(order: DemoOrder): boolean {
-  const s = statusOf(order);
-  return !["delivered", "completed", "cancelled", "canceled"].includes(s);
+function isActive(order: LivingOrder): boolean {
+  const status = statusOf(order);
+  return !["delivered", "completed", "cancelled", "canceled"].includes(status);
 }
 
-function latestOrdersFirst(a: DemoOrder, b: DemoOrder): number {
-  const pa = STATUS_ORDER.indexOf(statusOf(a));
-  const pb = STATUS_ORDER.indexOf(statusOf(b));
-  const safePa = pa < 0 ? 99 : pa;
-  const safePb = pb < 0 ? 99 : pb;
-  if (safePa !== safePb) return safePa - safePb;
-  const ta = Date.parse(String(a.updatedAt || a.createdAt || 0)) || 0;
-  const tb = Date.parse(String(b.updatedAt || b.createdAt || 0)) || 0;
-  return tb - ta;
+function latestTimestamp(order: LivingOrder): number {
+  const canonicalTimestamp =
+    order?.canonical?.timestamps?.updatedAt ||
+    order?.canonical?.timestamps?.createdAt;
+  const legacyTimestamp =
+    order?.legacy?.updatedAt ||
+    order?.legacy?.createdAt;
+
+  return Date.parse(String(canonicalTimestamp || legacyTimestamp || 0)) || 0;
+}
+
+function latestOrdersFirst(a: LivingOrder, b: LivingOrder): number {
+  const positionA = STATUS_ORDER.indexOf(statusOf(a));
+  const positionB = STATUS_ORDER.indexOf(statusOf(b));
+  const safePositionA = positionA < 0 ? 99 : positionA;
+  const safePositionB = positionB < 0 ? 99 : positionB;
+
+  if (safePositionA !== safePositionB) {
+    return safePositionA - safePositionB;
+  }
+
+  return latestTimestamp(b) - latestTimestamp(a);
 }
 
 export default function LivingOrderScreen() {
-  const [orders, setOrders] = useState<DemoOrder[]>([]);
+  const [orders, setOrders] = useState<LivingOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -155,14 +227,14 @@ export default function LivingOrderScreen() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/orders/demo/list`, {
+      const response = await daOrdersFetch(`${API_BASE_URL}/orders/demo/list`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scope: "client-living-order-v2a-readonly" }),
       });
       const json = (await response.json().catch(() => ({}))) as OrderResponse;
       if (!response.ok) throw new Error(`Service suivi indisponible (${response.status}).`);
-      setOrders(extractOrders(json).sort(latestOrdersFirst));
+      setOrders(extractLivingOrders(json).sort(latestOrdersFirst));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Lecture du voyage impossible.");
     } finally {

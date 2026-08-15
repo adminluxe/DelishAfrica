@@ -1,3 +1,13 @@
+export type DAApiMenuAvailability = {
+mode?: "weekday" | "always" | string;
+orderableNow?: boolean;
+scheduledDay?: string | null;
+today?: string;
+date?: string;
+reason?: string;
+label?: string;
+};
+
 export type DAApiMenuItem = {
 sku?: string;
 id?: string;
@@ -9,6 +19,8 @@ priceEUR?: number;
 amount?: number;
 description?: string;
 tags?: string[];
+orderableNow?: boolean;
+availability?: DAApiMenuAvailability;
 };
 
 export type DARestaurant = {
@@ -99,6 +111,11 @@ return String(item.sku || item.id || `${slugify(item.name)}-${index}`);
 
 export function normalizeMenuItem(item: DAApiMenuItem, index = 0): DAApiMenuItem {
 const amount = centsFromMenuItem(item);
+const serverOrderable = typeof item.orderableNow === "boolean"
+? item.orderableNow
+: typeof item.availability?.orderableNow === "boolean"
+? item.availability.orderableNow
+: undefined;
 return {
 ...item,
 sku: menuItemId(item, index),
@@ -110,7 +127,35 @@ priceEUR: amount / 100,
 price: amount / 100,
 description: String(item.description || ""),
 tags: Array.isArray(item.tags) ? item.tags : [],
+orderableNow: serverOrderable,
+availability: item.availability ? { ...item.availability, orderableNow: serverOrderable } : undefined,
 };
+}
+
+function normalizedDay(value: unknown): string {
+return String(value || "")
+.trim()
+.toLowerCase()
+.normalize("NFD")
+.replace(/[\u0300-\u036f]/g, "");
+}
+
+export function currentBrusselsDay(): string {
+try {
+return normalizedDay(new Intl.DateTimeFormat("fr-BE", {
+weekday: "long",
+timeZone: "Europe/Brussels",
+}).format(new Date()));
+} catch {
+return ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"][new Date().getDay()] || "";
+}
+}
+
+export function isMenuItemOrderableToday(item: DAApiMenuItem, today = currentBrusselsDay()): boolean {
+if (typeof item.orderableNow === "boolean") return item.orderableNow;
+if (typeof item.availability?.orderableNow === "boolean") return item.availability.orderableNow;
+const scheduledDay = normalizedDay(item.availability?.scheduledDay || item.day);
+return !scheduledDay || scheduledDay === normalizedDay(today);
 }
 
 export function normalizeRestaurant(raw: any): DARestaurant {

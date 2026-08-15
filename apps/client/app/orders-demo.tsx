@@ -1,3 +1,4 @@
+import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useCallback, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
@@ -39,7 +40,7 @@ function endpoint(path: string): string {
 }
 
 async function postJson(path: string, body: Record<string, unknown>) {
-  const response = await fetch(endpoint(path), {
+  const response = await daOrdersFetch(endpoint(path), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

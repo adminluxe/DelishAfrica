@@ -1,3 +1,4 @@
+import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
@@ -76,7 +77,7 @@ export default function MerchantServiceOracleScreen() {
   const load = useCallback(async () => {
     try {
       setRefreshing(true);
-      const res = await fetch(`${API_BASE}/orders/demo/list`, {
+      const res = await daOrdersFetch(`${API_BASE}/orders/demo/list`, {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify({}),

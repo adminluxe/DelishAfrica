@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: delish_db
       POSTGRES_USER: delish
-      POSTGRES_PASSWORD: secret
+      POSTGRES_PASSWORD: 131f2648e324b0d37ced7c8c265d3718afa0d28a6e26f86a69e7173fef0edeab
     ports:
       - "127.0.0.1:5433:5432"
     volumes:
@@ -42,15 +42,25 @@ services:
     environment:
       NODE_ENV: development
       PORT: "3010"
-      DATABASE_URL: "postgresql://delish:secret@db:5432/delish_db"
+      DATABASE_URL: "postgresql://delish:wp8FeV6QsI50mWHrqn7qIWtwoTOj7KQE8T_SiB3N2wTP0E9P6PV49RU3K8GPJCdE@db:5432/delish_db"
       REDIS_URL: "redis://redis:6379"
       API_DIR: "/app/services/api-nest"
+      DA_OPS_AUTHORITY_SECRET_FILE: "/run/secrets/da-ops-authority-v1"
+      DA_OPS_AUTHORITY_KEY_ID: "ops-authority-v1"
+      DA_OPS_AUTHORITY_MAX_SKEW_SECONDS: "60"
+      DA_INVITATION_ENCRYPTION_KEY_FILE: "/run/secrets/da-invitation-encryption-v1"
+      DA_INVITATION_ENCRYPTION_KEY_ID: "invitation-encryption-v1"
+      INVITATION_WRITES: "0"
+      INVITATION_ACCEPTANCE_WRITES: "1"
+      DA_PROVIDER_BRIDGE_EXTERNAL_CALLS: "0"
     ports:
       - "127.0.0.1:3010:3010"
     volumes:
       - ./:/app
       - api_root_node_modules:/app/node_modules
       - api_nest_node_modules:/app/services/api-nest/node_modules
+      - /opt/delishafrica/secrets/da_ops_authority_v1.key:/run/secrets/da-ops-authority-v1:ro
+      - /opt/delishafrica/secrets/da_invitation_encryption_v1.key:/run/secrets/da-invitation-encryption-v1:ro
     command:
       - bash
       - -lc
@@ -100,9 +110,9 @@ services:
         fi
 
         pick=""
-        if echo " $$SCRIPTS " | grep -qw "start:dev"; then pick="start:dev"; fi
-        if [ -z "$$pick" ] && echo " $$SCRIPTS " | grep -qw "dev"; then pick="dev"; fi
-        if [ -z "$$pick" ] && echo " $$SCRIPTS " | grep -qw "start"; then pick="start"; fi
+        if echo " $$SCRIPTS " | grep -qw "start:dev"; then pick="start"; fi
+        if [ -z "$$pick" ] && echo " $$SCRIPTS " | grep -qw "dev"; then pick="start:dev"; fi
+        if [ -z "$$pick" ] && echo " $$SCRIPTS " | grep -qw "start"; then pick="dev"; fi
 
         if [ -n "$$pick" ]; then
           echo "✅ Lancement via script: pnpm run $$pick"
