@@ -1,5 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
-import { daDevLogin, daGetToken, daMe } from './daAuthBridge';
+import { daMe } from './daAuthBridge';
 import {
   daMerchantOidcAccessToken,
   daMerchantOidcRefresh,
@@ -96,35 +96,17 @@ async function externalPrincipal(forceRefresh = false): Promise<PrincipalState |
   }
 }
 
-async function developmentPrincipal(): Promise<PrincipalState> {
-  const existingToken = await daGetToken();
-  if (existingToken) {
-    try {
-      const verified = await daMe();
-      if (sessionIsValid(verified)) {
-        const subject = sessionSubject(verified, 'merchant_thieyp');
-        await savePrincipalMarker(subject);
-        return { token: existingToken, subject, role: ROLE, user: (verified.user || {}) as Record<string, unknown> };
-      }
-    } catch {
-      // Fresh development session below.
-    }
-  }
-  const login = await daDevLogin({ role: ROLE, merchantSlug: 'thieyp', name: 'Partenaire Thieyp' });
-  const token = String(login.accessToken || login.token || '');
-  if (!token) throw new Error('Session restaurateur indisponible.');
-  const subject = sessionSubject(login, 'merchant_thieyp');
-  if (!subject) throw new Error('Identité restaurateur non résolue.');
-  await savePrincipalMarker(subject);
-  return { token, subject, role: ROLE, user: ((login?.user || {}) as Record<string, unknown>) };
+async function requireExternalMerchantPrincipal(forceRefresh = false): Promise<PrincipalState> {
+  const external = await externalPrincipal(forceRefresh);
+  if (external) return external;
+  throw new Error('merchant_oidc_session_required');
 }
 
 async function ensurePrincipal(force = false): Promise<PrincipalState> {
   if (!force && principalCache) return principalCache;
   if (!force && principalFlight) return principalFlight;
   principalFlight = (async () => {
-    const external = await externalPrincipal(force);
-    const principal = external || await developmentPrincipal();
+    const principal = await requireExternalMerchantPrincipal(force);
     principalCache = principal;
     return principal;
   })();

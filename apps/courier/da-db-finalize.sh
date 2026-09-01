@@ -24,8 +24,8 @@ docker exec -T "$CID" psql -U postgres -v ON_ERROR_STOP=1 -tc "SELECT 1 FROM pg_
   || docker exec -T "$CID" psql -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE ${DB_NAME} OWNER postgres;"
 
 echo "3) Poser DATABASE_URL (session + persistant + .env)…"
-DB_URL="postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public"
-export DATABASE_URL="$DB_URL"
+DB_URL="${DATABASE_URL:?Set DATABASE_URL securely before running}"
+export DATABASE_URL="${DATABASE_URL:?Set DATABASE_URL securely before running}"
 echo "export DATABASE_URL='${DB_URL}'" >/etc/profile.d/delishafrica-db.sh
 echo "DATABASE_URL='${DB_URL}'" > "${API_DIR}/.env"
 echo "   → $DB_URL"
@@ -40,9 +40,9 @@ if pm2 describe delish-api >/dev/null 2>&1; then
   pm2 restart delish-api --update-env
 else
   if [ -f "dist/main.js" ]; then
-    DATABASE_URL="$DB_URL" pm2 start "node dist/main.js" --name delish-api
+    DATABASE_URL="${DATABASE_URL:?Set DATABASE_URL securely before running}"
   else
-    DATABASE_URL="$DB_URL" pm2 start "pnpm start:prod" --name delish-api
+    DATABASE_URL="${DATABASE_URL:?Set DATABASE_URL securely before running}"
   fi
 fi
 sleep 2

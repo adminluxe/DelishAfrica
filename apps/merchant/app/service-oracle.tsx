@@ -112,9 +112,9 @@ body: JSON.stringify({}),
         <View style={styles.orbSide} />
 
         <View style={styles.hero}>
-          <Text style={styles.eyebrow}>DELISHAFRICA® SERVICE ORACLE</Text>
-          <Text style={styles.heroTitle}>La cuisine voit la prochaine décision.</Text>
-          <Text style={styles.heroBody}>Commandes, préparation, départ et qualité deviennent une seule lecture premium.</Text>
+          <Text style={styles.eyebrow}>DELISHAFRICA® · MASTER CONTROL · SERVICE ORACLE</Text>
+          <Text style={styles.heroTitle}>La prochaine décision, avant le bruit.</Text>
+          <Text style={styles.heroBody}>Commandes, cuisine, remise et qualité convergent dans une lecture instantanée.</Text>
 
           <View style={styles.nextAction}>
             <Text style={styles.nextLabel}>PROCHAINE ACTION</Text>
@@ -228,7 +228,7 @@ body: JSON.stringify({}),
           <Text style={styles.backText}>Retour Signature</Text>
         </Pressable>
 
-        <Text style={styles.footer}>Service Oracle · lecture premium · cuisine sous contrôle.</Text>
+        <Text style={styles.footer}>Service Oracle · décision assistée · service sous contrôle.</Text>
       </ScrollView>
     </SafeAreaView>
   );

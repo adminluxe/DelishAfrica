@@ -1,18 +1,18 @@
 import * as SecureStore from 'expo-secure-store';
-import { daDevLogin, daGetToken, daMe } from './daAuthBridge';
-
-import { daGetBusinessOidcSession } from '../auth/daOidcVault';
+import { loadOidcSession, refreshOidcSession } from '../auth/daOidcSession';
 
 const ROLE = 'client' as const;
 const PROFILE_BASE = '__DELISHAFRICA_CLIENT_PROFILE_LITE_V1__';
 const INSTALLATION_KEY = 'da_client_installation_id_v1';
 const LEGACY_SESSION_MARKER_KEY = 'da_orders_session_marker_v1';
 const PRINCIPAL_MARKER_KEY = 'da_orders_principal_v2';
+const BUSINESS_PRINCIPAL_MARKER_KEY = 'da_orders_business_principal_v3';
 const ACTIVE_SCOPE_KEY = 'da_orders_active_scope_v2';
 const LEGACY_MIGRATION_OWNER_KEY = 'da_client_legacy_migration_owner_v2';
 
 type PrincipalState = { token: string; subject: string; role: typeof ROLE; user: Record<string, unknown> };
 type PrincipalMarker = { version: 2; role: typeof ROLE; subject: string; updatedAt: string };
+type BusinessPrincipalMarker = { version: 3; role: typeof ROLE; subject: string; updatedAt: string };
 
 let principalCache: PrincipalState | null = null;
 let principalFlight: Promise<PrincipalState> | null = null;
@@ -56,18 +56,9 @@ async function savePrincipalMarker(subject: string): Promise<void> {
   await SecureStore.setItemAsync(PRINCIPAL_MARKER_KEY, JSON.stringify(marker));
 }
 
-function sessionSubject(session: any, fallback = ''): string {
-  const user = session?.user || {};
-  return String(user.id || user.clientId || fallback || '').trim();
-}
-
-function sessionIsValid(session: any): boolean {
-  const role = String(session?.user?.role || '');
-  return Boolean(session && session.ok !== false && session.authenticated !== false && sessionSubject(session) && (!role || role === ROLE));
-}
-
-function isLegacyDeviceSubject(subject: string): boolean {
-  return subject.startsWith(`${ROLE}_device_`);
+async function saveBusinessPrincipalMarker(subject: string): Promise<void> {
+  const marker: BusinessPrincipalMarker = { version: 3, role: ROLE, subject, updatedAt: new Date().toISOString() };
+  await SecureStore.setItemAsync(BUSINESS_PRINCIPAL_MARKER_KEY, JSON.stringify(marker));
 }
 
 async function legacyProfileSubject(): Promise<string | null> {
@@ -105,20 +96,25 @@ async function canMigrateLegacyValues(subject: string): Promise<boolean> {
   return true;
 }
 
-async function oidcPrincipalState(): Promise<PrincipalState | null> {
+async function canonicalOidcPrincipal(forceRefresh = false): Promise<PrincipalState | null> {
   try {
-    const session = await daGetBusinessOidcSession();
-    if (!session) return null;
-    await savePrincipalMarker(session.subject);
+    const session = (forceRefresh ? await refreshOidcSession() : await loadOidcSession()) as any;
+    if (!session || session.status !== 'authenticated' || session.role !== ROLE) return null;
+
+    const token = String(session.accessToken || '').trim();
+    const subject = String(session.subject || '').trim();
+    if (!token || !subject) return null;
+
+    await saveBusinessPrincipalMarker(subject);
     return {
-      token: session.accessToken,
-      subject: session.subject,
+      token,
+      subject,
       role: ROLE,
       user: {
-        id: session.subject,
+        id: subject,
         role: ROLE,
-        ...(session.displayName ? { name: session.displayName } : {}),
-        ...(session.email ? { email: session.email } : {}),
+        ...(session.displayName ? { name: String(session.displayName) } : {}),
+        ...(session.email ? { email: String(session.email) } : {}),
       },
     };
   } catch {
@@ -126,60 +122,29 @@ async function oidcPrincipalState(): Promise<PrincipalState | null> {
   }
 }
 
-async function validateStoredSession(): Promise<PrincipalState | null> {
-  const oidc = await oidcPrincipalState();
-  if (oidc) return oidc;
-
-  const token = await daGetToken();
-  if (!token) return null;
-  try {
-    const session = await daMe();
-    if (!sessionIsValid(session)) return null;
-    const subject = sessionSubject(session);
-    if (isLegacyDeviceSubject(subject)) return null;
-    await savePrincipalMarker(subject);
-    return { token, subject, role: ROLE, user: (session.user || {}) as Record<string, unknown> };
-  } catch {
-    return null;
-  }
-}
-
-async function createFreshSession(): Promise<PrincipalState> {
-  // DA_BUSINESS_OIDC_BRIDGE_V2: the authenticated Client OIDC vault is the
-  // primary business-session authority. The progressive bridge remains a
-  // compatibility fallback only while the migration is completed.
-  const oidc = await oidcPrincipalState();
-  if (oidc) return oidc;
-
-  const hint = await identityHint();
-  const login = await daDevLogin({
-    role: ROLE,
-    name: 'Client DelishAfrica',
-    clientId: hint,
-  });
-  const token = String(login.accessToken || login.token || '').trim();
-  if (!token) throw new Error('Session client indisponible.');
-  const verified = await daMe();
-  const subject = sessionIsValid(verified) ? sessionSubject(verified, hint) : sessionSubject(login, hint);
-  if (!subject) throw new Error('Identité client non résolue.');
-  await savePrincipalMarker(subject);
-  return { token, subject, role: ROLE, user: ((verified?.user || login?.user || {}) as Record<string, unknown>) };
+async function requireCanonicalOidcPrincipal(forceRefresh = false): Promise<PrincipalState> {
+  const principal = await canonicalOidcPrincipal(forceRefresh);
+  if (principal) return principal;
+  throw new Error('Session Client Keycloak requise. Ouvrez Mon espace puis Connexion sécurisée.');
 }
 
 async function ensurePrincipal(force = false): Promise<PrincipalState> {
   if (!force && principalCache) {
-    const currentOidc = await daGetBusinessOidcSession().catch(() => null);
-    const currentToken = currentOidc?.accessToken || await daGetToken().catch(() => null);
-    if (currentToken && currentToken === principalCache.token) return principalCache;
+    const current = await canonicalOidcPrincipal(false);
+    if (current && current.token === principalCache.token && current.subject === principalCache.subject) {
+      return principalCache;
+    }
     principalCache = null;
   }
+
   if (!force && principalFlight) return principalFlight;
+
   principalFlight = (async () => {
-    const existing = force ? null : await validateStoredSession();
-    const principal = existing || await createFreshSession();
+    const principal = await requireCanonicalOidcPrincipal(force);
     principalCache = principal;
     return principal;
   })();
+
   try {
     return await principalFlight;
   } finally {
@@ -188,20 +153,32 @@ async function ensurePrincipal(force = false): Promise<PrincipalState> {
 }
 
 async function subjectForStorage(): Promise<string> {
-  try {
-    return (await ensurePrincipal(false)).subject;
-  } catch {
-    const marker = await readPrincipalMarker();
-    if (marker?.subject) return marker.subject;
-    return await identityHint();
+  // Preserve an already-scoped local Client profile during the OIDC migration.
+  // Business authorization is now exclusively Keycloak OIDC, but existing local
+  // profile/proof data must not silently jump accounts during the live vertical.
+  const marker = await readPrincipalMarker();
+  if (marker?.subject) return marker.subject;
+
+  const legacyProfile = await legacyProfileSubject();
+  if (legacyProfile) {
+    await savePrincipalMarker(legacyProfile);
+    return legacyProfile;
   }
+
+  const oidc = await canonicalOidcPrincipal(false);
+  if (oidc) {
+    await savePrincipalMarker(oidc.subject);
+    return oidc.subject;
+  }
+
+  return await identityHint();
 }
 
 async function bindActiveScope(scope: string): Promise<void> {
   const previous = activeScopeCache || await SecureStore.getItemAsync(ACTIVE_SCOPE_KEY);
   if (previous && previous !== scope) {
     delete (globalThis as any).__DELISHAFRICA_CLIENT_PROFILE_LITE_V1__;
-  delete (globalThis as any).__DELISHAFRICA_PENDING_PAYMENT_COMMIT_V1__;
+    delete (globalThis as any).__DELISHAFRICA_PENDING_PAYMENT_COMMIT_V1__;
   }
   activeScopeCache = scope;
   await SecureStore.setItemAsync(ACTIVE_SCOPE_KEY, scope);
@@ -250,8 +227,12 @@ export async function daOrdersFetch(input: RequestInfo | URL, init: RequestInit 
     if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
     return fetch(input, { ...init, headers });
   };
+
   let response = await send(await ensurePrincipal(false));
   if (response.status !== 401) return response;
+
+  // A locally unexpired access token can still have been revoked server-side.
+  // On one 401, rotate through the canonical Client refresh token and retry once.
   principalCache = null;
   response = await send(await ensurePrincipal(true));
   return response;
@@ -260,9 +241,15 @@ export async function daOrdersFetch(input: RequestInfo | URL, init: RequestInit 
 export async function daSessionRehydrationStatus(): Promise<Record<string, unknown>> {
   try {
     const principal = await ensurePrincipal(false);
-    return { ok: true, role: ROLE, subjectHash: hashScope(principal.subject), scope: await daAccountScopeId() };
+    return {
+      ok: true,
+      role: ROLE,
+      authSource: 'keycloak_oidc_canonical_v3',
+      subjectHash: hashScope(principal.subject),
+      scope: await daAccountScopeId(),
+    };
   } catch (error: any) {
-    return { ok: false, role: ROLE, reason: String(error?.message || error) };
+    return { ok: false, role: ROLE, authSource: 'keycloak_oidc_canonical_v3', reason: String(error?.message || error) };
   }
 }
 
@@ -272,7 +259,16 @@ export async function daPurgeOrdersAccountState(): Promise<void> {
   activeScopeCache = null;
   delete (globalThis as any).__DELISHAFRICA_CLIENT_PROFILE_LITE_V1__;
   delete (globalThis as any).__DELISHAFRICA_PENDING_PAYMENT_COMMIT_V1__;
-  for (const key of [LEGACY_SESSION_MARKER_KEY, PRINCIPAL_MARKER_KEY, ACTIVE_SCOPE_KEY]) {
-    try { await SecureStore.deleteItemAsync(key); } catch { /* best effort */ }
+  for (const key of [
+    LEGACY_SESSION_MARKER_KEY,
+    PRINCIPAL_MARKER_KEY,
+    BUSINESS_PRINCIPAL_MARKER_KEY,
+    ACTIVE_SCOPE_KEY,
+  ]) {
+    try {
+      await SecureStore.deleteItemAsync(key);
+    } catch {
+      // Best effort local account-state purge.
+    }
   }
 }

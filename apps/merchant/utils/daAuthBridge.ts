@@ -52,14 +52,6 @@ function getSecureStore(): any | null {
   }
 }
 
-async function setItem(key: string, value: string): Promise<void> {
-  const SecureStore = getSecureStore();
-  if (SecureStore?.setItemAsync) {
-    await SecureStore.setItemAsync(key, value);
-    return;
-  }
-  MEMORY[key] = value;
-}
 
 async function getItem(key: string): Promise<string | null> {
   const SecureStore = getSecureStore();
@@ -99,33 +91,10 @@ export async function daAuthHealth(): Promise<any> {
   return await response.json();
 }
 
-export async function daDevLogin(payload?: {
-  role?: DaRole;
-  name?: string;
-  email?: string;
-  merchantSlug?: string;
-  courierId?: string;
-  clientId?: string;
-}): Promise<DaAuthSession> {
-  const response = await fetch(`${apiBase()}/auth/dev-login`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      role: 'merchant',
-      name: 'Partenaire Thieyp',
-      ...(payload || {}),
-    }),
-  });
-  const data = (await response.json()) as DaAuthSession;
-  const token = data.accessToken || data.token;
-  if (token) await setItem(DEV_ACCESS_KEY, token);
-  return { ...data, source: 'development', ownershipEligible: false };
-}
-
 export async function daGetToken(): Promise<string | null> {
   const external = await daMerchantOidcSession();
-  if (external.authenticated) return await daMerchantOidcAccessToken();
-  return await getItem(DEV_ACCESS_KEY);
+  if (!external.authenticated) return null;
+  return await daMerchantOidcAccessToken();
 }
 
 export async function daLogout(): Promise<void> {
@@ -160,18 +129,12 @@ export async function daMe(): Promise<DaAuthSession> {
     return externalToDaSession(external);
   }
 
-  const devToken = await getItem(DEV_ACCESS_KEY);
-  if (!devToken) return externalToDaSession(external);
-  const api = await requestSession('/auth/me', {
-    headers: { Authorization: `Bearer ${devToken}` },
-  });
-  return { ...api, source: 'development', ownershipEligible: false };
+  return externalToDaSession(external);
 }
 
 export async function daVerify(): Promise<DaAuthSession> {
   const externalToken = await daMerchantOidcAccessToken();
-  const token = externalToken || (await getItem(DEV_ACCESS_KEY));
-  if (!token) {
+  if (!externalToken) {
     return {
       ok: false,
       authenticated: false,
@@ -185,12 +148,12 @@ export async function daVerify(): Promise<DaAuthSession> {
   const api = await requestSession('/auth/verify', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ token }),
+    body: JSON.stringify({ token: externalToken }),
   });
   return {
     ...api,
-    source: externalToken ? 'external' : 'development',
-    ownershipEligible: Boolean(externalToken),
+    source: 'external',
+    ownershipEligible: true,
   };
 }
 

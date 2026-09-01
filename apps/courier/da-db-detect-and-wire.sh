@@ -32,7 +32,7 @@ DB_URL="postgresql://${AUTH}@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public"
 echo "   → ${DB_URL}"
 
 echo "5) Exporter pour la session + persister (profile + .env)…"
-export DATABASE_URL="$DB_URL"
+export DATABASE_URL="${DATABASE_URL:?Set DATABASE_URL securely before running}"
 echo "export DATABASE_URL='${DB_URL}'" >/etc/profile.d/delishafrica-db.sh
 echo "DATABASE_URL='${DB_URL}'" > "${API_DIR}/.env"
 
@@ -49,9 +49,9 @@ if pm2 describe delish-api >/dev/null 2>&1; then
   pm2 restart delish-api --update-env
 else
   if [ -f "dist/main.js" ]; then
-    DATABASE_URL="$DB_URL" pm2 start "node dist/main.js" --name delish-api
+    DATABASE_URL="${DATABASE_URL:?Set DATABASE_URL securely before running}"
   else
-    DATABASE_URL="$DB_URL" pm2 start "pnpm start:prod" --name delish-api
+    DATABASE_URL="${DATABASE_URL:?Set DATABASE_URL securely before running}"
   fi
 fi
 

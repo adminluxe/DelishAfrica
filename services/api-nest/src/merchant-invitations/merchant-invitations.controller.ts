@@ -5,6 +5,7 @@ import type { OpsAuthorityHeaderMap } from '../ops-authority/ops-authority.types
 import { MerchantInvitationsService } from './merchant-invitations.service';
 import {
   MERCHANT_INVITATION_PREPARE_PATH,
+  MERCHANT_INVITATION_DISPATCH_PATH,
   type MerchantInvitationPrepareBody,
   type MerchantInvitationTokenBody,
 } from './merchant-invitations.types';
@@ -15,6 +16,19 @@ export class MerchantInvitationsController {
     private readonly authority: OpsAuthorityService,
     private readonly invitations: MerchantInvitationsService,
   ) {}
+
+  @Post('dispatch-one')
+  @HttpCode(200)
+  async dispatchOne(@Headers() headers: OpsAuthorityHeaderMap) {
+    const context = await this.authority.authorizeRequest(
+      headers,
+      'POST',
+      MERCHANT_INVITATION_DISPATCH_PATH,
+      createHash('sha256').update('{}').digest('hex'),
+    );
+    void context;
+    return this.invitations.dispatchOne();
+  }
 
   @Post('prepare')
   @HttpCode(202)

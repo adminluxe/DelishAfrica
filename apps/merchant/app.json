@@ -1,36 +1,67 @@
 {
   "expo": {
-    "name": "DelishAfrica Merchant DEV54",
+    "name": "DelishAfrica Merchant",
     "slug": "delishafrica-merchant",
-    "scheme": "delishafrica-merchant-dev54",
+    "scheme": "delishafricamerchant",
     "version": "3.0.0",
     "ios": {
-      "bundleIdentifier": "com.delishafrica.merchant.dev54",
+      "bundleIdentifier": "com.delishafrica.merchant",
       "buildNumber": "1772244486",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false,
-        "NSAppTransportSecurity": {
-          "NSAllowsArbitraryLoads": true,
-          "NSAllowsArbitraryLoadsInWebContent": true
-        }
-      }
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "splash": {
+        "image": "./assets/splash.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#120804"
+      },
+      "backgroundColor": "#120804"
     },
     "android": {
-      "package": "com.delishafrica.merchant.dev54",
-      "versionCode": 1770770572
+      "package": "com.delishafrica.merchant",
+      "versionCode": 1770770572,
+      "splash": {
+        "image": "./assets/splash.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#120804"
+      },
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#120804"
+      }
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "backgroundColor": "#120804",
+          "dark": {
+            "image": "./assets/splash.png",
+            "backgroundColor": "#120804"
+          },
+          "imageWidth": 180,
+          "resizeMode": "contain"
+        }
+      ],
+      "expo-system-ui"
     ],
     "extra": {
       "router": {},
-      "DA_MARKER": "MERCHANT_DEV54_2026-02-28_A",
       "EXPO_PUBLIC_API_URL": "https://api.delishafrica.me",
       "eas": {
         "projectId": "394e7d6f-559b-4536-81a9-fbc0cdb0c68f"
       }
     },
-    "owner": "delishafrica"
+    "owner": "delishafrica",
+    "backgroundColor": "#120804",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#120804"
+    }
   }
 }

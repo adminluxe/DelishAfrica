@@ -86,7 +86,7 @@ order.clientName ||
 }
 
 function restaurantName(order: DemoOrder): string {
-return order.restaurantName || order.merchantName || "Thieyp";
+return order.restaurantName || order.merchantName || "Restaurant partenaire";
 }
 
 function amountLabel(order: DemoOrder): string {
@@ -173,6 +173,7 @@ const [refreshing, setRefreshing] = useState(false);
 const [loading, setLoading] = useState(true);
 const [message, setMessage] = useState("Chargement supervision...");
 const [selectedStatus, setSelectedStatus] = useState<string>("all");
+const [sessionRequired, setSessionRequired] = useState(false);
 
 const load = useCallback(async () => {
 setRefreshing(true);
@@ -180,9 +181,13 @@ try {
 const payload = await postJson("/orders/demo/list", {});
 const list = extractOrders(payload);
 setOrders(list);
+setSessionRequired(false);
 setMessage(`${list.length} commande(s) synchronisée(s).`);
 } catch (error: any) {
-setMessage(`Erreur supervision : ${error?.message || String(error)}`);
+const reason = String(error?.message || error || '');
+const needsSession = reason.includes('merchant_oidc_session_required') || reason.includes('Session restaurateur indisponible');
+setSessionRequired(needsSession);
+setMessage(needsSession ? 'Connexion Merchant requise · aucune session simulée.' : `Supervision momentanément indisponible · ${reason}`);
 } finally {
 setRefreshing(false);
 setLoading(false);
@@ -341,23 +346,38 @@ contentContainerStyle={styles.page}
 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} />}
 >
 <View style={styles.header}>
-<Text style={styles.brand}>DELISHAFRICA® · OPS</Text>
-<Text style={styles.title}>Pilotage live</Text>
+<Text style={styles.brand}>DELISHAFRICA® · MASTER CONTROL</Text>
+<Text style={styles.title}>Control room</Text>
 <Text style={styles.subtitle}>
-Commandes, blocages et mouvements de service.
+Décider vite, voir loin : flux, pression cuisine et remise au même endroit.
 </Text>
+</View>
+
+<View style={styles.futureRail}>
+<View style={styles.futureSignal} />
+<View style={{ flex: 1 }}>
+<Text style={styles.futureRailKicker}>SERVICE INTELLIGENCE</Text>
+<Text style={styles.futureRailText}>
+{sessionRequired
+? "Compte Merchant à connecter · Master Control reste protégé"
+: stats.active > 0
+? `${stats.active} opérations surveillées en temps réel`
+: "Système prêt · aucun signal prioritaire"}
+</Text>
+</View>
+<Text style={styles.futureRailMeta}>{sessionRequired ? "À CONNECTER" : refreshing || loading ? "SYNC" : "LIVE"}</Text>
 </View>
 
 <View style={styles.hero}>
 <View style={styles.heroTop}>
-<Text style={styles.heroKicker}>PILOTAGE SERVICE</Text>
-<Text style={styles.live}>LIVE</Text>
+<Text style={styles.heroKicker}>SERVICE INTELLIGENCE</Text>
+<Text style={styles.live}>SYSTEM LIVE</Text>
 </View>
 
 <Text style={styles.heroTitle}>
-{stats.active > 0 ? `${stats.active} opérations en cours` : "Service calme"}
+{sessionRequired ? "Identité Merchant requise" : stats.active > 0 ? `${stats.active} opérations en cours` : "Service calme"}
 </Text>
-<Text style={styles.heroText}>{blockerText}</Text>
+<Text style={styles.heroText}>{sessionRequired ? "Connectez votre compte Merchant pour ouvrir les flux opérationnels. Les actions restent protégées jusqu’à validation de la session." : blockerText}</Text>
 
 <View style={styles.metrics}>
 <Metric label="Total" value={stats.total} />
@@ -366,17 +386,17 @@ Commandes, blocages et mouvements de service.
 </View>
 
 <View style={styles.metrics}>
-<Metric label="News" value={stats.pending} tone="watch" />
+<Metric label="Nouvelles" value={stats.pending} tone="watch" />
 <Metric label="Prêt" value={stats.ready} tone="ok" />
 <Metric label="Livré" value={stats.delivered} tone="done" />
 </View>
 </View>
 
-<Pressable style={styles.refreshButton} onPress={load}>
+<Pressable style={styles.refreshButton} onPress={sessionRequired ? () => router.push("/auth-session" as any) : load}>
 {refreshing || loading ? (
 <ActivityIndicator />
 ) : (
-<Text style={styles.refreshText}>Rafraîchir la supervision</Text>
+<Text style={styles.refreshText}>{sessionRequired ? "Connecter le compte Merchant" : "Synchroniser le control room"}</Text>
 )}
 </Pressable>
 
@@ -385,14 +405,14 @@ Commandes, blocages et mouvements de service.
 <View style={styles.filters}>
 <FilterButton id="all" label="Tout" count={stats.total} />
 <FilterButton id="active" label="Actif" count={stats.active} />
-<FilterButton id="pending" label="News" count={stats.pending} />
+<FilterButton id="pending" label="Nouvelles" count={stats.pending} />
 <FilterButton id="ready" label="Prêt" count={stats.ready} />
 <FilterButton id="picked_up" label="Route" count={stats.picked} />
 <FilterButton id="delivered" label="Livré" count={stats.delivered} />
 </View>
 
 <View style={styles.sectionHead}>
-<Text style={styles.sectionTitle}>Flux commandes</Text>
+<Text style={styles.sectionTitle}>Flux opérationnel</Text>
 <Text style={styles.sectionSubtitle}>
 {filteredOrders.length} résultats dans le filtre actif.
 </Text>
@@ -403,17 +423,17 @@ filteredOrders.map((order) => <OrderRow key={orderId(order)} order={order} />)
 ) : (
 <View style={styles.emptyCard}>
 <Text style={styles.emptyEmoji}>🧭</Text>
-<Text style={styles.emptyTitle}>Aucune commande ici</Text>
+<Text style={styles.emptyTitle}>{sessionRequired ? "Compte Merchant non connecté" : "Aucune commande ici"}</Text>
 <Text style={styles.emptyText}>
-Change de filtre ou crée une commande depuis l’app Client.
+{sessionRequired ? "Une connexion réelle suffit pour restaurer la supervision, les commandes et le contexte cuisine." : "Change de filtre ou crée une commande depuis l’app Client."}
 </Text>
 </View>
 )}
 
 <View style={styles.debtCard}>
-<Text style={styles.debtKicker}>Qualité de service</Text>
+<Text style={styles.debtKicker}>Continuité opérationnelle</Text>
 <Text style={styles.debtText}>
-Commandes, informations partenaire et passation coursier restent lisibles pendant le service.
+Le control room privilégie la prochaine décision utile et conserve le contexte entre cuisine, remise et livraison.
 </Text>
 </View>
 
@@ -434,7 +454,7 @@ aquaRipple: { position: "absolute", top: 226, right: -28, width: 126, height: 22
 aquaFoam: { position: "absolute", top: 408, left: -118, width: 126, height: 126, borderRadius: 999, backgroundColor: "rgba(255, 246, 230, 0.014)", borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.038)" },
 aquaVeil: { position: "absolute", top: -84, right: -132, width: 168, height: 168, borderRadius: 999, backgroundColor: "rgba(120, 245, 255, 0.018)", borderWidth: 1, borderColor: "rgba(214, 255, 248, 0.046)", transform: [{ scaleX: 1.24 }] },
 aquaDrop: { position: "absolute", top: 126, left: -34, width: 44, height: 44, borderRadius: 999, backgroundColor: "rgba(255, 255, 255, 0.014)", borderWidth: 1, borderColor: "rgba(225, 255, 248, 0.040)" },
-safe: { flex: 1, backgroundColor: "#070A12" },
+safe: { flex: 1, backgroundColor: "#05080D" },
 page: { padding: 18, paddingBottom: 84 },
 header: { marginBottom: 22 },
 brand: {
@@ -458,8 +478,8 @@ marginTop: 12,
 fontWeight: "600",
 },
 hero: {
-backgroundColor: "#111A2C",
-borderColor: "rgba(138,185,255,0.34)",
+backgroundColor: "#0A1520",
+borderColor: "rgba(118,239,223,0.28)",
 borderWidth: 1,
 borderRadius: 34,
 padding: 22,
@@ -750,4 +770,29 @@ color: "#8AB9FF",
 fontSize: 18,
 fontWeight: "900",
 },
+futureRail: {
+minHeight: 76,
+flexDirection: "row",
+alignItems: "center",
+gap: 12,
+paddingHorizontal: 16,
+paddingVertical: 14,
+marginBottom: 16,
+borderRadius: 22,
+backgroundColor: "rgba(6,22,34,0.88)",
+borderWidth: 1,
+borderColor: "rgba(118,239,223,0.26)",
+},
+futureSignal: {
+width: 11,
+height: 11,
+borderRadius: 99,
+backgroundColor: "#76EFDF",
+shadowColor: "#76EFDF",
+shadowOpacity: 0.7,
+shadowRadius: 12,
+},
+futureRailKicker: { color: "#76EFDF", fontSize: 9, fontWeight: "900", letterSpacing: 1.8 },
+futureRailText: { color: "rgba(235,250,255,0.76)", fontSize: 12, lineHeight: 17, fontWeight: "700", marginTop: 4 },
+futureRailMeta: { color: "#FFD27A", fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
 });

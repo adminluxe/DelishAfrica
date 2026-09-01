@@ -364,6 +364,20 @@ ${result.maskedDestination}
 Utilisez uniquement le code le plus récent.`,
       );
     } catch (error: any) {
+      // A failed provider start is idempotently cached server-side by clientRequestId.
+      // Clear the local request id so the next user retry is a genuinely fresh attempt
+      // after provider/runtime recovery instead of replaying the cached failure.
+      if (channel === 'sms') {
+        setPhoneClientRequestId('');
+        setPhoneAttemptToken('');
+        setPhoneAttemptExpiresAt('');
+        setPhoneAlternateAvailable(false);
+        setPhoneProvider('');
+      } else {
+        setEmailClientRequestId('');
+        setEmailAttemptToken('');
+        setEmailAttemptExpiresAt('');
+      }
       Alert.alert('Envoi indisponible', error?.message || 'Le fournisseur de vérification est indisponible.');
     } finally {
       proofFlightRef.current = false;

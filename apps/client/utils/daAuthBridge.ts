@@ -46,16 +46,6 @@ function getSecureStore(): any | null {
   }
 }
 
-async function setItem(key: string, value: string): Promise<void> {
-  const SecureStore = getSecureStore();
-
-  if (SecureStore?.setItemAsync) {
-    await SecureStore.setItemAsync(key, value);
-    return;
-  }
-
-  MEMORY[key] = value;
-}
 
 async function getItem(key: string): Promise<string | null> {
   const SecureStore = getSecureStore();
@@ -81,34 +71,6 @@ async function deleteItem(key: string): Promise<void> {
 export async function daAuthHealth(): Promise<any> {
   const res = await fetch(`${apiBase()}/auth/health`);
   return await res.json();
-}
-
-export async function daDevLogin(payload?: {
-  role?: DaRole;
-  name?: string;
-  email?: string;
-  merchantSlug?: string;
-  courierId?: string;
-  clientId?: string;
-}): Promise<DaAuthSession> {
-  const res = await fetch(`${apiBase()}/auth/dev-login`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      role: 'client',
-      name: 'Client DelishAfrica',
-      ...(payload || {}),
-    }),
-  });
-
-  const data = await res.json();
-
-  const token = data.accessToken || data.token;
-  if (token) {
-    await setItem(ACCESS_KEY, token);
-  }
-
-  return data;
 }
 
 export async function daGetToken(): Promise<string | null> {

@@ -237,6 +237,7 @@ export default function CourierOrdersFocus() {
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState("Terrain prêt.");
+  const [sessionRequired, setSessionRequired] = useState(false);
   const [selectedMissionId, setSelectedMissionId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const reduceMotion = useReduceMotionPreference();
@@ -256,9 +257,13 @@ export default function CourierOrdersFocus() {
     setRefreshing(true);
     try {
       const list = await readOrders();
+      setSessionRequired(false);
       setMessage(`${list.length} mission${list.length > 1 ? "s" : ""} synchronisée${list.length > 1 ? "s" : ""}.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Synchronisation indisponible");
+      const reason = error instanceof Error ? error.message : "Synchronisation indisponible";
+      const needsSession = reason.includes('courier_oidc_session_required') || reason.includes('Session courier indisponible');
+      setSessionRequired(needsSession);
+      setMessage(needsSession ? "Compte Courier à connecter." : reason);
     } finally {
       setRefreshing(false);
     }
@@ -344,7 +349,7 @@ export default function CourierOrdersFocus() {
         return;
       }
 
-      setMessage(`${id} · ${statusLabel(next)} confirmé.`);
+      setMessage(`${id} · ${statusLabel(next)} ${next === "delivered" ? "confirmée" : "confirmé"}.`);
     } catch (error) {
       setMessage("Action non confirmée · dernière vérité conservée.");
       Alert.alert("Action impossible", error instanceof Error ? error.message : "Erreur inconnue");
@@ -471,10 +476,21 @@ export default function CourierOrdersFocus() {
           <View style={{ flex: 1 }}>
             <Text style={styles.brand}>DELISHAFRICA® · COURIER</Text>
             <Text style={styles.title}>Mission maintenant</Text>
-            <Text style={styles.subtitle}>{Math.max(restaurants.length, 1)} restaurant{restaurants.length > 1 ? "s" : ""} · {message}</Text>
+            <Text style={styles.subtitle}>{sessionRequired ? "Identité Courier requise pour les missions" : `${Math.max(restaurants.length, 1)} restaurant${restaurants.length > 1 ? "s" : ""} · ${message}`}</Text>
           </View>
           <Pressable style={styles.closeButton} onPress={() => router.replace("/")}><Text style={styles.closeText}>Fermer</Text></Pressable>
         </View>
+
+        {sessionRequired ? (
+          <View style={styles.sessionCard}>
+            <Text style={styles.sessionKicker}>IDENTITÉ COURIER REQUISE</Text>
+            <Text style={styles.sessionTitle}>Connectez le compte Courier réel.</Text>
+            <Text style={styles.sessionText}>Aucune session de secours n’est substituée à votre identité. Les missions restent protégées jusqu’à la connexion sécurisée.</Text>
+            <Pressable style={styles.sessionButton} onPress={() => router.push('/auth-session' as any)}>
+              <Text style={styles.sessionButtonText}>Connecter le compte Courier</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View style={styles.metricRow}>
           <View style={styles.metric}><Text style={styles.metricValue}>{ready.length}</Text><Text style={styles.metricLabel}>À récupérer</Text></View>
@@ -557,6 +573,12 @@ const styles = StyleSheet.create({
   subtitle: { color: "rgba(227,255,236,0.60)", fontSize: 13, lineHeight: 19, marginTop: 7, fontWeight: "700" },
   closeButton: { borderRadius: 999, backgroundColor: "rgba(117,239,164,0.10)", borderWidth: 1, borderColor: "rgba(117,239,164,0.24)", paddingHorizontal: 14, paddingVertical: 9 },
   closeText: { color: "#A8FBC5", fontSize: 12, fontWeight: "900" },
+  sessionCard: { borderRadius: 24, padding: 18, marginBottom: 18, backgroundColor: "#052417", borderWidth: 1, borderColor: "rgba(117,239,164,0.28)" },
+  sessionKicker: { color: "#75EFA4", fontSize: 10, fontWeight: "900", letterSpacing: 2 },
+  sessionTitle: { color: "#F3FFF7", fontSize: 22, lineHeight: 28, fontWeight: "900", marginTop: 10 },
+  sessionText: { color: "rgba(227,255,236,0.62)", fontSize: 14, lineHeight: 21, marginTop: 8 },
+  sessionButton: { minHeight: 52, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: "#75EFA4", marginTop: 15 },
+  sessionButtonText: { color: "#00160D", fontSize: 15, fontWeight: "900" },
   metricRow: { flexDirection: "row", gap: 9, marginBottom: 22 },
   metric: { flex: 1, borderRadius: 18, padding: 14, backgroundColor: "#072318", borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" },
   metricValue: { color: "#F3FFF7", fontSize: 26, fontWeight: "900" },

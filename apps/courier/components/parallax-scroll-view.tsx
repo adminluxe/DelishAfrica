@@ -1,10 +1,10 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { ScrollView, View, StyleSheet, StyleProp, ViewStyle } from "react-native";
 
 /**
  * PARALLAX LIVE OVERRIDE (safe):
  * - remplace toute implémentation parallax/gesture par un ScrollView simple
- * - log au mount + log au scroll begin drag
+ * - conserve un comportement ScrollView simple et prévisible
  */
 export type ParallaxScrollViewProps = {
   children: React.ReactNode;
@@ -17,10 +17,6 @@ export type ParallaxScrollViewProps = {
 export default function ParallaxScrollView(props: ParallaxScrollViewProps) {
   const { children, style, contentContainerStyle, headerImage } = props;
 
-  useEffect(() => {
-    console.log("[PARALLAX OVERRIDE] mounted ✅");
-  }, []);
-
   return (
     <ScrollView
       style={[styles.container, style]}
@@ -28,7 +24,6 @@ export default function ParallaxScrollView(props: ParallaxScrollViewProps) {
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
       scrollEventThrottle={16}
-      onScrollBeginDrag={() => console.log("[SCROLLBEGIN] ParallaxScrollView ✅")}
     >
       {headerImage ? (
         <View pointerEvents="box-none" style={styles.header}>

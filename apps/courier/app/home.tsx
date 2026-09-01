@@ -1,3 +1,2 @@
-import OrdersDemoScreen from "./orders-demo";
-
-export default OrdersDemoScreen;
+// DA_SURFACE_FUTURE_COURIER_HOME_CANONICAL
+export { default } from "./index";

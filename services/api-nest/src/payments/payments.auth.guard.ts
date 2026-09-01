@@ -32,6 +32,16 @@ export class PaymentsAuthGuard implements CanActivate {
       });
     }
 
+    if (
+      resolution.principal.authSource !== 'external' ||
+      !resolution.principal.ownershipEligible
+    ) {
+      throw new ForbiddenException({
+        ok: false,
+        code: 'payments_external_identity_required',
+      });
+    }
+
     request.daPaymentsPrincipal = resolution.principal;
     return true;
   }

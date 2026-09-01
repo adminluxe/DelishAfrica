@@ -3,28 +3,30 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#121212"
+      "backgroundColor": "#051411"
     },
     "ios": {
       "splash": {
-        "backgroundColor": "#121212"
+        "image": "./assets/splash.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#051411"
       },
       "bundleIdentifier": "com.delishafrica.client",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false,
-        "NSAppTransportSecurity": {
-          "NSAllowsArbitraryLoads": true
-        }
+        "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "1770770572"
+      "buildNumber": "1770770572",
+      "backgroundColor": "#051411"
     },
     "android": {
       "splash": {
-        "backgroundColor": "#121212"
+        "image": "./assets/splash.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#051411"
       },
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon-adaptive-foreground.png",
-        "backgroundColor": "#121212"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#051411"
       },
       "package": "com.delishafrica.client",
       "versionCode": 1770770572
@@ -33,63 +35,35 @@
       "apiBaseUrl": "/api",
       "API_URL": "/api",
       "baseUrl": "/api",
-      "eas": {
-      },
+      "eas": {},
       "EXPO_PUBLIC_API_URL": "https://api.delishafrica.me"
     },
     "scheme": "delishafricaclient",
     "icon": "./assets/icon.png",
     "plugins": [
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/splash.png",
-          "backgroundColor": "#121212",
-          "resizeMode": "contain"
-        }
-      ],
+      "expo-router",
       "expo-dev-client",
       [
         "expo-splash-screen",
         {
           "image": "./assets/splash.png",
-          "backgroundColor": "#121212",
+          "backgroundColor": "#051411",
+          "dark": {
+            "image": "./assets/splash.png",
+            "backgroundColor": "#051411"
+          },
+          "imageWidth": 180,
           "resizeMode": "contain"
         }
       ],
-      "expo-dev-client",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/splash.png",
-          "backgroundColor": "#121212",
-          "resizeMode": "contain"
-        }
-      ],
-      "expo-dev-client",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/splash.png",
-          "backgroundColor": "#121212",
-          "resizeMode": "contain"
-        }
-      ],
-      "expo-dev-client",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/splash.png",
-          "backgroundColor": "#121212",
-          "resizeMode": "contain"
-        }
-      ],
-      "expo-dev-client"
+      "expo-system-ui"
     ],
     "owner": "delishafrica",
     "main": "expo-router/entry",
     "slug": "delishafrica-client",
     "name": "DelishAfrica Client",
-    "version": "3.0.0"
+    "version": "3.0.0",
+    "backgroundColor": "#051411",
+    "userInterfaceStyle": "dark"
   }
 }

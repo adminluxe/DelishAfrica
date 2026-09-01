@@ -1,6 +1,7 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import {
   createCipheriv,
+  createDecipheriv,
   createHash,
   randomBytes,
 } from 'crypto';
@@ -75,6 +76,23 @@ export class MerchantInvitationsCrypto {
       ]),
       keyId: this.keyId,
     };
+  }
+
+  decryptUtf8(value: Buffer, keyId: string, purpose: string): string {
+    if (keyId !== this.keyId || value.length < 29 || value[0] !== ENVELOPE_VERSION) {
+      throw new ServiceUnavailableException({ ok: false, code: 'invitation_ciphertext_invalid' });
+    }
+    try {
+      const iv = value.subarray(1, 13);
+      const tag = value.subarray(13, 29);
+      const ciphertext = value.subarray(29);
+      const decipher = createDecipheriv('aes-256-gcm', this.key, iv);
+      decipher.setAAD(Buffer.from(`DA-MERCHANT-INVITATION-V1|${this.keyId}|${purpose}`, 'utf8'));
+      decipher.setAuthTag(tag);
+      return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
+    } catch {
+      throw new ServiceUnavailableException({ ok: false, code: 'invitation_ciphertext_invalid' });
+    }
   }
 
   sha256(value: string | Buffer): string {

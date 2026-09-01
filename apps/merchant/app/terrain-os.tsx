@@ -3,10 +3,10 @@ import { Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View 
 import { router } from "expo-router";
 
 const APP_LABEL = `Merchant`;
-const SCREEN_TITLE = `Terrain OS Merchant`;
-const KICKER = `KITCHEN CONTROL TOWER`;
-const HEADLINE = `La cuisine voit le terrain avant le rush.`;
-const SUBTITLE = `Préparation, fenêtre coursier, pression de service et sortie au bon moment.`;
+const SCREEN_TITLE = `Terrain OS · Master Control`;
+const KICKER = `LIVE SERVICE CONTROL TOWER`;
+const HEADLINE = `La cuisine voit la prochaine fenêtre avant le rush.`;
+const SUBTITLE = `Préparation, fenêtre coursier, pression de service et sortie convergent dans une seule lecture.`;
 const PROMISE = `Promesse cuisine`;
 const PROMISE_TEXT = `Préparer juste. Sortir chaud. Servir sans panique.`;
 const CTA_LABEL = `Retour cockpit cuisine`;

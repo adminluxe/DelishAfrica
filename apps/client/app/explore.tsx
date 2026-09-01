@@ -63,7 +63,7 @@ export default function ExploreScreen() {
 
       {partners.filter((p) => p.slug !== "thieyp").map((p) => (
         <View key={p.slug || p.name} style={styles.card}>
-          <Text style={styles.placeholder}>PARTENAIRE EN PREPARATION</Text>
+          <Text style={styles.placeholder}>PROCHAINEMENT SUR DELISHAFRICA®</Text>
           <Text style={styles.cardTitle}>{p.name}</Text>
           <Text style={styles.cardText}>{p.cuisine || "Cuisine afro-diasporique"} · {p.city || "Bruxelles"}</Text>
           <Text style={styles.cardText}>{p.description || "Préparé pour tester listes, filtres et navigation."}</Text>

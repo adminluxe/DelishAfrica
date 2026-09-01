@@ -1,1798 +1,1084 @@
-// DA_A5A3A7S16R4_DISPATCH_CONTRACT_REPAIR_V1
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-ActivityIndicator,
-Alert,
-Linking,
-Pressable,
-RefreshControl,
-SafeAreaView,
-ScrollView,
-StyleSheet,
-Text,
-View,
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
-import * as Location from "expo-location";
-import { daOrdersFetch } from "../utils/daOrdersApi";
+import { router, useFocusEffect } from "expo-router";
 
-const API_BASE_URL =
-process.env.EXPO_PUBLIC_API_BASE_URL ||
-process.env.EXPO_PUBLIC_API_URL ||
-"https://api.delishafrica.me/api/v1";
+import { daOrdersFetch, daSessionRehydrationStatus } from "../utils/daOrdersApi";
+import {
+  loadCourierPresence,
+  saveCourierPresence,
+  syncCourierPresence,
+} from "../utils/daPresenceStore";
+import { WaterRouteCurrent } from "../ui/water/WaterRouteCurrent";
 
-function daApiV1(path: string) {
-const base = API_BASE_URL.replace(/\/+$/, "");
-const apiBase = base.endsWith("/api/v1") ? base : `${base}/api/v1`;
-const cleanPath = path.startsWith("/") ? path : `/${path}`;
-return `${apiBase}${cleanPath}`;
-}
+const RAW_API =
+  process.env.EXPO_PUBLIC_API_BASE_URL ||
+  process.env.EXPO_PUBLIC_API_URL ||
+  "https://api.delishafrica.me/api/v1";
+const API_BASE_URL = RAW_API.replace(/\/$/, "").endsWith("/api/v1")
+  ? RAW_API.replace(/\/$/, "")
+  : `${RAW_API.replace(/\/$/, "")}/api/v1`;
 
-// DA_ROUTE_ORACLE_GOOGLE_ROUTES_V1
-type RoutePreviewApiPayload = {
-ok?: boolean;
-provider?: string;
-distanceMeters?: number;
-durationSeconds?: number;
-etaMinutes?: number;
-confidence?: number;
-fallback?: boolean;
-polyline?: string | null;
-meta?: {
-trafficAware?: boolean;
-reason?: string;
-computedAt?: string;
-source?: string;
-};
-};
+const OFFERS_PATH = "/orders/demo/courier/offers";
+const ACCEPT_PATH = "/orders/demo/courier/offers/accept";
+const REJECT_PATH = "/orders/demo/courier/offers/reject";
+const HEARTBEAT_MS = 60_000;
+const SESSION_GRACE_DELAYS_MS = [0, 250, 600, 1200] as const;
 
-type RoutePreviewApiState = {
-loading: boolean;
-data: RoutePreviewApiPayload | null;
-error: string | null;
-updatedAt: string | null;
+type AnyRecord = Record<string, any>;
+
+type PresenceProof = {
+  token?: string;
+  verifiedAt?: string;
+  expiresAt?: string;
+  destination?: string;
 };
 
-type RouteGeoPoint = {
-lat: number;
-lng: number;
+type CourierProfileLite = {
+  id?: string;
+  riderName?: string;
+  phone?: string;
+  email?: string;
+  activeZone?: string;
+  vehicle?: string;
+  capacity?: string | number;
+  emergencyContact?: string;
+  notes?: string;
+  available?: boolean;
+  territory?: {
+    city?: string;
+    country?: string;
+    countryCode?: string;
+    key?: string;
+  };
+  territoryEvidence?: {
+    latitude?: number;
+    longitude?: number;
+    detectedAt?: string;
+    source?: string;
+  };
+  proofs?: {
+    phone?: PresenceProof;
+    email?: PresenceProof;
+  };
+  trust?: {
+    status?: string;
+  };
+  updatedAt?: string;
 };
 
-type RoutePartnerEntry = {
-id?: string;
-slug?: string;
-name?: string;
-address?: unknown;
-location?: unknown;
-latitude?: number;
-longitude?: number;
-lat?: number;
-lng?: number;
-};
-
-type TerrainContext = {
-restaurantName: string;
-restaurantAddress: string;
-clientAddress: string;
-restaurantPoint: RouteGeoPoint | null;
-clientPoint: RouteGeoPoint | null;
-originPoint: RouteGeoPoint | null;
-};
-
-function routeText(value: unknown) {
-return String(value || "").trim();
-}
-
-function routeKey(value: unknown) {
-return routeText(value)
-.toLocaleLowerCase("fr")
-.normalize("NFD")
-.replace(/[\u0300-\u036f]/g, "")
-.replace(/[^a-z0-9]+/g, "-")
-.replace(/^-|-$/g, "");
-}
-
-function routeAddressText(value: unknown): string {
-if (typeof value === "string") return value.trim();
-if (!value || typeof value !== "object") return "";
-const record = value as Record<string, unknown>;
-return [record.label, record.line1, record.line2, record.postalCode, record.city, record.countryCode]
-.filter(Boolean)
-.map((part) => routeText(part))
-.filter((part, index, all) => part && all.indexOf(part) === index)
-.join(", ");
-}
-
-function routePoint(value: unknown): RouteGeoPoint | null {
-if (!value || typeof value !== "object") return null;
-const record = value as Record<string, unknown>;
-const lat = Number(record.lat ?? record.latitude);
-const lng = Number(record.lng ?? record.longitude);
-if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
-return { lat, lng };
-}
-
-function routeRestaurantName(order: Record<string, any> | null | undefined) {
-const restaurant = order?.restaurant;
-const objectRestaurant = restaurant && typeof restaurant === "object" ? restaurant : null;
-return routeText(
-order?.restaurantName ||
-objectRestaurant?.name ||
-(typeof restaurant === "string" ? restaurant : "") ||
-order?.merchantName ||
-order?.partnerName ||
-"Restaurant partenaire"
-);
-}
-
-function routeRestaurantIdentity(order: Record<string, any> | null | undefined) {
-const restaurant = order?.restaurant;
-const objectRestaurant = restaurant && typeof restaurant === "object" ? restaurant : null;
-return {
- id: routeText(order?.restaurantId || objectRestaurant?.id || objectRestaurant?.slug),
- name: routeRestaurantName(order),
-};
-}
-
-function routePartnerForOrder(order: Record<string, any> | null | undefined, partners: RoutePartnerEntry[]) {
-const identity = routeRestaurantIdentity(order);
-const wanted = new Set([routeKey(identity.id), routeKey(identity.name)].filter(Boolean));
-return partners.find((partner) => {
-const keys = [partner.id, partner.slug, partner.name].map(routeKey).filter(Boolean);
-return keys.some((key) => wanted.has(key));
-}) || null;
-}
-
-function routeRestaurantAddress(order: Record<string, any> | null | undefined, partner: RoutePartnerEntry | null) {
-const restaurant = order?.restaurant;
-const objectRestaurant = restaurant && typeof restaurant === "object" ? restaurant : null;
-return (
-routeAddressText(order?.restaurantAddress) ||
-routeAddressText(objectRestaurant?.address) ||
-routeAddressText(partner?.address) ||
-routeRestaurantName(order)
-);
-}
-
-function routeClientAddress(order: Record<string, any> | null | undefined) {
-return (
-routeAddressText(order?.delivery?.address) ||
-routeAddressText(order?.deliveryAddress) ||
-routeAddressText(order?.customerAddress) ||
-routeAddressText(order?.customer?.address) ||
-routeText(order?.customer?.city) ||
-"Adresse client"
-);
-}
-
-function routeRestaurantPoint(order: Record<string, any> | null | undefined, partner: RoutePartnerEntry | null) {
-const restaurant = order?.restaurant;
-const objectRestaurant = restaurant && typeof restaurant === "object" ? restaurant : null;
-return (
-routePoint(order?.restaurantLocation) ||
-routePoint(objectRestaurant?.location) ||
-routePoint(objectRestaurant) ||
-routePoint(partner?.location) ||
-routePoint(partner)
-);
-}
-
-function routeClientPoint(order: Record<string, any> | null | undefined) {
-return (
-routePoint(order?.delivery?.location) ||
-routePoint(order?.customer?.location) ||
-routePoint(order?.delivery?.address) ||
-routePoint(order?.customer?.address)
-);
-}
-
-async function routeGeocode(address: string): Promise<RouteGeoPoint | null> {
-if (!address || address === "Adresse client") return null;
-try {
-const matches = await Location.geocodeAsync(address);
-const first = matches[0];
-if (!first) return null;
-return routePoint(first);
-} catch {
-return null;
-}
-}
-
-function normalizeRoutePartners(payload: any): RoutePartnerEntry[] {
-if (Array.isArray(payload)) return payload;
-if (Array.isArray(payload?.partners)) return payload.partners;
-if (Array.isArray(payload?.items)) return payload.items;
-if (Array.isArray(payload?.data)) return payload.data;
-return [];
-}
-
-function routeProviderLabel(provider?: string | null) {
-if (provider === "google_routes") return "Google Routes";
-if (provider === "fallback_haversine") return "Estimation sécurisée";
-if (provider === "fallback_google_unavailable") return "Estimation protégée";
-if (provider === "fallback_invalid_input") return "Coordonnées à confirmer";
-return "Itinéraire estimé";
-}
-
-function routeDistanceLabel(meters?: number) {
-if (!Number.isFinite(Number(meters))) return "distance en cours";
-const km = Number(meters) / 1000;
-return km >= 1 ? `${km.toFixed(1).replace(".", ",")} km` : `${Math.round(Number(meters))} m`;
-}
-
-
-
-
-type TerrainMapProvider = "apple" | "google" | "waze";
-
-function formatTerrainPoint(point: { lat: number; lng: number }) {
-return `${point.lat},${point.lng}`;
-}
-
-function buildTerrainMapUrl(provider: TerrainMapProvider, context: TerrainContext) {
-const restaurantTarget = encodeURIComponent(
-context.restaurantAddress ||
-(context.restaurantPoint ? formatTerrainPoint(context.restaurantPoint) : context.restaurantName)
-);
-const clientTarget = encodeURIComponent(
-context.clientAddress ||
-(context.clientPoint ? formatTerrainPoint(context.clientPoint) : "")
-);
-const restaurantLabel = encodeURIComponent(context.restaurantName || "Restaurant partenaire");
-
-if (provider === "apple") {
-return `http://maps.apple.com/?daddr=${restaurantTarget}&dirflg=d&q=${restaurantLabel}`;
-}
-
-if (provider === "google") {
-if (clientTarget) {
-return `https://www.google.com/maps/dir/?api=1&destination=${clientTarget}&waypoints=${restaurantTarget}&travelmode=driving`;
-}
-return `https://www.google.com/maps/dir/?api=1&destination=${restaurantTarget}&travelmode=driving`;
-}
-
-if (context.restaurantPoint) {
-return `https://www.waze.com/ul?ll=${formatTerrainPoint(context.restaurantPoint)}&navigate=yes&utm_source=delishafrica`;
-}
-return `https://www.waze.com/ul?q=${restaurantTarget}&navigate=yes&utm_source=delishafrica`;
-}
-
-type Factor = {
-label?: string;
-score?: number;
-weight?: number;
-value?: number | string | null;
-explanation?: string;
-};
-
-type Candidate = {
-id?: string;
-name?: string;
-vehicle?: string;
-score?: number;
-confidence?: number;
-pickupEtaMin?: number;
-deliveryEtaMin?: number;
-totalEtaMin?: number;
-pickupDistanceKm?: number;
-deliveryDistanceKm?: number;
-activeMissions?: number;
-completedToday?: number;
-reliabilityScore?: number;
-freshnessScore?: number;
-fairnessScore?: number;
-factors?: Factor[];
-warnings?: string[];
-};
-
-type PreviewResponse = {
-ok?: boolean;
-service?: string;
-version?: string;
-mode?: string;
-willMutate?: boolean;
-autoAssignAllowed?: boolean;
-order?: Record<string, any> | null;
-orderId?: string | null;
-orderStatus?: string | null;
-eligibleForAssignment?: boolean;
-recommendedCourier?: Candidate | null;
-candidates?: Candidate[];
-confidence?: number;
-reason?: string;
-warnings?: string[];
-policy?: {
-mutation?: string;
-assignment?: string;
-humanFallbackBelowConfidence?: number;
-autoAssignThresholdFuture?: number;
-};
-};
-
-type ProposalResponse = {
-ok?: boolean;
-service?: string;
-version?: string;
-mode?: string;
-willMutate?: boolean;
-autoAssignAllowed?: boolean;
-orderId?: string | null;
-orderStatus?: string | null;
-eligibleForAssignment?: boolean;
-courierId?: string | null;
-courierName?: string | null;
-proposalStatus?: string | null;
-auditId?: string | null;
-message?: string;
-error?: string;
-order?: Record<string, any> | null;
-proposal?: Record<string, any> | null;
+type OfferView = {
+  order: AnyRecord;
+  proposal: AnyRecord;
+  orderId: string;
+  restaurantName: string;
+  itemName: string;
+  totalLabel: string;
+  proposalStatus: string;
+  score: number | null;
+  confidence: number | null;
+  etaMin: number | null;
+  territoryKey: string;
+  offerAttempt: number | null;
+  expiresAt: string;
+  reasons: string[];
 };
 
 type ScreenState = {
-loading: boolean;
-refreshing: boolean;
-error: string | null;
-data: PreviewResponse | null;
-updatedAt: Date | null;
+  loading: boolean;
+  activating: boolean;
+  deciding: boolean;
+  online: boolean;
+  profile: CourierProfileLite | null;
+  offer: OfferView | null;
+  message: string;
+  error: string;
 };
 
-function numberLabel(value: unknown, suffix = "") {
-if (typeof value === "number" && Number.isFinite(value)) {
-return `${Math.round(value * 10) / 10}${suffix}`;
-}
-return `--${suffix}`;
+function apiUrl(path: string): string {
+  return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-function scoreLabel(value: unknown) {
-if (typeof value === "number" && Number.isFinite(value)) {
-return `${Math.round(value)}/100`;
-}
-return "--/100";
+function clean(value: unknown): string {
+  return String(value ?? "").replace(/\s+/g, " ").trim();
 }
 
-function confidenceTone(value?: number) {
-if (typeof value !== "number") return "À confirmer";
-if (value >= 90) return "Très forte";
-if (value >= 70) return "Solide";
-if (value >= 50) return "A valider";
-return "Faible";
+function numberOrNull(value: unknown): number | null {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
 }
 
-function statusLabel(status?: string | null) {
-switch ((status || "").toLowerCase()) {
-case "pending":
-return "Reçue";
-case "accepted":
-return "Acceptée";
-case "ready":
-return "Prête";
-case "picked_up":
-return "En route";
-case "delivered":
-return "Livrée";
-case "cancelled":
-return "Annulée";
-default:
-return status || "Indisponible";
+function orderIdOf(order: AnyRecord): string {
+  return clean(order?.publicId || order?.orderId || order?.id);
 }
 
+function firstItemName(order: AnyRecord): string {
+  const first = Array.isArray(order?.items) ? order.items[0] : null;
+  return clean(first?.name || first?.title || order?.restaurantName || "Mission DelishAfrica");
 }
 
-function vehicleLabel(vehicle?: string) {
-switch ((vehicle || "").toLowerCase()) {
-case "bike":
-return "Vélo";
-case "scooter":
-return "Scooter";
-case "car":
-return "Voiture";
-case "walk":
-return "À pied";
-default:
-return vehicle || "Terrain";
+function totalLabel(order: AnyRecord): string {
+  const raw = numberOrNull(order?.total ?? order?.amount);
+  if (raw === null) return "Montant synchronisé";
+  const euros = raw > 500 ? raw / 100 : raw;
+  return `${euros.toFixed(2).replace(".", ",")} €`;
 }
+
+function proposalStatusOf(proposal: AnyRecord): string {
+  return clean(proposal?.status || proposal?.proposalStatus).toLowerCase();
+}
+
+function extractOrders(payload: AnyRecord): AnyRecord[] {
+  const candidates = [
+    payload?.orders,
+    payload?.items,
+    payload?.data,
+    payload?.offers,
+    payload?.data?.orders,
+    payload?.data?.offers,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate.filter((entry) => entry && typeof entry === "object");
+    }
+  }
+
+  return [];
+}
+
+function buildOffer(order: AnyRecord): OfferView | null {
+  const proposal =
+    order?.assignmentProposal && typeof order.assignmentProposal === "object"
+      ? order.assignmentProposal
+      : null;
+
+  const orderId = orderIdOf(order);
+  if (!orderId || !proposal) return null;
+
+  const proposalStatus = proposalStatusOf(proposal);
+  if (!["proposed", "accepted"].includes(proposalStatus)) return null;
+
+  const score = numberOrNull(proposal?.score);
+  const confidence = numberOrNull(proposal?.confidence);
+  const etaMin = numberOrNull(proposal?.totalEtaMin ?? proposal?.etaMin);
+  const territoryKey = clean(proposal?.territoryKey);
+  const offerAttempt = numberOrNull(proposal?.offerAttempt);
+  const expiresAt = clean(proposal?.expiresAt);
+
+  const reasons: string[] = [];
+  if (score !== null) {
+    reasons.push(`Compatibilité calculée par le dispatch : ${Math.round(score)}/100.`);
+  }
+  if (confidence !== null) {
+    reasons.push(`Confiance de la recommandation : ${Math.round(confidence)}%.`);
+  }
+  if (etaMin !== null) {
+    reasons.push(`ETA mission estimée : ${Math.max(1, Math.round(etaMin))} min.`);
+  }
+  if (territoryKey) {
+    reasons.push(`Territoire compatible : ${territoryKey}.`);
+  }
+  if (offerAttempt !== null) {
+    reasons.push(`Tentative de proposition serveur : ${Math.max(1, Math.round(offerAttempt))}.`);
+  }
+  reasons.push("Cette offre est ciblée sur votre identité Courier authentifiée.");
+  reasons.push("Le serveur propose. Vous seul décidez d’accepter ou de décliner.");
+
+  return {
+    order,
+    proposal,
+    orderId,
+    restaurantName: clean(order?.restaurantName || order?.merchantName || "Restaurant partenaire"),
+    itemName: firstItemName(order),
+    totalLabel: totalLabel(order),
+    proposalStatus,
+    score,
+    confidence,
+    etaMin,
+    territoryKey,
+    offerAttempt,
+    expiresAt,
+    reasons,
+  };
+}
+
+function findPriorityOffer(payload: AnyRecord): OfferView | null {
+  return extractOrders(payload)
+    .map(buildOffer)
+    .filter((offer): offer is OfferView => Boolean(offer))
+    .sort((a, b) => {
+      if (a.proposalStatus === "accepted" && b.proposalStatus !== "accepted") return -1;
+      if (b.proposalStatus === "accepted" && a.proposalStatus !== "accepted") return 1;
+      return (b.score ?? -1) - (a.score ?? -1);
+    })[0] ?? null;
+}
+
+async function postJson(path: string, body: AnyRecord = {}): Promise<AnyRecord> {
+  const response = await daOrdersFetch(apiUrl(path), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  const json = await response.json().catch(() => null);
+
+  if (!response.ok || json?.ok === false || !json) {
+    const code = clean(json?.code || json?.error || json?.message || `HTTP_${response.status}`);
+    throw new Error(code || `HTTP_${response.status}`);
+  }
+
+  return json as AnyRecord;
+}
+
+function humanError(error: unknown): string {
+  const raw = clean(error instanceof Error ? error.message : error);
+  if (!raw) return "Le dispatch n’a pas répondu.";
+  if (raw.includes("courier_oidc_session_required")) return "Session Courier sécurisée requise.";
+  if (raw.includes("orders_auth_required")) return "Session Courier expirée. Renouvelez votre session.";
+  if (raw.includes("courier_role_required")) return "Cette action est réservée au rôle Courier.";
+  if (raw.includes("dispatch_offer_not_found")) return "Cette proposition n’est plus active. Le radar va se resynchroniser.";
+  return raw.replace(/_/g, " ");
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isSessionError(error: unknown): boolean {
+  const raw = clean(error instanceof Error ? error.message : error);
+  return raw.includes("courier_oidc_session_required") || raw.includes("orders_auth_required");
+}
+
+async function waitForCourierSession(): Promise<boolean> {
+  for (const delayMs of SESSION_GRACE_DELAYS_MS) {
+    if (delayMs > 0) await sleep(delayMs);
+    try {
+      const status = await daSessionRehydrationStatus();
+      if (status?.ok === true) return true;
+    } catch {
+      // The next grace attempt retries encrypted OIDC restoration.
+    }
+  }
+  return false;
+}
+
+function proofIsCurrent(proof: PresenceProof | undefined, destination: string): boolean {
+  if (!proof?.token || !proof?.expiresAt || clean(proof.destination) !== destination) return false;
+  const expiresAt = new Date(proof.expiresAt).getTime();
+  return Number.isFinite(expiresAt) && expiresAt > Date.now();
+}
+
+function profileReady(profile: CourierProfileLite | null): boolean {
+  if (!profile) return false;
+
+  const phone = clean(profile.phone);
+  const email = clean(profile.email).toLowerCase();
+  const territoryReady = Boolean(
+    clean(profile.activeZone) &&
+      clean(profile.territory?.city) &&
+      clean(profile.territory?.countryCode) &&
+      Number.isFinite(Number(profile.territoryEvidence?.latitude)) &&
+      Number.isFinite(Number(profile.territoryEvidence?.longitude)),
+  );
+
+  return (
+    territoryReady &&
+    proofIsCurrent(profile.proofs?.phone, phone) &&
+    proofIsCurrent(profile.proofs?.email, email) &&
+    profile.trust?.status === "screened"
+  );
 }
 
 export default function RouteOracleScreen() {
-const routeParams = useLocalSearchParams<{ orderId?: string | string[]; publicId?: string | string[] }>();
-const requestedOrderId = String(
-Array.isArray(routeParams.publicId)
-? routeParams.publicId[0]
-: routeParams.publicId || (Array.isArray(routeParams.orderId) ? routeParams.orderId[0] : routeParams.orderId) || "",
-).trim();
-const [state, setState] = useState<ScreenState>({
-loading: true,
-refreshing: false,
-error: null,
-data: null,
-updatedAt: null,
-});
-
-const [proposalState, setProposalState] = useState<{
-loading: boolean;
-error: string | null;
-result: ProposalResponse | null;
-}>({
-loading: false,
-error: null,
-result: null,
-});
-
-const [acceptState, setAcceptState] = useState<{
-loading: boolean;
-error: string | null;
-result: ProposalResponse | null;
-}>({
-loading: false,
-error: null,
-result: null,
-});
-
-
-const [routePreviewState, setRoutePreviewState] = useState<RoutePreviewApiState>({
-loading: false,
-data: null,
-error: null,
-updatedAt: null,
-});
-const [terrainContext, setTerrainContext] = useState<TerrainContext | null>(null);
-
-const loadRoutePreview = useCallback(async () => {
-const order = (state.data?.order || null) as Record<string, any> | null;
-if (!order) {
-setTerrainContext(null);
-setRoutePreviewState({
-loading: false,
-data: null,
-error: "Mission synchronisée requise pour calculer l’itinéraire.",
-updatedAt: new Date().toISOString(),
-});
-return;
-}
-
-setRoutePreviewState((current) => ({
-...current,
-loading: true,
-error: null,
-}));
-
-try {
-let partners: RoutePartnerEntry[] = [];
-try {
-const partnerResponse = await fetch(daApiV1("/partners"), { headers: { Accept: "application/json" } });
-const partnerText = await partnerResponse.text();
-const partnerJson = partnerText ? JSON.parse(partnerText) : null;
-if (partnerResponse.ok) partners = normalizeRoutePartners(partnerJson);
-} catch {
-partners = [];
-}
-
-const partner = routePartnerForOrder(order, partners);
-const restaurantName = routeRestaurantName(order);
-const restaurantAddress = routeRestaurantAddress(order, partner);
-const clientAddress = routeClientAddress(order);
-let restaurantPointValue = routeRestaurantPoint(order, partner);
-let clientPointValue = routeClientPoint(order);
-
-if (!restaurantPointValue) restaurantPointValue = await routeGeocode(restaurantAddress);
-if (!clientPointValue) clientPointValue = await routeGeocode(clientAddress);
-
-let originPointValue: RouteGeoPoint | null = null;
-try {
-const permission = await Location.requestForegroundPermissionsAsync();
-if (permission.status === "granted") {
-const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-originPointValue = routePoint(current.coords);
-}
-} catch {
-originPointValue = null;
-}
-
-const context: TerrainContext = {
-restaurantName,
-restaurantAddress,
-clientAddress,
-restaurantPoint: restaurantPointValue,
-clientPoint: clientPointValue,
-originPoint: originPointValue,
-};
-setTerrainContext(context);
-
-if (!originPointValue || !restaurantPointValue || !clientPointValue) {
-setRoutePreviewState({
-loading: false,
-data: null,
-error: `Itinéraire ${restaurantName} prêt dans Mission Live ; coordonnées détaillées à confirmer ici.`,
-updatedAt: new Date().toISOString(),
-});
-return;
-}
-
-const response = await fetch(daApiV1("/routes/preview"), {
-method: "POST",
-headers: { "Content-Type": "application/json" },
-body: JSON.stringify({
-origin: { ...originPointValue, label: "Coursier" },
-waypoints: [{ ...restaurantPointValue, label: restaurantName }],
-destination: { ...clientPointValue, label: "Client" },
-mode: "TWO_WHEELER",
-orderId: state.data?.orderId || requestedOrderId || "",
-source: "courier-route-oracle",
-}),
-});
-
-const text = await response.text();
-const json = text ? JSON.parse(text) : null;
-
-if (!response.ok || !json) {
-throw new Error("Itinéraire momentanément indisponible");
-}
-
-setRoutePreviewState({
-loading: false,
-data: json,
-error: null,
-updatedAt: new Date().toISOString(),
-});
-} catch (error) {
-setRoutePreviewState((current) => ({
-loading: false,
-data: current.data,
-error: error instanceof Error ? error.message : "Itinéraire momentanément indisponible",
-updatedAt: new Date().toISOString(),
-}));
-}
-}, [requestedOrderId, state.data?.order, state.data?.orderId]);
-
-
-const openTerrainMap = useCallback(async (provider: TerrainMapProvider) => {
-try {
-if (!terrainContext) {
-router.push({ pathname: "/courier-real-map" as any, params: state.data?.orderId ? { orderId: state.data.orderId } : {} });
-return;
-}
-const url = buildTerrainMapUrl(provider, terrainContext);
-await Linking.openURL(url);
-} catch {
-Alert.alert(
-"Navigation indisponible",
-"Impossible d’ouvrir l’application de navigation pour le moment."
-);
-}
-}, [state.data?.orderId, terrainContext]);
-
-const humanizeRouteOracleWarning = (value?: string | null) => {
-const raw = String(value || "");
-const statusMap: Record<string, string> = {
-delivered: "déjà livrée",
-picked_up: "déjà en route",
-ready: "prête",
-accepted: "acceptée",
-pending: "envoyée",
-};
-let result = raw.replace(
-/Commande\s+([^\s:]+)\s+en statut\s+(delivered|picked_up|ready|accepted|pending)\s*:\s*recommandation informative uniquement\.?/gi,
-(_, orderId: string, status: string) => {
-const label = statusMap[String(status).toLowerCase()] || "déjà traitée";
-return `Commande ${orderId} ${label} :\nlecture informative uniquement.`;
-}
-);
-result = result
-.replace(/\brecommandation informative uniquement\b/gi, "lecture informative uniquement")
-.replace(/\bdelivered\b/g, "livrée")
-.replace(/\bpicked_up\b/g, "en route")
-.replace(/\bready\b/g, "prête")
-.replace(/\baccepted\b/g, "acceptée")
-.replace(/\bpending\b/g, "envoyée")
-.replace(/\bstatus commande\b/g, "statut de la commande");
-return result;
-};
-
-useEffect(() => {
-if (state.data?.order) void loadRoutePreview();
-}, [loadRoutePreview, state.data?.order]);
-
-const loadPreview = useCallback(async (refreshing = false) => {
-setProposalState((current) => ({ ...current, error: null }));
-setAcceptState((current) => ({ ...current, error: null }));
-setState((current) => ({
-...current,
-loading: !refreshing,
-refreshing,
-error: null,
-}));
-
-try {
-const response = await daOrdersFetch(daApiV1("/dispatch/assignment/preview"), {
-method: "POST",
-headers: {
-"Content-Type": "application/json",
-},
-body: JSON.stringify(
-requestedOrderId
-? { orderId: requestedOrderId }
-: { allowDeliveredPreview: true },
-),
-});
-
-const text = await response.text();
-let json: PreviewResponse | null = null;
-
-try {
-json = text ? JSON.parse(text) : null;
-} catch {
-throw new Error("Réponse Route Oracle illisible.");
-}
-
-if (!response.ok || !json?.ok) {
-throw new Error(`Route Oracle indisponible (${response.status}).`);
-}
-
-setState({
-loading: false,
-refreshing: false,
-error: null,
-data: json,
-updatedAt: new Date(),
-});
-} catch (error) {
-setState((current) => ({
-...current,
-loading: false,
-refreshing: false,
-error: error instanceof Error ? error.message : "Erreur Route Oracle.",
-}));
-}
-}, [requestedOrderId]);
-
-useEffect(() => {
-loadPreview(false);
-}, [loadPreview]);
-
-const candidate = state.data?.recommendedCourier || null;
-const factors = useMemo(() => candidate?.factors || [], [candidate]);
-const warnings = useMemo(() => {
-const apiWarnings = state.data?.warnings || [];
-const candidateWarnings = candidate?.warnings || [];
-return [...apiWarnings, ...candidateWarnings]
-.filter(Boolean)
-.filter((warning) => {
-const text = String(warning).toLowerCase();
-return !text.includes("v1a") && !text.includes("read-only") && !text.includes("assignation persistée");
-});
-}, [state.data, candidate]);
-
-const updatedLabel = state.updatedAt
-? state.updatedAt.toLocaleTimeString("fr-BE", {
-hour: "2-digit",
-minute: "2-digit",
-second: "2-digit",
-})
-: "--:--";
-
-const existingProposal = (state.data?.order as any)?.assignmentProposal || null;
-const latestProposal =
-acceptState.result?.proposal ||
-proposalState.result?.proposal ||
-existingProposal;
-
-const proposalStatus = String(
-acceptState.result?.proposalStatus ||
-latestProposal?.status ||
-proposalState.result?.proposalStatus ||
-"",
-).toLowerCase();
-
-const proposalAccepted = proposalStatus === "accepted";
-const proposalPending = proposalStatus === "proposed";
-const displayedActiveMissions = proposalAccepted
-? Math.max(1, Number(candidate?.activeMissions || 0))
-: candidate?.activeMissions ?? "--";
-const proposalSent =
-proposalState.result?.ok === true ||
-proposalPending ||
-proposalAccepted ||
-proposalState.result?.proposalStatus === "proposed";
-
-const proposalAuditId =
-acceptState.result?.auditId ||
-latestProposal?.acceptAuditId ||
-proposalState.result?.auditId ||
-latestProposal?.auditId ||
-null;
-
-const proposalCourierId =
-acceptState.result?.courierId ||
-latestProposal?.courierId ||
-candidate?.id ||
-null;
-
-const proposalCourierName =
-acceptState.result?.courierName ||
-proposalState.result?.courierName ||
-latestProposal?.courierName ||
-candidate?.name ||
-"coursier recommandé";
-
-const canPropose = false; // Server Dispatch is the only proposal authority. Courier cannot self-propose.
-
-const canAcceptProposal =
-Boolean(state.data?.eligibleForAssignment) &&
-Boolean(state.data?.orderId) &&
-Boolean(proposalCourierId) &&
-proposalPending &&
-!proposalAccepted &&
-!proposalState.loading &&
-!acceptState.loading;
-
-const orderStatus = String(state.data?.orderStatus || "").toLowerCase();
-const assignmentUnavailableReason =
-orderStatus === "picked_up"
-? "Cette mission est déjà en route. Elle a dépassé le point où Route Oracle peut proposer un coursier."
-: orderStatus === "delivered"
-? "Cette mission est déjà livrée. Route Oracle reste en lecture seule."
-: orderStatus && orderStatus !== "ready"
-? "La proposition sera disponible dès que le restaurant aura marqué la commande prête."
-: null;
-
-const openMissionGuidance = useCallback(() => {
-if (!state.data?.orderId) return;
-router.push({ pathname: "/courier-real-map" as any, params: { orderId: state.data.orderId } });
-}, [state.data?.orderId]);
-
-const submitProposal = useCallback(async () => {
-if (!state.data?.orderId || !candidate?.id) {
-setProposalState((current) => ({
-...current,
-error: "Commande ou coursier indisponible pour la proposition.",
-}));
-return;
-}
-
-if (!state.data?.eligibleForAssignment) {
-setProposalState((current) => ({
-...current,
-error: "Commande non assignable pour le moment.",
-}));
-return;
-}
-
-setProposalState({
-loading: true,
-error: null,
-result: null,
-});
-
-try {
-const response = await fetch(daApiV1("/dispatch/assignment/propose"), {
-method: "POST",
-headers: {
-"Content-Type": "application/json",
-},
-body: JSON.stringify({
-orderId: state.data.orderId,
-courierId: candidate.id,
-confirmed: true,
-source: "courier-route-oracle",
-decisionMode: "human_confirmed",
-previewVersion: state.data.version || "v1a_readonly",
-score: candidate.score,
-confidence: candidate.confidence,
-totalEtaMin: candidate.totalEtaMin,
-}),
-});
-
-const bodyText = await response.text();
-let json: ProposalResponse | null = null;
-
-try {
-json = bodyText ? JSON.parse(bodyText) : null;
-} catch {
-throw new Error("Réponse proposition illisible.");
-}
-
-if (!response.ok || !json?.ok) {
-throw new Error(json?.message || json?.error || `Proposition refusée (${response.status}).`);
-}
-
-setProposalState({
-loading: false,
-error: null,
-result: json,
-});
-
-await loadPreview(true);
-} catch (error) {
-setProposalState({
-loading: false,
-error: error instanceof Error ? error.message : "Erreur proposition coursier.",
-result: null,
-});
-}
-}, [candidate, state.data, loadPreview]);
-
-const confirmProposal = useCallback(() => {
-if (!canPropose) return;
-
-Alert.alert(
-"Confirmer la proposition",
-`Proposer ${candidate?.name || "ce coursier"} pour ${state.data?.orderId || "cette commande"} ?`,
-[
-{
-text: "Annuler",
-style: "cancel",
-},
-{
-text: "Confirmer la proposition",
-style: "default",
-onPress: () => {
-void submitProposal();
-},
-},
-],
-);
-}, [canPropose, candidate?.name, state.data?.orderId, submitProposal]);
-
-const submitAccept = useCallback(async () => {
-if (!state.data?.orderId || !proposalCourierId) {
-setAcceptState((current) => ({
-...current,
-error: "Commande ou coursier indisponible pour l’acceptation.",
-}));
-return;
-}
-
-if (!state.data?.eligibleForAssignment) {
-setAcceptState((current) => ({
-...current,
-error: "Commande non assignable pour le moment.",
-}));
-return;
-}
-
-if (!proposalPending || proposalAccepted) {
-setAcceptState((current) => ({
-...current,
-error: "Aucune proposition en attente à accepter.",
-}));
-return;
-}
-
-setAcceptState({
-loading: true,
-error: null,
-result: null,
-});
-
-try {
-const response = await fetch(daApiV1("/dispatch/assignment/accept"), {
-method: "POST",
-headers: {
-"Content-Type": "application/json",
-},
-body: JSON.stringify({
-orderId: state.data.orderId,
-courierId: proposalCourierId,
-confirmed: true,
-source: "courier-route-oracle",
-decisionMode: "courier_confirmed",
-}),
-});
-
-const bodyText = await response.text();
-let json: ProposalResponse | null = null;
-
-try {
-json = bodyText ? JSON.parse(bodyText) : null;
-} catch {
-throw new Error("Réponse acceptation illisible.");
-}
-
-if (!response.ok || !json?.ok) {
-throw new Error(json?.message || json?.error || `Acceptation refusée (${response.status}).`);
-}
-
-setAcceptState({
-loading: false,
-error: null,
-result: json,
-});
-
-await loadPreview(true);
-} catch (error) {
-setAcceptState({
-loading: false,
-error: error instanceof Error ? error.message : "Erreur acceptation coursier.",
-result: null,
-});
-}
-}, [
-loadPreview,
-proposalAccepted,
-proposalCourierId,
-proposalPending,
-state.data?.eligibleForAssignment,
-state.data?.orderId,
-]);
-
-const confirmAccept = useCallback(() => {
-if (!canAcceptProposal) return;
-
-Alert.alert(
-"Accepter la proposition",
-`Confirmer la mission ${state.data?.orderId || "sélectionnée"} pour ${proposalCourierName} ?`,
-[
-{
-text: "Annuler",
-style: "cancel",
-},
-{
-text: "Accepter la proposition",
-style: "default",
-onPress: () => {
-void submitAccept();
-},
-},
-],
-);
-}, [canAcceptProposal, proposalCourierName, state.data?.orderId, submitAccept]);
-
-return (
-<SafeAreaView style={styles.safe}>
-<View pointerEvents="none" style={styles.aquaVeil} />
-<View pointerEvents="none" style={styles.aquaDrop} />
-<View pointerEvents="none" style={styles.aquaRipple} />
-<View pointerEvents="none" style={styles.aquaFoam} />
-<ScrollView
-contentContainerStyle={styles.content}
-refreshControl={
-<RefreshControl
-refreshing={state.refreshing}
-onRefresh={() => loadPreview(true)}
-/>
-}
->
-<View style={styles.hero}>
-<Text style={styles.kicker}>DELISHAFRICA® · COURIER</Text>
-<Text style={styles.title}>Route Oracle</Text>
-<Text style={styles.subtitle}>
-Route Oracle analyse les missions, l’ETA, la charge et la fiabilité terrain pour recommander le meilleur coursier avec validation humaine.
-</Text>
-
-<View style={styles.heroBadges}>
-<View style={styles.badgeGold}>
-<Text style={styles.badgeGoldText}>Lecture terrain</Text>
-</View>
-<View style={styles.badgeDark}>
-<Text style={styles.badgeDarkText}>Validation humaine</Text>
-</View>
-</View>
-</View>
-
-<View style={styles.guardCard}>
-<Text style={styles.guardTitle}>Contrat sécurité</Text>
-<Text style={styles.guardText}>
-Aucun départ automatique · validation coursier obligatoire
-</Text>
-<Text style={styles.guardText}>
-Validation manuelle obligatoire. Le coursier garde le contrôle de chaque étape depuis son cockpit.
-</Text>
-</View>
-
-{state.loading ? (
-<View style={styles.loadingCard}>
-<ActivityIndicator />
-<Text style={styles.loadingText}>Analyse Route Oracle…</Text>
-</View>
-) : null}
-
-{state.error ? (
-<View style={styles.errorCard}>
-<Text style={styles.errorTitle}>Route Oracle indisponible</Text>
-<Text style={styles.errorText}>{state.error}</Text>
-<Pressable style={styles.primaryButton} onPress={() => loadPreview(false)}>
-<Text style={styles.primaryButtonText}>Réessayer</Text>
-</Pressable>
-</View>
-) : null}
-
-{!state.loading && !state.error && candidate ? (
-<>
-<View style={styles.scoreCard}>
-<View style={styles.scoreTop}>
-<View>
-<Text style={styles.sectionLabel}>Coursier recommandé</Text>
-<Text style={styles.courierName}>{candidate.name || "Coursier DelishAfrica®"}</Text>
-<Text style={styles.courierMeta}>
-{candidate.id || "courier"} · {vehicleLabel(candidate.vehicle)}
-</Text>
-
-<View
-style={{
-marginTop: 12,
-borderRadius: 18,
-borderWidth: 1,
-borderColor: "rgba(125, 249, 255, 0.22)",
-backgroundColor: "rgba(6, 18, 24, 0.72)",
-padding: 14,
-}}
->
-<Text
-style={{
-color: "#7DF9FF",
-fontSize: 11,
-fontWeight: "800",
-letterSpacing: 0.8,
-textTransform: "uppercase",
-}}
->
-Itinéraire estimé
-</Text>
-<Text
-style={{
-color: "#F8FAFC",
-fontSize: 15,
-fontWeight: "900",
-marginTop: 6,
-}}
->
-{routePreviewState.loading
-? "Synchronisation ETA terrain…"
-: routePreviewState.error && !routePreviewState.data
-? "Estimation locale sécurisée"
-: `${routePreviewState.data?.etaMinutes || "—"} min · ${routeDistanceLabel(routePreviewState.data?.distanceMeters)}`}
-</Text>
-<Text
-style={{
-color: "rgba(226, 232, 240, 0.76)",
-fontSize: 12,
-lineHeight: 17,
-marginTop: 6,
-}}
->
-{routePreviewState.data
-? `${routeProviderLabel(routePreviewState.data.provider)} · ${routePreviewState.data.fallback ? "mode sécurisé sans clé Google" : "trafic Google actif"} · confiance ${Math.round(Number(routePreviewState.data.confidence || 0) * 100)}%`
-: routePreviewState.error || "Connexion au cerveau terrain…"}
-</Text>
-</View>
-</View>
-
-<View style={styles.scoreBubble}>
-<Text style={styles.scoreValue}>{Math.round(candidate.score || 0)}</Text>
-<Text style={styles.scoreUnit}>/100</Text>
-</View>
-</View>
-
-<View style={styles.metricsGrid}>
-<View style={styles.scoreMetricBox}>
-<Text style={styles.metricValue}>{scoreLabel(candidate.confidence)}</Text>
-<Text style={styles.metricLabel}>Confiance</Text>
-<Text style={styles.metricHint}>{confidenceTone(candidate.confidence)}</Text>
-</View>
-
-<View style={styles.scoreMetricBox}>
-<Text style={styles.metricValue}>{numberLabel(candidate.totalEtaMin, " min")}</Text>
-<Text style={styles.metricLabel}>ETA totale</Text>
-<Text style={styles.metricHint}>Retrait + livraison</Text>
-</View>
-
-<View style={styles.scoreMetricBox}>
-<Text style={styles.metricValue}>{numberLabel(candidate.pickupEtaMin, " min")}</Text>
-<Text style={styles.metricLabel}>Vers restaurant</Text>
-<Text style={styles.metricHint}>{numberLabel(candidate.pickupDistanceKm, " km")}</Text>
-</View>
-
-<View style={styles.scoreMetricBox}>
-<Text style={styles.metricValue}>{numberLabel(candidate.deliveryEtaMin, " min")}</Text>
-<Text style={styles.metricLabel}>Vers client</Text>
-<Text style={styles.metricHint}>{numberLabel(candidate.deliveryDistanceKm, " km")}</Text>
-</View>
-</View>
-</View>
-
-<View style={styles.terrainCard}>
-<Text style={styles.terrainKicker}>MAPS TERRAIN</Text>
-<Text style={styles.terrainTitle}>Ouvrir la route terrain</Text>
-<Text style={styles.terrainText}>
-Lancez la navigation externe sans quitter le contrôle DelishAfrica®. Le coursier choisit son outil terrain.
-</Text>
-
-<View style={styles.terrainButtons}>
-<Pressable style={styles.terrainButton} onPress={() => void openTerrainMap("apple")}>
-<Text style={styles.terrainButtonText}>Apple Plans</Text>
-</Pressable>
-
-<Pressable style={styles.terrainButton} onPress={() => void openTerrainMap("google")}>
-<Text style={styles.terrainButtonText}>Google Maps</Text>
-</Pressable>
-
-<Pressable style={styles.terrainButton} onPress={() => void openTerrainMap("waze")}>
-<Text style={styles.terrainButtonText}>Waze</Text>
-</Pressable>
-</View>
-
-<Text style={styles.terrainHint}>
-Trajet indicatif : coursier → {terrainContext?.restaurantName || routeRestaurantName(state.data?.order)} → client. La mission reste validée manuellement.
-</Text>
-</View>
-
-<View style={proposalSent ? styles.proposalCardSuccess : styles.proposalCard}>
-<Text style={styles.proposalTitle}>
-{proposalAccepted
-? "Proposition acceptée"
-: proposalPending
-? "Proposition reçue"
-: "Proposer au coursier"}
-</Text>
-<Text style={styles.proposalText}>
-{proposalAccepted
-? `Mission confirmée par ${proposalCourierName}. La commande reste prête, sans passage automatique en livraison.`
-: proposalPending
-? `Proposition reçue pour ${proposalCourierName}. Le coursier doit confirmer avant toute mission terrain.`
-: "Aucune assignation automatique. Une confirmation humaine sera demandée avant l’envoi."}
-</Text>
-{proposalAuditId ? (
-<Text style={styles.proposalAudit}>Audit: {proposalAuditId}</Text>
-) : null}
-{proposalState.error ? (
-<Text style={styles.proposalError}>{proposalState.error}</Text>
-) : null}
-{acceptState.error ? (
-<Text style={styles.proposalError}>{acceptState.error}</Text>
-) : null}
-
-{proposalPending && !proposalAccepted ? (
-<Pressable
-style={[
-styles.acceptButton,
-(!canAcceptProposal || acceptState.loading) && styles.proposeButtonDisabled,
-]}
-disabled={!canAcceptProposal || acceptState.loading}
-onPress={confirmAccept}
->
-<Text style={styles.acceptButtonText}>
-{acceptState.loading ? "Acceptation en cours…" : "Accepter la proposition"}
-</Text>
-</Pressable>
-) : null}
-
-{!proposalPending && !proposalAccepted && state.data?.eligibleForAssignment ? (
-<Pressable
-style={[
-styles.proposeButton,
-(!canPropose || proposalState.loading) && styles.proposeButtonDisabled,
-]}
-disabled={!canPropose || proposalState.loading}
-onPress={confirmProposal}
->
-<Text style={styles.proposeButtonText}>
-{proposalState.loading ? "Envoi de la proposition…" : "Proposer au coursier"}
-</Text>
-</Pressable>
-) : null}
-
-{!proposalPending && !proposalAccepted && !state.data?.eligibleForAssignment && assignmentUnavailableReason ? (
-<View style={styles.acceptedBadge}>
-<Text style={styles.acceptedBadgeText}>{assignmentUnavailableReason}</Text>
-</View>
-) : null}
-
-{proposalAccepted ? (
-<>
-<View style={styles.acceptedBadge}>
-<Text style={styles.acceptedBadgeText}>Mission confirmée · statut commande conservé prêt</Text>
-</View>
-<Pressable style={styles.acceptButton} onPress={openMissionGuidance}>
-<Text style={styles.acceptButtonText}>Ouvrir le guidage mission</Text>
-</Pressable>
-</>
-) : null}
-</View>
-
-<View style={styles.card}>
-<Text style={styles.sectionLabel}>Mission analysée</Text>
-<View style={styles.rowBetween}>
-<Text style={styles.orderId}>{state.data?.orderId || "Commande disponible"}</Text>
-<Text style={styles.statusPill}>{statusLabel(state.data?.orderStatus)}</Text>
-</View>
-<Text style={styles.bodyText}>
-{String(state.data?.reason || "Recommandation calculée par Route Oracle.").replace(/status commande/g, "statut de la commande").replace(/\bdelivered\b/g, "livrée").replace(/\bpicked_up\b/g, "en route").replace(/\bready\b/g, "prête").replace(/\baccepted\b/g, "acceptée").replace(/\bpending\b/g, "envoyée")}
-</Text>
-<Text style={styles.miniText}>
-Oracle livraison · MAJ {updatedLabel}
-</Text>
-</View>
-
-<View style={styles.card}>
-<Text style={styles.sectionLabel}>Facteurs de décision</Text>
-{factors.map((factor, index) => (
-<View key={`${factor.label || "factor"}-${index}`} style={styles.factorRow}>
-<View style={styles.factorHeader}>
-<Text style={styles.factorLabel}>{factor.label || "Facteur"}</Text>
-<Text style={styles.factorScore}>{scoreLabel(factor.score)}</Text>
-</View>
-<View style={styles.progressTrack}>
-<View style={[styles.progressFill, { width: `${Math.max(0, Math.min(100, factor.score || 0))}%` }]} />
-</View>
-<Text style={styles.factorExplanation}>
-{factor.explanation || `Poids ${factor.weight || "--"} · valeur ${factor.value ?? "--"}`}
-</Text>
-</View>
-))}
-</View>
-
-<View style={styles.card}>
-<Text style={styles.sectionLabel}>Charge & fiabilité</Text>
-<View style={styles.oracleStatsGrid}>
-<View style={styles.oracleStatCard}>
-<Text style={[styles.metricValue, styles.metricValueOracleDark]}>{displayedActiveMissions}</Text>
-<Text style={[styles.metricLabel, styles.metricLabelOracleDark]}>Mission active</Text>
-</View>
-
-<View style={styles.oracleStatCard}>
-<Text style={[styles.metricValue, styles.metricValueOracleDark]}>{candidate.completedToday ?? "--"}</Text>
-<Text style={[styles.metricLabel, styles.metricLabelOracleDark]}>Livrées aujourd’hui</Text>
-</View>
-
-<View style={styles.oracleStatCard}>
-<Text style={[styles.metricValue, styles.metricValueOracleDark]}>{scoreLabel(candidate.reliabilityScore)}</Text>
-<Text style={[styles.metricLabel, styles.metricLabelOracleDark]}>Fiabilité</Text>
-</View>
-
-<View style={styles.oracleStatCard}>
-<Text style={[styles.metricValue, styles.metricValueOracleDark]}>{scoreLabel(candidate.freshnessScore)}</Text>
-<Text style={[styles.metricLabel, styles.metricLabelOracleDark]}>Position</Text>
-</View>
-</View>
-</View>
-
-{warnings.length ? (
-<View style={styles.warningCard}>
-<Text style={styles.warningTitle}>Garde-fous actifs</Text>
-{warnings.slice(0, 5).map((warning, index) => (
-<Text key={`${humanizeRouteOracleWarning(warning)}-${index}`} style={styles.warningText}>• {humanizeRouteOracleWarning(warning)}</Text>
-))}
-</View>
-) : null}
-
-<View style={styles.actions}>
-<Pressable style={styles.primaryButton} onPress={() => loadPreview(false)}>
-<Text style={styles.primaryButtonText}>Rafraîchir l’oracle</Text>
-</Pressable>
-
-<Pressable style={styles.secondaryButton} onPress={() => router.push("/courier-eta")}>
-<Text style={styles.secondaryButtonText}>Voir ETA mission</Text>
-</Pressable>
-
-<Pressable style={styles.secondaryButton} onPress={() => router.push("/orders")}>
-<Text style={styles.secondaryButtonText}>Voir les missions</Text>
-</Pressable>
-</View>
-</>
-) : null}
-
-{!state.loading && !state.error && !candidate ? (
-<View style={styles.errorCard}>
-<Text style={styles.errorTitle}>Aucun candidat disponible</Text>
-<Text style={styles.errorText}>
-Route Oracle n’a reçu aucun coursier candidat. La mission reste en validation humaine.
-</Text>
-</View>
-) : null}
-</ScrollView>
-</SafeAreaView>
-);
+  const heartbeatTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const [state, setState] = useState<ScreenState>({
+    loading: true,
+    activating: false,
+    deciding: false,
+    online: false,
+    profile: null,
+    offer: null,
+    message: "",
+    error: "",
+  });
+
+  const readOffers = useCallback(async (quiet = false) => {
+    if (!quiet) {
+      setState((prev) => ({
+        ...prev,
+        loading: true,
+        error: "",
+        message: "Restauration de la session sécurisée…",
+      }));
+    }
+
+    try {
+      if (!(await waitForCourierSession())) {
+        throw new Error("courier_oidc_session_required");
+      }
+
+      const payload = await postJson(OFFERS_PATH, {});
+      const offer = findPriorityOffer(payload);
+
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        offer,
+        message: offer
+          ? "Une proposition ciblée est disponible."
+          : "Aucune proposition active pour le moment.",
+        error: "",
+      }));
+    } catch (error) {
+      if (quiet && isSessionError(error)) {
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          error: "",
+          message: "Session sécurisée en cours de restauration…",
+        }));
+        return;
+      }
+
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        error: humanError(error),
+      }));
+    }
+  }, []);
+
+  const refreshPresence = useCallback(
+    async (profile: CourierProfileLite, quiet = true) => {
+      try {
+        if (!(await waitForCourierSession())) {
+          throw new Error("courier_oidc_session_required");
+        }
+
+        const next = {
+          ...profile,
+          available: true,
+          updatedAt: new Date().toISOString(),
+        };
+        await syncCourierPresence(next);
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          online: true,
+          profile: next,
+          error: "",
+          ...(quiet ? {} : { message: "Présence terrain confirmée." }),
+        }));
+        await readOffers(true);
+      } catch (error) {
+        if (quiet && isSessionError(error)) {
+          setState((prev) => ({
+            ...prev,
+            loading: false,
+            error: "",
+            message: "Session sécurisée en cours de restauration…",
+          }));
+          return;
+        }
+
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          online: false,
+          error: humanError(error),
+        }));
+      }
+    },
+    [readOffers],
+  );
+
+  const bootstrap = useCallback(async () => {
+    let profile: CourierProfileLite | null = null;
+    try {
+      profile = await loadCourierPresence<CourierProfileLite>();
+    } catch {
+      profile = null;
+    }
+
+    const online = Boolean(profile?.available);
+
+    setState((prev) => ({
+      ...prev,
+      profile,
+      online,
+      error: "",
+    }));
+
+    if (online && profile) {
+      setState((prev) => ({
+        ...prev,
+        loading: true,
+        error: "",
+        message: "Restauration de la session sécurisée…",
+      }));
+      await refreshPresence(profile, false);
+      return;
+    }
+
+    await readOffers(false);
+  }, [readOffers, refreshPresence]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void bootstrap();
+
+      return () => {
+        if (heartbeatTimer.current) {
+          clearInterval(heartbeatTimer.current);
+          heartbeatTimer.current = null;
+        }
+      };
+    }, [bootstrap]),
+  );
+
+  useEffect(() => {
+    if (heartbeatTimer.current) {
+      clearInterval(heartbeatTimer.current);
+      heartbeatTimer.current = null;
+    }
+
+    if (!state.online || !state.profile) return;
+
+    heartbeatTimer.current = setInterval(() => {
+      void refreshPresence(state.profile as CourierProfileLite, true);
+    }, HEARTBEAT_MS);
+
+    return () => {
+      if (heartbeatTimer.current) {
+        clearInterval(heartbeatTimer.current);
+        heartbeatTimer.current = null;
+      }
+    };
+  }, [refreshPresence, state.online, state.profile]);
+
+  async function activatePresence() {
+    if (state.activating) return;
+
+    if (!profileReady(state.profile)) {
+      setState((prev) => ({
+        ...prev,
+        error: "Complétez d’abord votre territoire et votre véhicule dans Mon espace Courier.",
+      }));
+      return;
+    }
+
+    setState((prev) => ({
+      ...prev,
+      activating: true,
+      error: "",
+      message: "",
+    }));
+
+    try {
+      if (!(await waitForCourierSession())) {
+        throw new Error("courier_oidc_session_required");
+      }
+
+      const next = {
+        ...(state.profile as CourierProfileLite),
+        available: true,
+        updatedAt: new Date().toISOString(),
+      };
+
+      await saveCourierPresence(next);
+      await syncCourierPresence(next);
+
+      setState((prev) => ({
+        ...prev,
+        activating: false,
+        online: true,
+        profile: next,
+        message: "Présence terrain activée. Le serveur peut maintenant vous proposer une mission.",
+      }));
+
+      await readOffers(true);
+    } catch (error) {
+      setState((prev) => ({
+        ...prev,
+        activating: false,
+        error: humanError(error),
+      }));
+    }
+  }
+
+  async function decide(kind: "accept" | "reject") {
+    const offer = state.offer;
+    if (!offer || state.deciding) return;
+
+    setState((prev) => ({
+      ...prev,
+      deciding: true,
+      error: "",
+      message: "",
+    }));
+
+    try {
+      const path = kind === "accept" ? ACCEPT_PATH : REJECT_PATH;
+      const payload = await postJson(path, {
+        orderId: offer.orderId,
+        ...(kind === "reject" ? { reason: "courier_declined" } : {}),
+      });
+
+      if (kind === "accept") {
+        const acceptedOrder =
+          payload?.order && typeof payload.order === "object" ? payload.order : offer.order;
+        const acceptedOffer = buildOffer(acceptedOrder);
+
+        setState((prev) => ({
+          ...prev,
+          deciding: false,
+          offer: acceptedOffer || prev.offer,
+          message:
+            "Mission acceptée. La commande reste prête jusqu’à votre confirmation de récupération.",
+        }));
+
+        setTimeout(() => router.push("/orders" as any), 450);
+        return;
+      }
+
+      setState((prev) => ({
+        ...prev,
+        deciding: false,
+        offer: null,
+        message:
+          "Proposition déclinée. Le serveur peut maintenant recommander un autre coursier.",
+      }));
+
+      await readOffers(true);
+    } catch (error) {
+      setState((prev) => ({
+        ...prev,
+        deciding: false,
+        error: humanError(error),
+      }));
+    }
+  }
+
+  const metrics = useMemo(() => {
+    const offer = state.offer;
+    return [
+      {
+        label: "Score",
+        value:
+          offer?.score !== null && offer?.score !== undefined
+            ? `${Math.round(offer.score)}`
+            : "Ciblée",
+      },
+      {
+        label: "ETA",
+        value:
+          offer?.etaMin !== null && offer?.etaMin !== undefined
+            ? `${Math.max(1, Math.round(offer.etaMin))} min`
+            : "Live",
+      },
+      {
+        label: "Décision",
+        value: offer?.proposalStatus === "accepted" ? "Acceptée" : "Humaine",
+      },
+    ];
+  }, [state.offer]);
+
+  const proposalReady = state.offer?.proposalStatus === "proposed";
+  const proposalAccepted = state.offer?.proposalStatus === "accepted";
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={state.loading}
+            onRefresh={() => void bootstrap()}
+            tintColor="#6EF0B0"
+          />
+        }
+      >
+        <View style={styles.hero}>
+          <Text style={styles.brand}>DELISHAFRICA® · COURIER</Text>
+          <Text style={styles.title}>Route Oracle</Text>
+          <Text style={styles.subtitle}>
+            Le serveur propose. Vous gardez la décision. Chaque proposition explique uniquement les signaux réellement disponibles.
+          </Text>
+
+          <View style={styles.contractRow}>
+            <View style={[styles.dot, state.online && styles.dotOnline]} />
+            <View style={styles.contractCopy}>
+              <Text style={styles.contractKicker}>CONTRAT HUMAIN</Text>
+              <Text style={styles.contractText}>
+                Aucun départ automatique · acceptation ou refus explicite.
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <WaterRouteCurrent
+          phase={proposalAccepted ? "pickup" : proposalReady ? "offer" : "idle"}
+          statusLabel={state.online ? "LIVE" : "VEILLE"}
+          headline={
+            proposalAccepted
+              ? "Mission acceptée. Le courant attend votre retrait."
+              : proposalReady
+                ? "Une proposition remonte. Vous gardez la décision."
+                : state.online
+                  ? "Le radar reste ouvert, sans urgence inventée."
+                  : "Le terrain attend votre présence."
+          }
+          body={
+            state.offer
+              ? "Score, confiance et ETA viennent du dispatch déjà reçu. Route Current les rend lisibles sans accepter la mission à votre place."
+              : "Aucun mouvement n’est fabriqué. Le prochain courant apparaîtra seulement lorsqu’une proposition réelle sera disponible."
+          }
+          orderId={state.offer?.orderId}
+          destination={state.offer?.restaurantName || state.offer?.territoryKey}
+          metrics={[
+            {
+              label: "ETA",
+              value:
+                state.offer?.etaMin !== null && state.offer?.etaMin !== undefined
+                  ? `${Math.max(1, Math.round(state.offer.etaMin))} min`
+                  : "—",
+            },
+            {
+              label: "Score",
+              value:
+                state.offer?.score !== null && state.offer?.score !== undefined
+                  ? `${Math.round(state.offer.score)}`
+                  : "—",
+            },
+            {
+              label: "Confiance",
+              value:
+                state.offer?.confidence !== null && state.offer?.confidence !== undefined
+                  ? `${Math.round(state.offer.confidence)}%`
+                  : "—",
+            },
+          ]}
+          actionLabel={proposalAccepted ? "Ouvrir le cockpit mission" : undefined}
+          onOpen={proposalAccepted ? () => router.push("/orders" as any) : undefined}
+        />
+
+        {!state.online ? (
+          <View style={styles.presenceCard}>
+            <Text style={styles.sectionKicker}>PRÉSENCE TERRAIN</Text>
+            <Text style={styles.cardTitle}>Entrez dans le radar du dispatch.</Text>
+            <Text style={styles.body}>
+              Route Oracle ne vous affecte rien tout seul. Activez votre disponibilité pour recevoir uniquement les offres ciblées sur votre identité sécurisée.
+            </Text>
+
+            <Pressable
+              style={[styles.primaryButton, state.activating && styles.buttonDisabled]}
+              disabled={state.activating}
+              onPress={() => void activatePresence()}
+            >
+              {state.activating ? (
+                <ActivityIndicator color="#001E15" />
+              ) : (
+                <Text style={styles.primaryText}>Je suis disponible</Text>
+              )}
+            </Pressable>
+
+            {!profileReady(state.profile) ? (
+              <Pressable
+                style={styles.secondaryButton}
+                onPress={() => router.push("/courier-space" as any)}
+              >
+                <Text style={styles.secondaryText}>Compléter Mon espace Courier</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
+        {state.error ? (
+          <View style={styles.errorCard}>
+            <Text style={styles.errorTitle}>Route Oracle à resynchroniser</Text>
+            <Text style={styles.errorText}>{state.error}</Text>
+            <Pressable style={styles.retryButton} onPress={() => void bootstrap()}>
+              <Text style={styles.retryText}>Réessayer</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {state.loading && !state.offer ? (
+          <View style={styles.waitCard}>
+            <ActivityIndicator size="large" color="#6EF0B0" />
+            <Text style={styles.waitTitle}>Lecture du dispatch…</Text>
+            <Text style={styles.body}>
+              Présence, charge et proposition sécurisée sont synchronisées.
+            </Text>
+          </View>
+        ) : null}
+
+        {!state.loading && !state.offer && !state.error ? (
+          <View style={styles.waitCard}>
+            <Text style={styles.sectionKicker}>RADAR ACTIF</Text>
+            <Text style={styles.cardTitle}>Aucune offre pour le moment.</Text>
+            <Text style={styles.body}>
+              Dès qu’une commande prête vous est proposée par le serveur, elle apparaît ici sans exposer les missions des autres coursiers.
+            </Text>
+            <Pressable style={styles.secondaryButton} onPress={() => void bootstrap()}>
+              <Text style={styles.secondaryText}>Rafraîchir le radar</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {state.offer ? (
+          <>
+            <View style={styles.offerCard}>
+              <View style={styles.offerTop}>
+                <View style={styles.flex}>
+                  <Text style={styles.sectionKicker}>PROPOSITION CIBLÉE</Text>
+                  <Text style={styles.offerTitle}>{state.offer.itemName}</Text>
+                  <Text style={styles.offerMeta}>
+                    {state.offer.orderId} · {state.offer.restaurantName} · {state.offer.totalLabel}
+                  </Text>
+                </View>
+
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {proposalAccepted ? "ACCEPTÉE" : proposalReady ? "À DÉCIDER" : "CIBLÉE"}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.metrics}>
+                {metrics.map((metric) => (
+                  <View key={metric.label} style={styles.metric}>
+                    <Text style={styles.metricValue}>{metric.value}</Text>
+                    <Text style={styles.metricLabel}>{metric.label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.whyCard}>
+              <Text style={styles.sectionKicker}>POURQUOI VOUS ?</Text>
+              <Text style={styles.cardTitle}>La recommandation reste explicable.</Text>
+
+              <View style={styles.reasons}>
+                {state.offer.reasons.map((reason, index) => (
+                  <View key={`${reason}-${index}`} style={styles.reasonRow}>
+                    <View style={styles.reasonNumber}>
+                      <Text style={styles.reasonNumberText}>{index + 1}</Text>
+                    </View>
+                    <Text style={styles.reasonText}>{reason}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {proposalReady ? (
+              <View style={styles.decisionCard}>
+                <Text style={styles.sectionKicker}>VOTRE DÉCISION</Text>
+                <Text style={styles.cardTitle}>Vous gardez le dernier mot.</Text>
+
+                <Pressable
+                  style={[styles.primaryButton, state.deciding && styles.buttonDisabled]}
+                  disabled={state.deciding}
+                  onPress={() => void decide("accept")}
+                >
+                  {state.deciding ? (
+                    <ActivityIndicator color="#001E15" />
+                  ) : (
+                    <Text style={styles.primaryText}>Accepter la mission</Text>
+                  )}
+                </Pressable>
+
+                <Pressable
+                  style={[styles.secondaryButton, state.deciding && styles.buttonDisabled]}
+                  disabled={state.deciding}
+                  onPress={() => void decide("reject")}
+                >
+                  <Text style={styles.secondaryText}>Décliner cette proposition</Text>
+                </Pressable>
+              </View>
+            ) : null}
+
+            {proposalAccepted ? (
+              <View style={styles.acceptedCard}>
+                <Text style={styles.acceptedKicker}>MISSION CONFIRMÉE</Text>
+                <Text style={styles.acceptedTitle}>La mission est à vous.</Text>
+                <Text style={styles.acceptedText}>
+                  L’acceptation ne déclenche ni récupération ni livraison. Ces deux étapes restent des confirmations explicites dans le cockpit.
+                </Text>
+
+                <Pressable
+                  style={styles.primaryButton}
+                  onPress={() => router.push("/orders" as any)}
+                >
+                  <Text style={styles.primaryText}>Ouvrir le cockpit mission</Text>
+                </Pressable>
+              </View>
+            ) : null}
+          </>
+        ) : null}
+
+        {state.message ? <Text style={styles.footerMessage}>{state.message}</Text> : null}
+
+        <Pressable style={styles.linkButton} onPress={() => router.push("/orders" as any)}>
+          <Text style={styles.linkText}>Missions</Text>
+        </Pressable>
+
+        <Text style={styles.footer}>
+          Dispatch serveur · identité Courier · décision humaine · aucune auto-livraison.
+        </Text>
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-aquaVeil: { position: "absolute", top: -84, right: -132, width: 168, height: 168, borderRadius: 999, backgroundColor: "rgba(111, 255, 210, 0.022)", borderWidth: 1, borderColor: "rgba(200, 255, 232, 0.052)", transform: [{ scaleX: 1.24 }] },
-aquaDrop: { position: "absolute", top: 126, left: -34, width: 44, height: 44, borderRadius: 999, backgroundColor: "rgba(255, 255, 255, 0.014)", borderWidth: 1, borderColor: "rgba(210, 255, 238, 0.042)" },
-aquaRipple: { position: "absolute", top: 226, right: -28, width: 126, height: 22, borderRadius: 999, backgroundColor: "rgba(111, 255, 210, 0.022)", borderWidth: 1, borderColor: "rgba(220, 255, 240, 0.052)", transform: [{ rotate: "-14deg" }, { scaleX: 1.22 }] },
-aquaFoam: { position: "absolute", top: 408, left: -118, width: 126, height: 126, borderRadius: 999, backgroundColor: "rgba(212, 255, 236, 0.014)", borderWidth: 1, borderColor: "rgba(224, 255, 241, 0.040)" },
-safe: {
-flex: 1,
-backgroundColor: "#080F0C",
-},
-content: {
-paddingHorizontal: 18,
-paddingTop: 0,
-paddingBottom: 38,
-},
-hero: {
-borderRadius: 30,
-padding: 22,
-backgroundColor: "#102018",
-borderWidth: 1,
-borderColor: "rgba(212, 176, 92, 0.35)",
-marginBottom: 14,
-},
-kicker: {
-color: "#D9B86F",
-fontSize: 12,
-fontWeight: "800",
-letterSpacing: 1.2,
-textTransform: "uppercase",
-},
-title: {
-color: "#FFFFFF",
-fontSize: 34,
-fontWeight: "900",
-marginTop: 10,
-},
-subtitle: {
-color: "rgba(255,255,255,0.78)",
-fontSize: 15,
-lineHeight: 22,
-marginTop: 10,
-},
-heroBadges: {
-flexDirection: "row",
-gap: 10,
-marginTop: 18,
-flexWrap: "wrap",
-},
-badgeGold: {
-borderRadius: 999,
-paddingHorizontal: 13,
-paddingVertical: 8,
-backgroundColor: "#D9B86F",
-},
-badgeGoldText: {
-color: "#11130F",
-fontWeight: "900",
-fontSize: 12,
-},
-badgeDark: {
-borderRadius: 999,
-paddingHorizontal: 13,
-paddingVertical: 8,
-backgroundColor: "rgba(255,255,255,0.08)",
-borderWidth: 1,
-borderColor: "rgba(255,255,255,0.14)",
-},
-badgeDarkText: {
-color: "#FFFFFF",
-fontWeight: "800",
-fontSize: 12,
-},
-guardCard: {
-borderRadius: 22,
-padding: 16,
-backgroundColor: "rgba(41, 73, 53, 0.52)",
-borderWidth: 1,
-borderColor: "rgba(125, 211, 160, 0.28)",
-marginBottom: 14,
-},
-guardTitle: {
-color: "#B9F6CA",
-fontSize: 14,
-fontWeight: "900",
-marginBottom: 5,
-},
-guardText: {
-color: "rgba(255,255,255,0.76)",
-fontSize: 13,
-lineHeight: 18,
-},
-loadingCard: {
-borderRadius: 24,
-padding: 22,
-alignItems: "center",
-backgroundColor: "rgba(255,255,255,0.06)",
-borderWidth: 1,
-borderColor: "rgba(255,255,255,0.1)",
-},
-loadingText: {
-color: "#FFFFFF",
-marginTop: 12,
-fontWeight: "700",
-},
-errorCard: {
-borderRadius: 24,
-padding: 18,
-backgroundColor: "rgba(131, 45, 45, 0.4)",
-borderWidth: 1,
-borderColor: "rgba(255, 138, 128, 0.35)",
-},
-errorTitle: {
-color: "#FFD7D7",
-fontSize: 18,
-fontWeight: "900",
-},
-errorText: {
-color: "rgba(255,255,255,0.82)",
-marginTop: 8,
-lineHeight: 20,
-},
-scoreCard: {
-borderRadius: 28,
-padding: 18,
-backgroundColor: "#F4ECD8",
-marginBottom: 14,
-},
-scoreTop: {
-flexDirection: "row",
-alignItems: "center",
-justifyContent: "space-between",
-gap: 14,
-},
-sectionLabel: {
-color: "#D9B86F",
-fontSize: 12,
-fontWeight: "900",
-letterSpacing: 0.8,
-textTransform: "uppercase",
-marginBottom: 8,
-},
-courierName: {
-color: "#11130F",
-fontSize: 23,
-fontWeight: "900",
-},
-courierMeta: {
-color: "rgba(17,19,15,0.65)",
-fontSize: 13,
-marginTop: 5,
-fontWeight: "700",
-},
-scoreBubble: {
-width: 86,
-height: 86,
-borderRadius: 43,
-backgroundColor: "#11130F",
-alignItems: "center",
-justifyContent: "center",
-},
-scoreValue: {
-color: "#D9B86F",
-fontSize: 31,
-fontWeight: "900",
-},
-scoreUnit: {
-color: "rgba(255,255,255,0.72)",
-fontWeight: "800",
-marginTop: -4,
-},
-metricsGrid: {
-flexDirection: "row",
-flexWrap: "wrap",
-gap: 10,
-marginTop: 16,
-},
-metricBox: {
-flexGrow: 1,
-flexBasis: "46%",
-borderRadius: 18,
-padding: 13,
-backgroundColor: "rgba(244, 236, 216, 0.10)",
-},
-metricValue: {
-color: "#11130F",
-fontSize: 20,
-fontWeight: "900",
-},
-metricLabel: {
-color: "rgba(17,19,15,0.62)",
-fontSize: 12,
-fontWeight: "800",
-marginTop: 3,
-},
-metricHint: {
-color: "rgba(17,19,15,0.48)",
-fontSize: 11,
-marginTop: 3,
-fontWeight: "700",
-},
-card: {
-borderRadius: 24,
-padding: 17,
-backgroundColor: "rgba(255,255,255,0.07)",
-borderWidth: 1,
-borderColor: "rgba(255,255,255,0.1)",
-marginBottom: 14,
-},
-rowBetween: {
-flexDirection: "row",
-alignItems: "center",
-justifyContent: "space-between",
-gap: 12,
-},
-orderId: {
-color: "#FFFFFF",
-fontSize: 20,
-fontWeight: "900",
-},
-statusPill: {
-overflow: "hidden",
-borderRadius: 999,
-paddingHorizontal: 11,
-paddingVertical: 7,
-color: "#11130F",
-backgroundColor: "#D9B86F",
-fontWeight: "900",
-fontSize: 12,
-},
-bodyText: {
-color: "rgba(255,255,255,0.82)",
-marginTop: 12,
-lineHeight: 21,
-fontSize: 14,
-},
-miniText: {
-color: "rgba(255,255,255,0.48)",
-marginTop: 12,
-fontSize: 12,
-fontWeight: "700",
-},
-factorRow: {
-marginTop: 13,
-},
-factorHeader: {
-flexDirection: "row",
-justifyContent: "space-between",
-gap: 10,
-},
-factorLabel: {
-color: "#FFFFFF",
-fontWeight: "800",
-flex: 1,
-},
-factorScore: {
-color: "#D9B86F",
-fontWeight: "900",
-},
-progressTrack: {
-height: 8,
-borderRadius: 99,
-backgroundColor: "rgba(255,255,255,0.1)",
-overflow: "hidden",
-marginTop: 8,
-},
-progressFill: {
-height: 8,
-borderRadius: 99,
-backgroundColor: "#D9B86F",
-},
-factorExplanation: {
-color: "rgba(255,255,255,0.62)",
-marginTop: 7,
-fontSize: 12,
-lineHeight: 17,
-},
-warningCard: {
-borderRadius: 24,
-padding: 17,
-backgroundColor: "rgba(217, 184, 111, 0.13)",
-borderWidth: 1,
-borderColor: "rgba(217, 184, 111, 0.35)",
-marginBottom: 14,
-},
-warningTitle: {
-color: "#F9E6B0",
-fontSize: 15,
-fontWeight: "900",
-marginBottom: 8,
-},
-warningText: {
-color: "rgba(255,255,255,0.78)",
-lineHeight: 20,
-fontSize: 13,
-},
-proposalCard: {
-borderRadius: 24,
-padding: 17,
-backgroundColor: "rgba(217, 184, 111, 0.12)",
-borderWidth: 1,
-borderColor: "rgba(217, 184, 111, 0.34)",
-marginBottom: 14,
-},
-proposalCardSuccess: {
-borderRadius: 24,
-padding: 17,
-backgroundColor: "rgba(42, 105, 66, 0.36)",
-borderWidth: 1,
-borderColor: "rgba(125, 211, 160, 0.36)",
-marginBottom: 14,
-},
-proposalTitle: {
-color: "#F9E6B0",
-fontSize: 17,
-fontWeight: "900",
-marginBottom: 7,
-},
-proposalText: {
-color: "rgba(255,255,255,0.82)",
-fontSize: 13,
-lineHeight: 19,
-},
-proposalAudit: {
-color: "rgba(255,255,255,0.58)",
-fontSize: 11,
-fontWeight: "800",
-marginTop: 8,
-},
-proposalError: {
-color: "#FFD7D7",
-fontSize: 12,
-fontWeight: "800",
-marginTop: 8,
-},
-proposeButton: {
-borderRadius: 18,
-paddingVertical: 14,
-paddingHorizontal: 16,
-backgroundColor: "#D9B86F",
-alignItems: "center",
-marginTop: 13,
-},
-proposeButtonDisabled: {
-opacity: 0.58,
-},
-proposeButtonText: {
-color: "#11130F",
-fontWeight: "900",
-fontSize: 14,
-},
-acceptButton: {
-borderRadius: 18,
-paddingVertical: 14,
-paddingHorizontal: 16,
-backgroundColor: "#B9F6CA",
-alignItems: "center",
-marginTop: 13,
-},
-acceptButtonText: {
-color: "#062A1A",
-fontWeight: "900",
-fontSize: 14,
-},
-acceptedBadge: {
-borderRadius: 18,
-paddingVertical: 12,
-paddingHorizontal: 14,
-backgroundColor: "rgba(185, 246, 202, 0.14)",
-borderWidth: 1,
-borderColor: "rgba(185, 246, 202, 0.34)",
-marginTop: 13,
-},
-acceptedBadgeText: {
-color: "#B9F6CA",
-fontWeight: "900",
-fontSize: 12,
-textAlign: "center",
-},
-terrainCard: {
-borderRadius: 24,
-padding: 17,
-backgroundColor: "rgba(125, 249, 255, 0.08)",
-borderWidth: 1,
-borderColor: "rgba(125, 249, 255, 0.28)",
-marginBottom: 14,
-},
-terrainKicker: {
-color: "#7DF9FF",
-fontSize: 11,
-fontWeight: "900",
-letterSpacing: 3,
-textTransform: "uppercase",
-marginBottom: 8,
-},
-terrainTitle: {
-color: "#FFFFFF",
-fontSize: 19,
-fontWeight: "900",
-marginBottom: 8,
-},
-terrainText: {
-color: "rgba(226, 232, 240, 0.78)",
-fontSize: 13,
-lineHeight: 19,
-},
-terrainButtons: {
-flexDirection: "row",
-flexWrap: "wrap",
-gap: 10,
-marginTop: 14,
-},
-terrainButton: {
-borderRadius: 16,
-paddingVertical: 12,
-paddingHorizontal: 13,
-backgroundColor: "rgba(125, 249, 255, 0.14)",
-borderWidth: 1,
-borderColor: "rgba(125, 249, 255, 0.30)",
-},
-terrainButtonText: {
-color: "#DDFEFF",
-fontSize: 13,
-fontWeight: "900",
-},
-terrainHint: {
-color: "rgba(226, 232, 240, 0.62)",
-fontSize: 11,
-fontWeight: "700",
-lineHeight: 16,
-marginTop: 12,
-},
-actions: {
-gap: 10,
-marginTop: 2,
-},
-primaryButton: {
-borderRadius: 18,
-paddingVertical: 15,
-paddingHorizontal: 16,
-backgroundColor: "#D9B86F",
-alignItems: "center",
-},
-primaryButtonText: {
-color: "#11130F",
-fontWeight: "900",
-fontSize: 15,
-},
-secondaryButton: {
-borderRadius: 18,
-paddingVertical: 14,
-paddingHorizontal: 16,
-backgroundColor: "rgba(255,255,255,0.08)",
-borderWidth: 1,
-borderColor: "rgba(255,255,255,0.12)",
-alignItems: "center",
-},
-secondaryButtonText: {
-color: "#FFFFFF",
-fontWeight: "800",
-fontSize: 15,
-},
-
-metricValueOracleDark: {
-color: "#FFFFFF",
-fontSize: 24,
-fontWeight: "900",
-letterSpacing: 0.2,
-},
-metricLabelOracleDark: {
-color: "rgba(255,255,255,0.82)",
-fontSize: 13,
-fontWeight: "900",
-marginTop: 4,
-},
-metricHintOracleDark: {
-color: "rgba(255,255,255,0.68)",
-fontSize: 12,
-fontWeight: "700",
-marginTop: 4,
-},
-
-scoreMetricBox: {
-width: "47%",
-minHeight: 104,
-borderRadius: 22,
-paddingVertical: 16,
-paddingHorizontal: 15,
-backgroundColor: "rgba(255,255,255,0.13)",
-borderWidth: 1,
-borderColor: "rgba(217, 184, 111, 0.34)",
-justifyContent: "center",
-},
-
-oracleStatsGrid: {
-flexDirection: "row",
-flexWrap: "wrap",
-gap: 12,
-marginTop: 12,
-},
-oracleStatCard: {
-width: "47%",
-minHeight: 104,
-borderRadius: 22,
-paddingVertical: 16,
-paddingHorizontal: 15,
-backgroundColor: "rgba(255,255,255,0.13)",
-borderWidth: 1,
-borderColor: "rgba(217, 184, 111, 0.34)",
-justifyContent: "center",
-},
+  safe: { flex: 1, backgroundColor: "#001C14" },
+  content: { padding: 22, paddingBottom: 48, gap: 18 },
+  hero: {
+    borderRadius: 34,
+    padding: 28,
+    backgroundColor: "#062B20",
+    borderWidth: 1,
+    borderColor: "rgba(110,240,176,0.34)",
+  },
+  brand: { color: "#6EF0B0", fontSize: 13, fontWeight: "900", letterSpacing: 4 },
+  title: {
+    color: "#FFF8E8",
+    fontSize: 46,
+    lineHeight: 50,
+    fontWeight: "900",
+    marginTop: 18,
+  },
+  subtitle: {
+    color: "#B7C8C0",
+    fontSize: 18,
+    lineHeight: 27,
+    fontWeight: "600",
+    marginTop: 16,
+  },
+  contractRow: {
+    marginTop: 24,
+    borderRadius: 22,
+    padding: 18,
+    backgroundColor: "rgba(255,255,255,0.045)",
+    flexDirection: "row",
+    gap: 14,
+    alignItems: "center",
+  },
+  dot: { width: 14, height: 14, borderRadius: 7, backgroundColor: "#8A6B55" },
+  dotOnline: { backgroundColor: "#6EF0B0" },
+  contractCopy: { flex: 1 },
+  contractKicker: {
+    color: "#E8BC68",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 2.5,
+  },
+  contractText: {
+    color: "#E9EEE9",
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: "700",
+    marginTop: 6,
+  },
+  presenceCard: { borderRadius: 30, padding: 25, backgroundColor: "#E7FFF3" },
+  sectionKicker: {
+    color: "#157B59",
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 3.2,
+  },
+  cardTitle: {
+    color: "#002218",
+    fontSize: 30,
+    lineHeight: 35,
+    fontWeight: "900",
+    marginTop: 10,
+  },
+  body: {
+    color: "#60736B",
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: "600",
+    marginTop: 12,
+  },
+  primaryButton: {
+    marginTop: 22,
+    borderRadius: 22,
+    minHeight: 62,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    backgroundColor: "#6EF0B0",
+  },
+  primaryText: { color: "#001E15", fontSize: 18, fontWeight: "900" },
+  secondaryButton: {
+    marginTop: 12,
+    borderRadius: 22,
+    minHeight: 58,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: "rgba(110,240,176,0.32)",
+    backgroundColor: "rgba(110,240,176,0.06)",
+  },
+  secondaryText: { color: "#A7F7CF", fontSize: 17, fontWeight: "900" },
+  buttonDisabled: { opacity: 0.55 },
+  errorCard: {
+    borderRadius: 28,
+    padding: 24,
+    backgroundColor: "#49231F",
+    borderWidth: 1,
+    borderColor: "#B25A4E",
+  },
+  errorTitle: { color: "#FFD7D2", fontSize: 25, fontWeight: "900" },
+  errorText: {
+    color: "#F4C2BC",
+    fontSize: 16,
+    lineHeight: 23,
+    marginTop: 10,
+    fontWeight: "700",
+  },
+  retryButton: {
+    marginTop: 18,
+    borderRadius: 18,
+    minHeight: 54,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#E8BC68",
+  },
+  retryText: { color: "#2B1600", fontSize: 17, fontWeight: "900" },
+  waitCard: {
+    borderRadius: 30,
+    padding: 28,
+    backgroundColor: "#08271E",
+    borderWidth: 1,
+    borderColor: "rgba(110,240,176,0.18)",
+  },
+  waitTitle: { color: "#FFF8E8", fontSize: 27, fontWeight: "900", marginTop: 16 },
+  offerCard: { borderRadius: 32, padding: 25, backgroundColor: "#E9FFF5" },
+  offerTop: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
+  flex: { flex: 1 },
+  offerTitle: {
+    color: "#002218",
+    fontSize: 34,
+    lineHeight: 38,
+    fontWeight: "900",
+    marginTop: 10,
+  },
+  offerMeta: {
+    color: "#71847C",
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: "800",
+    marginTop: 10,
+  },
+  badge: {
+    borderRadius: 999,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    backgroundColor: "#D7F4E6",
+  },
+  badgeText: {
+    color: "#145B43",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.4,
+  },
+  metrics: { flexDirection: "row", gap: 9, marginTop: 22 },
+  metric: {
+    flex: 1,
+    borderRadius: 20,
+    padding: 15,
+    backgroundColor: "#CFF2E2",
+    minHeight: 92,
+  },
+  metricValue: { color: "#002218", fontSize: 21, fontWeight: "900" },
+  metricLabel: {
+    color: "#617A70",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.7,
+    marginTop: 8,
+    textTransform: "uppercase",
+  },
+  whyCard: {
+    borderRadius: 30,
+    padding: 25,
+    backgroundColor: "#0C2B22",
+    borderWidth: 1,
+    borderColor: "rgba(110,240,176,0.2)",
+  },
+  reasons: { marginTop: 18, gap: 13 },
+  reasonRow: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
+  reasonNumber: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#6EF0B0",
+  },
+  reasonNumberText: { color: "#002218", fontWeight: "900" },
+  reasonText: {
+    color: "#D9E6E0",
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: "600",
+  },
+  decisionCard: {
+    borderRadius: 30,
+    padding: 25,
+    backgroundColor: "#062B20",
+    borderWidth: 1,
+    borderColor: "rgba(232,188,104,0.32)",
+  },
+  acceptedCard: { borderRadius: 30, padding: 25, backgroundColor: "#DDFBEA" },
+  acceptedKicker: {
+    color: "#157B59",
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 3,
+  },
+  acceptedTitle: {
+    color: "#002218",
+    fontSize: 31,
+    fontWeight: "900",
+    marginTop: 10,
+  },
+  acceptedText: {
+    color: "#526A60",
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: "700",
+    marginTop: 10,
+  },
+  footerMessage: {
+    color: "#8FA99D",
+    textAlign: "center",
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "700",
+  },
+  linkButton: { paddingVertical: 16, alignItems: "center" },
+  linkText: { color: "#6EF0B0", fontSize: 18, fontWeight: "900" },
+  footer: {
+    color: "#567168",
+    textAlign: "center",
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "700",
+  },
 });

@@ -40,14 +40,14 @@ export default function SettingsScreen() {
           app={APP}
           title="Profil coursier"
           subtitle="Identité, disponibilité et informations du compte."
-          onPress={() => go("/courier-profile")}
+          onPress={() => go("/courier-space")}
           right={<StatusPill app={APP} status="ONLINE" label="Actif" />}
         />
 
         <DAListItem
           app={APP}
           title="Session"
-          subtitle="Vérifier la session progressive et l’accès au compte."
+          subtitle="Vérifier la session Courier sécurisée et l’accès au compte."
           onPress={() => go("/auth-session")}
           right={<StatusPill app={APP} status="ONLINE" label="Disponible" />}
         />

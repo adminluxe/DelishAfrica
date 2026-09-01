@@ -22,7 +22,9 @@ export type DaTrustedIdentityHealth = {
   advertisedJwksUrl: string;
   audience: string;
   clientAudience: string;
-  supportedRoles: Array<'client' | 'merchant'>;
+  courierAudience: string;
+  opsAudience: string;
+  supportedRoles: Array<'client' | 'merchant' | 'courier' | 'ops'>;
   jwksUrl: string;
   allowedAlgorithms: string[];
   keyCount: number;
@@ -47,9 +49,13 @@ export type DaExternalTokenVerification =
         | 'invalid_signature'
         | 'issuer_mismatch'
         | 'audience_mismatch'
+        | 'authorized_party_mismatch'
         | 'token_expired'
         | 'token_not_active'
         | 'issued_in_future'
         | 'subject_missing'
-        | 'merchant_role_missing';
+        | 'client_role_missing'
+        | 'merchant_role_missing'
+        | 'courier_role_missing'
+        | 'ops_role_missing';
     };

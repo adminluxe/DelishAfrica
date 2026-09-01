@@ -1,27 +1,52 @@
 {
   "expo": {
-    "name": "DelishAfrica Courier DEV54",
+    "name": "DelishAfrica Courier",
     "slug": "delishafrica-courier",
-    "scheme": "delishafrica-courier-dev54",
+    "scheme": "delishafricacourier",
     "version": "3.0.0",
     "ios": {
-      "bundleIdentifier": "com.delishafrica.courier.dev54",
+      "bundleIdentifier": "com.delishafrica.courier",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false,
-        "NSAppTransportSecurity": {
-          "NSAllowsArbitraryLoads": true,
-          "NSAllowsArbitraryLoadsInWebContent": true
-        }
+        "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "1772244486"
+      "buildNumber": "1772244486",
+      "splash": {
+        "image": "./assets/splash.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#00140B"
+      },
+      "backgroundColor": "#00140B"
     },
     "android": {
       "package": "com.delishafrica.courier",
-      "versionCode": 1770770572
+      "versionCode": 1770770572,
+      "splash": {
+        "image": "./assets/splash.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#00140B"
+      },
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#00140B"
+      }
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "backgroundColor": "#00140B",
+          "dark": {
+            "image": "./assets/splash.png",
+            "backgroundColor": "#00140B"
+          },
+          "imageWidth": 180,
+          "resizeMode": "contain"
+        }
+      ],
+      "expo-system-ui"
     ],
     "extra": {
       "router": {},
@@ -30,6 +55,13 @@
         "projectId": "5d1b6b85-9e64-4cc2-9cbe-7d698feccc84"
       }
     },
-    "owner": "delishafrica"
+    "owner": "delishafrica",
+    "backgroundColor": "#00140B",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#00140B"
+    }
   }
 }

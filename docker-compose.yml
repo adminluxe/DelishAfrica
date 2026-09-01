@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: delish_db
       POSTGRES_USER: delish
-      POSTGRES_PASSWORD: 131f2648e324b0d37ced7c8c265d3718afa0d28a6e26f86a69e7173fef0edeab
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be supplied securely}
     ports:
       - "127.0.0.1:5433:5432"
     volumes:
@@ -42,7 +42,7 @@ services:
     environment:
       NODE_ENV: development
       PORT: "3010"
-      DATABASE_URL: "postgresql://delish:wp8FeV6QsI50mWHrqn7qIWtwoTOj7KQE8T_SiB3N2wTP0E9P6PV49RU3K8GPJCdE@db:5432/delish_db"
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be supplied securely}
       REDIS_URL: "redis://redis:6379"
       API_DIR: "/app/services/api-nest"
       DA_OPS_AUTHORITY_SECRET_FILE: "/run/secrets/da-ops-authority-v1"

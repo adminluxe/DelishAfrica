@@ -475,7 +475,19 @@ Utilisez uniquement le code le plus récent.`,
       setProfileId(profile.id);
       Alert.alert('Profil terrain enregistré', activationReady ? 'Le coursier peut passer en ligne.' : 'La mise en ligne reste verrouillée.', [{ text: 'Retour au terrain', onPress: () => router.replace('/') }]);
     } catch (error: any) {
-      Alert.alert('Contrôle indisponible', error?.message || 'Réessayez dans un instant.');
+      const reason = String(error?.message || error || '');
+      if (reason.includes('courier_oidc_session_required') || reason.includes('Session courier indisponible')) {
+        Alert.alert(
+          'Identité Courier requise',
+          'Connectez le compte Courier réel avant d’enregistrer le terrain.',
+          [
+            { text: 'Plus tard', style: 'cancel' },
+            { text: 'Connecter', onPress: () => router.push('/auth-session' as any) },
+          ],
+        );
+        return;
+      }
+      Alert.alert('Contrôle indisponible', reason || 'Réessayez dans un instant.');
     } finally {
       setChecking(false);
     }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as AuthSession from 'expo-auth-session';
 import * as Crypto from 'expo-crypto';
+import * as WebBrowser from 'expo-web-browser';
 import { DA_OIDC_CONFIG } from '../auth/daOidcConfig';
 import {
   establishOidcSession,
@@ -10,54 +11,24 @@ import {
 } from '../auth/daOidcSession';
 import type { DaOidcSession } from '../auth/daOidcTypes';
 
-
-// DA_C2_PKCE_SAFE_CORRELATION_HF2_TEMP
-// Temporary diagnostic instrumentation. No code/verifier/nonce/token/password/cookie/raw callback values.
-const daPkceRequestIds = new WeakMap<object, string>();
-let daPkceRequestSeq = 0;
-
-function daPkceRequestId(value: unknown): string {
-  if (!value || (typeof value !== "object" && typeof value !== "function")) return "none";
-  const obj = value as object;
-  const known = daPkceRequestIds.get(obj);
-  if (known) return known;
-  daPkceRequestSeq += 1;
-  const id = `req-${daPkceRequestSeq}`;
-  daPkceRequestIds.set(obj, id);
-  return id;
-}
-
-function daPkceSafeTrace(event: string, fields: Record<string, unknown> = {}) {
-  const allowed = new Set([
-    "attemptId", "requestId", "phase", "responseType",
-    "codePresent", "verifierPresent", "verifierLengthBucket",
-    "exchangeStarted", "exchangeCompleted", "errorName", "errorCode"
-  ]);
-  const safe: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(fields)) {
-    if (allowed.has(key)) safe[key] = value;
-  }
-  console.log("[DA_C2_PKCE_SAFE]", event, safe);
-}
-
-function daPkceVerifierLengthBucket(value: unknown): string {
-  if (typeof value !== "string") return "missing";
-  const n = value.length;
-  if (n < 43) return "lt43";
-  if (n <= 64) return "43-64";
-  if (n <= 96) return "65-96";
-  if (n <= 128) return "97-128";
-  return "gt128";
-}
-
+// DA_SHARED_MERCHANT_PROVEN_PKCE_ENGINE_V1
+WebBrowser.maybeCompleteAuthSession();
 
 function anonymous(reason?: string): DaOidcSession {
-  return {
-    status: 'anonymous',
-    provider: 'keycloak',
-    role: DA_OIDC_CONFIG.role,
-    reason,
-  };
+  return { status: 'anonymous', provider: 'keycloak', role: DA_OIDC_CONFIG.role, reason } as DaOidcSession;
+}
+
+function failed(reason: string): DaOidcSession {
+  return { status: 'error', provider: 'keycloak', role: DA_OIDC_CONFIG.role, reason } as DaOidcSession;
+}
+
+function safeErrorCode(error: unknown): string {
+  if (error && typeof error === 'object') {
+    const candidate = error as { code?: unknown; name?: unknown };
+    if (typeof candidate.code === 'string' && /^[a-z0-9_.:-]{1,96}$/i.test(candidate.code)) return candidate.code;
+    if (typeof candidate.name === 'string' && /^[a-z0-9_.:-]{1,96}$/i.test(candidate.name)) return candidate.name;
+  }
+  return 'oidc_login_failed';
 }
 
 function toBase64Url(bytes: Uint8Array): string {
@@ -82,189 +53,139 @@ async function createNonce(): Promise<string> {
 
 export function useDaPkceAuth() {
   const discovery = AuthSession.useAutoDiscovery(DA_OIDC_CONFIG.issuer);
-  const [nonce, setNonce] = useState<string | null>(null);
   const [session, setSession] = useState<DaOidcSession>(() => anonymous('initializing'));
   const [busy, setBusy] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [trace, setTrace] = useState<string[]>([]);
-  const consumedStates = useRef(new Set<string>());
   const loginInFlight = useRef(false);
-  const daPkceAttemptSeq = useRef(0);
 
   const pushTrace = useCallback((label: string) => {
     setTrace((previous) => [label, ...previous].slice(0, 8));
   }, []);
 
-  const rotateNonce = useCallback(async () => {
-    try {
-      setNonce(await createNonce());
-    } catch {
-      setNonce(null);
-      setLastError('nonce_generation_failed');
-    }
-  }, []);
-
   useEffect(() => {
-    void rotateNonce();
     void loadOidcSession().then((next) => {
       setSession(next);
       pushTrace(next.status === 'authenticated' ? 'Session restaurée' : 'Session OIDC prête');
     });
-  }, [pushTrace, rotateNonce]);
+  }, [pushTrace]);
 
   const redirectUri = useMemo(
     () => AuthSession.makeRedirectUri({ native: DA_OIDC_CONFIG.redirectUri }),
     [],
   );
 
-  const [request, , promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: DA_OIDC_CONFIG.clientId,
-      responseType: AuthSession.ResponseType.Code,
-      redirectUri,
-      scopes: [...DA_OIDC_CONFIG.scopes],
-      usePKCE: true,
-      codeChallengeMethod: AuthSession.CodeChallengeMethod.S256,
-      extraParams: nonce ? { nonce } : {},
-    },
-    discovery,
-  );
-
   const signIn = useCallback(async () => {
     if (busy || loginInFlight.current) return session;
     if (!discovery) {
-      setLastError('discovery_not_ready');
-      return session;
-    }
-    if (!request || !nonce) {
-      setLastError('authorization_request_not_ready');
-      return session;
+      const next = failed('discovery_not_ready');
+      setLastError(next.reason || 'discovery_not_ready');
+      setSession(next);
+      return next;
     }
 
     loginInFlight.current = true;
     setBusy(true);
     setLastError(null);
-    pushTrace('Ouverture de la connexion sécurisée');
+    pushTrace('Ouverture du navigateur système');
+
     try {
-      daPkceAttemptSeq.current += 1;
-      const daPkceAttemptId = `attempt-${daPkceAttemptSeq.current}`;
-      const daPkceRequestIdBeforePrompt = daPkceRequestId(request);
-      daPkceSafeTrace("PROMPT_STARTED", { attemptId: daPkceAttemptId, requestId: daPkceRequestIdBeforePrompt, phase: "prompt" });
-      const result = await promptAsync();
-      daPkceSafeTrace("PROMPT_RETURNED", { attemptId: daPkceAttemptId, requestId: daPkceRequestId(request), phase: "callback", responseType: result?.type, codePresent: Boolean((result as any)?.params?.code) });
-      if (result.type === 'cancel' || result.type === 'dismiss') {
-        pushTrace('Connexion annulée');
-        return session;
-      }
+      const attemptNonce = await createNonce();
+      const authRequest = new AuthSession.AuthRequest({
+        clientId: DA_OIDC_CONFIG.clientId,
+        responseType: AuthSession.ResponseType.Code,
+        redirectUri,
+        scopes: [...DA_OIDC_CONFIG.scopes],
+        usePKCE: true,
+        codeChallengeMethod: AuthSession.CodeChallengeMethod.S256,
+        prompt: (AuthSession as any).Prompt?.Login || 'login',
+        extraParams: { nonce: attemptNonce },
+      });
+
+      const result = await authRequest.promptAsync(discovery);
+      if (result.type === 'cancel' || result.type === 'dismiss') return session;
       if (result.type !== 'success') {
-        setLastError('authorization_failed');
-        return session;
+        const next = failed(`authorization_${String(result.type || 'failed')}`);
+        setLastError(next.reason || 'authorization_failed');
+        setSession(next);
+        return next;
       }
 
-      const code = result.params.code;
-      const returnedState = result.params.state;
-      if (!code || !returnedState || returnedState !== request.state) {
-        setLastError('authorization_state_mismatch');
-        return session;
+      const code = result.params?.code;
+      if (!code) {
+        const next = failed('authorization_code_missing');
+        setLastError(next.reason || 'authorization_code_missing');
+        setSession(next);
+        return next;
       }
-      if (consumedStates.current.has(returnedState)) {
-        setLastError('authorization_response_replayed');
-        return session;
-      }
-      consumedStates.current.add(returnedState);
-
-      const verifier = request.codeVerifier;
-      daPkceSafeTrace("VERIFIER_READY_FOR_EXCHANGE", { attemptId: typeof daPkceAttemptId !== "undefined" ? daPkceAttemptId : "unknown", requestId: daPkceRequestId(request), phase: "pre-exchange", verifierPresent: Boolean(verifier), verifierLengthBucket: daPkceVerifierLengthBucket(verifier) });
-      if (!verifier) {
-        setLastError('pkce_verifier_missing');
-        return session;
+      if (!authRequest.codeVerifier) {
+        const next = failed('pkce_verifier_missing');
+        setLastError(next.reason || 'pkce_verifier_missing');
+        setSession(next);
+        return next;
       }
 
-      pushTrace('Échange du code PKCE');
-      daPkceSafeTrace("EXCHANGE_STARTED", { attemptId: typeof daPkceAttemptId !== "undefined" ? daPkceAttemptId : "unknown", requestId: daPkceRequestId(request), phase: "exchange", exchangeStarted: true });
       const tokenResponse = await AuthSession.exchangeCodeAsync(
         {
           clientId: DA_OIDC_CONFIG.clientId,
           code,
           redirectUri,
-          extraParams: { code_verifier: verifier },
+          scopes: [...DA_OIDC_CONFIG.scopes],
+          extraParams: { code_verifier: authRequest.codeVerifier },
         },
         discovery,
       );
-      daPkceSafeTrace("EXCHANGE_COMPLETED", { attemptId: typeof daPkceAttemptId !== "undefined" ? daPkceAttemptId : "unknown", requestId: daPkceRequestId(request), phase: "exchange", exchangeCompleted: true });
-      const next = await establishOidcSession(tokenResponse, nonce);
+
+      const next = await establishOidcSession(tokenResponse, attemptNonce);
       setSession(next);
-      pushTrace('Session Keycloak validée');
+      setLastError(next.status === 'error' ? next.reason || 'oidc_session_failed' : null);
+      pushTrace(next.status === 'authenticated' ? 'Session Client validée' : 'Session non confirmée');
       return next;
     } catch (error) {
-      const code =
-        error && typeof error === 'object' && 'code' in error && typeof (error as { code?: unknown }).code === 'string'
-          ? String((error as { code: string }).code)
-          : error instanceof Error
-            ? error.name || 'oidc_login_failed'
-            : 'oidc_login_failed';
-      console.log(`[DA_C2_LOGIN_SAFE_ERROR] ${JSON.stringify({ code })}`);
+      const code = safeErrorCode(error);
+      const next = failed(code);
       setLastError(code);
-      pushTrace('Connexion sécurisée interrompue');
-      return session;
+      setSession(next);
+      return next;
     } finally {
       loginInFlight.current = false;
       setBusy(false);
-      await rotateNonce();
     }
-  }, [busy, discovery, nonce, promptAsync, pushTrace, redirectUri, request, rotateNonce, session]);
+  }, [busy, discovery, pushTrace, redirectUri, session]);
 
   const restore = useCallback(async () => {
-    setBusy(true);
-    setLastError(null);
+    setBusy(true); setLastError(null);
     try {
       const next = await loadOidcSession();
       setSession(next);
-      pushTrace('Session relue');
+      if (next.status === 'error') setLastError(next.reason || 'oidc_rehydrate_failed');
       return next;
-    } finally {
-      setBusy(false);
-    }
-  }, [pushTrace]);
+    } finally { setBusy(false); }
+  }, []);
 
   const refresh = useCallback(async () => {
-    setBusy(true);
-    setLastError(null);
+    setBusy(true); setLastError(null);
     try {
       const next = await refreshOidcSession();
       setSession(next);
-      pushTrace(next.status === 'authenticated' ? 'Session rafraîchie' : 'Réauthentification requise');
+      if (next.status === 'error') setLastError(next.reason || 'refresh_failed');
       return next;
-    } finally {
-      setBusy(false);
-    }
-  }, [pushTrace]);
+    } finally { setBusy(false); }
+  }, []);
 
   const logout = useCallback(async () => {
-    setBusy(true);
-    setLastError(null);
+    setBusy(true); setLastError(null);
     try {
       const next = await logoutOidcSession();
       setSession(next);
-      pushTrace('Déconnexion locale terminée');
       return next;
-    } finally {
-      setBusy(false);
-      await rotateNonce();
-    }
-  }, [pushTrace, rotateNonce]);
+    } finally { setBusy(false); }
+  }, []);
 
   return {
-    session,
-    busy,
-    lastError,
-    trace,
+    session, busy, lastError, trace,
     discoveryReady: Boolean(discovery),
-    requestReady: Boolean(request && nonce),
-    redirectUri,
-    signIn,
-    restore,
-    refresh,
-    logout,
+    requestReady: Boolean(discovery),
+    redirectUri, signIn, restore, refresh, logout,
   };
 }

@@ -198,9 +198,9 @@ load();
 }
 >
 <View style={styles.hero}>
-<Text style={styles.brand}>DELISHAFRICA® MERCHANT</Text>
-<Text style={styles.kicker}>KITCHEN PULSE</Text>
-<Text style={styles.title}>Le rythme de la cuisine, en un coup d’œil.</Text>
+<Text style={styles.brand}>DELISHAFRICA® · MASTER CONTROL</Text>
+<Text style={styles.kicker}>KITCHEN PULSE · LIVE</Text>
+<Text style={styles.title}>Le rythme cuisine devient un signal exploitable.</Text>
 <Text style={styles.subtitle}>
 File active, pression de service et priorités cuisine sans action risquée.
 </Text>
@@ -288,7 +288,7 @@ Aucune commande active prioritaire pour le moment.
 <Text style={styles.orderId}>{orderId(order)}</Text>
 <Text style={styles.orderItems}>{itemSummary(order)}</Text>
 <Text style={styles.orderMeta}>
-{order.restaurantName || order.merchantName || "Thieyp"} · {money(order.total ?? order.amount)}
+{order.restaurantName || order.merchantName || "Restaurant partenaire"} · {money(order.total ?? order.amount)}
 </Text>
 </View>
 <View style={styles.statusBadge}>
@@ -303,7 +303,7 @@ Aucune commande active prioritaire pour le moment.
 </Pressable>
 
 <Text style={styles.footer}>
-Kitchen Pulse · lecture cuisine interne · aucune action automatique.
+Kitchen Pulse · pression, priorité, cadence · aucune action automatique.
 </Text>
 </ScrollView>
 </SafeAreaView>

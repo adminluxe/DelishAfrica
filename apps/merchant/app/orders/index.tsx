@@ -287,6 +287,7 @@ export default function MerchantOrdersFocus() {
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState("Cockpit prêt.");
+  const [sessionRequired, setSessionRequired] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [liveLocations, setLiveLocations] = useState<Record<string, LiveLocationRead>>({});
@@ -305,9 +306,13 @@ export default function MerchantOrdersFocus() {
     setRefreshing(true);
     try {
       const list = await readOrders();
+      setSessionRequired(false);
       setMessage(`${list.length} commande${list.length > 1 ? "s" : ""} synchronisée${list.length > 1 ? "s" : ""}.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Synchronisation indisponible");
+      const reason = error instanceof Error ? error.message : String(error || '');
+      const needsSession = reason.includes('merchant_oidc_session_required') || reason.includes('Session restaurateur indisponible');
+      setSessionRequired(needsSession);
+      setMessage(needsSession ? "Connexion Merchant requise" : reason || "Synchronisation indisponible");
     } finally {
       setRefreshing(false);
     }
@@ -526,7 +531,7 @@ export default function MerchantOrdersFocus() {
           <View style={{ flex: 1 }}>
             <Text style={styles.brand}>DELISHAFRICA® · MERCHANT</Text>
             <Text style={styles.title}>Service maintenant</Text>
-            <Text style={styles.subtitle}>{Math.max(restaurants.length, 1)} établissement{restaurants.length > 1 ? "s" : ""} · {message}</Text>
+            <Text style={styles.subtitle}>{sessionRequired ? "Identité Merchant requise pour les opérations" : `${Math.max(restaurants.length, 1)} établissement${restaurants.length > 1 ? "s" : ""} · ${message}`}</Text>
           </View>
           <Pressable style={styles.closeButton} onPress={() => router.replace("/")}><Text style={styles.closeText}>Fermer</Text></Pressable>
         </View>
@@ -536,6 +541,17 @@ export default function MerchantOrdersFocus() {
           <View style={styles.metric}><Text style={styles.metricValue}>{orders.filter((o) => statusOf(o) === "accepted").length}</Text><Text style={styles.metricLabel}>Cuisine</Text></View>
           <View style={styles.metric}><Text style={styles.metricValue}>{orders.filter((o) => statusOf(o) === "ready").length}</Text><Text style={styles.metricLabel}>Prêtes</Text></View>
         </View>
+
+        {sessionRequired ? (
+          <View style={styles.sessionCard}>
+            <Text style={styles.sessionKicker}>ACCÈS MERCHANT</Text>
+            <Text style={styles.sessionTitle}>Connectez le compte réel pour reprendre le service.</Text>
+            <Text style={styles.sessionBody}>Aucune session de développement ne remplace désormais votre identité Merchant.</Text>
+            <Pressable style={styles.sessionButton} onPress={() => router.push("/auth-session" as any)}>
+              <Text style={styles.sessionButtonText}>Connecter le compte Merchant</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <Text style={styles.sectionKicker}>UNE PRIORITÉ À LA FOIS</Text>
         {focusOrder ? <OrderCard order={focusOrder} /> : <View style={styles.empty}><Text style={styles.emptyTitle}>Aucune action urgente</Text><Text style={styles.emptyText}>Le service est calme. Les nouvelles commandes apparaîtront ici.</Text></View>}
@@ -600,6 +616,12 @@ export default function MerchantOrdersFocus() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#120804" },
+  sessionCard: { borderRadius: 26, padding: 20, marginBottom: 22, backgroundColor: "rgba(255,184,107,0.10)", borderWidth: 1, borderColor: "rgba(255,184,107,0.28)" },
+  sessionKicker: { color: "#FFB86B", fontSize: 10, fontWeight: "900", letterSpacing: 2.4 },
+  sessionTitle: { color: "#FFF8F1", fontSize: 22, lineHeight: 28, fontWeight: "900", marginTop: 10 },
+  sessionBody: { color: "rgba(255,248,241,0.62)", fontSize: 14, lineHeight: 21, fontWeight: "600", marginTop: 8 },
+  sessionButton: { borderRadius: 18, paddingVertical: 15, paddingHorizontal: 16, marginTop: 16, alignItems: "center", backgroundColor: "#FFB86B" },
+  sessionButtonText: { color: "#1A0A04", fontSize: 14, fontWeight: "900" },
   page: { padding: 18, paddingBottom: 72 },
   header: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginTop: 8, marginBottom: 18 },
   brand: { color: "#FFB86B", fontSize: 11, fontWeight: "900", letterSpacing: 2.6 },

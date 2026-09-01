@@ -75,7 +75,7 @@ export class CatalogFoundationRepository implements OnModuleDestroy {
     try {
       client = await pool.connect();
       await client.query('BEGIN');
-      await this.ensureSchema(client);
+      await this.verifySchema(client);
       await this.seedPublishedPartners(client, seedPartners);
       await client.query('COMMIT');
       this.pool = pool;
@@ -431,219 +431,81 @@ export class CatalogFoundationRepository implements OnModuleDestroy {
     if (pool) await pool.end().catch(() => undefined);
   }
 
-  private async ensureSchema(client: PoolClient): Promise<void> {
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS da_catalog_schema_migrations (
-        version text PRIMARY KEY,
-        applied_at timestamptz NOT NULL DEFAULT now()
-      )
-    `);
-
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS da_catalog_partners (
-        partner_id text PRIMARY KEY,
-        slug text NOT NULL UNIQUE,
-        lifecycle_status text NOT NULL DEFAULT 'published'
-          CHECK (lifecycle_status IN ('draft', 'published', 'suspended', 'archived')),
-        published_payload jsonb NOT NULL,
-        draft_payload jsonb,
-        published_revision integer NOT NULL DEFAULT 1 CHECK (published_revision >= 1),
-        draft_revision integer NOT NULL DEFAULT 0 CHECK (draft_revision >= 0),
-        display_order integer NOT NULL DEFAULT 100,
-        published_at timestamptz NOT NULL DEFAULT now(),
-        created_at timestamptz NOT NULL DEFAULT now(),
-        updated_at timestamptz NOT NULL DEFAULT now()
-      )
-    `);
-
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS da_catalog_ownerships (
-        merchant_subject text NOT NULL,
-        partner_id text NOT NULL REFERENCES da_catalog_partners(partner_id) ON DELETE RESTRICT,
-        ownership_role text NOT NULL DEFAULT 'owner'
-          CHECK (ownership_role IN ('owner', 'manager', 'editor', 'viewer')),
-        active boolean NOT NULL DEFAULT true,
-        granted_by text,
-        granted_at timestamptz NOT NULL DEFAULT now(),
-        revoked_at timestamptz,
-        PRIMARY KEY (merchant_subject, partner_id)
-      )
-    `);
-
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS da_identity_subjects (
-        issuer text NOT NULL,
-        subject text NOT NULL,
-        identity_kind text NOT NULL DEFAULT 'merchant'
-          CHECK (identity_kind IN ('client', 'merchant', 'courier', 'ops')),
-        identity_status text NOT NULL DEFAULT 'active'
-          CHECK (identity_status IN ('active', 'suspended', 'revoked')),
-        first_seen_at timestamptz NOT NULL DEFAULT now(),
-        last_seen_at timestamptz NOT NULL DEFAULT now(),
-        created_at timestamptz NOT NULL DEFAULT now(),
-        updated_at timestamptz NOT NULL DEFAULT now(),
-        PRIMARY KEY (issuer, subject)
-      )
-    `);
-
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS da_merchant_memberships (
-        membership_id bigserial PRIMARY KEY,
-        issuer text NOT NULL,
-        subject text NOT NULL,
-        partner_id text NOT NULL
-          REFERENCES da_catalog_partners(partner_id) ON DELETE RESTRICT,
-        membership_role text NOT NULL DEFAULT 'manager'
-          CHECK (
-            membership_role IN (
-              'owner',
-              'admin',
-              'manager',
-              'kitchen',
-              'finance',
-              'support'
-            )
-          ),
-        membership_status text NOT NULL DEFAULT 'pending'
-          CHECK (
-            membership_status IN (
-              'invited',
-              'pending',
-              'active',
-              'suspended',
-              'revoked',
-              'expired'
-            )
-          ),
-        contract_status text NOT NULL DEFAULT 'pending'
-          CHECK (
-            contract_status IN (
-              'pending',
-              'active',
-              'suspended',
-              'terminated',
-              'expired'
-            )
-          ),
-        kyb_status text NOT NULL DEFAULT 'pending'
-          CHECK (
-            kyb_status IN (
-              'pending',
-              'verified',
-              'rejected',
-              'expired'
-            )
-          ),
-        invited_by_subject text,
-        activated_by_subject text,
-        starts_at timestamptz,
-        expires_at timestamptz,
-        revoked_at timestamptz,
-        created_at timestamptz NOT NULL DEFAULT now(),
-        updated_at timestamptz NOT NULL DEFAULT now(),
-        CONSTRAINT da_merchant_memberships_identity_fkey
-          FOREIGN KEY (issuer, subject)
-          REFERENCES da_identity_subjects(issuer, subject)
-          ON DELETE RESTRICT,
-        CONSTRAINT da_merchant_memberships_identity_partner_key
-          UNIQUE (issuer, subject, partner_id),
-        CONSTRAINT da_merchant_memberships_time_window_check
-          CHECK (
-            expires_at IS NULL
-            OR starts_at IS NULL
-            OR expires_at > starts_at
-          ),
-        CONSTRAINT da_merchant_memberships_active_gate_check
-          CHECK (
-            membership_status <> 'active'
-            OR (
-              contract_status = 'active'
-              AND kyb_status = 'verified'
-              AND revoked_at IS NULL
-            )
-          )
-      )
-    `);
-
-
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS da_catalog_audit (
-        audit_id bigserial PRIMARY KEY,
-        partner_id text NOT NULL REFERENCES da_catalog_partners(partner_id) ON DELETE RESTRICT,
-        actor_subject text NOT NULL,
-        action text NOT NULL,
-        request_id text,
-        before_payload jsonb,
-        after_payload jsonb,
-        metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
-        created_at timestamptz NOT NULL DEFAULT now()
-      )
-    `);
-
-    await client.query(`
-      CREATE OR REPLACE FUNCTION da_catalog_audit_immutable_guard()
-      RETURNS trigger
-      LANGUAGE plpgsql
-      AS $$
-      BEGIN
-        RAISE EXCEPTION 'da_catalog_audit_is_append_only';
-      END;
-      $$
-    `);
-
-    await client.query(`
-      DROP TRIGGER IF EXISTS da_catalog_audit_immutable ON da_catalog_audit
-    `);
-
-    await client.query(`
-      CREATE TRIGGER da_catalog_audit_immutable
-      BEFORE UPDATE OR DELETE ON da_catalog_audit
-      FOR EACH ROW EXECUTE FUNCTION da_catalog_audit_immutable_guard()
-    `);
-
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS da_catalog_partners_lifecycle_idx
-      ON da_catalog_partners(lifecycle_status, display_order, slug)
-    `);
-
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS da_catalog_ownerships_subject_idx
-      ON da_catalog_ownerships(merchant_subject, active)
-    `);
-
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS da_identity_subjects_status_idx
-      ON da_identity_subjects(identity_kind, identity_status)
-    `);
-
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS da_merchant_memberships_subject_idx
-      ON da_merchant_memberships(
-        issuer,
-        subject,
-        membership_status,
-        contract_status,
-        kyb_status
-      )
-    `);
-
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS da_merchant_memberships_partner_idx
-      ON da_merchant_memberships(partner_id, membership_status)
-    `);
-
-
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS da_catalog_audit_partner_created_idx
-      ON da_catalog_audit(partner_id, created_at DESC)
-    `);
-
-    await client.query(
-      `INSERT INTO da_catalog_schema_migrations(version)
-       VALUES ($1)
-       ON CONFLICT (version) DO NOTHING`,
+  private async verifySchema(client: PoolClient): Promise<void> {
+    const result = await client.query<
+      QueryResultRow & {
+        migration_ready: boolean;
+        partners_ready: boolean;
+        ownerships_ready: boolean;
+        identities_ready: boolean;
+        memberships_ready: boolean;
+        audit_ready: boolean;
+        audit_guard_ready: boolean;
+        audit_trigger_ready: boolean;
+        partner_lifecycle_index_ready: boolean;
+        ownership_subject_index_ready: boolean;
+        identity_status_index_ready: boolean;
+        membership_subject_index_ready: boolean;
+        membership_partner_index_ready: boolean;
+        audit_partner_index_ready: boolean;
+      }
+    >(
+      `SELECT
+         EXISTS(
+           SELECT 1
+           FROM da_catalog_schema_migrations
+           WHERE version = $1
+         ) AS migration_ready,
+         to_regclass('da_catalog_partners') IS NOT NULL AS partners_ready,
+         to_regclass('da_catalog_ownerships') IS NOT NULL AS ownerships_ready,
+         to_regclass('da_identity_subjects') IS NOT NULL AS identities_ready,
+         to_regclass('da_merchant_memberships') IS NOT NULL AS memberships_ready,
+         to_regclass('da_catalog_audit') IS NOT NULL AS audit_ready,
+         to_regprocedure('da_catalog_audit_immutable_guard()') IS NOT NULL
+           AS audit_guard_ready,
+         EXISTS(
+           SELECT 1
+           FROM pg_trigger
+           WHERE tgrelid = to_regclass('da_catalog_audit')
+             AND tgname = 'da_catalog_audit_immutable'
+             AND NOT tgisinternal
+         ) AS audit_trigger_ready,
+         to_regclass('da_catalog_partners_lifecycle_idx') IS NOT NULL
+           AS partner_lifecycle_index_ready,
+         to_regclass('da_catalog_ownerships_subject_idx') IS NOT NULL
+           AS ownership_subject_index_ready,
+         to_regclass('da_identity_subjects_status_idx') IS NOT NULL
+           AS identity_status_index_ready,
+         to_regclass('da_merchant_memberships_subject_idx') IS NOT NULL
+           AS membership_subject_index_ready,
+         to_regclass('da_merchant_memberships_partner_idx') IS NOT NULL
+           AS membership_partner_index_ready,
+         to_regclass('da_catalog_audit_partner_created_idx') IS NOT NULL
+           AS audit_partner_index_ready`,
       [SCHEMA_VERSION],
     );
+
+    const row = result.rows[0];
+    const ready = Boolean(
+      row?.migration_ready &&
+        row.partners_ready &&
+        row.ownerships_ready &&
+        row.identities_ready &&
+        row.memberships_ready &&
+        row.audit_ready &&
+        row.audit_guard_ready &&
+        row.audit_trigger_ready &&
+        row.partner_lifecycle_index_ready &&
+        row.ownership_subject_index_ready &&
+        row.identity_status_index_ready &&
+        row.membership_subject_index_ready &&
+        row.membership_partner_index_ready &&
+        row.audit_partner_index_ready,
+    );
+
+    if (!ready) {
+      throw new Error('catalog_schema_not_ready');
+    }
   }
 
   private async seedPublishedPartners(

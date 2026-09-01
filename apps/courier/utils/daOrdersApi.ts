@@ -1,5 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
-import { daDevLogin, daGetToken, daMe } from './daAuthBridge';
+import { daAuthApiBaseUrl } from './daAuthBridge';
+import { getValidOidcAccessToken, loadOidcSession, refreshOidcSession } from '../auth/daOidcSession';
 
 const ROLE = 'courier' as const;
 const PROFILE_BASE = 'delishafrica.courier.presence.v1';
@@ -103,14 +104,15 @@ async function canMigrateLegacyValues(subject: string): Promise<boolean> {
   return true;
 }
 
-async function validateStoredSession(): Promise<PrincipalState | null> {
-  const token = await daGetToken();
-  if (!token) return null;
+async function verifyExternalPrincipal(token: string, fallbackSubject = ''): Promise<PrincipalState | null> {
   try {
-    const session = await daMe();
-    if (!sessionIsValid(session)) return null;
-    const subject = sessionSubject(session);
-    if (isLegacyDeviceSubject(subject)) return null;
+    const response = await fetch(`${daAuthApiBaseUrl()}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const session = await response.json().catch(() => null);
+    if (!response.ok || !sessionIsValid(session)) return null;
+    const subject = sessionSubject(session, fallbackSubject);
+    if (!subject || isLegacyDeviceSubject(subject)) return null;
     await savePrincipalMarker(subject);
     return { token, subject, role: ROLE, user: (session.user || {}) as Record<string, unknown> };
   } catch {
@@ -118,40 +120,41 @@ async function validateStoredSession(): Promise<PrincipalState | null> {
   }
 }
 
-async function createFreshSession(): Promise<PrincipalState> {
-  const hint = await identityHint();
-  const login = await daDevLogin({
-    role: ROLE,
-    name: 'Coursier DelishAfrica',
-    courierId: hint,
-  });
-  const token = String(login.accessToken || login.token || '');
-  if (!token) throw new Error('Session courier indisponible.');
-  const verified = await daMe();
-  const subject = sessionIsValid(verified) ? sessionSubject(verified, hint) : sessionSubject(login, hint);
-  if (!subject) throw new Error('Identité courier non résolue.');
-  await savePrincipalMarker(subject);
-  return { token, subject, role: ROLE, user: ((verified?.user || login?.user || {}) as Record<string, unknown>) };
+async function externalPrincipal(forceRefresh = false): Promise<PrincipalState | null> {
+  try {
+    let session = forceRefresh ? await refreshOidcSession() : await loadOidcSession();
+    if (session.status !== 'authenticated') return null;
+    let token = await getValidOidcAccessToken();
+    if (!token) return null;
+    let principal = await verifyExternalPrincipal(token, session.subject || '');
+    if (principal) return principal;
+    if (forceRefresh) return null;
+    session = await refreshOidcSession();
+    if (session.status !== 'authenticated') return null;
+    token = await getValidOidcAccessToken();
+    if (!token) return null;
+    principal = await verifyExternalPrincipal(token, session.subject || '');
+    return principal;
+  } catch {
+    return null;
+  }
+}
+
+async function requireExternalCourierPrincipal(forceRefresh = false): Promise<PrincipalState> {
+  const external = await externalPrincipal(forceRefresh);
+  if (external) return external;
+  throw new Error('courier_oidc_session_required');
 }
 
 async function ensurePrincipal(force = false): Promise<PrincipalState> {
-  if (!force && principalCache) {
-    const currentToken = await daGetToken().catch(() => null);
-    if (currentToken && currentToken === principalCache.token) return principalCache;
-    principalCache = null;
-  }
+  if (!force && principalCache) return principalCache;
   if (!force && principalFlight) return principalFlight;
   principalFlight = (async () => {
-    const existing = force ? null : await validateStoredSession();
-    const principal = existing || await createFreshSession();
+    const principal = await requireExternalCourierPrincipal(force);
     principalCache = principal;
     return principal;
   })();
-  try {
-    return await principalFlight;
-  } finally {
-    principalFlight = null;
-  }
+  try { return await principalFlight; } finally { principalFlight = null; }
 }
 
 async function subjectForStorage(): Promise<string> {

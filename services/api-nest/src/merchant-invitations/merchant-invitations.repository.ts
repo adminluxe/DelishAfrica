@@ -441,6 +441,44 @@ export class MerchantInvitationsRepository implements OnModuleDestroy {
     }
   }
 
+  async dispatchOldestPending(
+    handler: (record: { invitationId: string; templateAlias: string; payloadCiphertext: Buffer; payloadKeyId: string }) => Promise<{ messageId: string }>,
+  ): Promise<{ dispatched: boolean; invitationId?: string; messageId?: string }> {
+    const pool = await this.ensurePool();
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const lock = await client.query<{ locked: boolean }>(
+        `SELECT pg_try_advisory_xact_lock(hashtext($1)) AS locked`,
+        ['merchant-invitation-outbox-dispatch-v1'],
+      );
+      if (!lock.rows[0]?.locked) { await client.query('ROLLBACK'); return { dispatched: false }; }
+      const pending = await client.query<{ outbox_id: string; invitation_id: string; template_alias: string; payload_ciphertext: Buffer; payload_key_id: string }>(
+        `SELECT outbox_id::text, invitation_id::text, template_alias, payload_ciphertext, payload_key_id
+           FROM da_merchant_invitation_outbox
+          WHERE delivery_status = 'pending'
+          ORDER BY outbox_id ASC
+          FOR UPDATE SKIP LOCKED
+          LIMIT 1`,
+      );
+      const row = pending.rows[0];
+      if (!row) { await client.query('COMMIT'); return { dispatched: false }; }
+      const sent = await handler({ invitationId: row.invitation_id, templateAlias: row.template_alias, payloadCiphertext: row.payload_ciphertext, payloadKeyId: row.payload_key_id });
+      await client.query(`UPDATE da_merchant_invitation_outbox SET delivery_status='sent' WHERE outbox_id=$1 AND delivery_status='pending'`, [row.outbox_id]);
+      await client.query(`UPDATE da_merchant_invitations SET invitation_status='sent' WHERE invitation_id=$1::uuid AND invitation_status IN ('queued','pending')`, [row.invitation_id]);
+      await client.query(
+        `INSERT INTO da_merchant_invitation_audit(invitation_id, actor_subject_hash, action, reason_code, metadata)
+         VALUES ($1::uuid,$2,'sent','postmark',jsonb_build_object('provider_message_id_hash',$3::text))`,
+        [row.invitation_id, this.sha256Text('merchant-invitation-dispatcher-v1'), this.sha256Text(sent.messageId)],
+      );
+      await client.query('COMMIT');
+      return { dispatched: true, invitationId: row.invitation_id, messageId: sent.messageId };
+    } catch (error) {
+      await this.rollbackQuietly(client);
+      throw new Error(this.sanitizeError(error));
+    } finally { client.release(); }
+  }
+
   async onModuleDestroy(): Promise<void> {
     const pool = this.pool;
     this.pool = null;

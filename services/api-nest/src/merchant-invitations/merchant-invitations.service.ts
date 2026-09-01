@@ -132,6 +132,20 @@ export class MerchantInvitationsService {
     }
   }
 
+  async dispatchOne() {
+    const provider = this.provider.readiness();
+    if (!provider.readyToSend) throw new ServiceUnavailableException({ ok: false, code: 'invitation_provider_not_ready', provider });
+    const result = await this.repository.dispatchOldestPending(async (record) => {
+      const payloadJson = this.crypto.decryptUtf8(record.payloadCiphertext, record.payloadKeyId, 'postmark-payload');
+      let model: Record<string, unknown>;
+      try { model = JSON.parse(payloadJson) as Record<string, unknown>; } catch { throw new Error('merchant_invitation_payload_invalid'); }
+      const to = String(model.recipientEmail || '').trim().toLowerCase();
+      if (!EMAIL_RE.test(to)) throw new Error('merchant_invitation_recipient_invalid');
+      return this.provider.sendTemplate({ to, templateAlias: record.templateAlias, templateModel: model });
+    });
+    return { ok: true, ...result, provider: 'postmark' as const };
+  }
+
   async preview(rawBody: MerchantInvitationTokenBody) {
     const token = this.validateToken(rawBody?.token);
     const record = await this.repository.previewByTokenHash(

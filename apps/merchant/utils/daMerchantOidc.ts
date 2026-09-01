@@ -329,37 +329,13 @@ export async function daMerchantOidcLogin(): Promise<MerchantOidcSession> {
   return await daMerchantOidcSession();
 }
 
-export async function daMerchantOidcRefresh(): Promise<MerchantOidcSession> {
-  const { AuthSession, SecureStore } = loadModules();
-  const refreshToken = await SecureStore.getItemAsync(REFRESH_KEY);
-  if (!refreshToken) throw new Error('oidc_refresh_token_missing');
+let merchantRefreshInFlight: Promise<MerchantOidcSession> | null = null;
 
-  const discovery = await fetchDiscoveryStrict(AuthSession);
-  const tokenResponse = await AuthSession.refreshAsync(
-    { clientId: CLIENT_ID, refreshToken, scopes: SCOPES },
-    discovery,
-  );
-  if (!tokenResponse.accessToken) throw new Error('oidc_refreshed_access_token_missing');
-
-  const accessClaims = decodeJwt(tokenResponse.accessToken);
-  assertClaims(accessClaims, { requireMerchantRole: true });
-  const apiVerification = await apiVerifyExternal(tokenResponse.accessToken);
-
-  const preservedIdToken = tokenResponse.idToken || (await SecureStore.getItemAsync(ID_KEY));
-  const rotated = {
-    ...tokenResponse,
-    refreshToken: tokenResponse.refreshToken || refreshToken,
-    idToken: preservedIdToken || undefined,
-  };
-  await saveTokens(SecureStore, rotated, accessClaims, apiVerification);
-  return await daMerchantOidcSession();
-}
-
-export async function daMerchantOidcSession(): Promise<MerchantOidcSession> {
+async function readMerchantOidcSession(allowRefresh: boolean): Promise<MerchantOidcSession> {
   let SecureStore: ExpoSecureStoreModule;
   try {
     SecureStore = loadModules().SecureStore;
-  } catch (error: any) {
+  } catch {
     return {
       authenticated: false,
       source: 'none',
@@ -368,7 +344,7 @@ export async function daMerchantOidcSession(): Promise<MerchantOidcSession> {
       idTokenPresent: false,
       expiresAt: null,
       user: null,
-      reason: String(error?.message || error),
+      reason: 'merchant_oidc_native_module_unavailable',
     };
   }
 
@@ -383,6 +359,24 @@ export async function daMerchantOidcSession(): Promise<MerchantOidcSession> {
   const expiresAt = expiresRaw ? Number(expiresRaw) : null;
   const authenticated = Boolean(accessToken && expiresAt && expiresAt > Math.floor(Date.now() / 1000) + 20);
 
+  if (!authenticated && refreshToken && allowRefresh) {
+    try {
+      return await daMerchantOidcRefresh();
+    } catch {
+      return {
+        authenticated: false,
+        source: 'none',
+        accessTokenPresent: Boolean(accessToken),
+        refreshTokenPresent: true,
+        idTokenPresent: Boolean(idToken),
+        expiresAt: Number.isFinite(expiresAt) ? expiresAt : null,
+        user: userRaw ? JSON.parse(userRaw) : null,
+        apiVerification: apiRaw ? JSON.parse(apiRaw) : null,
+        reason: 'oidc_refresh_unavailable',
+      };
+    }
+  }
+
   return {
     authenticated,
     source: authenticated ? 'external' : 'none',
@@ -396,8 +390,57 @@ export async function daMerchantOidcSession(): Promise<MerchantOidcSession> {
   };
 }
 
+async function performMerchantOidcRefresh(): Promise<MerchantOidcSession> {
+  const { AuthSession, SecureStore } = loadModules();
+  const refreshToken = await SecureStore.getItemAsync(REFRESH_KEY);
+  if (!refreshToken) throw new Error('oidc_refresh_token_missing');
+
+  try {
+    const discovery = await fetchDiscoveryStrict(AuthSession);
+    const tokenResponse = await AuthSession.refreshAsync(
+      { clientId: CLIENT_ID, refreshToken, scopes: SCOPES },
+      discovery,
+    );
+    if (!tokenResponse.accessToken) throw new Error('oidc_refreshed_access_token_missing');
+
+    const accessClaims = decodeJwt(tokenResponse.accessToken);
+    assertClaims(accessClaims, { requireMerchantRole: true });
+    const apiVerification = await apiVerifyExternal(tokenResponse.accessToken);
+
+    const preservedIdToken = tokenResponse.idToken || (await SecureStore.getItemAsync(ID_KEY));
+    const rotated = {
+      ...tokenResponse,
+      refreshToken: tokenResponse.refreshToken || refreshToken,
+      idToken: preservedIdToken || undefined,
+    };
+    await saveTokens(SecureStore, rotated, accessClaims, apiVerification);
+    return await readMerchantOidcSession(false);
+  } catch (error: any) {
+    const normalized = String(error?.message || error).toLowerCase();
+    if (normalized.includes('invalid_grant') || normalized.includes('invalid refresh')) {
+      await clearTokens(SecureStore).catch(() => undefined);
+    }
+    throw error;
+  }
+}
+
+export async function daMerchantOidcRefresh(): Promise<MerchantOidcSession> {
+  if (!merchantRefreshInFlight) {
+    merchantRefreshInFlight = performMerchantOidcRefresh().finally(() => {
+      merchantRefreshInFlight = null;
+    });
+  }
+  return await merchantRefreshInFlight;
+}
+
+export async function daMerchantOidcSession(): Promise<MerchantOidcSession> {
+  return await readMerchantOidcSession(true);
+}
+
 export async function daMerchantOidcAccessToken(): Promise<string | null> {
   try {
+    const session = await daMerchantOidcSession();
+    if (!session.authenticated) return null;
     return await loadModules().SecureStore.getItemAsync(ACCESS_KEY);
   } catch {
     return null;

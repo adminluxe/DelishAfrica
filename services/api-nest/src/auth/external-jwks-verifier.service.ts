@@ -25,6 +25,8 @@ const CONFIG_PATH = path.resolve(
 const MAX_RESPONSE_BYTES = 1024 * 1024;
 const REQUEST_TIMEOUT_MS = 7000;
 const CLIENT_AUDIENCE = 'delishafrica-client';
+const COURIER_AUDIENCE = 'delishafrica-courier';
+const DASHBOARD_AUDIENCE = 'delishafrica-master-dashboard';
 
 @Injectable()
 export class ExternalJwksVerifierService
@@ -66,7 +68,9 @@ export class ExternalJwksVerifierService
       advertisedJwksUrl: this.config.advertisedJwksUrl,
       audience: this.config.audience,
       clientAudience: CLIENT_AUDIENCE,
-      supportedRoles: ['client', 'merchant'],
+      courierAudience: COURIER_AUDIENCE,
+      opsAudience: DASHBOARD_AUDIENCE,
+      supportedRoles: ['client', 'merchant', 'courier', 'ops'],
       jwksUrl: this.config.jwksUrl,
       allowedAlgorithms: [...this.config.allowedAlgorithms],
       keyCount: this.keys.size,
@@ -133,6 +137,22 @@ export class ExternalJwksVerifierService
     if (!externalRole) {
       return { ok: false, reason: 'audience_mismatch' };
     }
+    if (externalRole === 'client') {
+      if (!this.hasClientAuthorizedParty(claims)) {
+        return { ok: false, reason: 'authorized_party_mismatch' };
+      }
+      if (!this.hasClientRole(claims)) {
+        return { ok: false, reason: 'client_role_missing' };
+      }
+    }
+    if (externalRole === 'ops') {
+      if (!this.hasOpsAuthorizedParty(claims)) {
+        return { ok: false, reason: 'authorized_party_mismatch' };
+      }
+      if (!this.hasOpsRole(claims)) {
+        return { ok: false, reason: 'ops_role_missing' };
+      }
+    }
 
     const now = Math.floor(Date.now() / 1000);
     const skew = this.config.clockSkewSeconds;
@@ -155,9 +175,18 @@ export class ExternalJwksVerifierService
     if (externalRole === 'merchant' && !this.hasMerchantRole(claims)) {
       return { ok: false, reason: 'merchant_role_missing' };
     }
+    if (externalRole === 'courier' && !this.hasCourierRole(claims)) {
+      return { ok: false, reason: 'courier_role_missing' };
+    }
 
     const name = this.firstString(
-      externalRole === 'client' ? 'Client DelishAfrica' : 'Merchant DelishAfrica',
+      externalRole === 'client'
+        ? 'Client DelishAfrica'
+        : externalRole === 'courier'
+          ? 'Courier DelishAfrica'
+          : externalRole === 'ops'
+            ? 'DelishAfrica Ops'
+            : 'Merchant DelishAfrica',
       claims.name,
       claims.preferred_username,
       claims.email,
@@ -179,6 +208,9 @@ export class ExternalJwksVerifierService
       exp,
       iss: this.config.issuer,
       aud: audience,
+      azp: typeof claims.azp === 'string' ? claims.azp.trim() : undefined,
+      sid: typeof claims.sid === 'string' && claims.sid.trim() ? claims.sid.trim() : undefined,
+      jti: typeof claims.jti === 'string' && claims.jti.trim() ? claims.jti.trim() : undefined,
     };
 
     return { ok: true, payload };
@@ -303,13 +335,45 @@ export class ExternalJwksVerifierService
     return Array.isArray(value) && value.includes(expected);
   }
 
-  private resolveExternalRole(claims: JsonObject): 'client' | 'merchant' | null {
-    // Client and Merchant are distinct OIDC audiences under the same trusted
-    // issuer/JWKS. Audience determines the application role; Merchant keeps
-    // its existing explicit role gate below because it can own partner data.
+  private resolveExternalRole(
+    claims: JsonObject,
+  ): 'client' | 'merchant' | 'courier' | 'ops' | null {
+    // Audience selects the trusted application role. Ops is deliberately
+    // checked first: a token carrying the Dashboard audience must satisfy the
+    // Dashboard-specific azp + resource_access role gates below and must never
+    // fall through to a less privileged application role.
+    if (this.audienceIncludes(claims.aud, DASHBOARD_AUDIENCE)) return 'ops';
     if (this.audienceIncludes(claims.aud, CLIENT_AUDIENCE)) return 'client';
+    if (this.audienceIncludes(claims.aud, COURIER_AUDIENCE)) return 'courier';
     if (this.audienceIncludes(claims.aud, this.config.audience)) return 'merchant';
     return null;
+  }
+
+  private hasOpsAuthorizedParty(claims: JsonObject): boolean {
+    return (
+      typeof claims.azp === 'string' &&
+      claims.azp.trim() === DASHBOARD_AUDIENCE
+    );
+  }
+
+  private hasOpsRole(claims: JsonObject): boolean {
+    const resourceAccess = claims.resource_access as JsonObject | undefined;
+    const dashboardAccess = resourceAccess?.[DASHBOARD_AUDIENCE] as
+      | JsonObject
+      | undefined;
+    const dashboardRoles = this.stringArray(dashboardAccess?.roles);
+    return dashboardRoles.includes('ops');
+  }
+
+  private hasClientAuthorizedParty(claims: JsonObject): boolean {
+    return typeof claims.azp === 'string' && claims.azp.trim() === CLIENT_AUDIENCE;
+  }
+
+  private hasClientRole(claims: JsonObject): boolean {
+    const realmRoles = this.stringArray(
+      (claims.realm_access as JsonObject | undefined)?.roles,
+    );
+    return realmRoles.includes('client');
   }
 
   private hasMerchantRole(claims: JsonObject): boolean {
@@ -328,6 +392,20 @@ export class ExternalJwksVerifierService
     return this.config.merchantClientRoles.some((role) =>
       clientRoles.includes(role),
     );
+  }
+
+  private hasCourierRole(claims: JsonObject): boolean {
+    const realmRoles = this.stringArray(
+      (claims.realm_access as JsonObject | undefined)?.roles,
+    );
+    if (realmRoles.includes('courier')) return true;
+
+    const resourceAccess = claims.resource_access as JsonObject | undefined;
+    const courierAccess = resourceAccess?.[COURIER_AUDIENCE] as
+      | JsonObject
+      | undefined;
+    const courierRoles = this.stringArray(courierAccess?.roles);
+    return courierRoles.includes('courier');
   }
 
   private stringArray(value: unknown): string[] {

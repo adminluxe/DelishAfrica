@@ -1,5 +1,7 @@
 export const MERCHANT_INVITATION_PREPARE_PATH =
   '/api/v1/ops/merchant-invitations/prepare' as const;
+export const MERCHANT_INVITATION_DISPATCH_PATH =
+  '/api/v1/ops/merchant-invitations/dispatch-one' as const;
 export const MERCHANT_INVITATION_PREVIEW_PATH =
   '/api/v1/merchant-invitations/accept/preview' as const;
 export const MERCHANT_INVITATION_ACCEPT_PATH =

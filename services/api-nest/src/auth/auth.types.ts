@@ -28,6 +28,9 @@ export type DaAuthTokenPayload = {
   exp: number;
   iss: string;
   aud: string | string[];
+  azp?: string;
+  sid?: string;
+  jti?: string;
 };
 
 export type DaAuthPrincipal = {
@@ -55,6 +58,11 @@ export type DaAuthPrincipalResolution =
   | {
       ok: false;
       authenticated: false;
-      reason: 'missing_bearer_token' | 'invalid_or_expired_token';
+      reason:
+        | 'missing_bearer_token'
+        | 'invalid_or_expired_token'
+        | 'revoked_token'
+        | 'revocation_store_unavailable'
+        | 'client_session_id_missing';
       principal: null;
     };
