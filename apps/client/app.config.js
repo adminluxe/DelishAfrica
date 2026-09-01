@@ -1,6 +1,9 @@
 const fs = require("fs");
 
 const CLIENT_BOOT_BACKGROUND = "#051411";
+const CLIENT_CAMERA_PURPOSE =
+  "DelishAfrica utilise l’appareil photo uniquement si vous choisissez de scanner une carte de paiement pour renseigner plus rapidement ses informations. Aucune image n’est conservée par DelishAfrica.";
+
 const iconPath = fs.existsSync("./assets/icon.png") ? "./assets/icon.png" : undefined;
 const splashPath = fs.existsSync("./assets/splash.png") ? "./assets/splash.png" : undefined;
 
@@ -53,6 +56,10 @@ module.exports = ({ config }) => {
       bundleIdentifier: "com.delishafrica.client",
       supportsTablet: true,
       backgroundColor: CLIENT_BOOT_BACKGROUND,
+      infoPlist: {
+        ...((config.ios && config.ios.infoPlist) || {}),
+        NSCameraUsageDescription: CLIENT_CAMERA_PURPOSE,
+      },
       splash: {
         image: splashPath,
         resizeMode: "contain",
