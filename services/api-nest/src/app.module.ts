@@ -13,6 +13,7 @@ import { LocationTrustModule } from './location-trust/location-trust.module';
 import { IdentityProofModule } from './identity-proof/identity-proof.module';
 
 import { ProviderBridgeModule } from './provider-bridge/provider-bridge.module';
+import { OrchidpayF3Service } from './orchidpay-f3/orchidpay-f3.service';
 import { CatalogFoundationModule } from './catalog-foundation/catalog-foundation.module';
 import { MerchantCatalogGateModule } from './merchant-catalog-gate/merchant-catalog-gate.module';
 import { OpsAuthorityModule } from './ops-authority/ops-authority.module';
@@ -41,6 +42,6 @@ import { LegalModule } from './legal/legal.module';
     MerchantInvitationsModule,
   ],
   controllers: [AppController],
-  providers: [],
+  providers: [OrchidpayF3Service],
 })
 export class AppModule {}
