@@ -18,6 +18,7 @@ import { CatalogFoundationModule } from './catalog-foundation/catalog-foundation
 import { MerchantCatalogGateModule } from './merchant-catalog-gate/merchant-catalog-gate.module';
 import { OpsAuthorityModule } from './ops-authority/ops-authority.module';
 import { MerchantInvitationsModule } from './merchant-invitations/merchant-invitations.module';
+import { ConfluenceAiModule } from './confluence-ai/confluence-ai.module';
 
 import { LegalModule } from './legal/legal.module';
 // DA_J7B_LEGAL_MODULE
@@ -40,6 +41,7 @@ import { LegalModule } from './legal/legal.module';
     MerchantCatalogGateModule,
     OpsAuthorityModule,
     MerchantInvitationsModule,
+    ConfluenceAiModule,
   ],
   controllers: [AppController],
   providers: [OrchidpayF3Service],

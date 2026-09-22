@@ -1,3 +1,9 @@
+// DA_GALA_SILENT_CHROME_V1 - global subtraction pass: visual chrome recedes, decision anchors and operational signals stay intact; static styles only.
+// DA_GALA_VELVET_CONTRAST_V1 - focal gravity: dark secondary planes recede while human-decision anchors remain luminous; static styles only.
+// DA_GALA_SELECTIVE_FOCUS_V1 - selective optical focus: primary actions stay crisp while secondary material dissolves; static styles only.
+// DA_GALA_QUIET_LUXURY_V1 - zero-cost optical rhythm polish: softer hierarchy, quieter edges, fewer decorative signals; static styles only.
+// DA_GALA_EDGELESS_CONTINUITY_V1 - last-mile surface polish dissolves legacy spectral leaks and reduces card-edge fatigue; presentation only.
+// DA_GALA_INTERACTION_OSMOSIS_V1 - shared actions inherit each app chroma while deep surfaces breathe more freely; no new timer, dependency or business mutation.
 import React from 'react';
 import {
   ActivityIndicator,
@@ -103,20 +109,20 @@ export default function CourierAuthSessionScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#00160D' },
+  safe: { flex: 1, backgroundColor: 'transparent' },
   page: { padding: 22, paddingBottom: 72 },
   brand: { color: ACCENT, fontSize: 13, fontWeight: '900', letterSpacing: 3.4, marginTop: 12 },
   title: { color: '#F4FFF7', fontSize: 44, lineHeight: 49, fontWeight: '900', marginTop: 18 },
   subtitle: { color: '#91B39C', fontSize: 18, lineHeight: 28, fontWeight: '700', marginTop: 18 },
-  statusCard: { marginTop: 26, minHeight: 112, borderRadius: 28, padding: 20, flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#052417', borderWidth: 1, borderColor: 'rgba(117,239,164,0.22)' },
-  statusCardReady: { backgroundColor: '#062E1C', borderColor: 'rgba(117,239,164,0.40)' },
+  statusCard: { marginTop: 26, minHeight: 112, borderRadius: 28, padding: 20, flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: 'rgba(5,36,23,0.67)', borderWidth: 0.35, borderColor: 'rgba(117,239,164,0.060)' },
+  statusCardReady: { backgroundColor: 'rgba(6,46,28,0.70)', borderColor: 'rgba(117,239,164,0.14)' },
   dot: { width: 13, height: 13, borderRadius: 99, backgroundColor: '#D6A957' },
   dotReady: { backgroundColor: '#75EFA4' },
   statusCopy: { flex: 1 },
   statusKicker: { color: '#75EFA4', fontSize: 11, fontWeight: '900', letterSpacing: 2.2 },
   statusText: { color: '#B3C9BA', fontSize: 15, lineHeight: 22, fontWeight: '800', marginTop: 7 },
   statusFlag: { color: '#F4D17C', fontSize: 11, fontWeight: '900', letterSpacing: 1.8 },
-  identityCard: { marginTop: 18, borderRadius: 34, padding: 24, backgroundColor: '#E8FFF0' },
+  identityCard: { marginTop: 18, borderRadius: 34, padding: 24, backgroundColor: 'rgba(232,255,240,0.835)', borderWidth: 0.35, borderColor: 'rgba(117,239,164,0.050)' },
   cardKicker: { color: '#177A45', fontSize: 11, fontWeight: '900', letterSpacing: 2.2 },
   identityTitle: { color: '#002312', fontSize: 38, lineHeight: 43, fontWeight: '900', marginTop: 18 },
   identityBody: { color: '#557261', fontSize: 17, lineHeight: 26, fontWeight: '700', marginTop: 16 },
@@ -131,7 +137,7 @@ const styles = StyleSheet.create({
   safeErrorKicker: { color: '#F4D17C', fontSize: 10, fontWeight: '900', letterSpacing: 2.0 },
   safeErrorCode: { color: '#FFF4D1', fontSize: 15, lineHeight: 21, fontWeight: '900', marginTop: 8 },
   safeErrorText: { color: '#CEBFA4', fontSize: 12, lineHeight: 18, marginTop: 8 },
-  trustCard: { marginTop: 18, borderRadius: 28, padding: 22, backgroundColor: '#052417', borderWidth: 1, borderColor: 'rgba(117,239,164,0.15)' },
+  trustCard: { marginTop: 18, borderRadius: 28, padding: 22, backgroundColor: 'rgba(5,36,23,0.65)', borderWidth: 0.35, borderColor: 'rgba(117,239,164,0.045)' },
   trustKicker: { color: '#75EFA4', fontSize: 10, fontWeight: '900', letterSpacing: 2.1 },
   trustTitle: { color: '#F4FFF7', fontSize: 21, lineHeight: 28, fontWeight: '900', marginTop: 12 },
   trustText: { color: '#91B39C', fontSize: 14, lineHeight: 22, marginTop: 10 },

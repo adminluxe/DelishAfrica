@@ -62,6 +62,12 @@
       "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#120804"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/394e7d6f-559b-4536-81a9-fbc0cdb0c68f"
     }
   }
 }

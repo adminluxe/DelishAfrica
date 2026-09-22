@@ -783,6 +783,19 @@ export default function CheckoutPreflightScreen() {
     } catch (error: any) {
       const message = error?.message || String(error);
       const paidCommit = await restorePendingPaymentCommit();
+      const accountRequired =
+        message.includes("Connexion DelishAfrica requise") ||
+        message.includes("Session Client Keycloak requise");
+
+      if (!paidCommit && accountRequired) {
+        setPhase("Votre panier est prêt · connexion DelishAfrica");
+        router.push({
+          pathname: "/secure-session",
+          params: { next: "/checkout-preflight" },
+        } as never);
+        return;
+      }
+
       if (paidCommit) {
         setPendingCommit(paidCommit);
         setPhase(`Paiement protégé · ${message}`);

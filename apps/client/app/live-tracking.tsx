@@ -49,6 +49,14 @@ note?: string;
 at?: string;
 changedAt?: string;
 }>;
+assignmentProposal?: {
+status?: string;
+proposalStatus?: string;
+totalEtaMin?: number;
+etaMin?: number;
+confidence?: number;
+score?: number;
+};
 };
 
 const RAW_API =
@@ -192,14 +200,118 @@ if (status === "delivered") return 5;
 return 99;
 }
 
+function dispatchEtaMin(order?: DemoOrder): number | null {
+const proposal = order?.assignmentProposal;
+const raw = proposal?.totalEtaMin ?? proposal?.etaMin;
+const value = Number(raw);
+return Number.isFinite(value) && value > 0 ? value : null;
+}
+
 function etaFor(order?: DemoOrder) {
 const s = statusOf(order);
-if (s === "pending") return "35 min";
-if (s === "accepted") return "28 min";
-if (s === "ready") return "18 min";
-if (s === "picked_up") return "12 min";
 if (s === "delivered") return "Livrée";
+const eta = dispatchEtaMin(order);
+if (eta !== null) return `${Math.max(1, Math.round(eta))} min`;
+if (s === "picked_up") return "En route";
 return "—";
+}
+
+type ClientHandoffView = {
+label: string;
+kitchen: string;
+terrain: string;
+bridge: string;
+proof: string;
+active: boolean;
+};
+
+function clientHandoffView(order?: DemoOrder): ClientHandoffView {
+const s = statusOf(order);
+const eta = dispatchEtaMin(order);
+const etaText = eta !== null ? `${Math.max(1, Math.round(eta))} min` : "non reçu";
+
+if (s === "delivered") {
+return {
+label: "RELAIS TERMINÉ",
+kitchen: "Service terminé",
+terrain: "Livraison confirmée",
+bridge: "Le parcours est clôturé. Aucune estimation n’est encore nécessaire.",
+proof: "Preuve : statut serveur delivered.",
+active: false,
+};
+}
+if (s === "picked_up") {
+return {
+label: "RELAIS CONFIRMÉ",
+kitchen: "Remise effectuée",
+terrain: "Coursier vers vous",
+bridge: "Le passage restaurant → coursier est confirmé. Le trajet client devient le signal principal.",
+proof: "Preuve : statut serveur picked_up.",
+active: true,
+};
+}
+if (s === "ready") {
+return {
+label: eta !== null ? "RENCONTRE EN APPROCHE" : "FENÊTRE OUVERTE",
+kitchen: "Commande prête",
+terrain: eta !== null ? `Approche estimée · ${etaText}` : "Coursier à confirmer",
+bridge: "La cuisine a fini. DelishAfrica distingue maintenant ce qui est prêt de ce qui reste estimé côté terrain.",
+proof: eta !== null ? "Preuve : statut ready + ETA dispatch reçu." : "Preuve : statut ready ; aucun ETA dispatch reçu.",
+active: true,
+};
+}
+if (s === "accepted") {
+return {
+label: "CONVERGENCE EN COURS",
+kitchen: "Préparation confirmée",
+terrain: eta !== null ? `Fenêtre terrain estimée · ${etaText}` : "Terrain en attente",
+bridge: "Le repas et le coursier suivent deux courants distincts. Aucun horaire précis n’est inventé sans signal dispatch.",
+proof: eta !== null ? "Preuve : statut accepted + ETA dispatch reçu." : "Preuve : statut accepted uniquement.",
+active: true,
+};
+}
+return {
+label: "COURANTS EN ATTENTE",
+kitchen: "Acceptation à venir",
+terrain: "Aucun relais ouvert",
+bridge: "La coordination commence lorsque le restaurant confirme la commande.",
+proof: "Preuve : statut serveur pending.",
+active: false,
+};
+}
+
+function ClientHandoffCurrent({ order }: { order?: DemoOrder }) {
+const view = clientHandoffView(order);
+return (
+<View style={styles.confluenceCard}>
+<View style={styles.confluenceTop}>
+<View style={{ flex: 1 }}>
+<Text style={styles.confluenceKicker}>CONFLUENCE · HANDOFF CURRENT</Text>
+<Text style={styles.confluenceTitle}>Cuisine et terrain, sans fausse certitude.</Text>
+</View>
+<View style={[styles.confluenceBadge, view.active && styles.confluenceBadgeActive]}>
+<Text style={[styles.confluenceBadgeText, view.active && styles.confluenceBadgeTextActive]}>{view.label}</Text>
+</View>
+</View>
+<View style={styles.confluenceStreams}>
+<View style={styles.confluenceStream}>
+<Text style={styles.confluenceStreamLabel}>CUISINE</Text>
+<Text style={styles.confluenceStreamValue}>{view.kitchen}</Text>
+</View>
+<View style={styles.confluenceJoin}>
+<View style={styles.confluenceJoinLine} />
+<View style={[styles.confluenceJoinDrop, view.active && styles.confluenceJoinDropActive]} />
+<View style={styles.confluenceJoinLine} />
+</View>
+<View style={styles.confluenceStream}>
+<Text style={styles.confluenceStreamLabel}>TERRAIN</Text>
+<Text style={styles.confluenceStreamValue}>{view.terrain}</Text>
+</View>
+</View>
+<Text style={styles.confluenceBridge}>{view.bridge}</Text>
+<Text style={styles.confluenceProof}>{view.proof}</Text>
+</View>
+);
 }
 
 function etaDetail(order?: DemoOrder) {
@@ -280,6 +392,13 @@ return pickBestOrder(orders);
 
 const activeCount = orders.filter(isActive).length;
 const deliveredCount = orders.filter((order) => statusOf(order) === "delivered").length;
+const accountRequired = Boolean(
+  error &&
+    (
+      error.includes("Connexion DelishAfrica requise") ||
+      error.includes("Session Client Keycloak requise")
+    ),
+);
 
 async function refresh() {
 setError(null);
@@ -355,8 +474,28 @@ onPress={refresh}
 
 {error ? (
 <View style={styles.errorCard}>
-<Text style={styles.errorTitle}>Suivi momentanément indisponible</Text>
-<Text style={styles.errorText}>{error}</Text>
+<Text style={styles.errorTitle}>
+{accountRequired ? "Connectez-vous pour retrouver vos commandes" : "Suivi momentanément indisponible"}
+</Text>
+<Text style={styles.errorText}>
+{accountRequired
+  ? "La découverte reste libre. Votre compte est seulement nécessaire pour afficher vos commandes personnelles."
+  : error}
+</Text>
+{accountRequired ? (
+<TouchableOpacity
+  activeOpacity={0.86}
+  style={styles.secondaryButton}
+  onPress={() =>
+    router.push({
+      pathname: "/secure-session",
+      params: { next: "/live-tracking" },
+    } as never)
+  }
+>
+  <Text style={styles.secondaryButtonText}>Continuer avec DelishAfrica</Text>
+</TouchableOpacity>
+) : null}
 </View>
 ) : null}
 
@@ -410,6 +549,8 @@ onPress={() => setShowOrderDetails((value) => !value)}
 <View style={styles.compactStatusDot} />
 <Text style={styles.compactStatusText}>{etaDetail(selectedOrder)}</Text>
 </View>
+
+<ClientHandoffCurrent order={selectedOrder} />
 
 <View style={styles.timelineCard}>
 <Text style={styles.blockTitle}>Parcours de livraison</Text>
@@ -499,6 +640,31 @@ Suivi estimatif · paiement sécurisé inclus.
 }
 
 const styles = StyleSheet.create({
+confluenceCard: {
+backgroundColor: "rgba(9, 34, 43, 0.94)",
+borderRadius: 24,
+padding: 16,
+borderWidth: 1,
+borderColor: "rgba(117, 173, 255, 0.24)",
+gap: 13,
+},
+confluenceTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
+confluenceKicker: { color: UI.colors.accent2, fontSize: 10, fontWeight: "900", letterSpacing: 1.8 },
+confluenceTitle: { color: UI.colors.text, fontSize: 16, lineHeight: 21, fontWeight: "900", marginTop: 5, maxWidth: 220 },
+confluenceBadge: { maxWidth: 132, borderRadius: UI.radius.pill, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: UI.colors.border, backgroundColor: UI.colors.surface1 },
+confluenceBadgeActive: { borderColor: "rgba(82, 216, 199, 0.38)", backgroundColor: "rgba(19, 86, 82, 0.36)" },
+confluenceBadgeText: { color: UI.colors.muted, fontSize: 9, lineHeight: 12, fontWeight: "900", letterSpacing: 0.7, textAlign: "center" },
+confluenceBadgeTextActive: { color: UI.colors.success },
+confluenceStreams: { flexDirection: "row", alignItems: "stretch", gap: 8 },
+confluenceStream: { flex: 1, minHeight: 68, borderRadius: 17, padding: 11, backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1, borderColor: "rgba(174, 217, 255, 0.10)" },
+confluenceStreamLabel: { color: UI.colors.muted, fontSize: 9, fontWeight: "900", letterSpacing: 1.2 },
+confluenceStreamValue: { color: UI.colors.text, fontSize: 13, lineHeight: 18, fontWeight: "800", marginTop: 6 },
+confluenceJoin: { width: 28, alignItems: "center", justifyContent: "center" },
+confluenceJoinLine: { width: 1, flex: 1, backgroundColor: "rgba(117, 173, 255, 0.22)" },
+confluenceJoinDrop: { width: 12, height: 12, borderTopLeftRadius: 8, borderTopRightRadius: 8, borderBottomLeftRadius: 8, borderBottomRightRadius: 3, borderWidth: 1, borderColor: "rgba(174,217,255,0.34)", backgroundColor: "rgba(117,173,255,0.12)", transform: [{ rotate: "45deg" }] },
+confluenceJoinDropActive: { borderColor: "rgba(82,216,199,0.72)", backgroundColor: "rgba(82,216,199,0.28)" },
+confluenceBridge: { color: UI.colors.text2, fontSize: 13, lineHeight: 19, fontWeight: "700" },
+confluenceProof: { color: UI.colors.muted, fontSize: 10, lineHeight: 15, fontWeight: "700" },
 aquaVeil: { position: "absolute", top: -84, right: -132, width: 168, height: 168, borderRadius: UI.radius.pill, backgroundColor: "rgba(88, 211, 255, 0.020)", borderWidth: 1, borderColor: "rgba(200, 242, 255, 0.050)", transform: [{ scaleX: 1.24 }] },
 aquaDrop: { position: "absolute", top: 126, left: -34, width: 44, height: 44, borderRadius: UI.radius.pill, backgroundColor: "rgba(255, 255, 255, 0.014)", borderWidth: 1, borderColor: "rgba(210, 242, 255, 0.040)" },
 aquaRipple: { position: "absolute", top: 226, right: -28, width: 126, height: 22, borderRadius: UI.radius.pill, backgroundColor: "rgba(98, 202, 255, 0.020)", borderWidth: 1, borderColor: "rgba(220, 245, 255, 0.050)", transform: [{ rotate: "-14deg" }, { scaleX: 1.22 }] },

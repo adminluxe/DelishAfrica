@@ -56,6 +56,17 @@ type PartnerProfileLite = {
 const clean = (value: string) => String(value || '').replace(/\s+/g, ' ').trim();
 const sessionToken = () => `merchant-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 
+// DA_GALA_FALLBACK_ERADICATION_V1 - technical auth/session keys never render raw.
+function humanizeMerchantTechnicalState(value: unknown): string {
+  const raw = String(value || "").trim();
+  if (!raw) return "Le contrôle Merchant est momentanément indisponible. Réessayez dans un instant.";
+  if (raw.includes("merchant_oidc_session_required") || raw.includes("Session restaurateur indisponible")) return "Identité Merchant requise pour enregistrer ou modifier cet espace.";
+  if (raw.includes("orders_auth_required")) return "Votre session Merchant doit être renouvelée pour continuer.";
+  if (/network request failed|failed to fetch|networkerror/i.test(raw)) return "Connexion au service Merchant momentanément indisponible. Vos données locales restent préservées.";
+  if (/^[a-z0-9._-]+$/i.test(raw)) return "Contrôle Merchant momentanément indisponible. Réessayez dans un instant.";
+  return raw;
+}
+
 // DA_SPRINT16_PRESENCE_CONTINUITY_V1
 export default function PartnerSpaceScreen() {
   const existing = readPartnerPresenceCache<PartnerProfileLite>();
@@ -536,7 +547,7 @@ Utilisez uniquement le code le plus récent.`,
       setProfileId(profile.id);
       Alert.alert('Établissement enregistré', activationReady ? 'Identité et adresse confirmées.' : 'Le service restera hors ligne jusqu’aux trois preuves.', [{ text: 'Retour au service', onPress: () => router.replace('/') }]);
     } catch (error: any) {
-      Alert.alert('Contrôle indisponible', error?.message || 'Réessayez dans un instant.');
+      Alert.alert('Contrôle indisponible', humanizeMerchantTechnicalState(error?.message));
     } finally {
       setChecking(false);
     }

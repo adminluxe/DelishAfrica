@@ -54,6 +54,7 @@ export default function CourierSurfaceHome() {
   const { height: viewportHeight } = useWindowDimensions();
   const [reduceMotion, setReduceMotion] = useState(false);
   const [offers, setOffers] = useState<any[]>([]);
+  const [offersObservedAt, setOffersObservedAt] = useState<string>("");
   const [authReady, setAuthReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -102,6 +103,7 @@ export default function CourierSurfaceHome() {
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(String(body?.code || `HTTP ${response.status}`));
       setOffers(extractOrders(body));
+      setOffersObservedAt(new Date().toISOString());
       setAuthReady(true);
     } catch {
       setOffers([]);
@@ -124,6 +126,10 @@ export default function CourierSurfaceHome() {
     const route = offers.filter((item) => ["picked_up", "delivered"].includes(String(item?.status || "").toLowerCase())).length;
     return { proposed, accepted, route };
   }, [offers]);
+
+  const offersFreshnessLabel = offersObservedAt
+    ? `Dernière réponse dispatch · ${new Date(offersObservedAt).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" })}`
+    : "Aucune réponse dispatch confirmée dans cette session.";
 
   const go = (path: string) => router.push(path as any);
   const rainTileHeight = Math.max(760, viewportHeight + 240);
@@ -200,6 +206,9 @@ export default function CourierSurfaceHome() {
           title={authReady ? `${stats.proposed + stats.accepted} signal${stats.proposed + stats.accepted > 1 ? "s" : ""} terrain en lecture.` : "Le terrain attend votre identité."}
           body="ETA, offres, présence et progression se lisent dans un même courant. Oracle recommande ; vous décidez."
           status={loading ? "SYNC" : authReady ? "LIVE" : "GATE"}
+          signalClass={loading ? "estimated" : authReady ? "confirmed" : "offline"}
+          evidence={authReady ? "Offres lues depuis /orders/demo/courier/offers sous votre identité Courier." : "Aucune offre serveur n’est présentée sans session Courier valide."}
+          freshnessLabel={offersFreshnessLabel}
           reduceMotion={reduceMotion}
           onPress={() => go(authReady ? "/terrain-live" : "/auth-session")}
           accessibilityLabel="Ouvrir Route Current et la lecture terrain"
@@ -311,45 +320,45 @@ export default function CourierSurfaceHome() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "transparent", position: "relative", zIndex: 1 },
-  content: { paddingHorizontal: 22, gap: 22 },
+  content: { paddingHorizontal: 21, gap: 21 },
   topline: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 16 },
   toplineCopy: { flex: 1, minWidth: 0 },
   brand: { color: "#F0B95C", fontSize: 16, fontWeight: "900", letterSpacing: 3.1 },
   role: { color: "rgba(208,233,227,0.56)", fontSize: 10, fontWeight: "800", letterSpacing: 1.4, marginTop: 7 },
-  avatarButton: { width: 58, height: 58, borderRadius: 29, borderWidth: 1, borderColor: "rgba(92,224,185,0.25)", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(5,35,29,0.62)" },
+  avatarButton: { width: 55, height: 55, borderRadius: 27.5, borderWidth: 1, borderColor: "rgba(92,224,185,0.25)", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(5,35,29,0.62)" },
   avatarText: { color: "#DDF7EF", fontSize: 11, fontWeight: "900", letterSpacing: 1 },
-  identity: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderRadius: 24, padding: 16 },
+  identity: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderRadius: 21, padding: 16 },
   identityReady: { borderColor: "rgba(84,223,179,0.30)", backgroundColor: "rgba(5,43,34,0.62)" },
   identityPending: { borderColor: "rgba(232,177,84,0.30)", backgroundColor: "rgba(45,31,13,0.58)" },
   identityDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#E4AA53" },
   identityDotReady: { backgroundColor: "#5BE0B1" },
   identityCopy: { flex: 1 },
   identityLabel: { color: "#69DDB7", fontSize: 10, fontWeight: "900", letterSpacing: 2 },
-  identityText: { color: "rgba(226,242,236,0.74)", fontSize: 12, lineHeight: 18, marginTop: 5 },
+  identityText: { color: "rgba(226,242,236,0.74)", fontSize: 13, lineHeight: 20, marginTop: 5 },
   identityState: { color: "#F0BF68", fontSize: 11, fontWeight: "900", letterSpacing: 1.2 },
-  kicker: { color: "#D18A59", fontSize: 11, fontWeight: "900", letterSpacing: 2.6, marginTop: 8 },
-  hero: { color: "#FFF4E3", fontSize: 43, lineHeight: 47, fontWeight: "900", letterSpacing: -1.8 },
-  subtitle: { color: "rgba(215,232,226,0.68)", fontSize: 17, lineHeight: 27 },
+  kicker: { color: "#D18A59", fontSize: 10, fontWeight: "900", letterSpacing: 2.6, marginTop: 8 },
+  hero: { color: "#FFF4E3", fontSize: 42, lineHeight: 47, fontWeight: "900", letterSpacing: -1.8 },
+  subtitle: { color: "rgba(215,232,226,0.68)", fontSize: 16, lineHeight: 26 },
   stats: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  stat: { flex: 1, minWidth: 88, minHeight: 88, borderRadius: 22, borderWidth: 1, borderColor: "rgba(91,220,181,0.16)", backgroundColor: "rgba(5,31,26,0.54)", padding: 14, justifyContent: "center" },
-  statValue: { color: "#E8FFF6", fontSize: 27, fontWeight: "900" },
+  stat: { flex: 1, minWidth: 89, minHeight: 89, borderRadius: 21, borderWidth: 1, borderColor: "rgba(91,220,181,0.16)", backgroundColor: "rgba(5,31,26,0.54)", padding: 14, justifyContent: "center" },
+  statValue: { color: "#E8FFF6", fontSize: 26, fontWeight: "900" },
   statLabel: { color: "rgba(207,230,221,0.55)", fontSize: 10, fontWeight: "800", marginTop: 3 },
   primary: { minHeight: 168, borderRadius: 34, padding: 24, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", backgroundColor: "#DDF1D9" },
   primaryCopy: { flex: 1, minWidth: 0, paddingRight: 18 },
-  primaryEyebrow: { color: "#477A64", fontSize: 11, fontWeight: "900", letterSpacing: 2.4 },
-  primaryTitle: { color: "#102A20", fontSize: 29, fontWeight: "900", marginTop: 12, letterSpacing: -0.8 },
-  primaryBody: { color: "rgba(16,42,32,0.66)", fontSize: 13, lineHeight: 19, marginTop: 8 },
+  primaryEyebrow: { color: "#477A64", fontSize: 10, fontWeight: "900", letterSpacing: 2.4 },
+  primaryTitle: { color: "#102A20", fontSize: 26, fontWeight: "900", marginTop: 12, letterSpacing: -0.8 },
+  primaryBody: { color: "rgba(16,42,32,0.66)", fontSize: 13, lineHeight: 20, marginTop: 8 },
   primaryArrow: { color: "#102A20", fontSize: 38, fontWeight: "600" },
-  sectionLabel: { color: "#D08B5B", fontSize: 11, fontWeight: "900", letterSpacing: 2.7 },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "stretch" },
-  card: { flexBasis: "47%", flexGrow: 1, minWidth: 148, minHeight: 178, borderRadius: 26, borderWidth: 1, borderColor: "rgba(91,220,181,0.17)", backgroundColor: "rgba(4,29,24,0.66)", padding: 18 },
-  cardEyebrow: { color: "#64D7B2", fontSize: 9, fontWeight: "900", letterSpacing: 1.8 },
+  sectionLabel: { color: "#D08B5B", fontSize: 10, fontWeight: "900", letterSpacing: 2.7 },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 13, alignItems: "stretch" },
+  card: { flexBasis: "47%", flexGrow: 1, minWidth: 144, minHeight: 178, borderRadius: 26, borderWidth: 1, borderColor: "rgba(91,220,181,0.17)", backgroundColor: "rgba(4,29,24,0.66)", padding: 18 },
+  cardEyebrow: { color: "#64D7B2", fontSize: 10, fontWeight: "900", letterSpacing: 1.8 },
   cardTitle: { color: "#F0FFF9", fontSize: 20, fontWeight: "900", marginTop: 10 },
-  cardBody: { color: "rgba(211,232,224,0.60)", fontSize: 12, lineHeight: 18, marginTop: 8 },
+  cardBody: { color: "rgba(211,232,224,0.60)", fontSize: 13, lineHeight: 20, marginTop: 8 },
   cardArrow: { color: "#EAB25D", fontSize: 22, marginTop: "auto", alignSelf: "flex-end" },
-  legacy: { borderRadius: 24, borderWidth: 1, borderColor: "rgba(87,193,160,0.20)", backgroundColor: "rgba(4,26,22,0.46)", padding: 18, flexDirection: "row", alignItems: "center", gap: 16 },
-  legacyEyebrow: { color: "#68C8AA", fontSize: 9, fontWeight: "900", letterSpacing: 1.7 },
-  legacyTitle: { flexShrink: 1, color: "#E8F6F0", fontSize: 15, fontWeight: "800", marginTop: 5 },
+  legacy: { borderRadius: 21, borderWidth: 1, borderColor: "rgba(87,193,160,0.20)", backgroundColor: "rgba(4,26,22,0.46)", padding: 18, flexDirection: "row", alignItems: "center", gap: 16 },
+  legacyEyebrow: { color: "#68C8AA", fontSize: 10, fontWeight: "900", letterSpacing: 1.7 },
+  legacyTitle: { flexShrink: 1, color: "#E8F6F0", fontSize: 16, fontWeight: "800", marginTop: 5 },
   legacyArrow: { color: "#E9B25F", fontSize: 24 },
   footer: { color: "rgba(190,218,208,0.38)", fontSize: 10, lineHeight: 16, textAlign: "center", paddingHorizontal: 18 },
   h2oCompositor: { flex: 1, position: "relative", overflow: "hidden" },

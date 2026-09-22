@@ -2,6 +2,8 @@ import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { ConfluenceOracleLens } from '../ui/confluence/ConfluenceOracleLens';
+import { useConfluenceSuggestion } from '../ui/confluence/useConfluenceSuggestion';
 
 type OrderLike = {
   id?: string;
@@ -37,7 +39,7 @@ function asArray(payload: any): OrderLike[] {
 
 function normalizeMoney(value: unknown): string {
   const raw = Number(value ?? 0);
-  if (!Number.isFinite(raw) || raw <= 0) return '21,90 €';
+  if (!Number.isFinite(raw) || raw <= 0) return 'Montant non reçu';
   const euros = raw > 100 ? raw / 100 : raw;
   return `${euros.toFixed(2).replace('.', ',')} €`;
 }
@@ -52,11 +54,11 @@ function normalizeStatus(status?: string): string {
 }
 
 function orderCode(order?: OrderLike): string {
-  return order?.code || order?.orderCode || order?.id || 'DA-9P3QH0';
+  return order?.code || order?.orderCode || order?.id || '—';
 }
 
 function orderTitle(order?: OrderLike): string {
-  return order?.restaurantName || order?.merchantName || order?.partnerName || 'Rice and Peace';
+  return order?.restaurantName || order?.merchantName || order?.partnerName || 'Restaurant non reçu';
 }
 
 function orderAmount(order?: OrderLike): string {
@@ -65,7 +67,7 @@ function orderAmount(order?: OrderLike): string {
 
 function orderItem(order?: OrderLike): string {
   const first = order?.items?.[0];
-  if (!first?.name) return 'Commande signature';
+  if (!first?.name) return 'Article non reçu';
   const qty = first.quantity && first.quantity > 1 ? `${first.quantity}× ` : '';
   return `${qty}${first.name}`;
 }
@@ -96,10 +98,34 @@ body: JSON.stringify({}),
   }, [load]);
 
   const current = useMemo(() => orders[0], [orders]);
-  const activeCount = Math.max(orders.length || 1, 1);
-  const totalRead = Math.max(orders.length || 1, 1) + 20;
+  const activeCount = orders.length;
   const status = normalizeStatus(current?.status);
   const isCalm = activeCount <= 1;
+  const liveSignal = refreshing ? 'Lecture…' : activeCount > 0 ? 'Reçu' : 'À actualiser';
+  const pressureLabel = activeCount === 0 ? 'Vide' : isCalm ? 'Calme' : 'Active';
+  const inferredRisk = activeCount === 0 ? 'Sans signal' : activeCount <= 1 ? 'Stable' : 'À surveiller';
+
+  const oracleSuggestion = useMemo(() => {
+    if (!current) return 'Aucune commande reçue : ne rien inventer, rafraîchir la source avant de décider.';
+    if (status === 'Prête') return 'La cuisine a signalé prêt : ouvrir le relais coursier sans confondre prêt et récupéré.';
+    if (status === 'Cuisine') return 'Maintenir cette commande visible jusqu’au vrai signal prêt, sans fabriquer d’ETA.';
+    if (status === 'En route') return 'Le relais cuisine est déjà franchi : surveiller les exceptions plutôt que rejouer une action cuisine.';
+    return 'Lire puis confirmer la commande avant d’engager le rythme cuisine.';
+  }, [current, status]);
+
+  const oracleEvidence = useMemo(() => [
+    { label: 'Commande', value: current ? 'Commande active reçue' : 'Non reçue', kind: current ? 'fact' as const : 'context' as const },
+    { label: 'Statut serveur', value: current ? status : 'Non reçu', kind: current ? 'fact' as const : 'context' as const },
+    { label: 'Charge observée', value: `${activeCount} commande${activeCount === 1 ? '' : 's'} reçue${activeCount === 1 ? '' : 's'}`, kind: 'fact' as const },
+    { label: 'Article visible', value: orderItem(current), kind: current?.items?.[0]?.name ? 'fact' as const : 'context' as const },
+  ], [activeCount, current, status]);
+
+  const confluenceSuggestion = useConfluenceSuggestion({
+    oracle: 'service',
+    evidence: oracleEvidence,
+    localSuggestion: oracleSuggestion,
+    localHumanBoundary: 'Cette lecture ne change aucun statut, n’accepte aucune commande et ne marque jamais un plat prêt à votre place.',
+  });
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -133,18 +159,18 @@ body: JSON.stringify({}),
 
           <View style={styles.compactSignal}>
             <Text style={styles.compactLabel}>ETA</Text>
-            <Text style={styles.compactValue}>31 min</Text>
-            <Text style={styles.compactBody}>Préparation + remise coursier</Text>
+            <Text style={styles.compactValue}>Non reçue</Text>
+            <Text style={styles.compactBody}>Cette route ne fournit pas d’ETA fiable.</Text>
           </View>
           <View style={styles.compactSignal}>
             <Text style={styles.compactLabel}>Confiance</Text>
-            <Text style={styles.compactValue}>92%</Text>
-            <Text style={styles.compactBody}>Fenêtre très stable</Text>
+            <Text style={styles.compactValue}>Non calculée</Text>
+            <Text style={styles.compactBody}>Aucun score de confiance n’est exposé ici.</Text>
           </View>
           <View style={styles.compactSignalLast}>
             <Text style={styles.compactLabel}>Pression cuisine</Text>
-            <Text style={styles.compactValue}>{isCalm ? 'Calme' : 'Active'}</Text>
-            <Text style={styles.compactBody}>{isCalm ? 'Cuisine sous contrôle' : 'Priorité à garder visible'}</Text>
+            <Text style={styles.compactValue}>{pressureLabel}</Text>
+            <Text style={styles.compactBody}>{activeCount === 0 ? 'Aucune file reçue.' : isCalm ? 'Cuisine sous contrôle' : 'Priorité à garder visible'}</Text>
           </View>
         </View>
 
@@ -155,19 +181,29 @@ body: JSON.stringify({}),
         </View>
         <View style={styles.singleCard}>
           <Text style={styles.singleLabel}>Pression</Text>
-          <Text style={styles.singleTitle}>{isCalm ? 'Calme' : 'Active'}</Text>
+          <Text style={styles.singleTitle}>{pressureLabel}</Text>
           <Text style={styles.singleBody}>Cuisine sous contrôle</Text>
         </View>
         <View style={styles.singleCard}>
-          <Text style={styles.singleLabel}>Risque</Text>
-          <Text style={styles.singleTitle}>Faible</Text>
-          <Text style={styles.singleBody}>Promesse client stable</Text>
+          <Text style={styles.singleLabel}>Lecture</Text>
+          <Text style={styles.singleTitle}>{inferredRisk}</Text>
+          <Text style={styles.singleBody}>Inférence locale depuis la charge reçue, pas une certitude métier.</Text>
         </View>
         <View style={styles.singleCard}>
           <Text style={styles.singleLabel}>Signal</Text>
-          <Text style={styles.singleTitle}>Live</Text>
-          <Text style={styles.singleBody}>Équipe alignée</Text>
+          <Text style={styles.singleTitle}>{liveSignal}</Text>
+          <Text style={styles.singleBody}>{activeCount > 0 ? 'Réponse /orders/demo/list reçue.' : 'Aucune donnée exploitable reçue.'}</Text>
         </View>
+
+        <ConfluenceOracleLens
+          accent="#F5BE6B"
+          engineLabel={confluenceSuggestion.engineLabel}
+          title="Une proposition qui montre ses preuves"
+          suggestion={confluenceSuggestion.suggestion}
+          evidence={oracleEvidence}
+          humanBoundary={confluenceSuggestion.humanBoundary}
+          footnote={confluenceSuggestion.footnote}
+        />
 
         <View style={styles.promiseCard}>
           <Text style={styles.promiseLabel}>PROMESSE CUISINE</Text>
