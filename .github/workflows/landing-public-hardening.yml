@@ -1,0 +1,40 @@
+name: DelishAfrica landing hardening
+
+on:
+  push:
+    branches:
+      - audit/landing-hardening-20260929
+  pull_request:
+    branches:
+      - release/landing-warmth-v11-final-5d9a53cab39b
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  landing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: apps/landing
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/landing/package-lock.json
+      - run: npm install --no-audit --no-fund
+      - run: npm run check
+      - run: npm run build
+      - name: Verify public legal/SEO files
+        run: |
+          test -f public/robots.txt
+          grep -q 'Allow: /' public/robots.txt
+          grep -q 'Sitemap: https://delishafrica.me/sitemap.xml' public/robots.txt
+          test -f src/pages/cookies/index.astro
+          test -f src/pages/terms/index.astro
+          test -f src/pages/legal/index.astro
+          test -f src/pages/photo-credits/index.astro
