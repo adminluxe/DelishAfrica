@@ -1,0 +1,8 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { site } from "../../config/site";
+---
+<BaseLayout title="Mentions légales — DelishAfrica®" description="Mentions légales et informations d’édition de la landing DelishAfrica." alternatePath="/en/legal/">
+  <section class="page-hero shell compact-hero"><p class="eyebrow">INFORMATIONS LÉGALES</p><h1>Mentions légales</h1><p class="hero-lead">DelishAfrica® est une initiative du projet Purple Orchid Group.</p></section>
+  <section class="section shell policy-grid"><article><h2>Édition transitoire</h2><p>Dans l’attente de la constitution formelle de la future entité luxembourgeoise Purple Orchid Group, l’édition transitoire est assurée par Raoul FANKEM, fondateur du projet.</p></article><article><h2>Bureau du projet</h2><p>14 Rue de la Fonderie, L-1581 Luxembourg.</p></article><article><h2>Contact</h2><p><a href={`mailto:${site.supportEmail}`}>{site.supportEmail}</a></p></article><article><h2>Propriété intellectuelle</h2><p>Les marques, textes, interfaces et créations originales présentés sur cette landing sont protégés sous réserve des droits de tiers applicables.</p></article></section>
+</BaseLayout>
