@@ -38,3 +38,11 @@ jobs:
           test -f src/pages/terms/index.astro
           test -f src/pages/legal/index.astro
           test -f src/pages/photo-credits/index.astro
+          test ! -e public/data/intake-contract.private.json
+          test ! -e public/data/smart-links.prepared.json
+          test ! -e public/scripts/private-interactions.js
+          test ! -e src/pages/lab/smart-links/index.astro
+          test ! -e src/pages/en/lab/smart-links/index.astro
+          test ! -e src/pages/devenir-coursier/simulateur/index.astro
+          test ! -e src/pages/en/become-a-courier/simulator/index.astro
+          ! grep -RniE 'PRIVATE SMART LINK LAB|LABORATOIRE SMART LINK PRIV|SYNTHETIC SIMULATOR|SIMULATEUR SYNTH' src public --exclude-dir=dist
