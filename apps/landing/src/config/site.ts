@@ -1,5 +1,5 @@
 export const release = {
-  production: import.meta.env.PUBLIC_DA_RELEASE_MODE === "production",
+  production: import.meta.env.PUBLIC_DA_RELEASE_MODE !== "preview",
 } as const;
 
 export const site = {
