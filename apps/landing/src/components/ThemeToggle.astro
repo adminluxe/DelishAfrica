@@ -2,12 +2,16 @@
 interface Props { lang?: "fr" | "en"; compact?: boolean }
 const { lang = "fr", compact = false } = Astro.props;
 const label = lang === "en" ? "Switch day or night appearance" : "Basculer l’apparence jour ou nuit";
+const dayTitle = lang === "en" ? "Switch to day mode" : "Passer en mode jour";
+const nightTitle = lang === "en" ? "Switch to night mode" : "Passer en mode nuit";
 ---
 <button
   class:list={["theme-toggle", compact && "theme-toggle-compact"]}
   type="button"
   data-theme-toggle
   data-active-theme="day"
+  data-day-title={dayTitle}
+  data-night-title={nightTitle}
   aria-pressed="false"
   aria-label={label}
   title={label}
