@@ -1,0 +1,12 @@
+---
+const steps = [
+  ["01","Désir","Un plat, une histoire, une envie."],
+  ["02","Choix","Une table lisible, une décision sereine."],
+  ["03","Cuisine","Le restaurant garde le rythme."],
+  ["04","Route","Le coursier reçoit une mission claire."],
+  ["05","Table","La livraison devient la dernière scène."]
+];
+---
+<div class="journey-ribbon">
+  {steps.map(([n,title,text]) => <article><span>{n}</span><h3>{title}</h3><p>{text}</p></article>)}
+</div>

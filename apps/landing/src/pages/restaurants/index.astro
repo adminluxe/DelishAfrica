@@ -1,0 +1,40 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ChapterHeader from "../../components/ChapterHeader.astro";
+import ProductCard from "../../components/ProductCard.astro";
+import { featuredPartner, dishes, cities } from "../../data/catalog";
+import { release } from "../../config/site";
+---
+<BaseLayout
+  title="Restaurants africains — DelishAfrica®"
+  description={release.production ? "Découvrez des restaurants africains, des plats signatures et leurs histoires sur DelishAfrica®." : "Première vitrine privée des partenaires et plats DelishAfrica."}
+  alternatePath="/en/restaurants/"
+>
+  <section class="page-hero shell compact-hero">
+    <p class="eyebrow">{release.production ? "RESTAURANTS · TABLES AFRICAINES" : "RESTAURANTS · PRIVATE CATALOG PREVIEW"}</p>
+    <h1>Des tables avec une voix, pas des fiches interchangeables.</h1>
+    <p class="hero-lead">Chaque partenaire conserve son quartier, sa cuisine, ses plats et sa manière d’accueillir.</p>
+  </section>
+  <section class="section shell restaurant-feature">
+    <div>
+      <span>PARTENAIRE 01</span>
+      <h2>{featuredPartner.name}</h2>
+      <p>{featuredPartner.cuisine} · {featuredPartner.district}, {featuredPartner.city}</p>
+      <p>{featuredPartner.promise}</p>
+      <a class="button button-primary" href="/restaurants/thieyp/">Entrer chez Thieyp</a>
+    </div>
+    <div class="restaurant-seal"><strong>THIEYP</strong><span>BRUXELLES</span><small>PARTENAIRE EN LUMIÈRE</small></div>
+  </section>
+  <section class="section shell">
+    <ChapterHeader
+      eyebrow={release.production ? "MENU À DÉCOUVRIR" : "MENU PREVIEW"}
+      title="Des plats structurés pour la découverte."
+      lead={release.production ? "Prix et disponibilités sont confirmés dans les parcours Client au moment de la commande." : "Les prix et disponibilités restent des aperçus privés avant synchronisation finale."}
+    />
+    <div class="product-grid">{dishes.map((dish) => <ProductCard {...dish}/>)}</div>
+  </section>
+  <section class="section shell">
+    <ChapterHeader eyebrow="CITY READINESS" title="La disponibilité doit être déclarée avec précision." lead="Une ville en préparation n’est jamais présentée comme ouverte."/>
+    <div class="city-grid">{cities.map((city) => <article><span>{city.status}</span><h3>{city.name}</h3><p>{city.note}</p></article>)}</div>
+  </section>
+</BaseLayout>

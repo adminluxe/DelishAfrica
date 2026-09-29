@@ -1,0 +1,16 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ChapterHeader from "../../components/ChapterHeader.astro";
+import TrustGrid from "../../components/TrustGrid.astro";
+import StatusTimeline from "../../components/StatusTimeline.astro";
+import { confidenceFactsPrivate, confidenceFactsPublic } from "../../data/trust";
+import { release } from "../../config/site";
+const confidenceFacts = release.production ? confidenceFactsPublic : confidenceFactsPrivate;
+---
+<BaseLayout title="Confiance et transparence — DelishAfrica®" description="Principes de confiance, séparation des parcours et transparence produit." alternatePath="/en/trust/">
+  <section class="page-hero shell compact-hero"><p class="eyebrow">TRUST SYSTEM</p><h1>La confiance ne doit pas être cachée dans un pied de page.</h1><p class="hero-lead">Elle doit être visible dans le langage, les transitions et la séparation des données.</p></section>
+  <section class="section shell"><ChapterHeader eyebrow="PRINCIPES" title="Six règles pour grandir proprement." lead={release.production ? "La confiance est traitée comme une fonction du produit, pas comme une promesse abstraite." : "Ce palier privé décrit l’intention produit sans prétendre que chaque brique est déjà publique."}/><TrustGrid/></section>
+  <section class="section shell confidence-ledger"><ChapterHeader eyebrow="TRUTH LEDGER" title={release.production ? "Ce que la landing fait. Ce qu’elle laisse aux applications." : "Ce qui est validé. Ce qui reste privé."} lead="Une marque internationale doit distinguer la preuve, la préparation et la promesse."/><div class="confidence-grid">{confidenceFacts.map((fact) => <article><span>{fact.label}</span><h3>{fact.value}</h3><p>{fact.note}</p></article>)}</div></section>
+  <section class="section shell"><ChapterHeader eyebrow="STATUS LANGUAGE" title="Le suivi rassure quand il reste compréhensible." lead="La timeline métier est traduite en mots simples."/><StatusTimeline/></section>
+  {!release.production && <section class="private-disclosure shell"><strong>TRANSPARENCE C6</strong><p>Aucun formulaire réel, document KYC, paiement ou mutation de commande n’est exécuté depuis cette prévisualisation.</p></section>}
+</BaseLayout>

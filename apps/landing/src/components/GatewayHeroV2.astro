@@ -1,0 +1,15 @@
+---
+interface Props {
+  eyebrow: string; title: string; lead: string; tone: "client" | "merchant" | "courier" | "apply";
+  art: string; scheme?: string; web?: string; primaryLabel?: string;
+}
+const { eyebrow, title, lead, tone, art, scheme, web, primaryLabel } = Astro.props;
+---
+<section class:list={["gateway-v2", `gateway-${tone}`, "shell"]}>
+  <div class="gateway-v2-copy">
+    <p class="eyebrow">{eyebrow}</p><h1>{title}</h1><p class="hero-lead">{lead}</p>
+    {(scheme || web) && <div class="hero-actions">{scheme && <a class="button button-primary" href={scheme}>{primaryLabel}</a>}{web && <a class="button button-ghost" href={web}>Continuer sur le web</a>}</div>}
+    <p class="microcopy">Prévisualisation privée. Les parcours sensibles restent séparés jusqu’à validation de leurs contrats.</p>
+  </div>
+  <div class="gateway-v2-art"><img src={art} alt="" /><div class="art-signal"><span></span><strong>DELISHAFRICA SIGNAL</strong></div></div>
+</section>

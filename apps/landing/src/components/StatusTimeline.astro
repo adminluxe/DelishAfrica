@@ -1,0 +1,22 @@
+---
+import { statusTimeline } from "../data/trust";
+interface Props { lang?: "fr" | "en" }
+const { lang = "fr" } = Astro.props;
+const enItems = [
+  ["Received", "The order is recorded and sent to the restaurant."],
+  ["Cooking", "The restaurant accepts and prepares the order."],
+  ["Ready", "The order is waiting for courier pickup."],
+  ["On the way", "The courier has picked up the order."],
+  ["Delivered", "Handover is confirmed in the tracking experience."],
+] as const;
+const timelineItems = statusTimeline.map((item, index) => {
+  const translated = enItems[index];
+  return {
+    status: lang === "en" && translated ? translated[0] : item.status,
+    detail: lang === "en" && translated ? translated[1] : item.detail,
+  };
+});
+---
+<div class="status-timeline">
+  {timelineItems.map((item, index) => <article><span>{String(index + 1).padStart(2, "0")}</span><h3>{item.status}</h3><p>{item.detail}</p></article>)}
+</div>

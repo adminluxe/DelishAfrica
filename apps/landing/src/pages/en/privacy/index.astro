@@ -1,0 +1,8 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { release } from "../../../config/site";
+---
+<BaseLayout lang="en" title="Privacy — DelishAfrica®" description="Privacy principles and separation of DelishAfrica data." alternatePath="/privacy/">
+  <section class="page-hero shell compact-hero"><p class="eyebrow">PRIVACY BY DESIGN</p><h1>Collect less. Separate better. Explain clearly.</h1><p class="hero-lead">{release.production ? "The public landing remains editorial and sends sensitive operations to the appropriate journeys." : "This page prepares the public notice without presenting itself as legal advice."}</p></section>
+  <section class="section shell policy-grid"><article><h2>Editorial landing</h2><p>No account, payment, application or KYC document is collected on these pages.</p></article><article><h2>Application journeys</h2><p>Client, Merchant and Courier data remain in their dedicated services and contracts.</p></article><article><h2>KYC documents</h2><p>Identity documents are never public editorial content.</p></article><article><h2>Audience measurement</h2><p>No public tracking tool is enabled in this production candidate.</p></article></section>
+</BaseLayout>

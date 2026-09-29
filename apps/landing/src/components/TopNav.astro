@@ -1,0 +1,39 @@
+---
+import BrandMark from "./BrandMark.astro";
+import { fr, en } from "../data/content";
+import { release } from "../config/site";
+interface Props { eyebrow?: string; lang?: "fr" | "en" }
+const { eyebrow = "", lang = "fr" } = Astro.props;
+const copy = lang === "en" ? en.nav : fr.nav;
+const prefix = lang === "en" ? "/en" : "";
+const languageHref = lang === "en" ? "/" : "/en/";
+---
+<header class="site-header shell">
+  <div class="nav-bar surface-line">
+    <BrandMark />
+    <nav class="desktop-nav" aria-label={lang === "en" ? "Main navigation" : "Navigation principale"}>
+      <a href={`${prefix}/#stories`}>{copy.stories}</a>
+      <a href={`${prefix}/restaurants/`}>{copy.restaurants}</a>
+      <a href={`${prefix}/trust/`}>{copy.trust}</a>
+      <a href={`${prefix}/client/`}>{copy.client}</a>
+      <a href={`${prefix}/merchant/`}>{copy.merchant}</a>
+      <a href={`${prefix}/courier/`}>{copy.courier}</a>
+      <a href={languageHref} lang={lang === "en" ? "fr" : "en"}>{copy.language}</a>
+      <a class="nav-cta" href={`${prefix}/${lang === "en" ? "become-a-courier" : "devenir-coursier"}/`}>{copy.apply}</a>
+    </nav>
+    <details class="mobile-nav">
+      <summary aria-label={lang === "en" ? "Open navigation" : "Ouvrir la navigation"}>Menu</summary>
+      <div class="mobile-nav-panel">
+        <a href={`${prefix}/#stories`}>{copy.stories}</a>
+        <a href={`${prefix}/restaurants/`}>{copy.restaurants}</a>
+        <a href={`${prefix}/trust/`}>{copy.trust}</a>
+        <a href={`${prefix}/client/`}>{copy.client}</a>
+        <a href={`${prefix}/merchant/`}>{copy.merchant}</a>
+        <a href={`${prefix}/courier/`}>{copy.courier}</a>
+        <a href={languageHref}>{copy.language}</a>
+        <a href={`${prefix}/${lang === "en" ? "become-a-courier" : "devenir-coursier"}/`}>{copy.apply}</a>
+      </div>
+    </details>
+  </div>
+  {!release.production && eyebrow && <p class="preview-label"><span></span>{eyebrow}</p>}
+</header>

@@ -1,0 +1,82 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import ChapterHeader from "../components/ChapterHeader.astro";
+import FlavorAtlas from "../components/FlavorAtlas.astro";
+import ExperienceDoor from "../components/ExperienceDoor.astro";
+import JourneyRibbon from "../components/JourneyRibbon.astro";
+import TrustGrid from "../components/TrustGrid.astro";
+import StatusTimeline from "../components/StatusTimeline.astro";
+import ProductCard from "../components/ProductCard.astro";
+import WarmthHeroStage from "../components/WarmthHeroStage.astro";
+import ThieypSpotlightVisual from "../components/ThieypSpotlightVisual.astro";
+import { dishes, cities, featuredPartner } from "../data/catalog";
+import { fr } from "../data/content";
+import { release } from "../config/site";
+---
+<BaseLayout alternatePath="/en/">
+  <section class="c3-hero shell">
+    <div class="c3-hero-copy">
+      <p class="eyebrow">{fr.home.eyebrow}</p>
+      <h1>{fr.home.title}</h1>
+      <p class="hero-lead">{fr.home.lead}</p>
+      <div class="hero-actions"><a class="button button-primary" href="/restaurants/">{fr.home.primary}</a><a class="button button-ghost" href="#ecosystem">{fr.home.secondary}</a></div>
+      <div class="hero-proof"><span>BRUXELLES · VILLE PILOTE</span><span>THIEYP · PARTENAIRE EN LUMIÈRE</span><span>{release.production ? "CLIENT · MERCHANT · COURIER" : "PRÉVISUALISATION PRIVÉE"}</span></div>
+    </div>
+    <WarmthHeroStage/>
+  </section>
+
+  <section class="signal-marquee" aria-label="Signature DelishAfrica"><div>THIS IS DELISHAFRICA® · TASTE THE CONTINENT · GROW THE TABLE · MOVE THE FUTURE ·</div></section>
+
+  <section class="section shell proof-strip">
+    <div><span>01</span><strong>Culture avant catalogue</strong></div>
+    <div><span>02</span><strong>Confiance avant transaction</strong></div>
+    <div><span>03</span><strong>Clarté avant vitesse</strong></div>
+    <div><span>04</span><strong>Échelle sans dilution</strong></div>
+  </section>
+
+  <section id="stories" class="section shell">
+    <ChapterHeader eyebrow="01 · PRODUCT CONTENT" title="Des plats réels, racontés comme des territoires." lead="Le contenu produit prépare la découverte sans transformer la culture en simple inventaire."/>
+    <FlavorAtlas/>
+    <div class="product-grid">{dishes.slice(0,4).map((dish) => <ProductCard {...dish}/>)}</div>
+    <div class="section-action"><a class="text-link" href="/restaurants/thieyp/">Voir le partenaire et son menu <span>→</span></a></div>
+  </section>
+
+  <section class="section shell partner-spotlight c3-partner">
+    <div class="partner-copy"><p class="eyebrow">PARTENAIRE EN LUMIÈRE · {featuredPartner.city.toUpperCase()}</p><h2>{featuredPartner.name}, une cuisine sénégalaise qui voyage sans perdre son accent.</h2><p>{featuredPartner.promise}</p><div class="partner-facts"><span>{featuredPartner.district}</span><span>{featuredPartner.cuisine}</span><span>Menu structuré</span></div><a class="button button-primary" href="/restaurants/thieyp/">Découvrir Thieyp</a></div>
+    <ThieypSpotlightVisual/>
+  </section>
+
+  <section id="ecosystem" class="section shell ecosystem-section">
+    <ChapterHeader eyebrow="02 · ONE BRAND, THREE PULSES" title="La landing prépare. Les applications accomplissent." lead="Découverte publique, opérations sécurisées et missions terrain restent reliées sans être confondues."/>
+    <div class="experience-stack">
+      <ExperienceDoor number="01" name="CLIENT" promise="Taste the continent" description="Découvrir, choisir, payer et suivre sans perdre l’histoire derrière le plat." href="/client/" image="/brand/client-portal.svg" tone="client"/>
+      <ExperienceDoor number="02" name="MERCHANT" promise="Grow the table" description="Transformer une cuisine singulière en présence éditoriale et activité maîtrisée." href="/merchant/" image="/brand/merchant-portal.svg" tone="merchant"/>
+      <ExperienceDoor number="03" name="COURIER" promise="Move the future" description="Rejoindre un réseau où candidature, vérification, mission et progression restent lisibles." href="/courier/" image="/brand/courier-portal.svg" tone="courier"/>
+    </div>
+  </section>
+
+  <section class="section shell trust-section">
+    <ChapterHeader eyebrow="03 · TRUST SYSTEM" title="La confiance devient une interface." lead="Nous séparons clairement ce qui est éditorial, transactionnel, opérationnel et sensible."/>
+    <TrustGrid/>
+  </section>
+
+  <section class="section shell status-section">
+    <ChapterHeader eyebrow="04 · DELIVERY LANGUAGE" title="Cinq états. Une lecture immédiate." lead="Le suivi doit rassurer avant d’impressionner."/>
+    <StatusTimeline/>
+  </section>
+
+  <section class="section shell city-section">
+    <ChapterHeader eyebrow="05 · CITIES" title="Commencer précisément. Grandir sans dilution." lead="Bruxelles ouvre le mouvement. Les villes suivantes sont des horizons, pas de fausses promesses de disponibilité."/>
+    <div class="city-grid">{cities.map((city) => <article><span>{city.status}</span><h3>{city.name}</h3><p>{city.note}</p></article>)}</div>
+  </section>
+
+  <section class="section shell journey-section">
+    <ChapterHeader eyebrow="06 · ONE CONTINUOUS JOURNEY" title="Du désir à la table, sans casser le récit." lead="Chaque interface prend le relais au bon moment."/>
+    <JourneyRibbon/>
+  </section>
+
+  <section class="section shell closing-manifesto">
+    <p class="eyebrow">THIS IS DELISHAFRICA®</p><h2>Une infrastructure culturelle, culinaire et logistique pensée pour rayonner mondialement.</h2>
+    <div class="closing-actions"><a class="button button-primary" href="/client/">Entrer côté Client</a><a class="button button-ghost" href="/trust/">Lire notre système de confiance</a></div>
+  </section>
+</BaseLayout>

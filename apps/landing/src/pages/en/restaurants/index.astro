@@ -1,0 +1,28 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import ProductCard from "../../../components/ProductCard.astro";
+import { dishes, featuredPartner } from "../../../data/catalog";
+import { release } from "../../../config/site";
+---
+<BaseLayout
+  lang="en"
+  title="African restaurants — DelishAfrica®"
+  description={release.production ? "Discover African restaurants, signature dishes and culinary stories on DelishAfrica®." : "Private preview of DelishAfrica partners and dishes."}
+  alternatePath="/restaurants/"
+>
+  <section class="page-hero shell compact-hero">
+    <p class="eyebrow">{release.production ? "RESTAURANTS · AFRICAN TABLES" : "RESTAURANTS · PRIVATE CATALOG PREVIEW"}</p>
+    <h1>Tables with a voice, not interchangeable listings.</h1>
+    <p class="hero-lead">Every partner keeps its neighbourhood, cuisine, dishes and way of welcoming people.</p>
+  </section>
+  <section class="section shell restaurant-feature">
+    <div>
+      <span>FEATURED PARTNER</span>
+      <h2>{featuredPartner.name}</h2>
+      <p>{featuredPartner.cuisine} · {featuredPartner.district}, {featuredPartner.city}</p>
+      <a class="button button-primary" href="/en/restaurants/thieyp/">Enter Thieyp</a>
+    </div>
+    <div class="restaurant-seal"><strong>THIEYP</strong><span>BRUSSELS</span><small>FEATURED PARTNER</small></div>
+  </section>
+  <section class="section shell"><div class="product-grid">{dishes.map((dish) => <ProductCard {...dish}/>)}</div></section>
+</BaseLayout>

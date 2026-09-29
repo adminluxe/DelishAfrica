@@ -1,0 +1,39 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import ProductCard from "../../../components/ProductCard.astro";
+import StatusTimeline from "../../../components/StatusTimeline.astro";
+import ThieypLiveGallery from "../../../components/ThieypLiveGallery.astro";
+import { featuredPartner, dishes } from "../../../data/catalog";
+import { release } from "../../../config/site";
+---
+<BaseLayout
+  title="Thieyp à Bruxelles — DelishAfrica®"
+  description={release.production ? "Découvrez Thieyp à Bruxelles, sa cuisine sénégalaise et son menu sur DelishAfrica®." : "Aperçu privé du partenaire Thieyp et de son menu."}
+  alternatePath="/en/restaurants/thieyp/"
+>
+  <section class="restaurant-hero shell">
+    <div>
+      <p class="eyebrow">PARTENAIRE EN LUMIÈRE · BRUXELLES</p>
+      <h1>{featuredPartner.name}</h1>
+      <p class="hero-lead">{featuredPartner.cuisine}. {featuredPartner.promise}</p>
+      <div class="partner-facts">
+        <span>{featuredPartner.address}</span>
+        <span>Service selon disponibilité</span>
+        <span>{release.production ? "Menu à découvrir dans Client" : "Menu aperçu privé"}</span>
+      </div>
+      <a class="button button-primary" href="/client/">Préparer l’expérience Client</a>
+    </div>
+    <ThieypLiveGallery/>
+  </section>
+  <section class="section shell">
+    <p class="eyebrow">MENU STRUCTURÉ</p>
+    <h2>Des classiques, des signatures et des boissons qui racontent une table.</h2>
+    <div class="product-grid">{dishes.map((dish) => <ProductCard {...dish}/>)}</div>
+  </section>
+  <section class="section shell status-section">
+    <p class="eyebrow">APRÈS LE CHOIX</p>
+    <h2>Un suivi lisible de la cuisine à la livraison.</h2>
+    <StatusTimeline/>
+  </section>
+  {!release.production && <section class="private-disclosure shell"><strong>APERÇU PRIVÉ</strong><p>Cette page ne prend aucune commande et ne collecte aucune donnée. La disponibilité finale sera synchronisée avec les parcours Client validés.</p></section>}
+</BaseLayout>

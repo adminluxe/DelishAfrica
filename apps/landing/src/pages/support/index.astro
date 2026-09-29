@@ -1,0 +1,9 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { release } from "../../config/site";
+---
+<BaseLayout title="Support — DelishAfrica®" description="Architecture du centre d’aide DelishAfrica." alternatePath="/en/support/">
+  <section class="page-hero shell compact-hero"><p class="eyebrow">SUPPORT ARCHITECTURE</p><h1>Une aide pensée pour les trois côtés de l’expérience.</h1><p class="hero-lead">Client, Merchant et Courier ne doivent pas chercher leurs réponses dans le même vocabulaire.</p></section>
+  <section class="section shell support-grid"><article><span>CLIENT</span><h2>Commande et livraison</h2><p>Paiement, suivi, adresse, incident de remise et remboursement restent dans l’expérience Client.</p><a class="text-link" href="https://client.delishafrica.me">Ouvrir Client →</a></article><article><span>MERCHANT</span><h2>Restaurant et opérations</h2><p>Onboarding, menu, commandes, cuisine, qualité et paiements partenaires restent dans Merchant.</p><a class="text-link" href="https://merchant.delishafrica.me">Ouvrir Merchant →</a></article><article><span>COURIER</span><h2>Candidature et missions</h2><p>Documents, activation, disponibilité, mission, ETA et assistance terrain restent dans Courier.</p><a class="text-link" href="https://courier.delishafrica.me">Ouvrir Courier →</a></article></section>
+  {!release.production && <section class="private-disclosure shell"><strong>PRÉPARATION C6</strong><p>Les canaux définitifs seront validés avant activation publique.</p></section>}
+</BaseLayout>

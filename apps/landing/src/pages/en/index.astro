@@ -1,0 +1,15 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ProductCard from "../../components/ProductCard.astro";
+import TrustGrid from "../../components/TrustGrid.astro";
+import StatusTimeline from "../../components/StatusTimeline.astro";
+import { dishes } from "../../data/catalog";
+import { en } from "../../data/content";
+import { release } from "../../config/site";
+---
+<BaseLayout lang="en" title="DelishAfrica® — A continent of flavour, set in motion" description="African restaurants, culinary stories and orchestrated delivery." alternatePath="/">
+  <section class="c3-hero shell"><div class="c3-hero-copy"><p class="eyebrow">{en.home.eyebrow}</p><h1>{en.home.title}</h1><p class="hero-lead">{en.home.lead}</p><div class="hero-actions"><a class="button button-primary" href="/en/restaurants/">{en.home.primary}</a><a class="button button-ghost" href="#ecosystem">{en.home.secondary}</a></div><div class="hero-proof"><span>BRUSSELS · PILOT CITY</span><span>THIEYP · FEATURED PARTNER</span><span>{release.production ? "CLIENT · MERCHANT · COURIER" : "PRIVATE PREVIEW"}</span></div></div><div class="c3-hero-stage"><div class="stage-continent"><span>AFRICA</span></div><div class="stage-route route-one"></div><div class="stage-route route-two"></div><div class="stage-node node-table"><strong>TABLE</strong><small>Culture</small></div><div class="stage-node node-kitchen"><strong>KITCHEN</strong><small>Commerce</small></div><div class="stage-node node-route"><strong>ROUTE</strong><small>Motion</small></div></div></section>
+  <section class="section shell"><p class="eyebrow">PRODUCT CONTENT</p><h2>Real dishes, presented as territories.</h2><div class="product-grid product-grid-three">{dishes.slice(0,3).map((dish) => <ProductCard {...dish}/>)}</div></section>
+  <section id="ecosystem" class="section shell trust-section"><p class="eyebrow">TRUST SYSTEM</p><h2>Trust becomes an interface.</h2><TrustGrid lang="en"/></section>
+  <section class="section shell"><p class="eyebrow">DELIVERY LANGUAGE</p><h2>Five states. One immediate reading.</h2><StatusTimeline lang="en"/></section>
+</BaseLayout>

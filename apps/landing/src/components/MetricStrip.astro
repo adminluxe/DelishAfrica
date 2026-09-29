@@ -1,0 +1,8 @@
+---
+const metrics = [
+  ["01", "Culture avant catalogue"], ["02", "Confiance avant transaction"], ["03", "Clarté avant vitesse"], ["04", "Échelle sans dilution"]
+];
+---
+<div class="metric-strip" aria-label="Principes DelishAfrica">
+  {metrics.map(([number,label]) => <div class="metric"><span>{number}</span><strong>{label}</strong></div>)}
+</div>

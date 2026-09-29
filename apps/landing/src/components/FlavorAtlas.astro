@@ -1,0 +1,14 @@
+---
+import { flavorStories } from "../data/catalog";
+---
+<div class="flavor-atlas">
+  <div class="atlas-art"><img src="/brand/flavor-atlas.svg" alt="Constellation abstraite de plats africains" /></div>
+  <div class="atlas-stories">
+    {flavorStories.map((story, index) => (
+      <article class:list={["flavor-story", `flavor-${story.tone}`]}>
+        <span>{String(index + 1).padStart(2, "0")}</span>
+        <div><p>{story.origin}</p><h3>{story.dish}</h3><p>{story.note}</p></div>
+      </article>
+    ))}
+  </div>
+</div>
