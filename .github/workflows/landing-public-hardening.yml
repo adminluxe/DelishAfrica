@@ -31,6 +31,8 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run check
       - run: npm run build
+      - name: Validate certified VPS deploy script
+        run: bash -n ops/deploy-certified-vps-20260929.sh
       - name: Verify public legal/SEO files
         run: |
           test -f public/robots.txt
