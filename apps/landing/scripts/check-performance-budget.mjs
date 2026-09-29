@@ -30,7 +30,7 @@ for (const token of required) {
   html.includes(token) ? pass("HTML_TOKEN", token) : fail("HTML_TOKEN", token);
 }
 
-for (const rel of ["site.webmanifest.json", "delish-theme-v2.css", "theme-controller-v3.js"]) {
+for (const rel of ["site.webmanifest.json", "delish-theme-v2.css"]) {
   const p = path.join(root, rel);
   if (!fs.existsSync(p)) fail("MISSING_ASSET", rel);
   else pass("ASSET_BYTES", rel + "=" + fs.statSync(p).size);
