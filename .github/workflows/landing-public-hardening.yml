@@ -3,9 +3,11 @@ name: DelishAfrica landing hardening
 on:
   push:
     branches:
+      - main
       - audit/landing-hardening-20260929
   pull_request:
     branches:
+      - main
       - release/landing-warmth-v11-final-5d9a53cab39b
   workflow_dispatch:
 
