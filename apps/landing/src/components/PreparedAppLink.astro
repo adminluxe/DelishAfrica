@@ -3,26 +3,69 @@ import { appGateways } from "../config/site";
 interface Props { role: "client" | "merchant" | "courier"; label: string; detail: string; lang?: "fr" | "en" }
 const { role, lang = "fr" } = Astro.props;
 const gateway = appGateways[role];
-const publicLabels = {
+const copy = {
   fr: {
-    client: ["Continuer avec Client", "Ouvrez l’application explicitement ou poursuivez sur le web. Aucune redirection automatique."],
-    merchant: ["Continuer avec Merchant", "Accédez au cockpit Merchant explicitement ou utilisez le fallback web."],
-    courier: ["Continuer avec Courier", "Ouvrez Courier explicitement ou utilisez l’espace web disponible."],
+    client: {
+      kicker: "CLIENT · PASSAGE CONTINU",
+      title: "Continuer avec DelishAfrica Client",
+      body: "Ouvrez l’application pour choisir, commander et suivre votre repas, ou poursuivez directement sur le web.",
+      app: "Ouvrir DelishAfrica Client",
+      web: "Continuer sur le web",
+      status: "APP + WEB · CHOIX EXPLICITE · AUCUNE REDIRECTION AUTOMATIQUE",
+    },
+    merchant: {
+      kicker: "MERCHANT · PASSAGE CONTINU",
+      title: "Entrer dans l’espace DelishAfrica Merchant",
+      body: "Passez au cockpit restaurant pour les commandes et les opérations, ou continuez depuis l’espace web Merchant.",
+      app: "Ouvrir DelishAfrica Merchant",
+      web: "Continuer sur le web",
+      status: "APP + WEB · ACCÈS EXPLICITE · CONTRÔLE CONSERVÉ",
+    },
+    courier: {
+      kicker: "COURIER · PASSAGE CONTINU",
+      title: "Passer au terrain avec DelishAfrica Courier",
+      body: "Ouvrez Courier pour les missions, la route et l’activité terrain, ou utilisez l’espace web disponible.",
+      app: "Ouvrir DelishAfrica Courier",
+      web: "Continuer sur le web",
+      status: "APP + WEB · ACCÈS EXPLICITE · AUCUNE REDIRECTION AUTOMATIQUE",
+    },
   },
   en: {
-    client: ["Continue with Client", "Open the app explicitly or continue on the web. There is no automatic redirect."],
-    merchant: ["Continue with Merchant", "Open the Merchant cockpit explicitly or use the web fallback."],
-    courier: ["Continue with Courier", "Open Courier explicitly or use the available web space."],
+    client: {
+      kicker: "CLIENT · CONTINUOUS HANDOFF",
+      title: "Continue with DelishAfrica Client",
+      body: "Open the app to choose, order and track your meal, or continue directly on the web.",
+      app: "Open DelishAfrica Client",
+      web: "Continue on the web",
+      status: "APP + WEB · EXPLICIT CHOICE · NO AUTOMATIC REDIRECT",
+    },
+    merchant: {
+      kicker: "MERCHANT · CONTINUOUS HANDOFF",
+      title: "Enter the DelishAfrica Merchant space",
+      body: "Move to the restaurant cockpit for orders and operations, or continue from the Merchant web space.",
+      app: "Open DelishAfrica Merchant",
+      web: "Continue on the web",
+      status: "APP + WEB · EXPLICIT ACCESS · CONTROL PRESERVED",
+    },
+    courier: {
+      kicker: "COURIER · CONTINUOUS HANDOFF",
+      title: "Move to the field with DelishAfrica Courier",
+      body: "Open Courier for missions, routing and field activity, or use the available web space.",
+      app: "Open DelishAfrica Courier",
+      web: "Continue on the web",
+      status: "APP + WEB · EXPLICIT ACCESS · NO AUTOMATIC REDIRECT",
+    },
   },
 } as const;
-const publicCopy = publicLabels[lang][role];
+const t = copy[lang][role];
 ---
-<article class:list={["prepared-link", `prepared-${role}`]}>
-  <span>{role.toUpperCase()}</span>
-  <h3>{publicCopy[0]}</h3>
-  <p>{publicCopy[1]}</p>
-  <div class="hero-actions">
-    <a class="button button-primary" href={gateway.scheme}>{lang === "en" ? "Open the app" : "Ouvrir l’app"}</a>
-    <a class="button button-ghost" href={gateway.web}>{lang === "en" ? "Continue on the web" : "Continuer sur le web"}</a>
+<article class:list={["prepared-link", "da-handoff-card", `prepared-${role}`]}>
+  <span>{t.kicker}</span>
+  <h3>{t.title}</h3>
+  <p>{t.body}</p>
+  <div class="da-handoff-actions">
+    <a class="button button-primary da-app-handoff" data-da-handoff={role} href={gateway.scheme} aria-label={t.app}><span>{t.app}</span><i class="da-handoff-drop" aria-hidden="true"></i></a>
+    <a class="button button-ghost da-web-fallback" data-da-web-fallback={role} href={gateway.web}>{t.web}</a>
   </div>
+  <div class="prepared-status da-handoff-status"><i></i>{t.status}</div>
 </article>
