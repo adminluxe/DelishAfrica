@@ -70,6 +70,8 @@ test -f dist/index.html
 test -f dist/robots.txt
 test -f dist/sitemap.xml
 test -f dist/site.webmanifest
+test -f dist/site.webmanifest.json
+test -f dist/delish-theme-v2.css
 test -f dist/cookies/index.html
 test -f dist/terms/index.html
 test -f dist/legal/index.html
@@ -88,6 +90,18 @@ for d in media/water media/dishes/editorial media/partners/la-boule-bleue; do
   cp -a "$OLD_RELEASE/$d/." "$NEW_RELEASE/$d/"
 done
 
+# Collapse ten certified WATER/GALA stylesheets into one request while preserving cascade order.
+BUNDLE="$NEW_RELEASE/water-live-v11.bundle.css"
+: > "$BUNDLE"
+for f in   water-app-parity-v2.css   water-cordon-v3.css   water-rain-food-v4.css   water-gala-v5.css   water-gala-v6.css   water-gala-v7.css   water-gala-v8.css   water-gala-v9.css   water-gala-v10.css   water-gala-v11.css
+do
+  printf '\n/* ===== %s ===== */\n' "$f" >> "$BUNDLE"
+  cat "$OLD_RELEASE/$f" >> "$BUNDLE"
+  printf '\n' >> "$BUNDLE"
+done
+test -s "$BUNDLE"
+echo "WATER_BUNDLE_SHA256=$(sha256sum "$BUNDLE" | cut -d' ' -f1)"
+
 node "$WORK/repo/apps/landing/scripts/verify-live-polish.mjs" "$NEW_RELEASE"
 
 # Construction-era surfaces must stay gone.
@@ -104,7 +118,7 @@ echo "=== PRE-SWITCH STATIC PROBE ==="
 python3 -m http.server 18999 --bind 127.0.0.1 --directory "$NEW_RELEASE" >"$WORK/http.log" 2>&1 &
 HTTP_PID=$!
 sleep 1
-for p in / /robots.txt /site.webmanifest /sitemap.xml /privacy/ /cookies/ /terms/ /legal/; do
+for p in / /robots.txt /site.webmanifest.json /sitemap.xml /delish-theme-v2.css /water-live-v11.bundle.css /privacy/ /cookies/ /terms/ /legal/; do
   code="$(curl -sS --max-time 5 -o /dev/null -w '%{http_code}' "http://127.0.0.1:18999$p")"
   echo "$p -> $code"
   test "$code" = "200"
@@ -119,7 +133,7 @@ nginx -t
 systemctl reload nginx
 
 echo "=== ORIGIN GATE ==="
-for p in / /robots.txt /site.webmanifest /sitemap.xml /privacy/ /cookies/ /terms/ /legal/; do
+for p in / /robots.txt /site.webmanifest.json /sitemap.xml /delish-theme-v2.css /water-live-v11.bundle.css /privacy/ /cookies/ /terms/ /legal/; do
   code="$(curl -ksS --max-time 8 --resolve delishafrica.me:443:127.0.0.1 -o /dev/null -w '%{http_code}' "https://delishafrica.me$p")"
   type="$(curl -ksSI --max-time 8 --resolve delishafrica.me:443:127.0.0.1 "https://delishafrica.me$p" | awk -F': ' 'tolower($1)=="content-type"{print $2}' | tr -d '\r' | tail -1)"
   echo "$p -> HTTP=$code TYPE=$type"
@@ -128,13 +142,15 @@ done
 
 ROBOTS_TYPE="$(curl -ksSI --resolve delishafrica.me:443:127.0.0.1 https://delishafrica.me/robots.txt | awk -F': ' 'tolower($1)=="content-type"{print tolower($2)}' | tr -d '\r')"
 SITEMAP_TYPE="$(curl -ksSI --resolve delishafrica.me:443:127.0.0.1 https://delishafrica.me/sitemap.xml | awk -F': ' 'tolower($1)=="content-type"{print tolower($2)}' | tr -d '\r')"
+MANIFEST_TYPE="$(curl -ksSI --resolve delishafrica.me:443:127.0.0.1 https://delishafrica.me/site.webmanifest.json | awk -F': ' 'tolower($1)=="content-type"{print tolower($2)}' | tr -d '\r')"
 echo "$ROBOTS_TYPE" | grep -Eq 'text/plain|text/'
 echo "$SITEMAP_TYPE" | grep -Eq 'xml|text/plain'
+echo "$MANIFEST_TYPE" | grep -Eq 'application/json|application/manifest\+json'
 
 trap - ERR
 
 echo "=== PUBLIC OBSERVATION ==="
-for p in / /robots.txt /site.webmanifest /sitemap.xml /privacy/ /cookies/ /terms/ /legal/; do
+for p in / /robots.txt /site.webmanifest.json /sitemap.xml /delish-theme-v2.css /water-live-v11.bundle.css /privacy/ /cookies/ /terms/ /legal/; do
   curl -sS --max-time 8 -o /dev/null -w "$p -> HTTP=%{http_code} TYPE=%{content_type}\n" "https://delishafrica.me$p" || true
 done
 
