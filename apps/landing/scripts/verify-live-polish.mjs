@@ -41,5 +41,14 @@ for (const rel of ["media/water", "media/dishes/editorial", "media/partners/la-b
     console.log("PASS_DIR", rel);
   }
 }
+for (const rel of ["water-live-v11.bundle.css", "delish-theme-v2.css", "site.webmanifest.json"]) {
+  const p = path.join(root, rel);
+  if (!fs.existsSync(p) || fs.statSync(p).size === 0) {
+    console.error("MISSING_OPTIMIZED_ASSET", rel);
+    failed = true;
+  } else {
+    console.log("PASS_ASSET", rel, fs.statSync(p).size);
+  }
+}
 if (failed) process.exit(2);
 console.log("LIVE_POLISH_GATE=PASS");
