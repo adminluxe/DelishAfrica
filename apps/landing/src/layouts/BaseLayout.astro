@@ -25,6 +25,22 @@ const robots = noindex || !site.indexable ? "noindex,nofollow,noarchive" : "inde
 const alternate = alternatePath ? new URL(alternatePath, site.url) : undefined;
 const locale = lang === "en" ? "en_GB" : "fr_BE";
 const alternateLocale = lang === "en" ? "fr_BE" : "en_GB";
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: site.name,
+  url: site.url,
+  logo: `${site.url}/media/brand/delishafrica-mark-gold-512.webp`,
+  email: site.supportEmail,
+};
+const websiteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: site.name,
+  url: site.url,
+  inLanguage: lang,
+  description,
+};
 ---
 <!doctype html>
 <html lang={lang}>
@@ -49,8 +65,11 @@ const alternateLocale = lang === "en" ? "fr_BE" : "en_GB";
   <meta name="twitter:description" content={description}/>
   <meta name="twitter:image" content={`${site.url}/og-preview.svg`}/>
   <link rel="canonical" href={canonical.toString()}/>
+  <link rel="alternate" hreflang={lang} href={canonical.toString()}/>
   {alternate && <link rel="alternate" hreflang={lang === "fr" ? "en" : "fr"} href={alternate.toString()}/>}
   <link rel="alternate" hreflang="x-default" href={site.url}/>
+  <script type="application/ld+json" set:html={JSON.stringify(organizationSchema)}></script>
+  <script type="application/ld+json" set:html={JSON.stringify(websiteSchema)}></script>
   <link rel="icon" href="/media/brand/favicon.png" type="image/png"/>
   <link rel="manifest" href="/site.webmanifest"/>
 
