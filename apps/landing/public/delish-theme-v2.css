@@ -235,6 +235,7 @@ html[data-theme="day"] :is(
   border:0!important;
 }
 .mobile-nav-panel .theme-toggle{margin:6px 8px 2px}
+.mobile-theme-shortcut{display:none}
 
 /* Render below-fold sections only as they approach the viewport. */
 @supports (content-visibility:auto){
@@ -245,6 +246,13 @@ html[data-theme="day"] :is(
 }
 
 /* Mobile: preserve the signature, remove the expensive secondary glass/water work. */
+@media(max-width:1040px){
+  .mobile-theme-shortcut{
+    display:block;
+    margin-left:auto;
+    margin-right:8px;
+  }
+}
 @media(max-width:780px){
   .water-river-b,
   .water-ripple-b,
