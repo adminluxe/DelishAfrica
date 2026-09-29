@@ -23,6 +23,7 @@ const languageHref = lang === "en" ? "/" : "/en/";
       <ThemeToggle lang={lang}/>
       <a class="nav-cta" href={`${prefix}/${lang === "en" ? "become-a-courier" : "devenir-coursier"}/`}>{copy.apply}</a>
     </nav>
+    <div class="mobile-theme-shortcut"><ThemeToggle lang={lang} compact/></div>
     <details class="mobile-nav">
       <summary aria-label={lang === "en" ? "Open navigation" : "Ouvrir la navigation"}>Menu</summary>
       <div class="mobile-nav-panel">
@@ -33,7 +34,6 @@ const languageHref = lang === "en" ? "/" : "/en/";
         <a href={`${prefix}/merchant/`}>{copy.merchant}</a>
         <a href={`${prefix}/courier/`}>{copy.courier}</a>
         <a href={languageHref}>{copy.language}</a>
-        <ThemeToggle lang={lang} compact/>
         <a href={`${prefix}/${lang === "en" ? "become-a-courier" : "devenir-coursier"}/`}>{copy.apply}</a>
       </div>
     </details>
