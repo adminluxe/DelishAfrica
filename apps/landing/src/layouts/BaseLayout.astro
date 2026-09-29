@@ -11,6 +11,7 @@ interface Props {
   lang?: "fr" | "en";
   alternatePath?: string;
   noindex?: boolean;
+  preloadHero?: boolean;
 }
 const {
   title = site.title,
@@ -19,6 +20,7 @@ const {
   lang = "fr",
   alternatePath,
   noindex = false,
+  preloadHero = false,
 } = Astro.props;
 const canonical = new URL(Astro.url.pathname, site.url);
 const robots = noindex || !site.indexable ? "noindex,nofollow,noarchive" : "index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1";
@@ -47,8 +49,20 @@ const websiteSchema = {
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <meta name="theme-color" content="#F3F8FB"/>
-  <meta name="color-scheme" content="light"/>
+  <meta name="theme-color" content="#f4f0e7"/>
+  <meta name="color-scheme" content="light dark"/>
+  <script is:inline>
+    (() => {
+      const root = document.documentElement;
+      const key = "da-theme";
+      let stored = null;
+      try { stored = localStorage.getItem(key); } catch {}
+      const systemNight = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const theme = stored === "day" || stored === "night" ? stored : (systemNight ? "night" : "day");
+      root.dataset.theme = theme;
+      root.style.colorScheme = theme === "night" ? "dark" : "light";
+    })();
+  </script>
   <meta name="robots" content={robots}/>
   <meta name="description" content={description}/>
   <meta property="og:type" content="website"/>
@@ -71,29 +85,71 @@ const websiteSchema = {
   <script type="application/ld+json" set:html={JSON.stringify(organizationSchema)}></script>
   <script type="application/ld+json" set:html={JSON.stringify(websiteSchema)}></script>
   <link rel="icon" href="/media/brand/favicon.png" type="image/png"/>
-  <link rel="manifest" href="/site.webmanifest"/>
+  <link rel="manifest" href="/site.webmanifest.json"/>
+  {preloadHero && (
+    <link
+      rel="preload"
+      as="image"
+      href="/media/partners/thieyp/chicken-800.webp"
+      imagesrcset="/media/partners/thieyp/chicken-480.webp 480w, /media/partners/thieyp/chicken-800.webp 800w, /media/partners/thieyp/chicken-1000.webp 1000w"
+      imagesizes="(max-width: 1180px) 100vw, 48vw"
+      fetchpriority="high"
+    />
+  )}
 
-  <!-- Certified live visual stack preserved from the 2026-09-19 public release. -->
-  <meta name="da-water-signature" content="water-app-parity-v2-20260906"/>
-  <link rel="stylesheet" href="/water-app-parity-v2.css?v=20260906" data-da-water-app-parity="v2"/>
-  <link rel="stylesheet" href="/water-cordon-v3.css" data-da-water-cordon="v3"/>
-  <meta name="da-release-marker" content="da-assets-water-cordon-v3-20260906"/>
-  <link rel="stylesheet" href="/water-rain-food-v4.css" data-da-water-rain-food="v4"/>
-  <meta name="da-gala-marker" content="one-ocean-v5-20260919_025714"/>
-  <link rel="stylesheet" href="/water-gala-v5.css?v=20260919_025714" data-da-gala="one-ocean-v5"/>
-  <meta name="da-gala-physical-marker" content="physical-matter-v6-20260919_044919"/>
-  <link rel="stylesheet" href="/water-gala-v6.css?v=20260919_044919" data-da-gala-physical="physical-matter-v6"/>
-  <meta name="da-gala-signature-marker" content="signature-water-v7-20260919_115625"/>
-  <link rel="stylesheet" href="/water-gala-v7.css?v=20260919_115625" data-da-gala-signature="signature-water-v7"/>
-  <meta name="da-gala-deep-state-marker" content="deep-state-v8-20260919_123454"/>
-  <link rel="stylesheet" href="/water-gala-v8.css?v=20260919_123454" data-da-gala-deep-state="deep-state-v8"/>
-  <meta name="da-gala-intelligence-wake-marker" content="intelligence-wake-v9-20260919_142211"/>
-  <link rel="stylesheet" href="/water-gala-v9.css?v=20260919_142211" data-da-gala-intelligence-wake="intelligence-wake-v9"/>
-  <meta name="da-gala-network-organism-marker" content="network-organism-v10-20260919_213451"/>
-  <link rel="stylesheet" href="/water-gala-v10.css?v=20260919_213451" data-da-gala-network-organism="network-organism-v10"/>
-  <meta name="da-gala-refractive-intelligence-marker" content="refractive-intelligence-v11-20260919_230628"/>
-  <link rel="stylesheet" href="/water-gala-v11.css?v=20260919_230628" data-da-gala-refractive-intelligence="refractive-intelligence-v11"/>
+  <!-- One non-blocking bundle replaces ten render-blocking WATER/GALA requests. -->
+  <meta name="da-water-signature" content="water-gala-v11-bundled-20260929"/>
+  <link rel="preload" href="/water-live-v11.bundle.css?v=20260929" as="style"/>
+  <link
+    rel="stylesheet"
+    href="/water-live-v11.bundle.css?v=20260929"
+    media="print"
+    onload="this.media='all'"
+    data-da-water-bundle="v11"
+  />
+  <noscript><link rel="stylesheet" href="/water-live-v11.bundle.css?v=20260929"/></noscript>
+  <link rel="stylesheet" href="/delish-theme-v2.css?v=20260929" data-da-theme-css="v2"/>
   <title>{title}</title>
+  <script is:inline>
+    (() => {
+      const key = "da-theme";
+      const media = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+      const apply = (theme, persist = false) => {
+        const safe = theme === "night" ? "night" : "day";
+        document.documentElement.dataset.theme = safe;
+        document.documentElement.style.colorScheme = safe === "night" ? "dark" : "light";
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", safe === "night" ? "#07110f" : "#f4f0e7");
+        document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
+          button.dataset.activeTheme = safe;
+          button.setAttribute("aria-pressed", String(safe === "night"));
+        });
+        if (persist) {
+          try { localStorage.setItem(key, safe); } catch {}
+        }
+      };
+      const bind = () => {
+        apply(document.documentElement.dataset.theme || "day");
+        document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
+          button.addEventListener("click", () => {
+            const next = document.documentElement.dataset.theme === "night" ? "day" : "night";
+            apply(next, true);
+          });
+        });
+      };
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind, { once: true });
+      else bind();
+      if (media) {
+        const followSystem = (event) => {
+          let stored = null;
+          try { stored = localStorage.getItem(key); } catch {}
+          if (!stored) apply(event.matches ? "night" : "day");
+        };
+        if (media.addEventListener) media.addEventListener("change", followSystem);
+        else if (media.addListener) media.addListener(followSystem);
+      }
+    })();
+  </script>
 </head>
 <body class="water-signature-v11-enabled water-signature-v11-final water-app-parity-v2">
   <div class="da-rain-canopy-v4" data-da-rain-canopy="v4" aria-hidden="true">

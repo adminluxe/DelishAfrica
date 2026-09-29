@@ -1,0 +1,294 @@
+/* DelishAfrica day/night contrast + mobile performance polish — 2026-09-29 */
+
+:root{
+  --da-focus:#0f9f8c;
+  --da-day-bg:#f4f0e7;
+  --da-day-text:#102019;
+  --da-day-soft:#405249;
+  --da-night-bg:#07110f;
+  --da-night-text:#fffaf0;
+  --da-night-soft:#e8dfd0;
+}
+
+html[data-theme="day"]{
+  color-scheme:light;
+  --ink:#f4f0e7;
+  --ink-soft:#fffaf0;
+  --paper:#102019;
+  --paper-soft:#405249;
+  --muted:#617168;
+  --line:rgba(17,67,55,.17);
+  --line-strong:rgba(17,67,55,.31);
+  --surface:rgba(255,255,255,.72);
+  --shadow:0 24px 80px rgba(20,54,45,.15);
+}
+html[data-theme="night"]{
+  color-scheme:dark;
+  --ink:#07110f;
+  --ink-soft:#0b1714;
+  --paper:#fffaf0;
+  --paper-soft:#e8dfd0;
+  --muted:#bfb6a8;
+  --line:rgba(255,255,255,.16);
+  --line-strong:rgba(255,255,255,.32);
+  --surface:rgba(255,255,255,.065);
+  --shadow:0 30px 100px rgba(0,0,0,.46);
+}
+
+html[data-theme="day"] body{
+  color:var(--paper);
+  background:
+    radial-gradient(circle at 82% 8%,rgba(86,156,134,.12),transparent 28%),
+    radial-gradient(circle at 4% 28%,rgba(220,151,83,.11),transparent 24%),
+    var(--ink);
+}
+html[data-theme="night"] body{
+  color:var(--paper);
+  background:
+    radial-gradient(circle at 82% 8%,rgba(86,156,134,.11),transparent 28%),
+    radial-gradient(circle at 4% 28%,rgba(217,87,54,.08),transparent 24%),
+    var(--ink);
+}
+
+html[data-theme] p{color:var(--paper-soft)}
+html[data-theme="day"] .eyebrow{color:#8a5a00}
+html[data-theme="night"] .eyebrow{color:#ffd985}
+
+/* Navigation stays readable in either mode. */
+html[data-theme="day"] .nav-bar{
+  color:#14251e;
+  border-color:rgba(17,67,55,.16)!important;
+  background:rgba(255,251,243,.94)!important;
+  box-shadow:0 16px 52px rgba(30,60,50,.13),0 1px 0 rgba(255,255,255,.8) inset!important;
+}
+html[data-theme="day"] .desktop-nav>a:not(.nav-cta),
+html[data-theme="day"] .mobile-nav-panel>a{
+  color:#31473e!important;
+}
+html[data-theme="day"] .desktop-nav>a:not(.nav-cta):hover,
+html[data-theme="day"] .mobile-nav-panel>a:hover{
+  color:#0d2018!important;
+}
+html[data-theme="day"] .mobile-nav-panel{
+  color:#14251e;
+  border-color:rgba(17,67,55,.17)!important;
+  background:rgba(255,251,243,.98)!important;
+}
+html[data-theme="night"] .desktop-nav>a:not(.nav-cta){color:#ece3d6!important}
+html[data-theme="night"] .mobile-nav-panel{background:rgba(8,18,15,.97)!important}
+html[data-theme="night"] .mobile-nav-panel>a{color:#f2eadf!important}
+
+/* The hero remains a dark, cinematic contrast island in DAY mode. */
+html[data-theme="day"] .c3-hero{
+  --paper:#fffdf6;
+  --paper-soft:#f1eee5;
+  --muted:#d4d8d2;
+  --line:rgba(255,255,255,.28);
+  --line-strong:rgba(255,255,255,.43);
+  color:#fffdf6;
+}
+html[data-theme="day"] .c3-hero-copy .hero-lead{
+  color:#f3f4ef!important;
+  text-shadow:0 1px 18px rgba(0,0,0,.35);
+}
+html[data-theme] .c3-hero-copy h1{
+  text-shadow:0 2px 28px rgba(0,0,0,.22);
+}
+html[data-theme="day"] .hero-proof span{
+  color:#fffaf0!important;
+  border-color:rgba(255,255,255,.36)!important;
+  background:rgba(2,22,17,.50)!important;
+  box-shadow:0 8px 22px rgba(0,0,0,.14);
+}
+html[data-theme="night"] .hero-proof span{
+  color:#f4ecdf!important;
+  border-color:rgba(255,255,255,.28)!important;
+  background:rgba(3,15,12,.42)!important;
+}
+html[data-theme="day"] .c3-hero .button-ghost{
+  color:#fff!important;
+  border-color:rgba(255,255,255,.52)!important;
+  background:rgba(6,27,21,.34)!important;
+}
+html[data-theme="day"] .c3-hero .button-ghost:hover{
+  background:rgba(6,27,21,.54)!important;
+}
+
+/* Keep intrinsically dark media cards readable when global DAY tokens turn dark. */
+html[data-theme="day"] :is(
+  .product-card,
+  .gateway-panel,
+  .warmth-hero-stage,
+  .warmth-partner-visual,
+  .restaurant-seal,
+  .restaurant-monogram,
+  .dish-ticket,
+  .live-partner-card
+){
+  --paper:#fffdf6;
+  --paper-soft:#ece8df;
+  --muted:#c9c2b7;
+  --line:rgba(255,255,255,.20);
+  --line-strong:rgba(255,255,255,.34);
+  color:#fffdf6;
+}
+html[data-theme="day"] :is(.product-card,.gateway-panel,.live-partner-card) p{
+  color:#e9e5dd!important;
+}
+html[data-theme="day"] .product-meta,
+html[data-theme="day"] .product-footer span,
+html[data-theme="day"] .gateway-panel small{
+  color:#cbc4b8!important;
+}
+
+html[data-theme="day"] :is(
+  .proof-strip div,
+  .flavor-story,
+  .trust-grid article,
+  .status-timeline article,
+  .city-grid article,
+  .confidence-grid article,
+  .support-grid article,
+  .policy-grid article,
+  .prepared-link,
+  .merchant-steps article,
+  .courier-journey article
+){
+  background:rgba(255,255,255,.76)!important;
+  border-color:rgba(17,67,55,.16)!important;
+  box-shadow:0 10px 32px rgba(23,58,47,.05);
+}
+html[data-theme="day"] :is(
+  .proof-strip strong,
+  .flavor-story h3,
+  .trust-grid h3,
+  .status-timeline h3,
+  .city-grid h3,
+  .confidence-grid h3,
+  .support-grid h2,
+  .policy-grid h2,
+  .prepared-link h3
+){color:#102019!important}
+
+/* Theme control */
+.theme-toggle{
+  position:relative;
+  width:58px;
+  height:34px;
+  flex:0 0 auto;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  align-items:center;
+  justify-items:center;
+  gap:0;
+  padding:3px;
+  border:1px solid var(--line-strong);
+  border-radius:999px;
+  color:var(--paper);
+  background:var(--surface);
+  cursor:pointer;
+  overflow:hidden;
+  isolation:isolate;
+  transition:border-color .18s ease,background .18s ease;
+}
+.theme-toggle::before{
+  content:"";
+  position:absolute;
+  z-index:-1;
+  left:3px;
+  top:3px;
+  width:26px;
+  height:26px;
+  border-radius:50%;
+  background:linear-gradient(135deg,#ffd985,#ffad61);
+  box-shadow:0 5px 16px rgba(0,0,0,.18);
+  transition:transform .22s ease,background .22s ease;
+}
+.theme-toggle[data-active-theme="night"]::before{
+  transform:translateX(26px);
+  background:linear-gradient(135deg,#d8e9ff,#8e9fe8);
+}
+.theme-toggle-icon{
+  font-size:14px;
+  line-height:1;
+  opacity:.55;
+  transition:opacity .18s ease,color .18s ease;
+}
+.theme-toggle[data-active-theme="day"] .theme-toggle-day,
+.theme-toggle[data-active-theme="night"] .theme-toggle-night{
+  color:#111;
+  opacity:1;
+}
+.theme-toggle:focus-visible{
+  outline:3px solid color-mix(in srgb,var(--da-focus) 55%,transparent);
+  outline-offset:3px;
+}
+.sr-only{
+  position:absolute!important;
+  width:1px!important;
+  height:1px!important;
+  padding:0!important;
+  margin:-1px!important;
+  overflow:hidden!important;
+  clip:rect(0,0,0,0)!important;
+  white-space:nowrap!important;
+  border:0!important;
+}
+.mobile-nav-panel .theme-toggle{margin:6px 8px 2px}
+
+/* Render below-fold sections only as they approach the viewport. */
+@supports (content-visibility:auto){
+  main > section:not(.c3-hero):not(.signal-marquee){
+    content-visibility:auto;
+    contain-intrinsic-size:auto 760px;
+  }
+}
+
+/* Mobile: preserve the signature, remove the expensive secondary glass/water work. */
+@media(max-width:780px){
+  .water-river-b,
+  .water-ripple-b,
+  .water-ripple-c,
+  .water-current-b{display:none!important}
+  .screen-condensation{opacity:.38!important}
+  .screen-condensation .glass-drop:nth-child(n+4){display:none!important}
+  .grain{opacity:.045!important}
+  .ambient{
+    opacity:.065!important;
+    filter:blur(72px)!important;
+  }
+  .nav-bar,
+  .surface-line,
+  .warmth-brand-medallion,
+  .signal-card,
+  .art-signal{
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+  }
+  .hero-proof span{
+    font-size:.62rem!important;
+    letter-spacing:.07em!important;
+    line-height:1.35!important;
+  }
+}
+
+@media(max-width:420px){
+  .screen-condensation{opacity:.28!important}
+  .water-layer.water-signature-v11{opacity:.72!important}
+  .theme-toggle{width:54px;height:32px}
+  .theme-toggle::before{width:24px;height:24px}
+  .theme-toggle[data-active-theme="night"]::before{transform:translateX(24px)}
+}
+
+/* Accessibility: stop all decorative animation when motion reduction is requested. */
+@media(prefers-reduced-motion:reduce){
+  .water-layer *,
+  .da-rain-canopy-v4 *,
+  .screen-condensation *,
+  .grain,
+  .ambient,
+  .signal-marquee div{
+    animation:none!important;
+    transition:none!important;
+  }
+}
