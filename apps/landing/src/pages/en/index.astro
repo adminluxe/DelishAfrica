@@ -8,8 +8,26 @@ import { en } from "../../data/content";
 import { release } from "../../config/site";
 ---
 <BaseLayout lang="en" title="DelishAfrica® — A continent of flavour, set in motion" description="African restaurants, culinary stories and orchestrated delivery." alternatePath="/">
-  <section class="c3-hero shell"><div class="c3-hero-copy"><p class="eyebrow">{en.home.eyebrow}</p><h1>{en.home.title}</h1><p class="hero-lead">{en.home.lead}</p><div class="hero-actions"><a class="button button-primary" href="/en/restaurants/">{en.home.primary}</a><a class="button button-ghost" href="#ecosystem">{en.home.secondary}</a></div><div class="hero-proof"><span>BRUSSELS · PILOT CITY</span><span>THIEYP · FEATURED PARTNER</span><span>{release.production ? "CLIENT · MERCHANT · COURIER" : "PRIVATE PREVIEW"}</span></div></div><div class="c3-hero-stage"><div class="stage-continent"><span>AFRICA</span></div><div class="stage-route route-one"></div><div class="stage-route route-two"></div><div class="stage-node node-table"><strong>TABLE</strong><small>Culture</small></div><div class="stage-node node-kitchen"><strong>KITCHEN</strong><small>Commerce</small></div><div class="stage-node node-route"><strong>ROUTE</strong><small>Motion</small></div></div></section>
+  <section class="c3-hero shell"><div class="c3-hero-copy"><p class="eyebrow">{en.home.eyebrow}</p><h1>{en.home.title}</h1><p class="hero-lead">{en.home.lead}</p><div class="hero-actions"><a class="button button-primary" href="/en/restaurants/">{en.home.primary}</a><a class="button button-ghost" href="#ecosystem">{en.home.secondary}</a></div><div class="hero-proof"><span>BRUSSELS · PILOT CITY</span><span>THIEYP + LA BOULE BLEUE · LIVE TABLES</span><span>{release.production ? "CLIENT · MERCHANT · COURIER" : "PRIVATE PREVIEW"}</span></div></div><div class="c3-hero-stage"><div class="stage-continent"><span>AFRICA</span></div><div class="stage-route route-one"></div><div class="stage-route route-two"></div><div class="stage-node node-table"><strong>TABLE</strong><small>Culture</small></div><div class="stage-node node-kitchen"><strong>KITCHEN</strong><small>Commerce</small></div><div class="stage-node node-route"><strong>ROUTE</strong><small>Motion</small></div></div></section>
   <section class="section shell"><p class="eyebrow">PRODUCT CONTENT</p><h2>Real dishes, presented as territories.</h2><div class="product-grid product-grid-three">{dishes.slice(0,3).map((dish) => <ProductCard {...dish}/>)}</div></section>
   <section id="ecosystem" class="section shell trust-section"><p class="eyebrow">TRUST SYSTEM</p><h2>Trust becomes an interface.</h2><TrustGrid lang="en"/></section>
   <section class="section shell"><p class="eyebrow">DELIVERY LANGUAGE</p><h2>Five states. One immediate reading.</h2><StatusTimeline lang="en"/></section>
+  <section id="live-tables" class="section shell live-partners-v3" data-da-live-bridge="v3">
+    <div class="live-partners-head">
+      <div><p class="eyebrow">LIVE TABLES · CLIENT LIVE</p><h2>The landing tells the story. Client confirms and orders.</h2></div>
+      <div><p class="live-partners-copy">Thieyp and La Boule Bleue are connected to the same Client journey. The landing remains editorial; menus, availability and ordering stay authoritative inside Client.</p><p class="live-bridge-note">BRUSSELS · TWO LIVE TABLES · CLIENT CATALOGUE</p></div>
+    </div>
+    <div class="live-partners-grid">
+      <article class="live-partner-card">
+        <picture class="live-partner-media"><img src="/media/partners/thieyp/chicken-1000.webp" alt="A dish served at Thieyp in Ixelles" loading="lazy" decoding="async"/></picture>
+        <span class="live-partner-waterline" aria-hidden="true"></span>
+        <div class="live-partner-content"><div class="live-partner-kicker"><span>THIEYP · IXELLES</span><span>SENEGALESE CUISINE</span></div><h3>Thieyp</h3><p>A signature Senegalese table already connected to the DelishAfrica Client journey.</p><a class="live-partner-action" href="https://client.delishafrica.me/menu?restaurantSlug=thieyp">Open the menu in Client <span>→</span></a></div>
+      </article>
+      <article class="live-partner-card">
+        <picture class="live-partner-media"><img src="/media/partners/la-boule-bleue/la-boule-bleue-cover.png" alt="La Boule Bleue, a DelishAfrica partner table in Brussels" loading="lazy" decoding="async"/></picture>
+        <span class="live-partner-waterline" aria-hidden="true"></span>
+        <div class="live-partner-content"><div class="live-partner-kicker"><span>LA BOULE BLEUE · BRUSSELS</span><span>WEST AFRICA · GRILLS</span></div><h3>La Boule Bleue</h3><p>A second live table proving that the public story and Client catalogue move together.</p><a class="live-partner-action" href="https://client.delishafrica.me/menu?restaurantSlug=la-boule-bleue">Open the menu in Client <span>→</span></a></div>
+      </article>
+    </div>
+  </section>
 </BaseLayout>
