@@ -6,8 +6,10 @@ const root = path.resolve(process.argv[2] || "dist");
 const htmlPath = path.join(root, "index.html");
 const html = fs.readFileSync(htmlPath, "utf8");
 const bytes = Buffer.byteLength(html);
-const stylesheetLinks = [...html.matchAll(/<link\b[^>]*rel=["']stylesheet["'][^>]*>/gi)];
-const individualWater = html.match(/water-(?:app-parity|cordon|rain-food|gala-v\d+)/gi) || [];
+const linkTags = [...html.matchAll(/<link\b[^>]*>/gi)].map((m) => m[0]);
+const stylesheetLinks = linkTags.filter((tag) => /\brel=["']stylesheet["']/i.test(tag));
+const hrefs = linkTags.map((tag) => tag.match(/\bhref=["']([^"']+)["']/i)?.[1]).filter(Boolean);
+const individualWater = hrefs.filter((href) => /\/water-(?:app-parity|cordon|rain-food|gala-v\d+)\.css(?:\?|$)/i.test(href));
 const required = [
   "water-live-v11.bundle.css",
   "delish-theme-v2.css",
