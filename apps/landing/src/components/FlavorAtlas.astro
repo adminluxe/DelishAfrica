@@ -2,7 +2,7 @@
 import { flavorStories } from "../data/catalog";
 ---
 <div class="flavor-atlas">
-  <div class="atlas-art"><img src="/brand/flavor-atlas.svg" alt="Constellation abstraite de plats africains" /></div>
+  <div class="atlas-art"><img src="/brand/flavor-atlas.svg" alt="Constellation abstraite de plats africains" loading="lazy" fetchpriority="low" decoding="async" /></div>
   <div class="atlas-stories">
     {flavorStories.map((story, index) => (
       <article class:list={["flavor-story", `flavor-${story.tone}`]}>
