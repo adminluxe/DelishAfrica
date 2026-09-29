@@ -41,6 +41,7 @@ jobs:
           test -f public/sitemap.xml
           test -f public/site.webmanifest.json
           test -f public/delish-theme-v2.css
+          test -f public/theme-controller-v3.js
           grep -q '<urlset' public/sitemap.xml
           grep -q 'https://delishafrica.me/' public/sitemap.xml
           grep -q 'Allow: /' public/robots.txt

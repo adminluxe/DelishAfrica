@@ -72,6 +72,7 @@ test -f dist/sitemap.xml
 test -f dist/site.webmanifest
 test -f dist/site.webmanifest.json
 test -f dist/delish-theme-v2.css
+test -f dist/theme-controller-v3.js
 test -f dist/cookies/index.html
 test -f dist/terms/index.html
 test -f dist/legal/index.html
@@ -118,7 +119,7 @@ echo "=== PRE-SWITCH STATIC PROBE ==="
 python3 -m http.server 18999 --bind 127.0.0.1 --directory "$NEW_RELEASE" >"$WORK/http.log" 2>&1 &
 HTTP_PID=$!
 sleep 1
-for p in / /robots.txt /site.webmanifest.json /sitemap.xml /delish-theme-v2.css /water-live-v11.bundle.css /privacy/ /cookies/ /terms/ /legal/; do
+for p in / /robots.txt /site.webmanifest.json /sitemap.xml /delish-theme-v2.css /theme-controller-v3.js /water-live-v11.bundle.css /privacy/ /cookies/ /terms/ /legal/; do
   code="$(curl -sS --max-time 5 -o /dev/null -w '%{http_code}' "http://127.0.0.1:18999$p")"
   echo "$p -> $code"
   test "$code" = "200"
@@ -133,7 +134,7 @@ nginx -t
 systemctl reload nginx
 
 echo "=== ORIGIN GATE ==="
-for p in / /robots.txt /site.webmanifest.json /sitemap.xml /delish-theme-v2.css /water-live-v11.bundle.css /privacy/ /cookies/ /terms/ /legal/; do
+for p in / /robots.txt /site.webmanifest.json /sitemap.xml /delish-theme-v2.css /theme-controller-v3.js /water-live-v11.bundle.css /privacy/ /cookies/ /terms/ /legal/; do
   code="$(curl -ksS --max-time 8 --resolve delishafrica.me:443:127.0.0.1 -o /dev/null -w '%{http_code}' "https://delishafrica.me$p")"
   type="$(curl -ksSI --max-time 8 --resolve delishafrica.me:443:127.0.0.1 "https://delishafrica.me$p" | awk -F': ' 'tolower($1)=="content-type"{print $2}' | tr -d '\r' | tail -1)"
   echo "$p -> HTTP=$code TYPE=$type"
@@ -150,7 +151,7 @@ echo "$MANIFEST_TYPE" | grep -Eq 'application/json|application/manifest\+json'
 trap - ERR
 
 echo "=== PUBLIC OBSERVATION ==="
-for p in / /robots.txt /site.webmanifest.json /sitemap.xml /delish-theme-v2.css /water-live-v11.bundle.css /privacy/ /cookies/ /terms/ /legal/; do
+for p in / /robots.txt /site.webmanifest.json /sitemap.xml /delish-theme-v2.css /theme-controller-v3.js /water-live-v11.bundle.css /privacy/ /cookies/ /terms/ /legal/; do
   curl -sS --max-time 8 -o /dev/null -w "$p -> HTTP=%{http_code} TYPE=%{content_type}\n" "https://delishafrica.me$p" || true
 done
 

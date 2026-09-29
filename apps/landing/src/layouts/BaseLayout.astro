@@ -51,18 +51,7 @@ const websiteSchema = {
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="theme-color" content="#f4f0e7"/>
   <meta name="color-scheme" content="light dark"/>
-  <script is:inline>
-    (() => {
-      const root = document.documentElement;
-      const key = "da-theme";
-      let stored = null;
-      try { stored = localStorage.getItem(key); } catch {}
-      const systemNight = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-      const theme = stored === "day" || stored === "night" ? stored : (systemNight ? "night" : "day");
-      root.dataset.theme = theme;
-      root.style.colorScheme = theme === "night" ? "dark" : "light";
-    })();
-  </script>
+  <script is:inline src="/theme-controller-v3.js"></script>
   <meta name="robots" content={robots}/>
   <meta name="description" content={description}/>
   <meta property="og:type" content="website"/>
@@ -99,84 +88,9 @@ const websiteSchema = {
 
   <!-- One non-blocking bundle replaces ten render-blocking WATER/GALA requests. -->
   <meta name="da-water-signature" content="water-gala-v11-bundled-20260929"/>
-  <link rel="preload" href="/water-live-v11.bundle.css?v=20260929" as="style"/>
-  <link
-    rel="stylesheet"
-    href="/water-live-v11.bundle.css?v=20260929"
-    media="print"
-    onload="this.media='all'"
-    data-da-water-bundle="v11"
-  />
-  <noscript><link rel="stylesheet" href="/water-live-v11.bundle.css?v=20260929"/></noscript>
+  <link rel="stylesheet" href="/water-live-v11.bundle.css?v=20260929" data-da-water-bundle="v11"/>
   <link rel="stylesheet" href="/delish-theme-v2.css?v=20260929" data-da-theme-css="v2"/>
   <title>{title}</title>
-  <script is:inline>
-    (() => {
-      const key = "da-theme";
-      const media = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
-
-      const apply = (theme, persist = false) => {
-        const safe = theme === "night" ? "night" : "day";
-        const root = document.documentElement;
-        root.dataset.theme = safe;
-        root.style.colorScheme = safe === "night" ? "dark" : "light";
-
-        const meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute("content", safe === "night" ? "#07110f" : "#f4f0e7");
-
-        document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
-          button.dataset.activeTheme = safe;
-          button.setAttribute("aria-pressed", String(safe === "night"));
-          const nextTitle = safe === "night" ? button.dataset.dayTitle : button.dataset.nightTitle;
-          if (nextTitle) {
-            button.setAttribute("title", nextTitle);
-            button.setAttribute("aria-label", nextTitle);
-          }
-        });
-
-        if (persist) {
-          try { localStorage.setItem(key, safe); } catch {}
-        }
-      };
-
-      document.addEventListener("click", (event) => {
-        const target = event.target;
-        if (!(target instanceof Element)) return;
-
-        const toggle = target.closest("[data-theme-toggle]");
-        if (toggle) {
-          event.preventDefault();
-          apply(document.documentElement.dataset.theme === "night" ? "day" : "night", true);
-          return;
-        }
-
-        const navLink = target.closest(".mobile-nav-panel a");
-        if (navLink) {
-          const details = navLink.closest("details.mobile-nav");
-          if (details) details.removeAttribute("open");
-        }
-      });
-
-      document.addEventListener("keydown", (event) => {
-        if (event.key !== "Escape") return;
-        document.querySelectorAll("details.mobile-nav[open]").forEach((details) => details.removeAttribute("open"));
-      });
-
-      const sync = () => apply(document.documentElement.dataset.theme || "day");
-      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", sync, { once: true });
-      else sync();
-
-      if (media) {
-        const followSystem = (event) => {
-          let stored = null;
-          try { stored = localStorage.getItem(key); } catch {}
-          if (!stored) apply(event.matches ? "night" : "day");
-        };
-        if (media.addEventListener) media.addEventListener("change", followSystem);
-        else if (media.addListener) media.addListener(followSystem);
-      }
-    })();
-  </script>
 </head>
 <body class="water-signature-v11-enabled water-signature-v11-final water-app-parity-v2">
   <div class="da-rain-canopy-v4" data-da-rain-canopy="v4" aria-hidden="true">
