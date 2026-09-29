@@ -3,9 +3,11 @@ name: DelishAfrica landing hardening
 on:
   push:
     branches:
+      - main
       - audit/landing-hardening-20260929
   pull_request:
     branches:
+      - main
       - release/landing-warmth-v11-final-5d9a53cab39b
   workflow_dispatch:
 
@@ -32,6 +34,9 @@ jobs:
       - name: Verify public legal/SEO files
         run: |
           test -f public/robots.txt
+          test -f public/sitemap.xml
+          grep -q '<urlset' public/sitemap.xml
+          grep -q 'https://delishafrica.me/' public/sitemap.xml
           grep -q 'Allow: /' public/robots.txt
           grep -q 'Sitemap: https://delishafrica.me/sitemap.xml' public/robots.txt
           test -f src/pages/cookies/index.astro
