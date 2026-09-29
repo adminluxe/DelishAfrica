@@ -300,3 +300,173 @@ html[data-theme="day"] :is(
     transition:none!important;
   }
 }
+
+
+/* ==================================================================
+   MOBILE MENU LAYER + EXPLICIT DAY/NIGHT VISUAL DIFFERENCE
+   2026-09-29 hotfix
+   ================================================================== */
+
+/* Header/menu must always win against WATER/GALA/hero stacking contexts. */
+.site-header{
+  z-index:5000!important;
+  isolation:isolate;
+}
+.nav-bar{
+  overflow:visible!important;
+}
+.mobile-nav{
+  position:static!important;
+  z-index:5002!important;
+}
+.mobile-nav[open]{
+  z-index:5003!important;
+}
+.mobile-nav[open]::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:5000;
+  background:rgba(2,8,7,.56);
+  -webkit-backdrop-filter:blur(3px);
+  backdrop-filter:blur(3px);
+}
+.mobile-nav summary{
+  position:relative;
+  z-index:5004!important;
+}
+.mobile-nav-panel{
+  position:fixed!important;
+  z-index:5005!important;
+  top:92px!important;
+  left:12px!important;
+  right:12px!important;
+  width:auto!important;
+  min-width:0!important;
+  max-width:none!important;
+  max-height:calc(100dvh - 112px);
+  overflow:auto;
+  padding:12px!important;
+  border-radius:22px!important;
+  background:rgba(6,15,13,.985)!important;
+  border:1px solid rgba(155,231,216,.26)!important;
+  box-shadow:0 30px 90px rgba(0,0,0,.64)!important;
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+}
+.mobile-nav-panel::before{
+  display:none!important;
+}
+.mobile-nav-panel a{
+  display:flex!important;
+  align-items:center;
+  min-height:48px;
+  padding:12px 14px!important;
+  border-radius:13px;
+  color:#fffaf0!important;
+  background:rgba(255,255,255,.035);
+  border:1px solid rgba(255,255,255,.055);
+  font-weight:720;
+}
+.mobile-nav-panel a + a{
+  margin-top:6px;
+}
+.mobile-nav-panel a:hover,
+.mobile-nav-panel a:focus-visible{
+  color:#111!important;
+  background:linear-gradient(135deg,#ffe091,#ffad61)!important;
+  outline:none;
+}
+html[data-theme="day"] .mobile-nav[open]::before{
+  background:rgba(21,42,34,.28);
+}
+html[data-theme="day"] .mobile-nav-panel{
+  background:rgba(255,251,243,.995)!important;
+  border-color:rgba(17,67,55,.17)!important;
+  box-shadow:0 28px 80px rgba(26,56,46,.22)!important;
+}
+html[data-theme="day"] .mobile-nav-panel a{
+  color:#183126!important;
+  background:rgba(16,52,42,.035);
+  border-color:rgba(17,67,55,.07);
+}
+html[data-theme="day"] .mobile-nav-panel a:hover,
+html[data-theme="day"] .mobile-nav-panel a:focus-visible{
+  color:#111!important;
+  background:linear-gradient(135deg,#ffd985,#ffad61)!important;
+}
+
+/* DAY must look like DAY: a high-contrast editorial card instead of a dark clone. */
+html[data-theme="day"] .c3-hero-copy{
+  position:relative;
+  padding:clamp(22px,4vw,44px);
+  border:1px solid rgba(17,67,55,.14);
+  border-radius:32px;
+  color:#12251d!important;
+  background:
+    radial-gradient(circle at 92% 8%,rgba(120,220,166,.13),transparent 32%),
+    linear-gradient(145deg,rgba(255,253,247,.96),rgba(244,240,231,.93));
+  box-shadow:0 24px 80px rgba(27,61,49,.13);
+}
+html[data-theme="day"] .c3-hero-copy h1{
+  color:#102019!important;
+  text-shadow:none!important;
+}
+html[data-theme="day"] .c3-hero-copy .eyebrow{
+  color:#805200!important;
+}
+html[data-theme="day"] .c3-hero-copy .hero-lead{
+  color:#33483f!important;
+  text-shadow:none!important;
+}
+html[data-theme="day"] .c3-hero .button-ghost{
+  color:#173128!important;
+  border-color:rgba(17,67,55,.28)!important;
+  background:rgba(255,255,255,.72)!important;
+}
+html[data-theme="day"] .hero-proof span{
+  color:#173128!important;
+  border-color:rgba(17,67,55,.20)!important;
+  background:rgba(255,255,255,.72)!important;
+  box-shadow:none!important;
+}
+html[data-theme="night"] .c3-hero-copy{
+  color:#fffaf0;
+}
+
+/* Toggle itself should clearly acknowledge the active state. */
+.theme-toggle{
+  touch-action:manipulation;
+}
+.theme-toggle[data-active-theme="day"]{
+  background:rgba(255,248,228,.96)!important;
+  border-color:rgba(124,91,25,.24)!important;
+}
+.theme-toggle[data-active-theme="night"]{
+  background:rgba(15,25,43,.96)!important;
+  border-color:rgba(166,190,235,.28)!important;
+}
+.theme-toggle[data-active-theme="night"] .theme-toggle-day{
+  color:#d7c487;
+}
+.theme-toggle[data-active-theme="night"] .theme-toggle-night{
+  color:#0b1020!important;
+}
+
+@media(max-width:780px){
+  .mobile-nav-panel{
+    top:82px!important;
+  }
+  html[data-theme="day"] .c3-hero-copy{
+    padding:22px 18px;
+    border-radius:26px;
+  }
+}
+
+@media(max-width:420px){
+  .mobile-nav-panel{
+    top:76px!important;
+    left:10px!important;
+    right:10px!important;
+  }
+}
