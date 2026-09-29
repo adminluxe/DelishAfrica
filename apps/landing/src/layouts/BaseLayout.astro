@@ -21,33 +21,70 @@ const {
   noindex = false,
 } = Astro.props;
 const canonical = new URL(Astro.url.pathname, site.url);
-const robots = noindex || !site.indexable ? "noindex,nofollow,noarchive" : "index,follow,max-image-preview:large";
+const robots = noindex || !site.indexable ? "noindex,nofollow,noarchive" : "index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1";
 const alternate = alternatePath ? new URL(alternatePath, site.url) : undefined;
+const locale = lang === "en" ? "en_GB" : "fr_BE";
+const alternateLocale = lang === "en" ? "fr_BE" : "en_GB";
 ---
 <!doctype html>
 <html lang={lang}>
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <meta name="theme-color" content="#070707"/>
-  <meta name="color-scheme" content="dark"/>
+  <meta name="theme-color" content="#F3F8FB"/>
+  <meta name="color-scheme" content="light"/>
   <meta name="robots" content={robots}/>
   <meta name="description" content={description}/>
   <meta property="og:type" content="website"/>
   <meta property="og:site_name" content={site.name}/>
+  <meta property="og:locale" content={locale}/>
+  <meta property="og:locale:alternate" content={alternateLocale}/>
   <meta property="og:title" content={title}/>
   <meta property="og:description" content={description}/>
   <meta property="og:url" content={canonical.toString()}/>
   <meta property="og:image" content={`${site.url}/og-preview.svg`}/>
+  <meta property="og:image:alt" content="DelishAfrica — Le goût d’un continent, mis en mouvement"/>
   <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content={title}/>
+  <meta name="twitter:description" content={description}/>
+  <meta name="twitter:image" content={`${site.url}/og-preview.svg`}/>
   <link rel="canonical" href={canonical.toString()}/>
   {alternate && <link rel="alternate" hreflang={lang === "fr" ? "en" : "fr"} href={alternate.toString()}/>}
   <link rel="alternate" hreflang="x-default" href={site.url}/>
   <link rel="icon" href="/media/brand/favicon.png" type="image/png"/>
   <link rel="manifest" href="/site.webmanifest"/>
+
+  <!-- Certified live visual stack preserved from the 2026-09-19 public release. -->
+  <meta name="da-water-signature" content="water-app-parity-v2-20260906"/>
+  <link rel="stylesheet" href="/water-app-parity-v2.css?v=20260906" data-da-water-app-parity="v2"/>
+  <link rel="stylesheet" href="/water-cordon-v3.css" data-da-water-cordon="v3"/>
+  <meta name="da-release-marker" content="da-assets-water-cordon-v3-20260906"/>
+  <link rel="stylesheet" href="/water-rain-food-v4.css" data-da-water-rain-food="v4"/>
+  <meta name="da-gala-marker" content="one-ocean-v5-20260919_025714"/>
+  <link rel="stylesheet" href="/water-gala-v5.css?v=20260919_025714" data-da-gala="one-ocean-v5"/>
+  <meta name="da-gala-physical-marker" content="physical-matter-v6-20260919_044919"/>
+  <link rel="stylesheet" href="/water-gala-v6.css?v=20260919_044919" data-da-gala-physical="physical-matter-v6"/>
+  <meta name="da-gala-signature-marker" content="signature-water-v7-20260919_115625"/>
+  <link rel="stylesheet" href="/water-gala-v7.css?v=20260919_115625" data-da-gala-signature="signature-water-v7"/>
+  <meta name="da-gala-deep-state-marker" content="deep-state-v8-20260919_123454"/>
+  <link rel="stylesheet" href="/water-gala-v8.css?v=20260919_123454" data-da-gala-deep-state="deep-state-v8"/>
+  <meta name="da-gala-intelligence-wake-marker" content="intelligence-wake-v9-20260919_142211"/>
+  <link rel="stylesheet" href="/water-gala-v9.css?v=20260919_142211" data-da-gala-intelligence-wake="intelligence-wake-v9"/>
+  <meta name="da-gala-network-organism-marker" content="network-organism-v10-20260919_213451"/>
+  <link rel="stylesheet" href="/water-gala-v10.css?v=20260919_213451" data-da-gala-network-organism="network-organism-v10"/>
+  <meta name="da-gala-refractive-intelligence-marker" content="refractive-intelligence-v11-20260919_230628"/>
+  <link rel="stylesheet" href="/water-gala-v11.css?v=20260919_230628" data-da-gala-refractive-intelligence="refractive-intelligence-v11"/>
   <title>{title}</title>
 </head>
-<body class="water-signature-v11-enabled water-signature-v11-final">
+<body class="water-signature-v11-enabled water-signature-v11-final water-app-parity-v2">
+  <div class="da-rain-canopy-v4" data-da-rain-canopy="v4" aria-hidden="true">
+    <span class="da-rain-track-v4 da-rain-far-v4"></span>
+    <span class="da-rain-track-v4 da-rain-near-v4"></span>
+    <span class="da-wet-lens-v4"></span>
+    <span class="da-specular-v4"></span>
+    <span class="da-gravity-drop-v4 da-gravity-drop-a-v4"></span>
+    <span class="da-gravity-drop-v4 da-gravity-drop-b-v4"></span>
+  </div>
   <a class="skip-link" href="#main">{lang === "en" ? "Skip to content" : "Aller au contenu"}</a>
   <div class="grain" aria-hidden="true"></div>
   <div class="ambient ambient-a" aria-hidden="true"></div>
