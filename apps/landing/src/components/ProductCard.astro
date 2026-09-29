@@ -1,10 +1,40 @@
 ---
 import { release } from "../config/site";
-interface Props { name: string; origin: string; family: string; note: string; price: string; tone: string }
-const { name, origin, family, note, price, tone } = Astro.props;
+interface Props { slug: string; name: string; origin: string; family: string; note: string; price: string; tone: string }
+const { slug, name, origin, family, note, price, tone } = Astro.props;
+const editorial = {
+  "rice-and-peace": {
+    src: "/media/dishes/editorial/rice-and-peace.jpg",
+    alt: "Thiéboudienne sénégalaise, riz au poisson illustrant Rice & Peace",
+    credit: "KVDP · domaine public",
+  },
+  "yassa-poulet": {
+    src: "/media/dishes/editorial/yassa-poulet.jpg",
+    alt: "Poulet yassa sénégalais servi avec riz et oignons citronnés",
+    credit: "InspiFood · CC BY-SA 4.0",
+  },
+  "mafe-viande": {
+    src: "/media/dishes/editorial/mafe-boeuf.jpg",
+    alt: "Mafé au bœuf, ragoût ouest-africain à la sauce arachide",
+    credit: "Sebleouf · CC BY-SA 4.0",
+  },
+  "attieke-poisson": {
+    src: "/media/dishes/editorial/attieke-poisson.jpg",
+    alt: "Attiéké ivoirien accompagné de poisson",
+    credit: "Zakouski · CC BY-SA 4.0",
+  },
+} as const;
+const photo = editorial[slug as keyof typeof editorial];
 ---
 <article class:list={["product-card", `product-${tone}`]}>
-  <div class="product-visual" aria-hidden="true"><span></span><i></i></div>
+  {photo ? (
+    <figure class="product-photo-v4" data-da-food-image-v4="1">
+      <img src={photo.src} alt={photo.alt} loading="lazy" decoding="async"/>
+      <figcaption>{photo.credit} · <a href="/photo-credits/">crédits</a></figcaption>
+    </figure>
+  ) : (
+    <div class="product-visual" aria-hidden="true"><span></span><i></i></div>
+  )}
   <div class="product-meta"><span>{origin}</span><span>{family}</span></div>
   <h3>{name}</h3><p>{note}</p>
   <div class="product-footer"><strong>{release.production ? "Voir le menu" : price}</strong><span>{release.production ? "DANS L’EXPÉRIENCE CLIENT" : "APERÇU PRIVÉ"}</span></div>
