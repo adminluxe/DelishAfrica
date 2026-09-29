@@ -72,6 +72,7 @@ test -f dist/sitemap.xml
 test -f dist/site.webmanifest
 test -f dist/site.webmanifest.json
 test -f dist/delish-theme-v2.css
+test -f dist/theme-controller-v3.js
 test -f dist/cookies/index.html
 test -f dist/terms/index.html
 test -f dist/legal/index.html
