@@ -3,6 +3,6 @@ interface Props { number: string; name: string; promise: string; description: st
 const { number, name, promise, description, href, image, tone } = Astro.props;
 ---
 <a class:list={["experience-door", `door-${tone}`]} href={href}>
-  <div class="door-visual"><img src={image} alt="" /></div>
+  <div class="door-visual"><img src={image} alt="" loading="lazy" fetchpriority="low" decoding="async" /></div>
   <div class="door-copy"><span>{number} · {name}</span><h3>{promise}</h3><p>{description}</p><strong>Entrer dans l’univers <i aria-hidden="true">↗</i></strong></div>
 </a>
