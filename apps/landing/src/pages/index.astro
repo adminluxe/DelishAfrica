@@ -20,7 +20,7 @@ import { release } from "../config/site";
       <h1>{fr.home.title}</h1>
       <p class="hero-lead">{fr.home.lead}</p>
       <div class="hero-actions"><a class="button button-primary" href="/restaurants/">{fr.home.primary}</a><a class="button button-ghost" href="#ecosystem">{fr.home.secondary}</a></div>
-      <div class="hero-proof"><span>BRUXELLES · VILLE PILOTE</span><span>THIEYP · PARTENAIRE EN LUMIÈRE</span><span>{release.production ? "CLIENT · MERCHANT · COURIER" : "PRÉVISUALISATION PRIVÉE"}</span></div>
+      <div class="hero-proof"><span>BRUXELLES · VILLE PILOTE</span><span>THIEYP + LA BOULE BLEUE · TABLES ACTIVES</span><span>{release.production ? "CLIENT · MERCHANT · COURIER" : "PRÉVISUALISATION PRIVÉE"}</span></div>
     </div>
     <WarmthHeroStage/>
   </section>
@@ -78,5 +78,24 @@ import { release } from "../config/site";
   <section class="section shell closing-manifesto">
     <p class="eyebrow">THIS IS DELISHAFRICA®</p><h2>Une infrastructure culturelle, culinaire et logistique pensée pour rayonner mondialement.</h2>
     <div class="closing-actions"><a class="button button-primary" href="/client/">Entrer côté Client</a><a class="button button-ghost" href="/trust/">Lire notre système de confiance</a></div>
+  </section>
+
+  <section id="tables-live" class="section shell live-partners-v3" data-da-live-bridge="v3">
+    <div class="live-partners-head">
+      <div><p class="eyebrow">TABLES ACTIVES · CLIENT LIVE</p><h2>La vitrine raconte. Client confirme et commande.</h2></div>
+      <div><p class="live-partners-copy">Thieyp et La Boule Bleue sont reliés au même parcours Client. La landing reste éditoriale ; menus, disponibilité et commande restent pilotés par l’expérience Client.</p><p class="live-bridge-note">BRUXELLES · DEUX TABLES ACTIVES · CATALOGUE CLIENT</p></div>
+    </div>
+    <div class="live-partners-grid">
+      <article class="live-partner-card">
+        <picture class="live-partner-media"><img src="/media/partners/thieyp/chicken-1000.webp" alt="Une assiette servie chez Thieyp à Ixelles" loading="lazy" decoding="async"/></picture>
+        <span class="live-partner-waterline" aria-hidden="true"></span>
+        <div class="live-partner-content"><div class="live-partner-kicker"><span>THIEYP · IXELLES</span><span>CUISINE SÉNÉGALAISE</span></div><h3>Thieyp</h3><p>Une table sénégalaise signature déjà intégrée au parcours DelishAfrica.</p><a class="live-partner-action" href="https://client.delishafrica.me/menu?restaurantSlug=thieyp">Voir le menu dans Client <span>→</span></a></div>
+      </article>
+      <article class="live-partner-card">
+        <picture class="live-partner-media"><img src="/media/partners/la-boule-bleue/la-boule-bleue-cover.png" alt="La Boule Bleue, table partenaire DelishAfrica à Bruxelles" loading="lazy" decoding="async"/></picture>
+        <span class="live-partner-waterline" aria-hidden="true"></span>
+        <div class="live-partner-content"><div class="live-partner-kicker"><span>LA BOULE BLEUE · BRUXELLES</span><span>AFRIQUE DE L’OUEST · GRILLADES</span></div><h3>La Boule Bleue</h3><p>Une deuxième table active qui confirme que la vitrine et le catalogue Client avancent ensemble.</p><a class="live-partner-action" href="https://client.delishafrica.me/menu?restaurantSlug=la-boule-bleue">Voir le menu dans Client <span>→</span></a></div>
+      </article>
+    </div>
   </section>
 </BaseLayout>
