@@ -57,6 +57,13 @@ jobs:
           test -f dist/en/support/index.html
           grep -q 'Cadre Courier' dist/courier/index.html
           grep -q 'Courier framework' dist/en/courier/index.html
+          grep -q 'CADRES PAYS · V0.1' dist/courier/index.html
+          grep -q 'COUNTRY FRAMEWORKS · V0.1' dist/en/courier/index.html
+          grep -q 'Belgique' dist/courier/index.html
+          grep -q 'France' dist/courier/index.html
+          grep -q 'Luxembourg' dist/courier/index.html
+          grep -q 'Cameroun' dist/courier/index.html
+          grep -q 'Cameroon' dist/en/courier/index.html
           test ! -e public/data/intake-contract.private.json
           test ! -e public/data/smart-links.prepared.json
           test ! -e public/scripts/private-interactions.js
