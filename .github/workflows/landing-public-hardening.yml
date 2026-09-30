@@ -49,6 +49,21 @@ jobs:
           test -f src/pages/terms/index.astro
           test -f src/pages/legal/index.astro
           test -f src/pages/photo-credits/index.astro
+          test -f dist/courier/index.html
+          test -f dist/devenir-coursier/index.html
+          test -f dist/support/index.html
+          test -f dist/en/courier/index.html
+          test -f dist/en/become-a-courier/index.html
+          test -f dist/en/support/index.html
+          grep -q 'Cadre Courier' dist/courier/index.html
+          grep -q 'Courier framework' dist/en/courier/index.html
+          grep -q 'CADRES PAYS · V0.1' dist/courier/index.html
+          grep -q 'COUNTRY FRAMEWORKS · V0.1' dist/en/courier/index.html
+          grep -q 'Belgique' dist/courier/index.html
+          grep -q 'France' dist/courier/index.html
+          grep -q 'Luxembourg' dist/courier/index.html
+          grep -q 'Cameroun' dist/courier/index.html
+          grep -q 'Cameroon' dist/en/courier/index.html
           test ! -e public/data/intake-contract.private.json
           test ! -e public/data/smart-links.prepared.json
           test ! -e public/scripts/private-interactions.js

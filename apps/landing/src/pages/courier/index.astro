@@ -1,10 +1,153 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import PreparedAppLink from "../../components/PreparedAppLink.astro";
+import CourierCountryFrameworks from "../../components/CourierCountryFrameworks.astro";
 ---
-<BaseLayout title="Expérience Courier — DelishAfrica®" description="Candidature, confiance, missions et progression dans une expérience terrain claire." alternatePath="/en/courier/">
-  <section class="gateway-v3 shell gateway-courier"><div><p class="eyebrow">COURIER · MOVE THE FUTURE</p><h1>Une mission claire. Une route lisible. Une progression digne.</h1><p class="hero-lead">La landing explique le réseau. Courier prend le relais pour les documents, les missions, l’ETA et l’activité terrain.</p><div class="hero-actions"><a class="button button-primary" href="/devenir-coursier/">Découvrir la candidature</a><a class="button button-ghost" href="/trust/">Comprendre la séparation des données</a></div></div><div class="gateway-panel courier-panel"><span>ROUTE ORACLE</span><strong>TRUST<br/>IN MOTION</strong><small>ONBOARDING · ETA · MISSIONS</small></div></section>
-  <section class="section shell courier-journey"><article><span>01</span><h3>Comprendre</h3><p>Conditions, étapes et documents sont expliqués avant toute collecte.</p></article><article><span>02</span><h3>Candidater</h3><p>Le futur formulaire restera derrière un contrat same-origin et versionné.</p></article><article><span>03</span><h3>Être vérifié</h3><p>Les pièces KYC restent privées, contrôlées et séparées du contenu public.</p></article><article><span>04</span><h3>Être activé</h3><p>L’application Courier devient l’espace d’activité, de missions et de progression.</p></article></section>
-  <section class="section shell route-preview"><div class="route-map"><span class="route-point point-a">R</span><span class="route-line"></span><span class="route-point point-b">C</span></div><div><p class="eyebrow">ETA &amp; MISSION CLARITY</p><h2>La technologie sert la décision terrain.</h2><p>Distance, statut et prochaine action doivent être compris en quelques secondes, sans automatiser une récupération ou une livraison.</p></div></section>
-  <section class="section shell"><PreparedAppLink role="courier" label="Ouverture Courier préparée" detail="Le scheme applicatif est connu. La liaison domaine-app restera inactive tant que les fichiers d’association ne sont pas validés."/></section>
+<BaseLayout
+  title="Cadre Courier — DelishAfrica®"
+  description="Statut, rémunération, données, sécurité et recours : le cadre public DelishAfrica Courier avant l’ouverture."
+  alternatePath="/en/courier/"
+>
+  <section class="gateway-v3 shell gateway-courier">
+    <div>
+      <p class="eyebrow">COURIER · MOVE THE FUTURE</p>
+      <h1>Une mission claire. Des règles lisibles. Un recours humain.</h1>
+      <p class="hero-lead">
+        DelishAfrica prépare Courier avec un principe simple : aucun coursier ne devrait découvrir son statut,
+        sa rémunération, l’usage de ses données ou ses voies de recours après avoir commencé à travailler.
+      </p>
+      <div class="hero-actions">
+        <a class="button button-primary" href="#cadre-courier">Lire le cadre Courier</a>
+        <a class="button button-ghost" href="/devenir-coursier/">Voir le parcours de candidature</a>
+      </div>
+    </div>
+    <div class="gateway-panel courier-panel">
+      <span>COURIER FRAMEWORK · V0.1</span>
+      <strong>TRUST<br/>IN MOTION</strong>
+      <small>STATUS · PAY · DATA · APPEAL</small>
+    </div>
+  </section>
+
+  <section id="cadre-courier" class="section shell">
+    <p class="eyebrow">AVANT L’OUVERTURE</p>
+    <h2>Six engagements de conception avant la première mission.</h2>
+    <p class="hero-lead">
+      Ce cadre public n’est pas encore un contrat de travail ou de collaboration. Les conditions définitives seront
+      publiées pays par pays avant l’activation de tout coursier.
+    </p>
+
+    <div class="courier-values">
+      <article>
+        <span>01 · STATUT</span>
+        <h3>Le réel avant l’étiquette.</h3>
+        <p>
+          Le statut applicable sera déterminé selon le fonctionnement réel du service et le droit local, pas par un
+          simple intitulé contractuel. Les droits, obligations et conditions correspondantes devront être expliqués
+          avant activation.
+        </p>
+      </article>
+
+      <article>
+        <span>02 · RÉMUNÉRATION</span>
+        <h3>Comprendre avant d’accepter.</h3>
+        <p>
+          La méthode de calcul, les éléments connus d’une mission, le calendrier de paiement, les éventuels frais et
+          primes devront être présentés de façon lisible. Toute grille future sera versionnée et annoncée avant son
+          application.
+        </p>
+      </article>
+
+      <article>
+        <span>03 · LIBERTÉ DE MISSION</span>
+        <h3>Pas de sanction cachée.</h3>
+        <p>
+          Le produit est conçu pour distinguer disponibilité, proposition et acceptation. Un refus de mission ne doit
+          pas, à lui seul, provoquer une désactivation automatique ni réduire l’accès aux futures propositions. Toute
+          contrainte nécessaire pour la sécurité ou le droit applicable devra être clairement expliquée.
+        </p>
+      </article>
+
+      <article>
+        <span>04 · DÉSACTIVATION & RECOURS</span>
+        <h3>Une décision importante mérite un humain.</h3>
+        <p>
+          Une suspension ou désactivation définitive ne doit pas reposer uniquement sur une décision automatisée.
+          Motif compréhensible, possibilité de présenter sa version et canal de recours humain font partie du cadre
+          cible avant lancement.
+        </p>
+      </article>
+
+      <article>
+        <span>05 · DONNÉES & ALGORITHMES</span>
+        <h3>La géolocalisation a une finalité.</h3>
+        <p>
+          Les données de position, de mission et de performance doivent être limitées à ce qui est nécessaire au
+          service, à la sécurité et aux obligations applicables. Les mécanismes automatisés ayant un effet important
+          sur l’activité devront être expliqués en langage clair.
+        </p>
+      </article>
+
+      <article>
+        <span>06 · SÉCURITÉ & PROTECTION</span>
+        <h3>Pas de mission sans cadre de protection.</h3>
+        <p>
+          Assurance requise, incidents, équipement, prévention et assistance seront cadrés par pays avant ouverture.
+          DelishAfrica ne doit pas activer un marché tant que les protections obligatoires ne sont pas vérifiées.
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section shell route-preview">
+    <div class="route-map">
+      <span class="route-point point-a">R</span>
+      <span class="route-line"></span>
+      <span class="route-point point-b">C</span>
+    </div>
+    <div>
+      <p class="eyebrow">ETA &amp; MISSION CLARITY</p>
+      <h2>La technologie sert la décision terrain.</h2>
+      <p>
+        Distance, rémunération annoncée, statut de mission et prochaine action doivent être compris en quelques
+        secondes. La route proposée reste une aide opérationnelle, pas une justification pour masquer les règles qui
+        gouvernent l’activité.
+      </p>
+    </div>
+  </section>
+
+  <CourierCountryFrameworks lang="fr" />
+
+  <section class="section shell policy-grid" id="dialogue">
+    <article>
+      <h2>Ce qui est ouvert aujourd’hui</h2>
+      <p>
+        Le dialogue avec les représentants de coursiers, l’audit du cadre juridique, la préparation produit et les
+        tests de l’application Courier.
+      </p>
+    </article>
+    <article>
+      <h2>Ce qui n’est pas encore ouvert</h2>
+      <p>
+        Aucune mission rémunérée, aucun recrutement massif et aucune collecte publique de documents KYC ne sont
+        ouverts depuis cette landing tant que les conditions pays ne sont pas finalisées.
+      </p>
+    </article>
+    <article>
+      <h2>Un cadre par pays</h2>
+      <p>
+        Statut, rémunération, assurance, fiscalité, recours et documents nécessaires seront publiés dans des annexes
+        locales avant activation en Belgique, France, Luxembourg ou Cameroun.
+      </p>
+    </article>
+  </section>
+
+  <section class="section shell apply-bridge">
+    <p class="eyebrow">CO-DESIGN TERRAIN</p>
+    <h2>Construire avec les coursiers avant de construire autour d’eux.</h2>
+    <p>
+      Les retours des coursiers et de leurs représentants sont intégrés avant le lancement opérationnel. Ce cadre sera
+      mis à jour à mesure que les décisions juridiques, contractuelles et produit seront validées.
+    </p>
+    <a class="button button-primary" href="/devenir-coursier/">Comprendre le futur onboarding</a>
+    <a class="text-link" href="/support/">Accéder au support →</a>
+  </section>
 </BaseLayout>

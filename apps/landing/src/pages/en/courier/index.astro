@@ -1,8 +1,147 @@
 ---
 import BaseLayout from "../../../layouts/BaseLayout.astro";
-import PreparedAppLink from "../../../components/PreparedAppLink.astro";
+import CourierCountryFrameworks from "../../../components/CourierCountryFrameworks.astro";
 ---
-<BaseLayout lang="en" title="Courier experience — DelishAfrica®" description="Private courier experience preview." alternatePath="/courier/">
-  <section class="gateway-v3 shell gateway-courier"><div><p class="eyebrow">COURIER · PRIVATE PRODUCT PREVIEW</p><h1>A clear mission. A readable route. A dignified progression.</h1><p class="hero-lead">Understand the network before moving into private documents, missions and field activity.</p><div class="hero-actions"><a class="button button-primary" href="/en/trust/">Explore trust</a><a class="button button-ghost" href="/en/restaurants/">See restaurants</a></div></div><div class="gateway-panel courier-panel"><span>DELISHAFRICA SIGNAL</span><strong>COURIER<br/>EXPERIENCE</strong><small>PRIVATE · STRUCTURED · PREPARED</small></div></section>
-  <section class="section shell"><PreparedAppLink role="courier" label="Courier opening prepared" detail="The application scheme and web fallback are documented, while public domain association remains inactive." lang="en"/></section>
+<BaseLayout
+  lang="en"
+  title="Courier framework — DelishAfrica®"
+  description="Status, pay, data, safety and appeal: DelishAfrica Courier's public pre-launch framework."
+  alternatePath="/courier/"
+>
+  <section class="gateway-v3 shell gateway-courier">
+    <div>
+      <p class="eyebrow">COURIER · MOVE THE FUTURE</p>
+      <h1>A clear mission. Readable rules. Human review.</h1>
+      <p class="hero-lead">
+        DelishAfrica is preparing Courier around a simple principle: no courier should discover their status,
+        pay model, data use or appeal rights after they have started working.
+      </p>
+      <div class="hero-actions">
+        <a class="button button-primary" href="#courier-framework">Read the Courier framework</a>
+        <a class="button button-ghost" href="/en/become-a-courier/">See the application journey</a>
+      </div>
+    </div>
+    <div class="gateway-panel courier-panel">
+      <span>COURIER FRAMEWORK · V0.1</span>
+      <strong>TRUST<br/>IN MOTION</strong>
+      <small>STATUS · PAY · DATA · APPEAL</small>
+    </div>
+  </section>
+
+  <section id="courier-framework" class="section shell">
+    <p class="eyebrow">BEFORE LAUNCH</p>
+    <h2>Six design commitments before the first mission.</h2>
+    <p class="hero-lead">
+      This public framework is not yet an employment or commercial contract. Final conditions will be published
+      country by country before any courier is activated.
+    </p>
+
+    <div class="courier-values">
+      <article>
+        <span>01 · STATUS</span>
+        <h3>Reality before labels.</h3>
+        <p>
+          The applicable status will be determined by how the service actually operates and by local law, not by a
+          contractual label alone. Related rights, obligations and conditions must be explained before activation.
+        </p>
+      </article>
+
+      <article>
+        <span>02 · PAY</span>
+        <h3>Understand before accepting.</h3>
+        <p>
+          The calculation method, known mission elements, payment schedule, fees and incentives must be readable.
+          Any future rate card will be versioned and announced before it takes effect.
+        </p>
+      </article>
+
+      <article>
+        <span>03 · MISSION CHOICE</span>
+        <h3>No hidden penalty.</h3>
+        <p>
+          The product is designed to distinguish availability, offer and acceptance. Declining a mission should not,
+          by itself, trigger automatic deactivation or lower access to future offers. Any constraint required for safety or local law must be stated.
+        </p>
+      </article>
+
+      <article>
+        <span>04 · DEACTIVATION & APPEAL</span>
+        <h3>Important decisions deserve a human.</h3>
+        <p>
+          A suspension or permanent deactivation should not rely solely on an automated decision. An understandable
+          reason, a chance to present the courier's position and a human appeal channel are part of the target framework.
+        </p>
+      </article>
+
+      <article>
+        <span>05 · DATA & ALGORITHMS</span>
+        <h3>Location data needs a purpose.</h3>
+        <p>
+          Location, mission and performance data should be limited to what is necessary for the service, safety and
+          applicable obligations. Automated systems that materially affect activity should be explained in plain language.
+        </p>
+      </article>
+
+      <article>
+        <span>06 · SAFETY & PROTECTION</span>
+        <h3>No mission without a protection framework.</h3>
+        <p>
+          Required insurance, incident handling, equipment, prevention and assistance will be defined by country before
+          launch. DelishAfrica should not activate a market until mandatory protections have been checked.
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section shell route-preview">
+    <div class="route-map">
+      <span class="route-point point-a">R</span>
+      <span class="route-line"></span>
+      <span class="route-point point-b">C</span>
+    </div>
+    <div>
+      <p class="eyebrow">ETA &amp; MISSION CLARITY</p>
+      <h2>Technology should support field decisions.</h2>
+      <p>
+        Distance, disclosed compensation, mission status and the next action should be understandable in seconds.
+        Route intelligence is an operational aid, not a reason to hide the rules governing the work.
+      </p>
+    </div>
+  </section>
+
+  <CourierCountryFrameworks lang="en" />
+
+  <section class="section shell policy-grid" id="dialogue">
+    <article>
+      <h2>Open today</h2>
+      <p>
+        Dialogue with courier representatives, legal-framework review, product preparation and Courier application testing.
+      </p>
+    </article>
+    <article>
+      <h2>Not open yet</h2>
+      <p>
+        No paid missions, mass recruitment or public KYC-document collection are open from this landing until country
+        conditions are finalized.
+      </p>
+    </article>
+    <article>
+      <h2>One framework per country</h2>
+      <p>
+        Status, pay, insurance, taxation, appeal and required documents will be published through local annexes before
+        activation in Belgium, France, Luxembourg or Cameroon.
+      </p>
+    </article>
+  </section>
+
+  <section class="section shell apply-bridge">
+    <p class="eyebrow">FIELD CO-DESIGN</p>
+    <h2>Build with couriers before building around them.</h2>
+    <p>
+      Feedback from couriers and their representatives is incorporated before operational launch. This framework will
+      evolve as legal, contractual and product decisions are validated.
+    </p>
+    <a class="button button-primary" href="/en/become-a-courier/">Understand the future onboarding</a>
+    <a class="text-link" href="/en/support/">Open support →</a>
+  </section>
 </BaseLayout>

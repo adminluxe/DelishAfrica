@@ -578,7 +578,9 @@ const deliveryEtaMin = etaMin(deliveryDistanceKm, courier.vehicle);
 const pickupEtaScore = scoreFromEta(pickupEtaMin, 7, 25);
 const deliveryEtaScore = scoreFromEta(deliveryEtaMin, 12, 35);
 const loadScore = scoreFromLoad(courier.activeMissions);
-const reliabilityScore = clamp((courier.reliabilityScore * 0.7) + (courier.acceptanceRate * 0.3));
+// Courier-policy guardrail: a declined offer must not lower future access to missions.
+// acceptanceRate remains observable input for diagnostics, but it is intentionally excluded from assignment scoring.
+const reliabilityScore = clamp(courier.reliabilityScore);
 const freshnessScore = scoreFromFreshness(courier.lastSeenSec);
 const fairnessScore = scoreFromFairness(courier.completedToday, courier.activeMissions);
 
