@@ -29,7 +29,7 @@ export const appGateways = {
   courier: {
     label: "Courier",
     scheme: "delishafricacourier://",
-    web: "https://courier.delishafrica.me",
+    web: "https://delishafrica.me/courier/",
     preparedPath: "/open/courier/",
   },
 } as const;
