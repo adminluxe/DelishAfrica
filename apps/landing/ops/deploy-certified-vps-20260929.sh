@@ -76,6 +76,12 @@ test -f dist/cookies/index.html
 test -f dist/terms/index.html
 test -f dist/legal/index.html
 test -f dist/privacy/index.html
+test -f dist/courier/index.html
+test -f dist/devenir-coursier/index.html
+test -f dist/support/index.html
+test -f dist/en/courier/index.html
+test -f dist/en/become-a-courier/index.html
+test -f dist/en/support/index.html
 
 mkdir -p "$NEW_RELEASE"
 cp -a dist/. "$NEW_RELEASE/"
@@ -118,7 +124,7 @@ echo "=== PRE-SWITCH STATIC PROBE ==="
 python3 -m http.server 18999 --bind 127.0.0.1 --directory "$NEW_RELEASE" >"$WORK/http.log" 2>&1 &
 HTTP_PID=$!
 sleep 1
-for p in / /robots.txt /site.webmanifest.json /sitemap.xml /delish-theme-v2.css /water-live-v11.bundle.css /privacy/ /cookies/ /terms/ /legal/; do
+for p in / /robots.txt /site.webmanifest.json /sitemap.xml /delish-theme-v2.css /water-live-v11.bundle.css /privacy/ /cookies/ /terms/ /legal/ /courier/ /devenir-coursier/ /support/ /en/courier/ /en/become-a-courier/ /en/support/; do
   code="$(curl -sS --max-time 5 -o /dev/null -w '%{http_code}' "http://127.0.0.1:18999$p")"
   echo "$p -> $code"
   test "$code" = "200"
