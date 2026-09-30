@@ -49,13 +49,43 @@ for d in media/water media/dishes/editorial media/partners/la-boule-bleue; do
   test -d "$OLD_RELEASE/$d"
 done
 
-NODE_MAJOR="$(node -p 'Number(process.versions.node.split(".")[0])')"
+mkdir -p "$WORK"
+
+NODE_MAJOR="$(node -p 'Number(process.versions.node.split(".")[0])' 2>/dev/null || printf '0')"
 if [ "$NODE_MAJOR" -lt 22 ]; then
-  echo "Node >=22 required; found $(node -v)" >&2
-  exit 65
+  echo "Node >=22 required; found $(node -v 2>/dev/null || printf 'none'). Bootstrapping portable Node 22 in $WORK."
+
+  case "$(uname -m)" in
+    x86_64) NODE_ARCH="x64" ;;
+    aarch64|arm64) NODE_ARCH="arm64" ;;
+    *)
+      echo "Unsupported CPU architecture for portable Node bootstrap: $(uname -m)" >&2
+      exit 65
+      ;;
+  esac
+
+  NODE_BASE="https://nodejs.org/dist/latest-v22.x"
+  curl -fsSL --retry 3 --retry-delay 2 "$NODE_BASE/SHASUMS256.txt" -o "$WORK/SHASUMS256.txt"
+
+  NODE_TARBALL="$(awk -v a="$NODE_ARCH" '$2 ~ ("node-v.*-linux-" a "\\.tar\\.xz$") { print $2; exit }' "$WORK/SHASUMS256.txt")"
+  test -n "$NODE_TARBALL"
+
+  curl -fsSL --retry 3 --retry-delay 2 "$NODE_BASE/$NODE_TARBALL" -o "$WORK/$NODE_TARBALL"
+  (
+    cd "$WORK"
+    grep "  $NODE_TARBALL$" SHASUMS256.txt | sha256sum -c -
+  )
+
+  tar -xJf "$WORK/$NODE_TARBALL" -C "$WORK"
+  NODE_DIR="$WORK/$(basename "$NODE_TARBALL" .tar.xz)"
+  test -x "$NODE_DIR/bin/node"
+  test -x "$NODE_DIR/bin/npm"
+  export PATH="$NODE_DIR/bin:$PATH"
 fi
 
-mkdir -p "$WORK"
+NODE_MAJOR="$(node -p 'Number(process.versions.node.split(".")[0])')"
+test "$NODE_MAJOR" -ge 22
+echo "NODE_RUNTIME=$(node -v) NPM_RUNTIME=$(npm -v)"
 git clone --filter=blob:none --no-checkout "$REPO_URL" "$WORK/repo"
 git -C "$WORK/repo" checkout --detach "$TARGET_COMMIT"
 ACTUAL="$(git -C "$WORK/repo" rev-parse HEAD)"
@@ -139,7 +169,7 @@ nginx -t
 systemctl reload nginx
 
 echo "=== ORIGIN GATE ==="
-for p in / /robots.txt /site.webmanifest.json /sitemap.xml /delish-theme-v2.css /water-live-v11.bundle.css /privacy/ /cookies/ /terms/ /legal/; do
+for p in / /robots.txt /site.webmanifest.json /sitemap.xml /delish-theme-v2.css /water-live-v11.bundle.css /privacy/ /cookies/ /terms/ /legal/ /courier/ /devenir-coursier/ /support/ /en/courier/ /en/become-a-courier/ /en/support/; do
   code="$(curl -ksS --max-time 8 --resolve delishafrica.me:443:127.0.0.1 -o /dev/null -w '%{http_code}' "https://delishafrica.me$p")"
   type="$(curl -ksSI --max-time 8 --resolve delishafrica.me:443:127.0.0.1 "https://delishafrica.me$p" | awk -F': ' 'tolower($1)=="content-type"{print $2}' | tr -d '\r' | tail -1)"
   echo "$p -> HTTP=$code TYPE=$type"
@@ -156,9 +186,12 @@ echo "$MANIFEST_TYPE" | grep -Eq 'application/json|application/manifest\+json'
 trap - ERR
 
 echo "=== PUBLIC OBSERVATION ==="
-for p in / /robots.txt /site.webmanifest.json /sitemap.xml /delish-theme-v2.css /water-live-v11.bundle.css /privacy/ /cookies/ /terms/ /legal/; do
+for p in / /robots.txt /site.webmanifest.json /sitemap.xml /delish-theme-v2.css /water-live-v11.bundle.css /privacy/ /cookies/ /terms/ /legal/ /courier/ /devenir-coursier/ /support/ /en/courier/ /en/become-a-courier/ /en/support/; do
   curl -sS --max-time 8 -o /dev/null -w "$p -> HTTP=%{http_code} TYPE=%{content_type}\n" "https://delishafrica.me$p" || true
 done
+
+curl -ksS --max-time 8 --resolve delishafrica.me:443:127.0.0.1 https://delishafrica.me/courier/ | grep -q 'CADRES PAYS'
+curl -ksS --max-time 8 --resolve delishafrica.me:443:127.0.0.1 https://delishafrica.me/en/courier/ | grep -q 'COUNTRY FRAMEWORKS'
 
 echo "DEPLOYMENT_PASS"
 echo "CURRENT=$(readlink -f "$CURRENT_LINK")"
