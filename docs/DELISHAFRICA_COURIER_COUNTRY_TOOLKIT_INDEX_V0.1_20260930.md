@@ -53,17 +53,20 @@ Primary tools:
 
 ## Cameroon
 
-Country kit still to be built.
+- `DELISHAFRICA_COURIER_CAMEROON_ANNEX_V0.1_20260930.md`
+- `DELISHAFRICA_COURIER_CAMEROON_MEETING_BRIEF_V0.1_20260930.md`
+- `DELISHAFRICA_COURIER_CAMEROON_TRANSPORT_SOCIAL_DATA_SPEC_V0.1_20260930.md`
 
-Minimum future kit:
-- contracting/worker-status mapping;
-- local transport/licensing;
-- social/tax registration;
-- payment model;
-- safety/insurance;
-- data/privacy;
-- deactivation/appeal;
-- representative/field consultation.
+Primary tools:
+- worker-status / direction-control audit;
+- CNPS employee vs voluntary-independent fork;
+- motorcycle/bicycle/car transport-classification gate;
+- accident/injury protection gate;
+- tax/IGS classification review;
+- Law 2024/017 data-processing register;
+- geolocation state machine;
+- deactivation/appeal workflow;
+- field/authority consultation.
 
 ## Release rule
 
