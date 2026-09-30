@@ -1,0 +1,203 @@
+---
+type Lang = "fr" | "en";
+const { lang = "fr" } = Astro.props as { lang?: Lang };
+
+const copy = {
+  fr: {
+    eyebrow: "CADRES PAYS · V0.1",
+    title: "Quatre marchés. Un même socle. Quatre cadres locaux.",
+    lead: "Le socle Courier reste commun — choix de mission, transparence, données, sécurité et recours humain — mais aucun pays n’ouvre tant que ses règles locales ne sont pas prêtes.",
+    decided: "DÉJÀ POSÉ",
+    open: "AVANT ACTIVATION",
+    status: "PRÉ-LANCEMENT",
+    notice: "Synthèse publique de préparation. Elle ne remplace ni un contrat, ni les conditions pays définitives, qui seront publiées avant toute activation rémunérée."
+  },
+  en: {
+    eyebrow: "COUNTRY FRAMEWORKS · V0.1",
+    title: "Four launch markets. One core. Four local frameworks.",
+    lead: "The Courier core stays consistent — mission choice, transparency, data, safety and human appeal — but no market opens until its local rules are ready.",
+    decided: "ALREADY SET",
+    open: "BEFORE ACTIVATION",
+    status: "PRE-LAUNCH",
+    notice: "Public readiness summary only. It is not a contract and does not replace final country terms, which will be published before any paid activation."
+  }
+} as const;
+
+const countries = lang === "fr" ? [
+  {
+    code: "BE",
+    name: "Belgique",
+    headline: "Statut réel, rémunération lisible, recours humain.",
+    accent: "EU",
+    decided: [
+      "Acceptation ou refus explicite d’une mission.",
+      "Le refus ne réduit pas le ranking des futures propositions.",
+      "Pas de désactivation définitive purement automatisée."
+    ],
+    open: [
+      "Statut belge final et modèle de rémunération.",
+      "Protection accident / assurance applicable.",
+      "Procédure détaillée de suspension, audition et recours."
+    ]
+  },
+  {
+    code: "FR",
+    name: "France",
+    headline: "Économie auditable et désactivation procédurale.",
+    accent: "ARPE",
+    decided: [
+      "Garantie sectorielle hebdomadaire intégrée au design lorsque son champ s’applique.",
+      "Pourboires séparés du calcul de garantie.",
+      "Recours et revue humaine conçus comme un vrai workflow."
+    ],
+    open: [
+      "Ledger France et top-up hebdomadaire en production.",
+      "Protection accident et modèle contractuel final.",
+      "Export structuré de l’activité et SLA de recours."
+    ]
+  },
+  {
+    code: "LU",
+    name: "Luxembourg",
+    headline: "Statut, transfrontalier et géolocalisation par état.",
+    accent: "CCSS",
+    decided: [
+      "Pas de tracking silencieux hors activité.",
+      "Refus de mission sans pénalité de dispatch.",
+      "Screening transfrontalier avant activation si nécessaire."
+    ],
+    open: [
+      "Statut final et éventuelle autorisation d’établissement.",
+      "CCSS / A1 et cas multi-pays.",
+      "Revalidation après transposition plateforme 2026."
+    ]
+  },
+  {
+    code: "CM",
+    name: "Cameroun",
+    headline: "Protection sociale, transport et données avant volume.",
+    accent: "CMR",
+    decided: [
+      "Le statut dépendra du fonctionnement réel, pas d’une étiquette.",
+      "Refus de mission sans pénalité de dispatch.",
+      "Données, géolocalisation et recours intégrés au cadre public."
+    ],
+    open: [
+      "Qualification transport pour livraison moto/vélo/voiture.",
+      "CNPS + protection accident selon le statut retenu.",
+      "Fiscalité, paiement et conformité Loi 2024/017."
+    ]
+  }
+] : [
+  {
+    code: "BE",
+    name: "Belgium",
+    headline: "Real status, readable pay, human appeal.",
+    accent: "EU",
+    decided: [
+      "Explicit mission accept or decline.",
+      "Declining does not reduce ranking for future offers.",
+      "No solely automated permanent deactivation."
+    ],
+    open: [
+      "Final Belgian status and pay model.",
+      "Applicable accident / insurance protection.",
+      "Detailed suspension, hearing and appeal procedure."
+    ]
+  },
+  {
+    code: "FR",
+    name: "France",
+    headline: "Auditable economics and procedural deactivation.",
+    accent: "ARPE",
+    decided: [
+      "Weekly sector income guarantee built into the design where its scope applies.",
+      "Tips kept separate from the guarantee calculation.",
+      "Appeal and human review designed as a real workflow."
+    ],
+    open: [
+      "France ledger and weekly top-up in production.",
+      "Final accident protection and contract model.",
+      "Structured activity export and appeal SLAs."
+    ]
+  },
+  {
+    code: "LU",
+    name: "Luxembourg",
+    headline: "Status, cross-border cases and state-based location.",
+    accent: "CCSS",
+    decided: [
+      "No silent off-duty tracking.",
+      "Mission decline without dispatch penalty.",
+      "Cross-border screening before activation when needed."
+    ],
+    open: [
+      "Final status and possible establishment authorisation.",
+      "CCSS / A1 and multi-country cases.",
+      "Revalidation after 2026 platform-work transposition."
+    ]
+  },
+  {
+    code: "CM",
+    name: "Cameroon",
+    headline: "Social protection, transport and data before scale.",
+    accent: "CMR",
+    decided: [
+      "Status will follow the real operating relationship, not a label.",
+      "Mission decline without dispatch penalty.",
+      "Data, location and appeal built into the public framework."
+    ],
+    open: [
+      "Transport classification for motorcycle/bicycle/car delivery.",
+      "CNPS + accident protection according to final status.",
+      "Tax, payment and Law 2024/017 compliance."
+    ]
+  }
+];
+---
+
+<section class="section shell country-frameworks" id={lang === "fr" ? "cadres-pays" : "country-frameworks"}>
+  <div class="country-frameworks-head">
+    <div>
+      <p class="eyebrow">{copy[lang].eyebrow}</p>
+      <h2>{copy[lang].title}</h2>
+    </div>
+    <p>{copy[lang].lead}</p>
+  </div>
+
+  <div class="country-framework-grid">
+    {countries.map((country) => (
+      <details class="country-framework">
+        <summary>
+          <div class="country-code">
+            <span>{country.code}</span>
+            <small>{country.accent}</small>
+          </div>
+          <div class="country-summary">
+            <span class="country-state">{copy[lang].status}</span>
+            <h3>{country.name}</h3>
+            <p>{country.headline}</p>
+          </div>
+          <span class="country-toggle" aria-hidden="true">+</span>
+        </summary>
+
+        <div class="country-framework-body">
+          <div>
+            <span class="country-label">{copy[lang].decided}</span>
+            <ul>
+              {country.decided.map((item) => <li>{item}</li>)}
+            </ul>
+          </div>
+          <div>
+            <span class="country-label country-label-open">{copy[lang].open}</span>
+            <ul>
+              {country.open.map((item) => <li>{item}</li>)}
+            </ul>
+          </div>
+        </div>
+      </details>
+    ))}
+  </div>
+
+  <p class="country-framework-notice">{copy[lang].notice}</p>
+</section>
