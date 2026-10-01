@@ -34,6 +34,10 @@ cmp -s "$CLIENT_HOOK" "$COURIER_HOOK" || fail "hook_parity_client_courier"
 cmp -s "$CLIENT_HOOK" "$MERCHANT_HOOK" || fail "hook_parity_client_merchant"
 pass "hook_byte_parity_3_apps"
 
+require_text "requestLooksSensitiveLocally" "$CLIENT_HOOK" "local_sensitive_guard_present"
+require_text "if (privacyBlocked)" "$CLIENT_HOOK" "local_sensitive_short_circuit_present"
+require_text "transit serveur bloqué localement avant tout envoi" "$CLIENT_HOOK" "local_zero_leak_copy_present"
+
 require_text "store: false" "$SERVICE" "provider_store_disabled"
 require_text "requestContainsSensitiveEvidence(body)" "$SERVICE" "sensitive_request_guard_present"
 require_text "providerStore: false" "$SERVICE" "privacy_meta_store_false"
@@ -49,6 +53,11 @@ sensitive_line="$(grep -nF "requestContainsSensitiveEvidence(body)" "$SERVICE" |
 provider_line="$(grep -nF "providerSuggestion(input" "$SERVICE" | head -1 | cut -d: -f1)"
 [[ -n "$sensitive_line" && -n "$provider_line" && "$sensitive_line" -lt "$provider_line" ]] || fail "sensitive_guard_precedes_provider"
 pass "sensitive_guard_precedes_provider"
+
+local_guard_line="$(grep -nF "if (privacyBlocked)" "$CLIENT_HOOK" | head -1 | cut -d: -f1)"
+network_line="$(grep -nF "daOrdersFetch(" "$CLIENT_HOOK" | head -1 | cut -d: -f1)"
+[[ -n "$local_guard_line" && -n "$network_line" && "$local_guard_line" -lt "$network_line" ]] || fail "local_sensitive_guard_precedes_network"
+pass "local_sensitive_guard_precedes_network"
 
 if [[ "$MODE" == "--full" || "$MODE" == "full" ]]; then
   rm -rf "$TMP_ROOT"
