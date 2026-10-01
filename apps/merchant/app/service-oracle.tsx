@@ -210,6 +210,7 @@ body: JSON.stringify({}),
           evidenceIndexes={confluenceSuggestion.evidenceIndexes}
           generatedAt={confluenceSuggestion.generatedAt}
           privacyNote={confluenceSuggestion.privacyNote}
+          excludedSignals={["Identité client", "Données de paiement", "Profilage historique"]}
           networkEnabled={confluenceNetworkEnabled}
           onNetworkEnabledChange={setConfluenceNetworkEnabled}
         />

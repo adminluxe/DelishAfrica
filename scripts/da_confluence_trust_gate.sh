@@ -22,8 +22,9 @@ TYPES="$ROOT/services/api-nest/src/confluence-ai/confluence-ai.types.ts"
 CLIENT_ORACLE="$ROOT/apps/client/app/taste-oracle.tsx"
 COURIER_ORACLE="$ROOT/apps/courier/app/route-oracle.tsx"
 MERCHANT_ORACLE="$ROOT/apps/merchant/app/service-oracle.tsx"
+DISPATCH_SERVICE="$ROOT/services/api-nest/src/dispatch-intelligence/assignment-intelligence.service.ts"
 
-for f in "$CLIENT_LENS" "$COURIER_LENS" "$MERCHANT_LENS" "$CLIENT_HOOK" "$COURIER_HOOK" "$MERCHANT_HOOK" "$SERVICE" "$POLICY" "$TYPES" "$CLIENT_ORACLE" "$COURIER_ORACLE" "$MERCHANT_ORACLE"; do
+for f in "$CLIENT_LENS" "$COURIER_LENS" "$MERCHANT_LENS" "$CLIENT_HOOK" "$COURIER_HOOK" "$MERCHANT_HOOK" "$SERVICE" "$POLICY" "$TYPES" "$CLIENT_ORACLE" "$COURIER_ORACLE" "$MERCHANT_ORACLE" "$DISPATCH_SERVICE"; do
   require_file "$f"
 done
 pass "required_files"
@@ -61,6 +62,16 @@ require_text "signal: controller.signal" "$CLIENT_HOOK" "network_abort_signal_pr
 require_text "enabled: confluenceNetworkEnabled" "$CLIENT_ORACLE" "client_user_ai_network_control"
 require_text "enabled: Boolean(oracleLens) && confluenceNetworkEnabled" "$COURIER_ORACLE" "courier_user_ai_network_control"
 require_text "enabled: confluenceNetworkEnabled" "$MERCHANT_ORACLE" "merchant_user_ai_network_control"
+require_text "LIGNE ROUGE · HORS LECTURE" "$CLIENT_LENS" "algorithmic_red_line_disclosure_present"
+require_text "excludedSignals=" "$CLIENT_ORACLE" "client_excluded_signals_present"
+require_text "Taux de refus" "$COURIER_ORACLE" "courier_refusal_exclusion_disclosed"
+require_text "excludedSignals=" "$MERCHANT_ORACLE" "merchant_excluded_signals_present"
+
+score_block="$(sed -n '/private scoreCourier(/,/private reason(/p' "$DISPATCH_SERVICE")"
+if grep -Fq "courier.acceptanceRate" <<<"$score_block"; then
+  fail "courier_refusal_rate_excluded_from_assignment_score"
+fi
+pass "courier_refusal_rate_excluded_from_assignment_score"
 
 sensitive_line="$(grep -nF "requestContainsSensitiveEvidence(body)" "$SERVICE" | head -1 | cut -d: -f1)"
 provider_line="$(grep -nF "providerSuggestion(input" "$SERVICE" | head -1 | cut -d: -f1)"

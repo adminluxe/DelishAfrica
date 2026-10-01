@@ -334,6 +334,7 @@ export default function TasteOracleScreen() {
           evidenceIndexes={confluenceSuggestion.evidenceIndexes}
           generatedAt={confluenceSuggestion.generatedAt}
           privacyNote={confluenceSuggestion.privacyNote}
+          excludedSignals={["Identité sensible", "Origine supposée", "Historique caché", "Données de paiement"]}
           networkEnabled={confluenceNetworkEnabled}
           onNetworkEnabledChange={setConfluenceNetworkEnabled}
         />

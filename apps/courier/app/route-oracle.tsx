@@ -888,6 +888,7 @@ export default function RouteOracleScreen() {
           evidenceIndexes={confluenceSuggestion.evidenceIndexes}
           generatedAt={confluenceSuggestion.generatedAt}
           privacyNote={confluenceSuggestion.privacyNote}
+          excludedSignals={["Taux de refus", "Nom ou identité personnelle", "Données de paiement"]}
           networkEnabled={confluenceNetworkEnabled}
           onNetworkEnabledChange={setConfluenceNetworkEnabled}
               />

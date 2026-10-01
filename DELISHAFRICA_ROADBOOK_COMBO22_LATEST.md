@@ -265,3 +265,42 @@ Le worktree `reconcile/client-nightshift-20261001` contient 18 fichiers Client s
 - `apps/client/app/index.tsx`: modifie la hierarchie visuelle et retire des metadonnees explicatives du rail marche.
 - `apps/client/app/orders.tsx`: retire la grammaire tactile GALA et modifie fortement les surfaces.
 Decision: NE PAS absorber ce worktree en bloc. Arbitrage fichier par fichier uniquement apres comparaison avec le tronc reconcilie.
+
+
+---
+
+# DELISHAFRICA ROADBOOK UPDATE - 2026-10-01 - CONFLUENCE ALGORITHMIC RED LINE V1
+
+## Intention
+- Aller plus loin que l'explicabilite classique: ne pas seulement montrer ce que l'IA utilise, mais aussi les criteres volontairement tenus hors de la proposition.
+- Transformer une promesse ethique abstraite en limite visible, inspectable et testable dans le produit.
+
+## Innovation livree
+- La lentille Confluence expose maintenant, dans la divulgation progressive, une section `LIGNE ROUGE · HORS LECTURE`.
+- Client / Taste Oracle declare hors de la proposition: identite sensible, origine supposee, historique cache et donnees de paiement.
+- Courier / Route Oracle declare hors de la proposition: taux de refus, nom/identite personnelle et donnees de paiement.
+- Merchant / Service Oracle declare hors de la proposition: identite client, donnees de paiement et profilage historique.
+- La formulation reste strictement bornee a la proposition/lecture courante; elle ne pretend pas decrire toute l'application.
+
+## Garde-fou Courier source-code
+- Le moteur de dispatch conserve `acceptanceRate` comme signal observable de diagnostic, mais il est exclu du calcul de score d'affectation.
+- Le gate extrait le bloc `scoreCourier` et echoue si `courier.acceptanceRate` y reapparait.
+- La promesse visible "Taux de refus hors lecture" est donc liee a une verification de code, pas a un simple texte marketing.
+
+## Cout / securite
+- Zero nouvelle dependance.
+- Zero nouvel appel reseau.
+- Zero nouvelle persistance ou donnee personnelle collectee.
+- Aucun changement des actions metier, paiements, statuts, dispatch ou auth.
+- La section reste repliee par defaut avec les autres preuves afin d'eviter toute surcharge visuelle.
+- Aucun OTA, rebuild Store ou redeploiement runtime declenche.
+
+## Validation
+- `scripts/da_confluence_trust_gate.sh --full` = GREEN.
+- API Nest build = PASS.
+- TypeScript Client / Courier / Merchant = PASS.
+- Expo export iOS + Android Client = PASS.
+- Expo export iOS + Android Courier = PASS.
+- Expo export iOS + Android Merchant = PASS.
+- Parite byte-identical de `ConfluenceOracleLens.tsx` entre les triplettes = PASS.
+- Gate specifique `courier_refusal_rate_excluded_from_assignment_score` = PASS.

@@ -24,6 +24,7 @@ type Props = {
   evidenceIndexes?: number[];
   generatedAt?: string;
   privacyNote?: string;
+  excludedSignals?: string[];
   networkEnabled?: boolean;
   onNetworkEnabledChange?: (next: boolean) => void;
 };
@@ -47,6 +48,7 @@ export function ConfluenceOracleLens({
   evidenceIndexes,
   generatedAt,
   privacyNote,
+  excludedSignals = [],
   networkEnabled = true,
   onNetworkEnabledChange,
 }: Props) {
@@ -210,6 +212,29 @@ export function ConfluenceOracleLens({
             );
           })}
 
+          {excludedSignals.length ? (
+            <View style={styles.exclusionCard}>
+              <View style={styles.exclusionTop}>
+                <Text style={[styles.exclusionKicker, { color: accent }]}>LIGNE ROUGE · HORS LECTURE</Text>
+                <Text style={styles.exclusionCount}>{excludedSignals.length} exclu{excludedSignals.length > 1 ? "s" : ""}</Text>
+              </View>
+              <Text style={styles.exclusionTitle}>Ce qui n’entre pas dans cette proposition.</Text>
+              <Text style={styles.exclusionText}>
+                Ces signaux restent hors de cette lecture : ils ne servent ni à produire la suggestion ni à la justifier.
+              </Text>
+              <View style={styles.exclusionList}>
+                {excludedSignals.slice(0, 4).map((label) => (
+                  <View key={label} style={styles.exclusionRow}>
+                    <View style={[styles.exclusionMark, { borderColor: accent }]}>
+                      <Text style={[styles.exclusionMarkText, { color: accent }]}>×</Text>
+                    </View>
+                    <Text style={styles.exclusionItem}>{label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
           {blindSpots.length ? (
             <View style={styles.blindSpotCard}>
               <View style={styles.blindSpotTop}>
@@ -346,6 +371,17 @@ const styles = StyleSheet.create({
   proofLabel: { color: "#FFF9EC", fontSize: 11, fontWeight: "900" },
   proofKind: { fontSize: 7.5, fontWeight: "900", letterSpacing: 1 },
   proofValue: { color: "rgba(255,249,236,0.63)", fontSize: 11.5, lineHeight: 17, fontWeight: "700", marginTop: 5 },
+  exclusionCard: { borderRadius: 17, padding: 13, backgroundColor: "rgba(255,255,255,0.016)", borderWidth: 1, borderColor: "rgba(255,255,255,0.045)", gap: 7 },
+  exclusionTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  exclusionKicker: { fontSize: 8.5, fontWeight: "900", letterSpacing: 1.3 },
+  exclusionCount: { color: "rgba(255,249,236,0.34)", fontSize: 8.5, fontWeight: "800" },
+  exclusionTitle: { color: "#FFF9EC", fontSize: 12.5, lineHeight: 17, fontWeight: "900" },
+  exclusionText: { color: "rgba(255,249,236,0.48)", fontSize: 10, lineHeight: 15, fontWeight: "700" },
+  exclusionList: { gap: 6, marginTop: 2 },
+  exclusionRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  exclusionMark: { width: 18, height: 18, borderRadius: 999, borderWidth: 1, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.018)" },
+  exclusionMarkText: { fontSize: 11, lineHeight: 13, fontWeight: "900" },
+  exclusionItem: { flex: 1, color: "rgba(255,249,236,0.70)", fontSize: 10.5, lineHeight: 15, fontWeight: "800" },
   blindSpotCard: { borderRadius: 17, padding: 13, backgroundColor: "rgba(255,255,255,0.018)", borderWidth: 1, borderColor: "rgba(255,255,255,0.05)", gap: 7 },
   blindSpotTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
   blindSpotKicker: { fontSize: 8.5, fontWeight: "900", letterSpacing: 1.35 },

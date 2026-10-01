@@ -161,3 +161,25 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Orders/Payments authority: PostgreSQL primaire avec projection runtime de compatibilite.
 - OrchidPay F3: transport prive Unix socket, role bounded evidence bridge, peer synchronization source-controlled.
 - Confluence: suggestion-only, provider store disabled, sensitive transit fail-closed, user-selectable Local uniquement, no business side effects.
+
+
+---
+
+# ARCHITECTURE PIN UPDATE - 2026-10-01 - ALGORITHMIC RED LINE V1
+
+## Contrat d'exclusion algorithmique
+- `ConfluenceOracleLens` accepte `excludedSignals?: string[]` et rend ces exclusions uniquement dans la divulgation progressive.
+- Une exclusion visible doit correspondre a une limite produit/code connue; ne jamais inventer une exclusion a partir d'une intention marketing.
+- Les libelles sont scopes a "cette proposition" / "cette lecture" afin d'eviter toute generalisation excessive.
+
+## Invariants Courier
+1. `acceptanceRate` peut rester observable pour diagnostic, mais ne doit pas entrer dans `scoreCourier`.
+2. Un refus de mission ne doit pas reduire l'acces futur aux missions via le score d'affectation.
+3. Le gate Confluence doit echouer si `courier.acceptanceRate` reapparait dans le bloc de scoring.
+4. La mention visible `Taux de refus` hors lecture ne peut etre conservee que tant que l'invariant de code reste verifie.
+
+## Invariants transverses
+- Client: ne pas utiliser identite sensible, origine supposee, historique cache ou donnees de paiement pour la lecture Taste Oracle.
+- Courier: ne pas utiliser taux de refus, identite personnelle ou donnees de paiement pour la lecture Route Oracle.
+- Merchant: ne pas utiliser identite client, donnees de paiement ou profilage historique pour la lecture Service Oracle.
+- Aucun de ces affichages ne donne l'autorisation de collecter ces donnees; au contraire, ils documentent une frontiere.
