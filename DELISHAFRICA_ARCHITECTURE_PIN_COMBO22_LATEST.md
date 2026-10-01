@@ -93,3 +93,8 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 ## Integration discipline
 - Les synchronisations avec `origin/master` doivent désormais être validées dans un `git worktree` sous `$HOME/DA_WORKTREES/`, jamais par rebase direct du worktree runtime `/opt/delishafrica/monorepo` tant que des sous-répertoires root-owned subsistent.
 - Aucune modification chmod/chown opportuniste du repo runtime : corriger la propriété séparément, avec une opération dédiée et auditable si nécessaire.
+
+## Mandatory Confluence preflight
+- Commande canonique : `/home/afripayadmin/DA_WORKTREES/confluence-trust-current-integration-20261001/scripts/da_confluence_trust_gate.sh --full` dans la couveuse actuelle.
+- Une fois mergé dans le repo officiel, utiliser `/opt/delishafrica/monorepo/scripts/da_confluence_trust_gate.sh --full`.
+- Un échec du gate interdit merge, OTA et rebuild Store jusqu à correction.

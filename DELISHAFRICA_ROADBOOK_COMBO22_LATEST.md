@@ -125,3 +125,10 @@ Scope: Client + Courier, harmonisé Merchant
 - `git diff --check` : PASS.
 - Cette validation remplace une tentative de rebase impossible dans le worktree runtime à cause d un répertoire historique `payments/` non inscriptible par le groupe. Aucune élévation de privilège ni modification de permissions n a été effectuée.
 - Les anciens dossiers `(tabs)` nettoyés dans le worktree runtime étaient des résidus de routes supprimées par les commits de sanitation historiques d602f12/d6dc5d3 ; les routes canoniques trackées restent intactes.
+
+## Confluence Trust Gate - one-shot
+- Nouveau garde-frontière versionné : `scripts/da_confluence_trust_gate.sh`.
+- Mode `quick` : parité byte-identical des composants/hooks 3 apps + garanties privacy/side-effects + ordre du sensitive guard + présence Counterflow et Decision Sandbox.
+- Mode `--full` : ajoute build API, TypeScript 3 apps et exports Expo iOS/Android des 3 apps.
+- Première exécution FULL sur base master courante : GREEN intégral.
+- Ce gate devient obligatoire avant promotion de la branche Confluence vers master ou avant tout rebuild Store contenant ces surfaces.
