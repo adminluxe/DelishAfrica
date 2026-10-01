@@ -139,3 +139,25 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 
 ## Private Current V1.1 invariant
 - enabled=false doit produire une copie explicite Local uniquement et ne jamais reutiliser un libelle ambigu de fallback serveur.
+
+---
+
+# ARCHITECTURE PIN UPDATE - 2026-10-01 - PROJECT MASTER CONVERGENCE
+
+## Lignes de source actuelles
+- `main`: branche GitHub par defaut, source historique Landing/public/legal/Courier framework.
+- `master`: source historique Mobile 3 apps + API/runtime hardening.
+- `reconcile/project-master-20261001`: laboratoire propre reunissant les deux lignes + Confluence Private Current; candidat au futur tronc unique, NON deploye.
+
+## Invariant de convergence
+1. Aucun futur travail Mobile/API ne doit supposer que `main` et `master` sont equivalentes tant que la reconciliation n'est pas mergee.
+2. Aucun futur travail Landing ne doit ecraser les garanties Mobile/API venant de `master`.
+3. Toute promotion du tronc reconcilie exige: API build, TSC 3 apps, Expo 3x2, Landing Node22 check/build, Confluence full gate.
+4. Les builds actuellement devant Apple/Google restent geles; aucune innovation ne doit les modifier via OTA ou rebuild implicite.
+5. Les worktrees experimentaux sont des sources d'information, jamais des sources de verite sans comparaison au tronc reconcilie.
+6. Les quatre divergences Nightshift Client documentees dans le Roadbook restent HOLD jusqu'a arbitrage explicite.
+
+## Runtime authority verifiee
+- Orders/Payments authority: PostgreSQL primaire avec projection runtime de compatibilite.
+- OrchidPay F3: transport prive Unix socket, role bounded evidence bridge, peer synchronization source-controlled.
+- Confluence: suggestion-only, provider store disabled, sensitive transit fail-closed, user-selectable Local uniquement, no business side effects.

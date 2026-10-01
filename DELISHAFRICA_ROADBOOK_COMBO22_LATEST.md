@@ -221,3 +221,47 @@ Base: origin/innovation/confluence-trust-current-20261001 @ 10a0d59
 - Quand l utilisateur choisit LOCAL UNIQUEMENT, le Passeport IA indique explicitement qu aucun appel Confluence n est envoye.
 - Le texte de secours ne peut plus laisser croire qu un serveur a ete consulte alors que le transport est coupe.
 - Gate rapide + TypeScript 3 apps : GREEN apres ce durcissement de verite UX.
+
+---
+
+# DELISHAFRICA ROADBOOK UPDATE - 2026-10-01 - PROJECT MASTER CONVERGENCE AUDIT
+
+## Etat des deux lignes historiques
+- `main` reste la branche par defaut GitHub et porte la ligne publique Landing/Courier/legal jusqu'a `161f7d5`.
+- `master` porte la ligne Mobile/API/runtime jusqu'a `ecb432d`, incluant P0F PostgreSQL authority et la synchronisation privee OrchidPay F3.
+- Les deux lignes divergeaient depuis `791203e`, ce qui devenait une dette de pilotage dangereuse avant les finitions.
+
+## Reconciliation executee en laboratoire
+- Worktree isole: `/home/afripayadmin/DA_WORKTREES/project-master-reconcile-20261001`.
+- Branche: `reconcile/project-master-20261001`.
+- Merge `origin/master` dans `origin/main`: automatique, ZERO conflit.
+- Commit de convergence: `de07dc7`.
+- Merge Confluence Private Current sur la convergence: `d44b636`.
+- Aucun merge vers `main`, aucun OTA, aucun rebuild Store, aucun redeploiement runtime.
+
+## Validation de la convergence
+- `git diff --check`: PASS.
+- API Nest build: PASS.
+- TypeScript Client / Courier / Merchant: PASS.
+- Expo export Client iOS + Android: PASS.
+- Expo export Courier iOS + Android: PASS.
+- Expo export Merchant iOS + Android: PASS.
+- `scripts/da_confluence_trust_gate.sh --full`: GREEN sur le tronc reconcilie.
+- Landing Node `v22.23.3` verifie via bootstrap portable + checksum officiel.
+- Landing `astro check`: PASS.
+- Landing `astro build`: PASS.
+
+## Runtime live audite sans mutation
+- API `delish-api` UP; `/health` et `/api/v1/health` = 200.
+- Confluence `/api/v1/confluence/ai/health` = `ai_ready`, cle fournisseur non exposee, sortie structuree, `store=false`, side effects=false, transit sensible fail-closed, budget provider disponible.
+- Payments `/api/v1/payments/health` = production; Stripe configure, webhook signature required, autorite financiere PostgreSQL primaire, 6 orders / 1 payment au snapshot, OrchidPay F3 ready via socket prive.
+- Landing publique `/`, `/courier/`, `/en/courier/`, `/devenir-coursier/` = HTTP 200.
+- `courier.delishafrica.me` repond toujours sur une surface Expo distincte; conserver la navigation publique canonique vers `delishafrica.me/courier/` tant que le routage infra n'est pas arbitre.
+
+## Nightshift Client - audit anti-regression
+Le worktree `reconcile/client-nightshift-20261001` contient 18 fichiers Client stages. 14 sont byte-identiques a `origin/master`; 4 divergent et restent HOLD avant integration:
+- `apps/client/app.config.js`: retire la variante DEV side-by-side et modifie splash/plugins.
+- `apps/client/app/checkout-preflight.tsx`: retire le redirect automatique vers Secure Session sur session requise.
+- `apps/client/app/index.tsx`: modifie la hierarchie visuelle et retire des metadonnees explicatives du rail marche.
+- `apps/client/app/orders.tsx`: retire la grammaire tactile GALA et modifie fortement les surfaces.
+Decision: NE PAS absorber ce worktree en bloc. Arbitrage fichier par fichier uniquement apres comparaison avec le tronc reconcilie.
