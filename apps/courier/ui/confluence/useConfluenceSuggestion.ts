@@ -61,14 +61,32 @@ const API_BASE = RAW_API.replace(/\/$/, "").endsWith("/api/v1")
   ? RAW_API.replace(/\/$/, "")
   : `${RAW_API.replace(/\/$/, "")}/api/v1`;
 
-const CACHE_TTL_MS = 60_000;
+const SESSION_CACHE_MAX_ENTRIES = 96;
 const DEBOUNCE_MS = 520;
 const EVIDENCE_CONTRACT: Record<ConfluenceOracleKind, ReadonlySet<string>> = {
   taste: new Set(["Intention choisie", "Intensité éditoriale", "Fraîcheur éditoriale", "Voyage proposé"]),
   route: new Set(["Statut commande", "Fenêtre de remise", "ETA dispatch", "Score dispatch"]),
   service: new Set(["Commande", "Statut serveur", "Charge observée", "Article visible"]),
 };
-const cache = new Map<string, { at: number; value: DisplayState }>();
+const sessionCache = new Map<string, DisplayState>();
+
+function sessionCacheGet(key: string): DisplayState | null {
+  const value = sessionCache.get(key);
+  if (!value) return null;
+  sessionCache.delete(key);
+  sessionCache.set(key, value);
+  return value;
+}
+
+function sessionCacheSet(key: string, value: DisplayState) {
+  sessionCache.delete(key);
+  sessionCache.set(key, value);
+  while (sessionCache.size > SESSION_CACHE_MAX_ENTRIES) {
+    const oldest = sessionCache.keys().next().value as string | undefined;
+    if (!oldest) break;
+    sessionCache.delete(oldest);
+  }
+}
 
 function looksSensitiveLocally(value: unknown): boolean {
   const text = String(value ?? "").trim();
@@ -305,9 +323,9 @@ export function useConfluenceSuggestion({
       return undefined;
     }
 
-    const cached = cache.get(key);
-    if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
-      setResolved(cached.value);
+    const cached = sessionCacheGet(key);
+    if (cached) {
+      setResolved(cached);
       return undefined;
     }
 
@@ -332,7 +350,7 @@ export function useConfluenceSuggestion({
           const next = validateServer(json, key, evidence, localSuggestion, localHumanBoundary);
           if (!next) throw new Error("INVALID_CONFLUENCE_RESPONSE");
 
-          cache.set(key, { at: Date.now(), value: next });
+          sessionCacheSet(key, next);
           if (mine === generation.current) setResolved(next);
         } catch {
           if (controller.signal.aborted) return;

@@ -432,3 +432,64 @@ Base: innovation/confluence-sovereign-silence-20261001 @ fa299d3
 - Expo export Merchant iOS + Android : PASS.
 - `scripts/da_confluence_trust_gate.sh --full` : GREEN.
 - `git diff --check` : PASS.
+
+---
+
+# DELISHAFRICA ROADBOOK UPDATE - 2026-10-01 - CONFLUENCE FRUGAL CURRENT V1
+Branch: innovation/confluence-frugal-current-20261001
+Base: innovation/confluence-attention-covenant-20261001 @ 58a8f5c
+
+## Intention
+- Faire gagner chaque appel IA avant de le payer.
+- Ne jamais recalculer une recommandation fournisseur si les preuves normalisees sont identiques.
+- Garder la fraicheur utile : toute variation de preuve produit un nouveau fingerprint et reautorise un calcul frais.
+- Ne pas transformer l economie en dette UX : les fallbacks locaux et serveur restent actifs.
+
+## Innovation livree - Frugal Current
+### Mobile / session
+- Le cache mobile Confluence devient un LRU de session borne a 96 etats.
+- Un etat deja resolu dans le meme process mobile ne reveille plus le serveur uniquement parce qu une minute s est ecoulee.
+- Le cache reste cle par Oracle + preuves + suggestion locale : aucun etat persistant, aucun profilage, aucun risque de fuite inter-session.
+
+### Serveur / provider
+- Memo provider en memoire borne a 512 entrees, TTL 6 heures.
+- Fingerprint SHA-256 base uniquement sur version du contrat, modele, Oracle, locale et preuves normalisees.
+- `localSuggestion` est volontairement exclue du fingerprint provider : une variation de wording local ne doit pas acheter un nouveau calcul externe.
+- Aucun texte de preuve brute n est utilise comme cle de Map : la cle est un hash.
+- Les entrees memo ne survivent pas au redemarrage du process.
+
+### Singleflight
+- Si plusieurs requetes identiques arrivent pendant qu un calcul fournisseur est deja en vol, un seul appel fournisseur est execute.
+- Les autres requetes attendent la meme Promise et recoivent la meme sortie deja gardee par les controles Confluence.
+- Le budget provider n est consomme qu apres les chemins memo/singleflight : un hit memo ou coalesced ne consomme pas une nouvelle unite de budget.
+
+### Observabilite cout
+- `/confluence/ai/health` expose `frugalCompute` : memo size, in-flight, fresh calls, memo hits, coalesced hits et appels provider evites depuis le boot.
+- `computeSource` est typé dans la meta serveur : `fresh`, `memoized`, `coalesced`.
+- Le `generatedAt` d une sortie memoisee reste celui du calcul fournisseur original ; aucune fausse fraicheur n est affichee.
+
+## Probe financier deterministe
+- Script: `scripts/da_confluence_frugal_probe.cjs`.
+- Scenario couveuse: 6 demandes logiques, 2 etats de preuve reels.
+- Resultat: 2 appels provider frais / 2 consommations budget / 4 appels provider evites.
+- Les 3 demandes concurrentes du second etat ont produit exactement 1 fresh + 2 coalesced.
+- Ce ratio est une preuve de fonctionnement du mecanisme, pas une promesse de taux d economie production : le taux reel dependra de la repetition des etats de preuve.
+
+## Garde-fous ajoutes
+- Gate verifie que memo + singleflight precedent `consumeProviderBudget`.
+- Gate verifie que le fingerprint provider ignore la copie locale.
+- Gate interdit le retour a un polling cache base sur `CACHE_TTL_MS` cote mobile.
+- Gate full execute le probe apres le build API.
+- Evidence Firewall, Zero-Leak, Red Line, Sovereign Silence et Attention Covenant restent intacts.
+
+## Validation
+- Quick trust gate : GREEN.
+- API Nest build : PASS.
+- Frugal compute probe : PASS.
+- TypeScript Client / Courier / Merchant : PASS.
+- Expo export iOS + Android Client : PASS.
+- Expo export iOS + Android Courier : PASS.
+- Expo export iOS + Android Merchant : PASS.
+- Full trust gate : GREEN.
+- git diff --check : PASS.
+- Aucun OTA, build Store ou deploiement runtime declenche.
