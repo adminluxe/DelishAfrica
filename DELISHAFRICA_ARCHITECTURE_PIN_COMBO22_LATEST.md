@@ -98,3 +98,10 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Commande canonique : `/home/afripayadmin/DA_WORKTREES/confluence-trust-current-integration-20261001/scripts/da_confluence_trust_gate.sh --full` dans la couveuse actuelle.
 - Une fois mergé dans le repo officiel, utiliser `/opt/delishafrica/monorepo/scripts/da_confluence_trust_gate.sh --full`.
 - Un échec du gate interdit merge, OTA et rebuild Store jusqu à correction.
+
+## Zero-Leak Gate contract V1.4
+- La première frontière de confidentialité est désormais locale dans `useConfluenceSuggestion`.
+- Si une preuve ou la suggestion locale ressemble à une donnée sensible, le hook doit rester en mode `embedded` et court-circuiter l appel HTTP Confluence.
+- Le serveur conserve ses propres gardes `requestContainsSensitiveEvidence` + scrub : défense en profondeur obligatoire.
+- Le texte UI peut affirmer `transit serveur bloqué localement avant tout envoi` uniquement lorsque le garde local a effectivement court-circuité la requête.
+- Les trois hooks Client/Courier/Merchant doivent rester byte-identical.

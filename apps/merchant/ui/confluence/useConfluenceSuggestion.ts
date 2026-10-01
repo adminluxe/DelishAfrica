@@ -65,6 +65,25 @@ const CACHE_TTL_MS = 60_000;
 const DEBOUNCE_MS = 520;
 const cache = new Map<string, { at: number; value: DisplayState }>();
 
+function looksSensitiveLocally(value: unknown): boolean {
+  const text = String(value ?? "").trim();
+  if (!text) return false;
+  const lower = text.toLowerCase();
+  if (lower.includes("@") || lower.includes("http://") || lower.includes("https://") || lower.includes("www.")) return true;
+  if (/\bDA-[A-Z0-9][A-Z0-9-]{3,}\b/i.test(text)) return true;
+  if (/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i.test(text)) return true;
+  if (/[+]?\d[\d\s().-]{7,}\d/.test(text)) return true;
+  return false;
+}
+
+function requestLooksSensitiveLocally(
+  evidence: ReadonlyArray<ConfluenceEvidenceInput>,
+  localSuggestion: string,
+): boolean {
+  return evidence.some((item) => looksSensitiveLocally(item.label) || looksSensitiveLocally(item.value)) ||
+    looksSensitiveLocally(localSuggestion);
+}
+
 function compact(value: unknown, max = 420): string {
   return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
 }
@@ -94,6 +113,7 @@ function fallbackState(
   localSuggestion: string,
   localHumanBoundary: string,
   reason = "Le cerveau serveur reste optionnel : cette lecture embarquée ne bloque jamais le parcours.",
+  privacyNote = "Passeport IA · aucune clé fournisseur dans l’app · suggestion locale de secours.",
 ): DisplayState {
   return {
     key,
@@ -104,7 +124,7 @@ function fallbackState(
     mode: "embedded",
     evidenceIndexes: evidence.map((_, index) => index),
     uncertainty: uncertaintyFromEvidence(evidence),
-    privacyNote: "Passeport IA · aucune clé fournisseur dans l’app · suggestion locale de secours.",
+    privacyNote,
   };
 }
 
@@ -202,9 +222,24 @@ export function useConfluenceSuggestion({
     [evidence, localSuggestion, oracle],
   );
 
+  const privacyBlocked = useMemo(
+    () => requestLooksSensitiveLocally(evidence, localSuggestion),
+    [evidence, localSuggestion],
+  );
+
   const immediate = useMemo(
-    () => fallbackState(key, evidence, localSuggestion, localHumanBoundary),
-    [evidence, key, localHumanBoundary, localSuggestion],
+    () =>
+      privacyBlocked
+        ? fallbackState(
+            key,
+            evidence,
+            localSuggestion,
+            localHumanBoundary,
+            "Un signal potentiellement sensible a été détecté avant le réseau : la lecture locale reste active.",
+            "Passeport IA · transit serveur bloqué localement avant tout envoi.",
+          )
+        : fallbackState(key, evidence, localSuggestion, localHumanBoundary),
+    [evidence, key, localHumanBoundary, localSuggestion, privacyBlocked],
   );
 
   const [resolved, setResolved] = useState<DisplayState | null>(null);
@@ -216,6 +251,11 @@ export function useConfluenceSuggestion({
 
     if (!enabled || !evidence.length) {
       setResolved(null);
+      return undefined;
+    }
+
+    if (privacyBlocked) {
+      setResolved(immediate);
       return undefined;
     }
 
@@ -263,7 +303,7 @@ export function useConfluenceSuggestion({
     }, DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [enabled, evidence, key, localHumanBoundary, localSuggestion, oracle]);
+  }, [enabled, evidence, immediate, key, localHumanBoundary, localSuggestion, oracle, privacyBlocked]);
 
   return resolved?.key === key ? resolved : immediate;
 }
