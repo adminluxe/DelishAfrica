@@ -136,3 +136,6 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 4. Les trois copies `ConfluenceOracleLens.tsx` et `useConfluenceSuggestion.ts` restent byte-identical.
 5. Le gate doit verifier le controle local-only, l AbortSignal et les trois branchements ecrans.
 6. Aucun build Store actuellement en review ne doit etre touche par ce laboratoire.
+
+## Private Current V1.1 invariant
+- enabled=false doit produire une copie explicite Local uniquement et ne jamais reutiliser un libelle ambigu de fallback serveur.

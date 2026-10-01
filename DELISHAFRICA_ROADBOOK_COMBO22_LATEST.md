@@ -216,3 +216,8 @@ Base: origin/innovation/confluence-trust-current-20261001 @ 10a0d59
 - TypeScript Client / Courier / Merchant = PASS.
 - Expo export iOS + Android sur les 3 apps = PASS.
 - Parite byte-identical Lens + Hook entre les triplettes = PASS.
+
+## Private Current V1.1 - verite du mode local
+- Quand l utilisateur choisit LOCAL UNIQUEMENT, le Passeport IA indique explicitement qu aucun appel Confluence n est envoye.
+- Le texte de secours ne peut plus laisser croire qu un serveur a ete consulte alors que le transport est coupe.
+- Gate rapide + TypeScript 3 apps : GREEN apres ce durcissement de verite UX.

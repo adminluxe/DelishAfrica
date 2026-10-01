@@ -235,17 +235,26 @@ export function useConfluenceSuggestion({
 
   const immediate = useMemo(
     () =>
-      privacyBlocked
+      !enabled
         ? fallbackState(
             key,
             evidence,
             localSuggestion,
             localHumanBoundary,
-            "Un signal potentiellement sensible a été détecté avant le réseau : la lecture locale reste active.",
-            "Passeport IA · transit serveur bloqué localement avant tout envoi.",
+            "Vous avez choisi Local uniquement : la lecture reste sur l’appareil et aucune requête Confluence n’est envoyée.",
+            "Passeport IA · Local uniquement choisi · aucun appel Confluence envoyé.",
           )
-        : fallbackState(key, evidence, localSuggestion, localHumanBoundary),
-    [evidence, key, localHumanBoundary, localSuggestion, privacyBlocked],
+        : privacyBlocked
+          ? fallbackState(
+              key,
+              evidence,
+              localSuggestion,
+              localHumanBoundary,
+              "Un signal potentiellement sensible a été détecté avant le réseau : la lecture locale reste active.",
+              "Passeport IA · transit serveur bloqué localement avant tout envoi.",
+            )
+          : fallbackState(key, evidence, localSuggestion, localHumanBoundary),
+    [enabled, evidence, key, localHumanBoundary, localSuggestion, privacyBlocked],
   );
 
   const [resolved, setResolved] = useState<DisplayState | null>(null);
