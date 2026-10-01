@@ -223,3 +223,24 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 6. Les trois Lens doivent rester byte-identical.
 7. Le gate doit échouer si `confluenceNetworkEnabled` réapparaît ou si le tri-state n est plus branché sur une app.
 8. Les builds Store actuellement en review restent gelés ; aucune promotion de ce laboratoire sans QA visuelle et décision explicite.
+
+---
+
+# ARCHITECTURE PIN UPDATE - 2026-10-01 - ATTENTION COVENANT V1
+
+## Attention contract
+- `ConfluenceOracleLens` maintient uniquement en mémoire React un `acknowledgedFingerprint`.
+- `attentionFingerprint` = `JSON.stringify([aiMode, evidence(label,value,kind)])`.
+- Après acknowledgement, si le fingerprint courant est identique : rendu compact `EN RETRAIT`.
+- Si le fingerprint diverge : rendu complet automatique + rail `NOUVEAU SIGNAL`.
+- Le texte généré, `generatedAt` et les variations de formulation fournisseur ne font pas partie du fingerprint : seule une variation du mode ou des preuves visibles regagne automatiquement l attention.
+
+## Invariants Attention Covenant
+1. Aucun état d attention ne doit être persisté entre sessions.
+2. La réduction visuelle ne doit jamais masquer un changement de preuve.
+3. `RELIRE` doit toujours permettre la reprise manuelle de la proposition.
+4. Sovereign Silence reste prioritaire sur le Pacte d attention.
+5. Aucun signal nouveau ne peut être ajouté au fingerprint hors Evidence Firewall sans mise à jour explicite du contrat.
+6. Les trois Lens restent byte-identical.
+7. Le gate vérifie Pacte, état de retrait, retour sur nouveau signal et absence de persistence.
+8. Aucun binaire Store actuellement en review ne doit être modifié par cette branche.

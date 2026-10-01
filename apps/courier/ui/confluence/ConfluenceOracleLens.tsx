@@ -54,6 +54,14 @@ export function ConfluenceOracleLens({
   onAiModeChange,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const [acknowledgedFingerprint, setAcknowledgedFingerprint] = useState<string | null>(null);
+
+  const attentionFingerprint = JSON.stringify([
+    aiMode,
+    evidence.map((item) => [item.label, item.value, item.kind ?? "context"]),
+  ]);
+  const attentionQuiet = acknowledgedFingerprint === attentionFingerprint;
+  const attentionReturning = Boolean(acknowledgedFingerprint && acknowledgedFingerprint !== attentionFingerprint);
 
   const readableIndexes = Array.from(
     new Set(
@@ -152,6 +160,35 @@ export function ConfluenceOracleLens({
     );
   }
 
+  if (attentionQuiet) {
+    return (
+      <View style={[styles.shell, styles.attentionQuietShell]}>
+        <View pointerEvents="none" style={styles.currentTop} />
+        <View style={styles.attentionQuietTop}>
+          <View style={[styles.attentionQuietMark, { borderColor: `${accent}66` }]}>
+            <View style={[styles.attentionQuietCore, { backgroundColor: accent }]} />
+          </View>
+          <View style={styles.headerCopy}>
+            <Text style={[styles.kicker, { color: accent }]}>CONFLUENCE · EN RETRAIT</Text>
+            <Text style={styles.attentionQuietTitle}>Rien de nouveau dans les preuves.</Text>
+          </View>
+          <Pressable
+            onPress={() => setAcknowledgedFingerprint(null)}
+            style={({ pressed }) => [styles.attentionRelisten, { borderColor: `${accent}44` }, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Relire la dernière proposition Confluence"
+          >
+            <Text style={[styles.attentionRelistenText, { color: accent }]}>RELIRE</Text>
+          </Pressable>
+        </View>
+        <Text style={styles.attentionQuietBody}>
+          Vous aviez déjà lu cette situation. Confluence libère l’écran et reviendra seulement si les preuves changent.
+        </Text>
+        {aiChoiceControl}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.shell}>
       <View pointerEvents="none" style={styles.currentTop} />
@@ -169,6 +206,13 @@ export function ConfluenceOracleLens({
           <Text style={[styles.badgeText, { color: accent }]}>SUGGESTION ONLY</Text>
         </View>
       </View>
+
+      {attentionReturning ? (
+        <View style={[styles.attentionReturnRail, { borderColor: `${accent}44` }]}>
+          <View style={[styles.attentionReturnDot, { backgroundColor: accent }]} />
+          <Text style={[styles.attentionReturnText, { color: accent }]}>NOUVEAU SIGNAL · les preuves ont changé depuis votre dernière lecture</Text>
+        </View>
+      ) : null}
 
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.suggestion}>{suggestion}</Text>
@@ -224,6 +268,22 @@ export function ConfluenceOracleLens({
           <Text style={styles.flowValue}>Décision finale</Text>
         </View>
       </View>
+
+      <Pressable
+        onPress={() => {
+          setExpanded(false);
+          setAcknowledgedFingerprint(attentionFingerprint);
+        }}
+        style={({ pressed }) => [styles.attentionRelease, { borderColor: `${accent}3D` }, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityLabel="J’ai compris cette proposition et je souhaite libérer l’écran jusqu’au prochain changement de preuves"
+      >
+        <View style={styles.attentionReleaseCopy}>
+          <Text style={[styles.attentionReleaseKicker, { color: accent }]}>PACTE D’ATTENTION</Text>
+          <Text style={styles.attentionReleaseText}>C’est clair · Confluence peut se retirer</Text>
+        </View>
+        <Text style={[styles.attentionReleaseArrow, { color: accent }]}>→</Text>
+      </Pressable>
 
       <Pressable
         onPress={() => setExpanded((value) => !value)}
@@ -407,6 +467,22 @@ const styles = StyleSheet.create({
   silentTitle: { color: "#FFF9EC", fontSize: 17, lineHeight: 22, fontWeight: "900", letterSpacing: -0.15 },
   silentBody: { color: "rgba(255,249,236,0.66)", fontSize: 12, lineHeight: 18, fontWeight: "700" },
   silentFootnote: { color: "rgba(255,249,236,0.34)", fontSize: 9, lineHeight: 13, fontWeight: "700" },
+  attentionQuietShell: { gap: 9, paddingVertical: 14, backgroundColor: "rgba(4, 20, 20, 0.955)" },
+  attentionQuietTop: { flexDirection: "row", alignItems: "center", gap: 10 },
+  attentionQuietMark: { width: 28, height: 28, borderRadius: 999, borderWidth: 1, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.02)" },
+  attentionQuietCore: { width: 7, height: 7, borderRadius: 999, opacity: 0.55 },
+  attentionQuietTitle: { color: "#FFF9EC", fontSize: 12, lineHeight: 16, fontWeight: "900", marginTop: 2 },
+  attentionQuietBody: { color: "rgba(255,249,236,0.48)", fontSize: 10, lineHeight: 15, fontWeight: "700" },
+  attentionRelisten: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: "rgba(255,255,255,0.025)" },
+  attentionRelistenText: { fontSize: 7.5, fontWeight: "900", letterSpacing: 0.9 },
+  attentionReturnRail: { flexDirection: "row", alignItems: "center", gap: 7, borderRadius: 12, borderWidth: 1, paddingVertical: 7, paddingHorizontal: 9, backgroundColor: "rgba(255,255,255,0.02)" },
+  attentionReturnDot: { width: 6, height: 6, borderRadius: 999 },
+  attentionReturnText: { flex: 1, fontSize: 8.5, lineHeight: 12, fontWeight: "900", letterSpacing: 0.35 },
+  attentionRelease: { minHeight: 48, borderRadius: 16, paddingHorizontal: 13, paddingVertical: 9, borderWidth: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, backgroundColor: "rgba(255,255,255,0.018)" },
+  attentionReleaseCopy: { flex: 1 },
+  attentionReleaseKicker: { fontSize: 7.5, fontWeight: "900", letterSpacing: 1.15 },
+  attentionReleaseText: { color: "rgba(255,249,236,0.76)", fontSize: 10.5, lineHeight: 15, fontWeight: "800", marginTop: 3 },
+  attentionReleaseArrow: { fontSize: 15, fontWeight: "900" },
   flow: { flexDirection: "row", alignItems: "stretch", minHeight: 74 },
   flowCell: { flex: 1, borderRadius: 17, padding: 10, backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1, borderColor: "rgba(255,255,255,0.05)" },
   flowLabel: { color: "rgba(255,249,236,0.42)", fontSize: 8, fontWeight: "900", letterSpacing: 1.2 },

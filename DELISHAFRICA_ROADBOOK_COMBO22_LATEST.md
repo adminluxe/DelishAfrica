@@ -389,3 +389,46 @@ Base: reconcile/project-master-20261001 @ 7970e9c
 - DelishAfrica ne demande pas une confiance aveugle envers l IA.
 - L utilisateur peut choisir une IA serveur contrôlée, une intelligence locale sans réseau, ou aucun conseil IA affiché du tout.
 - La souveraineté utilisateur devient une capacité produit, pas une promesse de confidentialité cachée dans des réglages.
+
+---
+
+# DELISHAFRICA ROADBOOK UPDATE - 2026-10-01 - CONFLUENCE ATTENTION COVENANT V1
+Branch: innovation/confluence-attention-covenant-20261001
+Base: innovation/confluence-sovereign-silence-20261001 @ fa299d3
+
+## Intention
+- Une IA digne de confiance ne doit pas seulement savoir parler, expliquer et se taire sur demande : elle doit aussi savoir quitter l écran quand elle n apporte plus rien de nouveau.
+- Réduire la dette cognitive et la compétition visuelle sans cacher un changement utile.
+- Ne pas transformer ce comportement en profil utilisateur : la lecture reste entièrement session-only.
+
+## Innovation livrée - Pacte d attention
+- Chaque Lens propose `PACTE D’ATTENTION · C’est clair · Confluence peut se retirer`.
+- Après acknowledgement humain, le Lens se replie en rail compact `CONFLUENCE · EN RETRAIT`.
+- Tant que les preuves et le mode IA restent identiques, Confluence n occupe plus l espace principal.
+- `RELIRE` permet de rouvrir volontairement la dernière proposition à tout moment.
+- Si une preuve change, le Lens revient automatiquement en taille complète avec `NOUVEAU SIGNAL`.
+- Le fingerprint est dérivé uniquement du mode courant et des preuves déjà visibles (`label`, `value`, `kind`) : aucun historique externe, identifiant ou profilage ajouté.
+- Sovereign Silence garde la priorité : en mode SILENCE aucune recommandation Confluence n est affichée.
+
+## Pourquoi c est différent
+- Le modèle dominant consiste à maximiser la présence de l assistant. DelishAfrica impose au contraire un droit de retrait de l IA après compréhension humaine.
+- L IA doit gagner ses pixels : une situation déjà comprise ne reste pas artificiellement au premier plan.
+- Elle revient sur changement de preuve, pas sur simple changement de formulation fournisseur.
+
+## Sécurité / sobriété
+- Aucun stockage persistant du consentement de lecture.
+- Le gate échoue si `SecureStore`, `AsyncStorage`, `localStorage` ou une logique de persistence apparaît dans le Lens.
+- Aucun nouvel endpoint, provider call, package, permission ou collecte personnelle.
+- Evidence Firewall, Zero-Leak Gate, Algorithmic Red Line, Blind Spots, Sovereign Silence et frontière humaine restent intacts.
+- Aucun OTA, rebuild Store ou déploiement runtime déclenché.
+
+## Validation
+- Lens byte-identical Client / Courier / Merchant : PASS.
+- `scripts/da_confluence_trust_gate.sh` quick : GREEN.
+- API Nest build : PASS.
+- TypeScript Client / Courier / Merchant : PASS.
+- Expo export Client iOS + Android : PASS.
+- Expo export Courier iOS + Android : PASS.
+- Expo export Merchant iOS + Android : PASS.
+- `scripts/da_confluence_trust_gate.sh --full` : GREEN.
+- `git diff --check` : PASS.
