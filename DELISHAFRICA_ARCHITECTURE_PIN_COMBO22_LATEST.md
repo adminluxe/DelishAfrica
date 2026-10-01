@@ -64,3 +64,10 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Auth/OIDC, Stripe, Dispatch, Orders state machine et actions métier restent FROZEN.
 - Route Oracle business logic n est pas modifiée : uniquement sa couche explicative.
 - Les builds actuellement soumis aux stores ne sont pas modifiés et aucun OTA n est poussé.
+
+## Uncertainty taxonomy V1.1
+- `facts_only` = uniquement des preuves classées fact.
+- `contains_context` = au moins un signal contextuel et aucune estimation.
+- `contains_estimates` = au moins une estimation.
+- `insufficient_evidence` = aucune preuve exploitable.
+- Interdiction architecturale : ne jamais afficher CONTEXTE comme FAIT et ne jamais convertir cette taxonomie en pseudo-probabilité sans calibration réelle.

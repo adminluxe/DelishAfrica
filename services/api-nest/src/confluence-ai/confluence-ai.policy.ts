@@ -2,6 +2,7 @@ export type ConfluenceOracle = 'taste' | 'service' | 'route';
 export type ConfluenceEvidenceKind = 'fact' | 'estimate' | 'context';
 export type ConfluenceUncertainty =
   | 'facts_only'
+  | 'contains_context'
   | 'contains_estimates'
   | 'insufficient_evidence';
 
@@ -149,5 +150,7 @@ export function humanBoundaryFor(oracle: ConfluenceOracle, locale: 'fr' | 'en'):
 
 export function localUncertainty(evidence: ConfluenceEvidence[]): ConfluenceUncertainty {
   if (!evidence.length) return 'insufficient_evidence';
-  return evidence.some((item) => item.kind === 'estimate') ? 'contains_estimates' : 'facts_only';
+  if (evidence.some((item) => item.kind === 'estimate')) return 'contains_estimates';
+  if (evidence.some((item) => item.kind === 'context')) return 'contains_context';
+  return 'facts_only';
 }

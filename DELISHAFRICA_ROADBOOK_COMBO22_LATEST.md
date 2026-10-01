@@ -66,3 +66,13 @@ Scope: Client + Courier, harmonisé Merchant
 - QA visuelle sur appareils avant toute promotion vers master.
 - Mesurer la lisibilité de la bande de confiance sur petits écrans et Reduce Motion.
 - Ne pas afficher de pseudo-confidence numérique : rester sur preuves, incertitude et fraîcheur observables.
+
+## Trust Current V1.1 - précision CONTEXTE
+- Correction de confiance : un signal `context` n est plus résumé comme `FAITS` lorsqu aucune estimation n est présente.
+- Nouveau niveau : `CONTEXTE`, distinct de `FAITS`, `ESTIMATIONS` et `PREUVES FAIBLES`.
+- Le backend Confluence, le schéma de sortie structurée et les trois hooks mobiles partagent désormais la même sémantique.
+- Test fonctionnel policy compilée : facts=facts_only, context=contains_context, estimate=contains_estimates, empty=insufficient_evidence.
+- API Nest build : PASS.
+- TypeScript 3 apps : PASS.
+- Expo exports : iOS + Android PASS pour Client, Courier et Merchant.
+- Surcoût bundle mesuré vs Trust Current V1 : environ +177 à +201 octets selon app/plateforme ; aucune dépendance ni requête réseau ajoutée.

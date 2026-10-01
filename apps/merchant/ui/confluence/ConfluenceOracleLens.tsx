@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 export type OracleEvidenceKind = "fact" | "estimate" | "context";
-export type OracleUncertainty = "facts_only" | "contains_estimates" | "insufficient_evidence";
+export type OracleUncertainty = "facts_only" | "contains_context" | "contains_estimates" | "insufficient_evidence";
 export type OracleTrustMode = "embedded" | "server_local" | "ai";
 
 export type OracleEvidence = {
@@ -58,9 +58,11 @@ export function ConfluenceOracleLens({
   const uncertaintyLabel =
     uncertainty === "contains_estimates"
       ? "ESTIMATIONS"
-      : uncertainty === "insufficient_evidence"
-        ? "PREUVES FAIBLES"
-        : "FAITS";
+      : uncertainty === "contains_context"
+        ? "CONTEXTE"
+        : uncertainty === "insufficient_evidence"
+          ? "PREUVES FAIBLES"
+          : "FAITS";
   const changeSignals = evidence
     .filter((item, index) => readableIndexes.includes(index) && (item.kind === "estimate" || item.kind === "context"))
     .slice(0, 2)
