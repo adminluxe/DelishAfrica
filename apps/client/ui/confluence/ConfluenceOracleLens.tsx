@@ -69,6 +69,10 @@ export function ConfluenceOracleLens({
     .filter((item, index) => readableIndexes.includes(index) && (item.kind === "estimate" || item.kind === "context"))
     .slice(0, 2)
     .map((item) => `${item.label} évolue`);
+  const blindSpots = evidence
+    .filter((item) => /non reç(?:u|ue)|indisponible|inconnu|à actualiser|sans signal|^—$|^-$|^n\/a$/i.test(item.value.trim()))
+    .slice(0, 3)
+    .map((item) => item.label);
   const freshness = generatedAt
     ? (() => {
         const date = new Date(generatedAt);
@@ -184,6 +188,27 @@ export function ConfluenceOracleLens({
             );
           })}
 
+          {blindSpots.length ? (
+            <View style={styles.blindSpotCard}>
+              <View style={styles.blindSpotTop}>
+                <Text style={[styles.blindSpotKicker, { color: accent }]}>ANGLE MORT</Text>
+                <Text style={styles.blindSpotCount}>{blindSpots.length} signal{blindSpots.length > 1 ? "x" : ""}</Text>
+              </View>
+              <Text style={styles.blindSpotTitle}>Ce que Confluence ne sait pas encore.</Text>
+              <Text style={styles.blindSpotText}>
+                L’absence de donnée reste une absence de donnée : elle n’est jamais transformée en certitude.
+              </Text>
+              <View style={styles.blindSpotList}>
+                {blindSpots.map((label) => (
+                  <View key={label} style={styles.blindSpotRow}>
+                    <View style={[styles.blindSpotDot, { borderColor: accent }]} />
+                    <Text style={styles.blindSpotItem}>{label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
           <View style={[styles.boundary, { borderColor: `${accent}44` }]}>
             <Text style={[styles.boundaryKicker, { color: accent }]}>FRONTIÈRE HUMAINE</Text>
             <Text style={styles.boundaryText}>{humanBoundary}</Text>
@@ -293,6 +318,16 @@ const styles = StyleSheet.create({
   proofLabel: { color: "#FFF9EC", fontSize: 11, fontWeight: "900" },
   proofKind: { fontSize: 7.5, fontWeight: "900", letterSpacing: 1 },
   proofValue: { color: "rgba(255,249,236,0.63)", fontSize: 11.5, lineHeight: 17, fontWeight: "700", marginTop: 5 },
+  blindSpotCard: { borderRadius: 17, padding: 13, backgroundColor: "rgba(255,255,255,0.018)", borderWidth: 1, borderColor: "rgba(255,255,255,0.05)", gap: 7 },
+  blindSpotTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  blindSpotKicker: { fontSize: 8.5, fontWeight: "900", letterSpacing: 1.35 },
+  blindSpotCount: { color: "rgba(255,249,236,0.34)", fontSize: 8.5, fontWeight: "800" },
+  blindSpotTitle: { color: "#FFF9EC", fontSize: 12.5, lineHeight: 17, fontWeight: "900" },
+  blindSpotText: { color: "rgba(255,249,236,0.48)", fontSize: 10, lineHeight: 15, fontWeight: "700" },
+  blindSpotList: { gap: 6, marginTop: 2 },
+  blindSpotRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  blindSpotDot: { width: 7, height: 7, borderRadius: 999, borderWidth: 1.5, backgroundColor: "transparent" },
+  blindSpotItem: { flex: 1, color: "rgba(255,249,236,0.70)", fontSize: 10.5, lineHeight: 15, fontWeight: "800" },
   boundary: { borderRadius: 17, padding: 13, borderWidth: 1, backgroundColor: "rgba(255,255,255,0.025)" },
   boundaryKicker: { fontSize: 8.5, fontWeight: "900", letterSpacing: 1.4 },
   boundaryText: { color: "rgba(255,249,236,0.74)", fontSize: 11.5, lineHeight: 17, fontWeight: "700", marginTop: 6 },

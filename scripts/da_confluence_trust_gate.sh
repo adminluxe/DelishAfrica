@@ -40,6 +40,8 @@ require_text "transit serveur bloqué localement avant tout envoi" "$CLIENT_HOOK
 require_text "provider_sensitive_output_guard" "$CLIENT_HOOK" "provider_sensitive_fallback_explained"
 require_text "provider_evidence_guard" "$CLIENT_HOOK" "provider_evidence_fallback_explained"
 require_text "provider_daily_cap" "$CLIENT_HOOK" "provider_budget_fallback_explained"
+require_text "ANGLE MORT" "$CLIENT_LENS" "blind_spot_disclosure_present"
+require_text "L’absence de donnée reste une absence de donnée" "$CLIENT_LENS" "blind_spot_truth_copy_present"
 
 require_text "store: false" "$SERVICE" "provider_store_disabled"
 require_text "requestContainsSensitiveEvidence(body)" "$SERVICE" "sensitive_request_guard_present"

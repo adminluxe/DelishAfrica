@@ -110,3 +110,10 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Tout fallback Confluence connu doit avoir une traduction humaine stable côté app ; ne pas masquer un guardrail derrière un message générique si le serveur fournit `fallbackReason`.
 - Les messages doivent décrire le mécanisme réel (blocage, budget, indisponibilité, preuve insuffisante) sans inventer de diagnostic ni de probabilité.
 - Le fallback reste une lecture déterministe sans side effect et ne doit jamais pousser l utilisateur à contourner un garde de sécurité.
+
+## Blind-spot disclosure contract V1.6
+- Confluence peut déclarer une inconnue uniquement lorsqu une preuve visible porte explicitement une valeur d absence ou de non-disponibilité reconnue.
+- Interdiction de déduire un angle mort à partir d une identité, d une préférence sensible ou d une donnée non collectée.
+- ANGLE MORT reste en progressive disclosure, jamais comme alerte anxiogène sur le parcours principal.
+- L absence de donnée ne peut jamais être convertie en fait, score de confiance ou probabilité implicite.
+- Les trois ConfluenceOracleLens.tsx doivent rester byte-identical.

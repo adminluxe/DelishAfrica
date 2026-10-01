@@ -161,3 +161,20 @@ Scope: Client + Courier, harmonisé Merchant
 - TypeScript Client/Courier/Merchant : PASS.
 - Expo export iOS + Android : PASS pour les 3 apps.
 - Aucun Store build, OTA update ou déploiement runtime déclenché.
+
+## Trust Current V1.6 - Angles morts explicites
+- Confluence expose désormais ce qu il ne sait pas encore lorsque les preuves visibles contiennent un signal absent ou non reçu.
+- La lentille détecte uniquement des absences explicites déjà présentes dans les preuves : Non reçu, Non reçue, Indisponible, Inconnu, À actualiser, Sans signal, tiret ou N/A.
+- Aucun manque n est inventé et aucun score de confiance n est dérivé.
+- L angle mort est affiché seulement dans le panneau explicatif : zéro surcharge de la lecture principale.
+- Message contractuel : L absence de donnée reste une absence de donnée ; elle n est jamais transformée en certitude.
+- Intérêt Courier/Merchant : ETA, score dispatch ou état serveur manquant deviennent visibles comme inconnues au lieu d être absorbés silencieusement dans une recommandation.
+
+### Validation V1.6
+- Lens byte-identical Client/Courier/Merchant : PASS.
+- Gate quick : GREEN avec présence Angle Mort + copy de vérité vérifiée.
+- Gate FULL : GREEN.
+- API build : PASS.
+- TypeScript 3 apps : PASS.
+- Expo iOS + Android 3 apps : PASS.
+- Aucun Store build, OTA update ou déploiement runtime déclenché.
