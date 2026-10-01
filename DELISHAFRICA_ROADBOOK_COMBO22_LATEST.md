@@ -115,3 +115,13 @@ Scope: Client + Courier, harmonisé Merchant
 - DelishAfrica ne poursuit pas le paradigme chatbot = IA.
 - La ligne produit devient : preuve visible + confidentialité explicite + contre-factuel compréhensible + action humaine réversible.
 - Aucun Store build, OTA update ou déploiement runtime déclenché pendant ce palier.
+
+## Integration gate - current master 2026-10-01
+- La branche innovation a été fusionnée dans un worktree de couveuse basé sur `origin/master` ecb432d, sans modifier le repo runtime principal.
+- Merge d intégration : 440799b avant annotation.
+- API Nest build sur base master courante : PASS.
+- TypeScript Client/Courier/Merchant : PASS.
+- Expo export iOS + Android des 3 apps sur base master courante : PASS.
+- `git diff --check` : PASS.
+- Cette validation remplace une tentative de rebase impossible dans le worktree runtime à cause d un répertoire historique `payments/` non inscriptible par le groupe. Aucune élévation de privilège ni modification de permissions n a été effectuée.
+- Les anciens dossiers `(tabs)` nettoyés dans le worktree runtime étaient des résidus de routes supprimées par les commits de sanitation historiques d602f12/d6dc5d3 ; les routes canoniques trackées restent intactes.

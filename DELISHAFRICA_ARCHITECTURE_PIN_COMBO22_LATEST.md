@@ -89,3 +89,7 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Le texte doit décrire le contrat métier existant, jamais prédire un résultat futur non garanti.
 - Aucun bouton de prévisualisation ne peut appeler les endpoints accept/reject.
 - Accept, pickup et delivered restent trois gestes séparés.
+
+## Integration discipline
+- Les synchronisations avec `origin/master` doivent désormais être validées dans un `git worktree` sous `$HOME/DA_WORKTREES/`, jamais par rebase direct du worktree runtime `/opt/delishafrica/monorepo` tant que des sous-répertoires root-owned subsistent.
+- Aucune modification chmod/chown opportuniste du repo runtime : corriger la propriété séparément, avec une opération dédiée et auditable si nécessaire.
