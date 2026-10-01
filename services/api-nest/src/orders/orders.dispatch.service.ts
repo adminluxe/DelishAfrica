@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { DaAuthPrincipal } from '../auth/auth.types';
+import { FinancialStateRepository } from '../financial-state/financial-state.repository';
 import { CourierPresenceService, type CourierPresenceRecord } from './courier-presence.service';
 import { OrdersAccessService } from './orders.access.service';
 import {
@@ -42,12 +43,16 @@ export class OrdersDispatchService {
   constructor(
     private readonly presence: CourierPresenceService,
     private readonly access: OrdersAccessService,
+    private readonly financialState: FinancialStateRepository,
   ) {}
 
   async heartbeat(principal: DaAuthPrincipal, body: Record<string, any> = {}) {
     const record = this.presence.heartbeat(principal, body);
     await this.reconcileReadyOrders();
-    const orders = await this.access.visibleOrders(principal, listDemoOrders());
+    const orders = await this.access.visibleOrders(
+      principal,
+      await this.financialState.listOrders(),
+    );
     return {
       ok: true,
       service: 'server_dispatch',
@@ -60,7 +65,10 @@ export class OrdersDispatchService {
     if (principal.role !== 'courier') {
       throw new ForbiddenException({ ok: false, code: 'courier_role_required' });
     }
-    const orders = await this.access.visibleOrders(principal, listDemoOrders());
+    const orders = await this.access.visibleOrders(
+      principal,
+      await this.financialState.listOrders(),
+    );
     return { ok: true, count: orders.length, orders, items: orders, data: orders };
   }
 
@@ -78,6 +86,7 @@ export class OrdersDispatchService {
       decisionMode: 'courier_confirmed',
     });
     if (!order) throw new NotFoundException({ ok: false, code: 'dispatch_offer_not_found' });
+    await this.financialState.upsertOrder(order);
     return { ok: true, order, proposal: order.assignmentProposal, status: order.status };
   }
 
@@ -90,16 +99,21 @@ export class OrdersDispatchService {
     const order = rejectDemoOrderCourier({ orderId, courierId, reason: clean(body.reason || 'courier_declined') });
     if (!order) throw new NotFoundException({ ok: false, code: 'dispatch_offer_not_found' });
     const next = await this.offerOrder(order);
+    await this.financialState.upsertOrder(next);
     return { ok: true, order: next, rejectedBy: courierId };
   }
 
   async onOrderReady(order: AnyOrder): Promise<AnyOrder> {
-    return this.offerOrder(order);
+    const next = await this.offerOrder(order);
+    await this.financialState.upsertOrder(next);
+    return next;
   }
 
   async reconcileReadyOrders(): Promise<void> {
-    for (const order of listDemoOrders().filter((item) => status(item) === 'ready')) {
-      await this.offerOrder(order);
+    const orders = await this.financialState.listOrders();
+    for (const order of orders.filter((item) => status(item) === 'ready')) {
+      const next = await this.offerOrder(order);
+      await this.financialState.upsertOrder(next);
     }
   }
 

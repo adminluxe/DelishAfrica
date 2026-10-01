@@ -41,6 +41,58 @@ function validateInput(input: OrchidpayF3VerifyInput): void {
 
 @Injectable()
 export class OrchidpayF3Service {
+  async health(): Promise<{ ok: true }> {
+    return await new Promise<{ ok: true }>((resolve, reject) => {
+      const req = httpRequest(
+        {
+          socketPath: SOCKET_PATH,
+          path: '/healthz',
+          method: 'GET',
+          timeout: 1_500,
+        },
+        (res) => {
+          const chunks: Buffer[] = [];
+          let total = 0;
+
+          res.on('data', (chunk: Buffer) => {
+            total += chunk.length;
+            if (total > 2_048) {
+              req.destroy(new Error('orchidpay_f3_health_response_too_large'));
+              return;
+            }
+            chunks.push(Buffer.from(chunk));
+          });
+
+          res.on('end', () => {
+            try {
+              const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+              if (res.statusCode === 200 && parsed?.ok === true) {
+                resolve({ ok: true });
+                return;
+              }
+            } catch {}
+
+            reject(
+              new ServiceUnavailableException({
+                code: 'orchidpay_f3_health_unavailable',
+              }),
+            );
+          });
+        },
+      );
+
+      req.on('timeout', () => req.destroy(new Error('orchidpay_f3_health_timeout')));
+      req.on('error', () =>
+        reject(
+          new ServiceUnavailableException({
+            code: 'orchidpay_f3_health_unavailable',
+          }),
+        ),
+      );
+      req.end();
+    });
+  }
+
   async verify(input: OrchidpayF3VerifyInput): Promise<OrchidpayF3VerifyResult> {
     validateInput(input);
 
