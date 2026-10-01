@@ -178,3 +178,41 @@ Scope: Client + Courier, harmonisé Merchant
 - TypeScript 3 apps : PASS.
 - Expo iOS + Android 3 apps : PASS.
 - Aucun Store build, OTA update ou déploiement runtime déclenché.
+
+---
+
+# DELISHAFRICA ROADBOOK UPDATE - 2026-10-01 - CONFLUENCE PRIVATE CURRENT V1
+Branch: innovation/confluence-private-current-20261001
+Base: origin/innovation/confluence-trust-current-20261001 @ 10a0d59
+
+## Intention
+- Donner a l utilisateur un vrai pouvoir de retrait sans retirer la valeur de l IA.
+- Ne pas ajouter un ecran de parametres, un chatbot ou une permission opaque : le choix vit directement dans le Passeport IA, au moment ou la suggestion est visible.
+
+## Innovation livree
+- Le Passeport IA expose maintenant un controle de session `CHOIX IA`.
+- `SERVEUR AUTORISE` conserve Confluence serveur et ses guardrails.
+- `LOCAL UNIQUEMENT` coupe les lectures Confluence reseau pour cet Oracle et maintient instantanement la suggestion embarquee.
+- Client / Taste Oracle, Courier / Route Oracle et Merchant / Service Oracle partagent exactement le meme contrat.
+- Une requete Confluence deja en vol recoit maintenant un AbortSignal et est annulee lors d un changement de mode, de contexte ou de demontage.
+- Une annulation voulue n est pas requalifiee en panne : aucun message d erreur artificiel n est genere.
+
+## Pourquoi c est different
+- L utilisateur n a pas a croire une promesse de confidentialite cachee dans un menu : il peut couper le transit IA a l endroit meme ou il voit l IA.
+- La valeur locale reste toujours disponible ; refuser le serveur ne degrade pas le parcours en impasse.
+- L IA devient un service reversible, pas une dependance obligatoire.
+
+## Securite / performance
+- Aucune nouvelle dependance native.
+- Aucune persistence du choix : controle de session volontaire, sans nouveau profilage.
+- Aucun nouvel appel reseau ; au contraire, le mode local peut supprimer les appels Confluence.
+- AbortController coupe les requetes devenues inutiles.
+- Aucun changement des actions metier, paiements, dispatch, commandes ou auth.
+- Aucun OTA et aucun rebuild Store declenche.
+
+## Validation
+- `scripts/da_confluence_trust_gate.sh --full` = GREEN.
+- API Nest build = PASS.
+- TypeScript Client / Courier / Merchant = PASS.
+- Expo export iOS + Android sur les 3 apps = PASS.
+- Parite byte-identical Lens + Hook entre les triplettes = PASS.

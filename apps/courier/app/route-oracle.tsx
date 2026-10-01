@@ -370,6 +370,7 @@ export default function RouteOracleScreen() {
     error: "",
   });
   const [decisionPreviewOpen, setDecisionPreviewOpen] = useState(false);
+  const [confluenceNetworkEnabled, setConfluenceNetworkEnabled] = useState(true);
 
   useEffect(() => {
     setDecisionPreviewOpen(false);
@@ -693,7 +694,7 @@ export default function RouteOracleScreen() {
       "Aucune proposition active : attendre une preuve dispatch avant toute lecture.",
     localHumanBoundary:
       "Cette lecture n’accepte, ne récupère et ne livre aucune mission à votre place. Les trois gestes restent explicitement humains.",
-    enabled: Boolean(oracleLens),
+    enabled: Boolean(oracleLens) && confluenceNetworkEnabled,
   });
 
   return (
@@ -887,6 +888,8 @@ export default function RouteOracleScreen() {
           evidenceIndexes={confluenceSuggestion.evidenceIndexes}
           generatedAt={confluenceSuggestion.generatedAt}
           privacyNote={confluenceSuggestion.privacyNote}
+          networkEnabled={confluenceNetworkEnabled}
+          onNetworkEnabledChange={setConfluenceNetworkEnabled}
               />
             ) : null}
 

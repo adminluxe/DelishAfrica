@@ -24,6 +24,8 @@ type Props = {
   evidenceIndexes?: number[];
   generatedAt?: string;
   privacyNote?: string;
+  networkEnabled?: boolean;
+  onNetworkEnabledChange?: (next: boolean) => void;
 };
 
 const KIND_LABEL: Record<OracleEvidenceKind, string> = {
@@ -45,6 +47,8 @@ export function ConfluenceOracleLens({
   evidenceIndexes,
   generatedAt,
   privacyNote,
+  networkEnabled = true,
+  onNetworkEnabledChange,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
 
@@ -122,8 +126,26 @@ export function ConfluenceOracleLens({
 
       {privacyNote ? (
         <View style={styles.privacyRail}>
-          <Text style={[styles.privacyKicker, { color: accent }]}>PASSEPORT IA</Text>
-          <Text style={styles.privacyText}>{privacyNote.replace(/^Passeport IA ·\s*/i, "")}</Text>
+          <View style={styles.privacyCopy}>
+            <Text style={[styles.privacyKicker, { color: accent }]}>PASSEPORT IA</Text>
+            <Text style={styles.privacyText}>{privacyNote.replace(/^Passeport IA ·\s*/i, "")}</Text>
+          </View>
+          {onNetworkEnabledChange ? (
+            <Pressable
+              onPress={() => onNetworkEnabledChange(!networkEnabled)}
+              style={({ pressed }) => [
+                styles.privacyMode,
+                { borderColor: `${accent}${networkEnabled ? "55" : "33"}` },
+                pressed && styles.pressed,
+              ]}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: networkEnabled }}
+              accessibilityLabel={networkEnabled ? "Passer Confluence en mode local uniquement" : "Autoriser Confluence à consulter le serveur"}
+            >
+              <Text style={[styles.privacyModeKicker, { color: accent }]}>CHOIX IA</Text>
+              <Text style={styles.privacyModeValue}>{networkEnabled ? "SERVEUR AUTORISÉ" : "LOCAL UNIQUEMENT"}</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 
@@ -296,9 +318,13 @@ const styles = StyleSheet.create({
   trustDivider: { width: 1, backgroundColor: "rgba(255,255,255,0.07)" },
   trustLabel: { color: "rgba(255,249,236,0.36)", fontSize: 7.5, fontWeight: "900", letterSpacing: 1.05 },
   trustValue: { color: "#FFF9EC", fontSize: 9.5, lineHeight: 13, fontWeight: "900", marginTop: 5 },
-  privacyRail: { flexDirection: "row", alignItems: "center", gap: 9, borderRadius: 14, paddingVertical: 8, paddingHorizontal: 10, backgroundColor: "rgba(255,255,255,0.018)", borderWidth: 1, borderColor: "rgba(255,255,255,0.045)" },
+  privacyRail: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 14, paddingVertical: 8, paddingHorizontal: 10, backgroundColor: "rgba(255,255,255,0.018)", borderWidth: 1, borderColor: "rgba(255,255,255,0.045)" },
+  privacyCopy: { flex: 1 },
   privacyKicker: { fontSize: 7.5, fontWeight: "900", letterSpacing: 1.1 },
-  privacyText: { flex: 1, color: "rgba(255,249,236,0.50)", fontSize: 9.5, lineHeight: 14, fontWeight: "700" },
+  privacyText: { color: "rgba(255,249,236,0.50)", fontSize: 9.5, lineHeight: 14, fontWeight: "700", marginTop: 3 },
+  privacyMode: { maxWidth: 122, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1, backgroundColor: "rgba(255,255,255,0.025)" },
+  privacyModeKicker: { fontSize: 7, fontWeight: "900", letterSpacing: 1 },
+  privacyModeValue: { color: "#FFF9EC", fontSize: 8.5, lineHeight: 12, fontWeight: "900", marginTop: 3 },
   flow: { flexDirection: "row", alignItems: "stretch", minHeight: 74 },
   flowCell: { flex: 1, borderRadius: 17, padding: 10, backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1, borderColor: "rgba(255,255,255,0.05)" },
   flowLabel: { color: "rgba(255,249,236,0.42)", fontSize: 8, fontWeight: "900", letterSpacing: 1.2 },

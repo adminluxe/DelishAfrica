@@ -21,8 +21,9 @@ POLICY="$ROOT/services/api-nest/src/confluence-ai/confluence-ai.policy.ts"
 TYPES="$ROOT/services/api-nest/src/confluence-ai/confluence-ai.types.ts"
 CLIENT_ORACLE="$ROOT/apps/client/app/taste-oracle.tsx"
 COURIER_ORACLE="$ROOT/apps/courier/app/route-oracle.tsx"
+MERCHANT_ORACLE="$ROOT/apps/merchant/app/service-oracle.tsx"
 
-for f in "$CLIENT_LENS" "$COURIER_LENS" "$MERCHANT_LENS" "$CLIENT_HOOK" "$COURIER_HOOK" "$MERCHANT_HOOK" "$SERVICE" "$POLICY" "$TYPES" "$CLIENT_ORACLE" "$COURIER_ORACLE"; do
+for f in "$CLIENT_LENS" "$COURIER_LENS" "$MERCHANT_LENS" "$CLIENT_HOOK" "$COURIER_HOOK" "$MERCHANT_HOOK" "$SERVICE" "$POLICY" "$TYPES" "$CLIENT_ORACLE" "$COURIER_ORACLE" "$MERCHANT_ORACLE"; do
   require_file "$f"
 done
 pass "required_files"
@@ -53,6 +54,12 @@ require_text "providerStore: false" "$TYPES" "privacy_contract_typed"
 require_text "COUNTERFLOW" "$CLIENT_ORACLE" "client_counterflow_present"
 require_text "SAS HUMAIN · AUCUNE ACTION ENVOYÉE" "$COURIER_ORACLE" "courier_decision_sandbox_present"
 require_text "setDecisionPreviewOpen((value) => !value)" "$COURIER_ORACLE" "decision_preview_local_toggle"
+require_text "LOCAL UNIQUEMENT" "$CLIENT_LENS" "user_local_only_control_present"
+require_text "controller.abort()" "$CLIENT_HOOK" "network_abort_cleanup_present"
+require_text "signal: controller.signal" "$CLIENT_HOOK" "network_abort_signal_present"
+require_text "enabled: confluenceNetworkEnabled" "$CLIENT_ORACLE" "client_user_ai_network_control"
+require_text "enabled: Boolean(oracleLens) && confluenceNetworkEnabled" "$COURIER_ORACLE" "courier_user_ai_network_control"
+require_text "enabled: confluenceNetworkEnabled" "$MERCHANT_ORACLE" "merchant_user_ai_network_control"
 
 sensitive_line="$(grep -nF "requestContainsSensitiveEvidence(body)" "$SERVICE" | head -1 | cut -d: -f1)"
 provider_line="$(grep -nF "providerSuggestion(input" "$SERVICE" | head -1 | cut -d: -f1)"

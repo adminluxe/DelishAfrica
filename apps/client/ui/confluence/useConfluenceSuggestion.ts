@@ -271,12 +271,14 @@ export function useConfluenceSuggestion({
       return undefined;
     }
 
+    const controller = new AbortController();
     const timer = setTimeout(() => {
       void (async () => {
         try {
           const response = await daOrdersFetch(`${API_BASE}/confluence/ai/suggest`, {
             method: "POST",
             headers: { "Content-Type": "application/json", Accept: "application/json" },
+            signal: controller.signal,
             body: JSON.stringify({
               oracle,
               locale: "fr",
@@ -293,6 +295,7 @@ export function useConfluenceSuggestion({
           cache.set(key, { at: Date.now(), value: next });
           if (mine === generation.current) setResolved(next);
         } catch {
+          if (controller.signal.aborted) return;
           if (mine === generation.current) {
             setResolved(
               fallbackState(
@@ -308,7 +311,10 @@ export function useConfluenceSuggestion({
       })();
     }, DEBOUNCE_MS);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [enabled, evidence, immediate, key, localHumanBoundary, localSuggestion, oracle, privacyBlocked]);
 
   return resolved?.key === key ? resolved : immediate;

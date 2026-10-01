@@ -117,3 +117,22 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - ANGLE MORT reste en progressive disclosure, jamais comme alerte anxiogène sur le parcours principal.
 - L absence de donnée ne peut jamais être convertie en fait, score de confiance ou probabilité implicite.
 - Les trois ConfluenceOracleLens.tsx doivent rester byte-identical.
+
+---
+
+# ARCHITECTURE PIN UPDATE - 2026-10-01 - PRIVATE CURRENT V1
+
+## User-controlled AI transport
+- Chaque Oracle expose un controle de session dans `ConfluenceOracleLens` : serveur autorise ou local uniquement.
+- La source de verite du transport est un state local a l ecran ; elle alimente `useConfluenceSuggestion(enabled=...)`.
+- `enabled=false` interdit toute nouvelle requete Confluence et conserve le fallback embarque.
+- Toute requete en vol utilise `AbortController`; le cleanup annule le transport lors d un changement de contexte/mode ou demontage.
+- Une annulation voulue ne doit jamais devenir un fallback d erreur visible.
+
+## Invariants
+1. Le mode local doit toujours etre utilisable sans compte IA fournisseur.
+2. Le controle utilisateur ne doit jamais muter une commande, mission, paiement ou statut.
+3. Le choix n est pas persiste tant qu une politique produit explicite ne l exige pas.
+4. Les trois copies `ConfluenceOracleLens.tsx` et `useConfluenceSuggestion.ts` restent byte-identical.
+5. Le gate doit verifier le controle local-only, l AbortSignal et les trois branchements ecrans.
+6. Aucun build Store actuellement en review ne doit etre touche par ce laboratoire.

@@ -149,6 +149,7 @@ const COUNTERFLOW: Record<MoodKey, MoodKey> = {
 export default function TasteOracleScreen() {
   const [selectedKey, setSelectedKey] = useState<MoodKey>("discovery");
   const [reduceMotion, setReduceMotion] = useState(false);
+  const [confluenceNetworkEnabled, setConfluenceNetworkEnabled] = useState(true);
 
   useEffect(() => {
     let mounted = true;
@@ -192,6 +193,7 @@ export default function TasteOracleScreen() {
     evidence: oracleEvidence,
     localSuggestion: oracleSuggestion,
     localHumanBoundary: "Aucune origine, identité culturelle ou préférence sensible n’est déduite. Vous choisissez l’intention ; vous gardez le dernier mot sur le plat.",
+    enabled: confluenceNetworkEnabled,
   });
 
   return (
@@ -332,6 +334,8 @@ export default function TasteOracleScreen() {
           evidenceIndexes={confluenceSuggestion.evidenceIndexes}
           generatedAt={confluenceSuggestion.generatedAt}
           privacyNote={confluenceSuggestion.privacyNote}
+          networkEnabled={confluenceNetworkEnabled}
+          onNetworkEnabledChange={setConfluenceNetworkEnabled}
         />
 
         <View style={styles.promiseCard}>
