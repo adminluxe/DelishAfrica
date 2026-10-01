@@ -3,6 +3,7 @@ import { daOrdersFetch } from "../../utils/daOrdersApi";
 
 export type ConfluenceOracleKind = "taste" | "service" | "route";
 export type ConfluenceEvidenceKind = "fact" | "estimate" | "context";
+export type ConfluenceUncertainty = "facts_only" | "contains_context" | "contains_estimates" | "insufficient_evidence";
 
 export type ConfluenceEvidenceInput = {
   label: string;
@@ -16,7 +17,7 @@ type ConfluenceServerPayload = {
   oracle?: ConfluenceOracleKind;
   suggestion?: string;
   evidenceIndexes?: number[];
-  uncertainty?: "facts_only" | "contains_estimates" | "insufficient_evidence";
+  uncertainty?: ConfluenceUncertainty;
   caution?: string;
   humanBoundary?: string;
   meta?: {
@@ -25,6 +26,8 @@ type ConfluenceServerPayload = {
     fallbackReason?: string;
     structured?: boolean;
     actionSideEffects?: boolean;
+    providerStore?: boolean;
+    sensitiveEvidenceTransit?: boolean;
   };
 };
 
@@ -35,6 +38,10 @@ type DisplayState = {
   engineLabel: string;
   footnote: string;
   mode: "embedded" | "server_local" | "ai";
+  evidenceIndexes: number[];
+  uncertainty: ConfluenceUncertainty;
+  generatedAt?: string;
+  privacyNote: string;
 };
 
 type Params = {
@@ -74,8 +81,16 @@ function requestKey(
   ]);
 }
 
+function uncertaintyFromEvidence(evidence: ReadonlyArray<ConfluenceEvidenceInput>): ConfluenceUncertainty {
+  if (!evidence.length) return "insufficient_evidence";
+  if (evidence.some((item) => item.kind === "estimate")) return "contains_estimates";
+  if (evidence.some((item) => item.kind === "context" || !item.kind)) return "contains_context";
+  return "facts_only";
+}
+
 function fallbackState(
   key: string,
+  evidence: ReadonlyArray<ConfluenceEvidenceInput>,
   localSuggestion: string,
   localHumanBoundary: string,
   reason = "Le cerveau serveur reste optionnel : cette lecture embarquée ne bloque jamais le parcours.",
@@ -87,6 +102,9 @@ function fallbackState(
     engineLabel: "Confluence embarqué · preuve locale",
     footnote: reason,
     mode: "embedded",
+    evidenceIndexes: evidence.map((_, index) => index),
+    uncertainty: uncertaintyFromEvidence(evidence),
+    privacyNote: "Passeport IA · aucune clé fournisseur dans l’app · suggestion locale de secours.",
   };
 }
 
@@ -100,9 +118,19 @@ function humanFallbackReason(reason: unknown): string {
   return "Réponse déterministe du serveur.";
 }
 
+function privacyNoteFromServer(value: ConfluenceServerPayload): string {
+  const sensitiveBlocked = value.meta?.sensitiveEvidenceTransit === false;
+  const storeOff = value.meta?.providerStore === false;
+  if (sensitiveBlocked && storeOff) {
+    return "Passeport IA · données sensibles bloquées · stockage fournisseur désactivé.";
+  }
+  return "Passeport IA · protections fail-closed actives côté serveur.";
+}
+
 function validateServer(
   raw: unknown,
   key: string,
+  evidence: ReadonlyArray<ConfluenceEvidenceInput>,
   localSuggestion: string,
   localHumanBoundary: string,
 ): DisplayState | null {
@@ -112,6 +140,20 @@ function validateServer(
   const suggestion = compact(value.suggestion, 420);
   const humanBoundary = compact(value.humanBoundary, 420) || localHumanBoundary;
   const caution = compact(value.caution, 220);
+  const evidenceIndexes = Array.from(
+    new Set(
+      (Array.isArray(value.evidenceIndexes) ? value.evidenceIndexes : [])
+        .filter((index) => Number.isInteger(index) && index >= 0 && index < evidence.length),
+    ),
+  );
+  const uncertainty =
+    value.uncertainty === "facts_only" ||
+    value.uncertainty === "contains_context" ||
+    value.uncertainty === "contains_estimates" ||
+    value.uncertainty === "insufficient_evidence"
+      ? value.uncertainty
+      : uncertaintyFromEvidence(evidence);
+  const generatedAt = compact(value.meta?.generatedAt, 80) || undefined;
   if (!suggestion || value.meta?.actionSideEffects === true) return null;
 
   if (value.mode === "ai") {
@@ -122,6 +164,10 @@ function validateServer(
       engineLabel: "Confluence AI serveur · sortie structurée",
       footnote: caution || "Suggestion IA bornée aux preuves visibles.",
       mode: "ai",
+      evidenceIndexes,
+      uncertainty,
+      generatedAt,
+      privacyNote: privacyNoteFromServer(value),
     };
   }
 
@@ -134,10 +180,14 @@ function validateServer(
       engineLabel: "Confluence serveur · fallback déterministe",
       footnote: [caution, fallbackReason].filter(Boolean).join(" "),
       mode: "server_local",
+      evidenceIndexes: evidenceIndexes.length ? evidenceIndexes : evidence.map((_, index) => index),
+      uncertainty,
+      generatedAt,
+      privacyNote: privacyNoteFromServer(value),
     };
   }
 
-  return fallbackState(key, localSuggestion, localHumanBoundary);
+  return fallbackState(key, evidence, localSuggestion, localHumanBoundary);
 }
 
 export function useConfluenceSuggestion({
@@ -153,8 +203,8 @@ export function useConfluenceSuggestion({
   );
 
   const immediate = useMemo(
-    () => fallbackState(key, localSuggestion, localHumanBoundary),
-    [key, localHumanBoundary, localSuggestion],
+    () => fallbackState(key, evidence, localSuggestion, localHumanBoundary),
+    [evidence, key, localHumanBoundary, localSuggestion],
   );
 
   const [resolved, setResolved] = useState<DisplayState | null>(null);
@@ -191,7 +241,7 @@ export function useConfluenceSuggestion({
 
           if (!response.ok) throw new Error(`HTTP_${response.status}`);
           const json = await response.json().catch(() => null);
-          const next = validateServer(json, key, localSuggestion, localHumanBoundary);
+          const next = validateServer(json, key, evidence, localSuggestion, localHumanBoundary);
           if (!next) throw new Error("INVALID_CONFLUENCE_RESPONSE");
 
           cache.set(key, { at: Date.now(), value: next });
@@ -201,6 +251,7 @@ export function useConfluenceSuggestion({
             setResolved(
               fallbackState(
                 key,
+                evidence,
                 localSuggestion,
                 localHumanBoundary,
                 "Serveur Confluence non joint ou session indisponible · la suggestion locale reste active.",
