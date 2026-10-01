@@ -4,17 +4,19 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
+import * as Linking from "expo-linking";
 import * as SecureStore from "expo-secure-store";
+import { daSecureGetLargeString } from "../utils/daSecureChunks";
 import { cartItemSummary, clearCart, formatCartEuro, getCartSnapshot, waitForCartPersistence } from "../utils/daCart";
 import { deliveryZoneSummary, validateDeliveryZone } from "../utils/daDeliveryZones";
-import { daAttestIdentityProof, daResolveAddress, DaIdentityProof, DaResolvedAddress } from "../utils/daTrustNetwork";
+import { daResolveAddress, DaIdentityProof, DaResolvedAddress } from "../utils/daTrustNetwork";
 declare const require: any;
 
 type ClientProfileLite = {
@@ -57,13 +59,14 @@ type CreateIntentResponse = {
 type CartSnapshot = ReturnType<typeof getCartSnapshot>;
 
 type PendingPaymentCommit = {
-  version: 1;
+  version: 2;
   orderId: string;
   paymentIntentId: string | null;
   clientMutationId: string;
   cartFingerprint: string;
-  profile: ClientProfileLite;
-  cart: CartSnapshot;
+  total: number;
+  restaurantId: string;
+  restaurantName: string;
   paidAt: string;
 };
 
@@ -88,7 +91,7 @@ type StripeNativeModule = {
 };
 
 const PROFILE_KEY = "__DELISHAFRICA_CLIENT_PROFILE_LITE_V1__";
-const PENDING_PAYMENT_COMMIT_KEY = "__DELISHAFRICA_PENDING_PAYMENT_COMMIT_V1__";
+const PENDING_PAYMENT_COMMIT_KEY = "__DELISHAFRICA_PENDING_PAYMENT_COMMIT_V2__";
 // DA_SPRINT31_PAYMENT_COMMIT_TRUTH_V1
 
 const RAW_API =
@@ -116,7 +119,7 @@ async function restoreClientProfile(): Promise<ClientProfileLite | null> {
     const memoryKey = `${PROFILE_KEY}.${scope}`;
     const cached = globalBag()[memoryKey];
     if (cached && typeof cached === "object") return cached as ClientProfileLite;
-    const raw = await SecureStore.getItemAsync(scopedKey);
+    const raw = await daSecureGetLargeString(scopedKey);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as ClientProfileLite;
     if (!parsed || typeof parsed !== "object" || !parsed.id) return null;
@@ -127,15 +130,6 @@ async function restoreClientProfile(): Promise<ClientProfileLite | null> {
   }
 }
 
-async function writeClientProfileSnapshot(profile: ClientProfileLite): Promise<void> {
-  const scope = await daAccountScopeId();
-  const scopedKey = await daAccountStorageKey(PROFILE_KEY);
-  globalBag()[`${PROFILE_KEY}.${scope}`] = profile;
-  await SecureStore.setItemAsync(scopedKey, JSON.stringify(profile), {
-    keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-  });
-}
-
 async function restorePendingPaymentCommit(): Promise<PendingPaymentCommit | null> {
   try {
     const scope = await daAccountScopeId();
@@ -143,13 +137,13 @@ async function restorePendingPaymentCommit(): Promise<PendingPaymentCommit | nul
     const cached = globalBag()[memoryKey];
     if (cached && typeof cached === "object") {
       const commit = cached as PendingPaymentCommit;
-      if (commit.version === 1 && commit.orderId && commit.clientMutationId) return commit;
+      if (commit.version === 2 && commit.orderId && commit.clientMutationId) return commit;
     }
     const scopedKey = await daAccountStorageKey(PENDING_PAYMENT_COMMIT_KEY);
     const raw = await SecureStore.getItemAsync(scopedKey);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PendingPaymentCommit;
-    if (parsed.version !== 1 || !parsed.orderId || !parsed.clientMutationId) return null;
+    if (parsed.version !== 2 || !parsed.orderId || !parsed.clientMutationId) return null;
     globalBag()[memoryKey] = parsed;
     return parsed;
   } catch {
@@ -195,12 +189,6 @@ function isValidEmail(value?: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean(value));
 }
 
-function proofFresh(proof: DaIdentityProof | undefined, destination: string): boolean {
-  if (!proof?.token || proof.destination !== destination) return false;
-  const expiresAt = Date.parse(proof.expiresAt);
-  return Number.isFinite(expiresAt) && expiresAt > Date.now();
-}
-
 function missingFields(profile: ClientProfileLite | null): string[] {
   if (!profile) return ["vos informations client"];
   const missing: string[] = [];
@@ -210,8 +198,6 @@ function missingFields(profile: ClientProfileLite | null): string[] {
   if (!clean(profile.address)) missing.push("adresse");
   if (!clean(profile.city)) missing.push("ville");
   if (!profile.addressTruth?.deliverable || !profile.addressTruth?.placeId) missing.push("adresse réelle confirmée");
-  if (!proofFresh(profile.proofs?.phone, clean(profile.phone))) missing.push("téléphone vérifié");
-  if (!proofFresh(profile.proofs?.email, clean(profile.email).toLowerCase())) missing.push("email vérifié");
   if (!profile.consent) missing.push("consentement client");
   const hasFoodSafetySignal = Boolean(
     profile.allergenFlags?.length ||
@@ -276,7 +262,7 @@ function checkoutApiError(json: any, status: number): string {
     return "Le minimum de commande n’est plus atteint. Revenez au panier pour ajuster votre sélection.";
   }
   if (code === "payment_not_succeeded") {
-    return "La confirmation bancaire est encore en cours. Aucun nouveau débit ne sera lancé : réessayez la réconciliation dans quelques instants.";
+    return "La confirmation bancaire est encore en cours. Aucun nouveau débit ne sera lancé : réessayez la finalisation dans quelques instants.";
   }
   if (
     code === "payment_intent_required" ||
@@ -483,13 +469,10 @@ function orderMatchesCommit(order: Record<string, any> | null, commit: PendingPa
   const payment = order.payment && typeof order.payment === "object" ? order.payment : {};
   const amount = Number(order.total ?? order.amount ?? -1);
   const restaurantId = String(order.restaurantId || order.partnerSlug || order.merchantSlug || "");
-  const expectedRestaurant = String(
-    commit.cart.restaurantId || commit.cart.restaurantSlug || "delishafrica-partner",
-  );
   return (
     orderId === commit.orderId &&
-    amount === commit.cart.total &&
-    restaurantId === expectedRestaurant &&
+    amount === commit.total &&
+    restaurantId === commit.restaurantId &&
     String(payment.status || "").toLowerCase() === "paid" &&
     (!commit.paymentIntentId || String(payment.paymentIntentId || "") === commit.paymentIntentId)
   );
@@ -526,7 +509,7 @@ export default function CheckoutPreflightScreen() {
       setPendingCommit(recovered);
       setLastOrderId(recovered.orderId);
       setLastPaymentIntentId(recovered.paymentIntentId);
-      setPhase("Paiement confirmé. Commande à réconcilier sans nouveau débit.");
+      setPhase("Paiement confirmé. Nous finalisons votre commande sans nouveau débit.");
     });
   }, [hydrateProfile]);
 
@@ -561,7 +544,7 @@ export default function CheckoutPreflightScreen() {
   }
 
   function primaryActionLabel(): string {
-    if (pendingCommit) return "Réconcilier la commande";
+    if (pendingCommit) return "Finaliser ma commande";
     if (!cartReady) return "Retour à la marketplace";
     if (!profileReady) return "Compléter mes informations";
     if (!deliveryZone.ok) return "Vérifier mon adresse";
@@ -577,31 +560,46 @@ export default function CheckoutPreflightScreen() {
     Alert.alert(
       "Commande confirmée",
       `Paiement et commande ${orderId} confirmés pour ${restaurant || "votre restaurant"}.`,
-      [{ text: "Suivre", onPress: () => router.push("/live-tracking" as any) }],
+      [{
+        text: "Suivre",
+        onPress: () =>
+          router.push({
+            pathname: "/live-tracking",
+            params: { orderId },
+          } as never),
+      }],
     );
   }
 
   async function reconcilePaidCommit(commit: PendingPaymentCommit) {
-    setPhase("Relecture de la commande déjà payée...");
+    setPhase("Vérification de votre commande déjà payée...");
     let confirmed = await confirmCommittedOrder(commit);
     if (!confirmed) {
-      setPhase("Commande absente. Réémission idempotente sans nouveau paiement...");
+      setPhase("Nous retrouvons votre commande sans relancer le paiement...");
+      const recoveredProfile = await restoreClientProfile();
+      const recoveredCart = getCartSnapshot();
+      if (!recoveredProfile) {
+        throw new Error("Vos informations client ne sont plus disponibles pour finaliser la commande.");
+      }
+      if (cartFingerprint(recoveredCart) !== commit.cartFingerprint) {
+        throw new Error("Le panier local a changé. La commande payée doit être vérifiée sans nouveau débit.");
+      }
       await createDemoOrderAfterPayment({
         orderId: commit.orderId,
-        profile: commit.profile,
+        profile: recoveredProfile,
         paymentIntentId: commit.paymentIntentId,
         clientMutationId: commit.clientMutationId,
         cartFingerprint: commit.cartFingerprint,
-        cart: commit.cart,
+        cart: recoveredCart,
       });
       confirmed = await confirmCommittedOrder(commit);
     }
     if (!confirmed) {
       throw new Error(
-        "Le paiement est confirmé, mais la commande n’est pas encore relue. Aucun nouveau débit ne sera lancé : touchez Réconcilier la commande.",
+        "Le paiement est confirmé, mais la commande n’est pas encore finalisée. Aucun nouveau débit ne sera lancé : touchez Finaliser ma commande.",
       );
     }
-    await publishConfirmedOrder(commit.orderId, commit.cart.restaurantName || "votre restaurant");
+    await publishConfirmedOrder(commit.orderId, commit.restaurantName || "votre restaurant");
   }
 
   async function payAndCreateOrder() {
@@ -659,39 +657,8 @@ export default function CheckoutPreflightScreen() {
         return;
       }
 
-      setPhase("Vérification de l’adresse et des contacts...");
-      const [phoneAttestation, emailAttestation, addressRecheck] = await Promise.all([
-        daAttestIdentityProof({
-          channel: "sms",
-          role: "client",
-          destination: checkoutProfile.phone,
-          proofToken: checkoutProfile.proofs!.phone!.token,
-        }),
-        daAttestIdentityProof({
-          channel: "email",
-          role: "client",
-          destination: checkoutProfile.email,
-          proofToken: checkoutProfile.proofs!.email!.token,
-        }),
-        daResolveAddress(checkoutProfile.addressTruth!.placeId),
-      ]);
-      if (!phoneAttestation.valid || !emailAttestation.valid) {
-        const invalidChannels = [
-          !phoneAttestation.valid ? "téléphone" : null,
-          !emailAttestation.valid ? "email" : null,
-        ].filter(Boolean) as string[];
-        const cleanedProfile: ClientProfileLite = {
-          ...checkoutProfile,
-          proofs: {
-            phone: phoneAttestation.valid ? checkoutProfile.proofs?.phone : undefined,
-            email: emailAttestation.valid ? checkoutProfile.proofs?.email : undefined,
-          },
-          updatedAt: new Date().toISOString(),
-        };
-        await writeClientProfileSnapshot(cleanedProfile);
-        setProfile(cleanedProfile);
-        throw new Error(`La preuve ${invalidChannels.join(" et ")} n’est plus valide. Revalidez uniquement ${invalidChannels.join(" et ")} dans Mon espace.`);
-      }
+      setPhase("Vérification de l’adresse...");
+      const addressRecheck = await daResolveAddress(checkoutProfile.addressTruth!.placeId);
       if (!addressRecheck.address.deliverable || addressRecheck.address.placeId !== checkoutProfile.addressTruth!.placeId) {
         throw new Error("L’adresse de livraison n’est plus confirmée. Sélectionnez-la à nouveau.");
       }
@@ -709,7 +676,7 @@ export default function CheckoutPreflightScreen() {
       setLastOrderId(orderId);
       setLastPaymentIntentId(null);
 
-      setPhase("Création transactionnelle du paiement...");
+      setPhase("Préparation du paiement sécurisé...");
       const intent = await createPaymentIntent({
         orderId,
         profile: checkoutProfile,
@@ -730,6 +697,7 @@ export default function CheckoutPreflightScreen() {
       const initResult = await stripe.module.initPaymentSheet?.({
         merchantDisplayName: "DelishAfrica",
         paymentIntentClientSecret: intent.clientSecret,
+        returnURL: Linking.createURL("stripe-redirect"),
         allowsDelayedPaymentMethods: false,
         defaultBillingDetails: {
           name: [checkoutProfile.firstName, checkoutProfile.lastName].filter(Boolean).join(" ") || "—",
@@ -752,19 +720,20 @@ export default function CheckoutPreflightScreen() {
       }
 
       const commit: PendingPaymentCommit = {
-        version: 1,
+        version: 2,
         orderId,
         paymentIntentId: intent.paymentIntentId || null,
         clientMutationId,
         cartFingerprint: activeFingerprint,
-        profile: checkoutProfile,
-        cart: activeCart,
+        total: activeCart.total,
+        restaurantId: String(activeCart.restaurantId || activeCart.restaurantSlug || "delishafrica-partner"),
+        restaurantName: String(activeCart.restaurantName || "votre restaurant"),
         paidAt: new Date().toISOString(),
       };
       await writePendingPaymentCommit(commit);
       setPendingCommit(commit);
 
-      setPhase("Paiement confirmé. Écriture puis relecture de la commande...");
+      setPhase("Paiement confirmé. Finalisation de votre commande...");
       await createDemoOrderAfterPayment({
         orderId,
         profile: checkoutProfile,
@@ -783,10 +752,23 @@ export default function CheckoutPreflightScreen() {
     } catch (error: any) {
       const message = error?.message || String(error);
       const paidCommit = await restorePendingPaymentCommit();
+      const accountRequired =
+        message.includes("Connexion DelishAfrica requise") ||
+        message.includes("Session Client Keycloak requise");
+
+      if (!paidCommit && accountRequired) {
+        setPhase("Votre panier est prêt · connexion DelishAfrica");
+        router.push({
+          pathname: "/secure-session",
+          params: { next: "/checkout-preflight" },
+        } as never);
+        return;
+      }
+
       if (paidCommit) {
         setPendingCommit(paidCommit);
         setPhase(`Paiement protégé · ${message}`);
-        Alert.alert("Commande à réconcilier", message);
+        Alert.alert("Commande à finaliser", message);
       } else {
         setPhase(`Checkout interrompu : ${message}`);
         Alert.alert("Checkout interrompu", message, [
@@ -867,9 +849,9 @@ export default function CheckoutPreflightScreen() {
 
           <View style={styles.truthGrid}>
             <View style={styles.truthItem}>
-              <Text style={styles.truthLabel}>IDENTITÉ PROUVÉE</Text>
+              <Text style={styles.truthLabel}>INFORMATIONS CLIENT</Text>
               <Text style={profileReady ? styles.truthGood : styles.truthWarn}>
-                {profileReady ? fullName : "Adresse + SMS + email requis"}
+                {profileReady ? fullName : "Coordonnées + adresse requises"}
               </Text>
             </View>
             <View style={styles.truthItem}>
@@ -885,7 +867,9 @@ export default function CheckoutPreflightScreen() {
               <View style={styles.addressCopy}>
                 <Text style={styles.addressLabel}>ADRESSE DE REMISE</Text>
                 <Text style={styles.addressValue}>
-                  {profile?.address}, {profile?.city}
+                  {clean(profile?.address).toLowerCase().includes(clean(profile?.city).toLowerCase())
+                    ? profile?.address
+                    : `${profile?.address}, ${profile?.city}`}
                 </Text>
                 <Text style={styles.addressMeta}>{profile?.phone}</Text>
                 {profile?.instructions ? (
@@ -945,7 +929,7 @@ export default function CheckoutPreflightScreen() {
             disabled={loading}
             accessibilityRole="button"
             accessibilityLabel={primaryActionLabel()}
-            accessibilityHint="Lance une transaction unique puis confirme la commande par relecture réseau sans double débit"
+            accessibilityHint="Lance un paiement unique puis confirme la commande sans risque de double débit"
             accessibilityState={{ disabled: loading, busy: loading }}
           >
             <Text style={styles.primaryButtonText}>{primaryActionLabel()}</Text>
@@ -978,7 +962,7 @@ export default function CheckoutPreflightScreen() {
         </Pressable>
 
         <Text style={styles.note}>
-          Le panier n’est vidé qu’après paiement, écriture et relecture confirmée de la commande.
+          Le panier n’est vidé qu’une fois le paiement et la commande confirmés.
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -987,7 +971,7 @@ export default function CheckoutPreflightScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#04150F" },
-  page: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 70 },
+  page: { width: "100%", maxWidth: 760, alignSelf: "center", paddingHorizontal: 20, paddingTop: 20, paddingBottom: 70 },
   topbar: {
     flexDirection: "row",
     alignItems: "center",

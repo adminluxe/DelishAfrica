@@ -75,7 +75,7 @@ export class OrdersAccessService {
       throw new ForbiddenException({ ok: false, code: 'orders_idempotency_owner_mismatch' });
     }
 
-    const authorizedQuote = this.payments.authorizedQuoteForInput(principal, input);
+    const authorizedQuote = await this.payments.authorizedQuoteForInput(principal, input);
     const quote: CanonicalOrderQuote =
       authorizedQuote || (await this.orderPolicy.quote(input));
 

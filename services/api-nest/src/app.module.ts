@@ -13,10 +13,12 @@ import { LocationTrustModule } from './location-trust/location-trust.module';
 import { IdentityProofModule } from './identity-proof/identity-proof.module';
 
 import { ProviderBridgeModule } from './provider-bridge/provider-bridge.module';
+import { OrchidpayF3Module } from './orchidpay-f3/orchidpay-f3.module';
 import { CatalogFoundationModule } from './catalog-foundation/catalog-foundation.module';
 import { MerchantCatalogGateModule } from './merchant-catalog-gate/merchant-catalog-gate.module';
 import { OpsAuthorityModule } from './ops-authority/ops-authority.module';
 import { MerchantInvitationsModule } from './merchant-invitations/merchant-invitations.module';
+import { ConfluenceAiModule } from './confluence-ai/confluence-ai.module';
 
 import { LegalModule } from './legal/legal.module';
 // DA_J7B_LEGAL_MODULE
@@ -35,12 +37,13 @@ import { LegalModule } from './legal/legal.module';
     LocationTrustModule,
     IdentityProofModule,
     ProviderBridgeModule,
+    OrchidpayF3Module,
     CatalogFoundationModule,
     MerchantCatalogGateModule,
     OpsAuthorityModule,
     MerchantInvitationsModule,
+    ConfluenceAiModule,
   ],
   controllers: [AppController],
-  providers: [],
 })
 export class AppModule {}

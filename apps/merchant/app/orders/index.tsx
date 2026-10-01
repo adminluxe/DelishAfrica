@@ -54,6 +54,14 @@ type Order = {
   total?: number;
   amount?: number;
   deliveryAddress?: string;
+  assignmentProposal?: {
+    status?: string;
+    proposalStatus?: string;
+    totalEtaMin?: number;
+    etaMin?: number;
+    confidence?: number;
+    score?: number;
+  };
 };
 
 type LiveLocationRead = {
@@ -148,6 +156,74 @@ function signalLabel(read?: LiveLocationRead) {
   if (read?.freshness === "stale") return "Signal à rafraîchir";
   if (read?.freshness === "stopped") return "Partage arrêté";
   return "Signal coursier en attente";
+}
+
+type MerchantHandoffView = { label: string; kitchen: string; terrain: string; bridge: string; proof: string; active: boolean };
+
+function assignmentEtaMin(order: Order): number | null {
+  const raw = order.assignmentProposal?.totalEtaMin ?? order.assignmentProposal?.etaMin;
+  const value = Number(raw);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function merchantHandoffView(order: Order, read?: LiveLocationRead): MerchantHandoffView {
+  const status = statusOf(order);
+  const eta = assignmentEtaMin(order);
+  const fresh = read?.freshness === "live" || read?.freshness === "recent";
+  const approaching = fresh && read?.location?.stage === "to_restaurant";
+  const courier = read?.location?.courierName || "Coursier non confirmé";
+  const signalAge = Number(read?.ageSeconds);
+  const signalDetail = Number.isFinite(signalAge) ? ` · ${Math.max(0, Math.round(signalAge))}s` : "";
+
+  if (status === "picked_up") return {
+    label: "RELAIS CONFIRMÉ", kitchen: "Remise effectuée", terrain: `${courier} · vers client`,
+    bridge: "Le point de rencontre est derrière nous : le cockpit peut maintenant suivre le trajet client.",
+    proof: `Preuve : statut picked_up${fresh ? ` + signal terrain ${read?.freshness}${signalDetail}` : ""}.`, active: true,
+  };
+  if (status === "ready" && approaching) return {
+    label: "POINT DE RENCONTRE OUVERT", kitchen: "Commande prête", terrain: `${courier} · en approche`,
+    bridge: "Les deux courants se rejoignent : la cuisine est prête et un signal terrain récent indique une approche restaurant.",
+    proof: `Preuve : statut ready + location ${read?.freshness}${signalDetail}.`, active: true,
+  };
+  if (status === "ready") return {
+    label: "PRÊTE · TERRAIN À CONFIRMER", kitchen: "Commande prête", terrain: eta !== null ? `ETA dispatch estimée · ${Math.max(1, Math.round(eta))} min` : "Aucun signal terrain récent",
+    bridge: "Ne transformons pas une commande prête en promesse de remise : le terrain doit encore être confirmé.",
+    proof: eta !== null ? "Preuve : statut ready + ETA dispatch ; aucune location récente confirmée." : "Preuve : statut ready uniquement.", active: true,
+  };
+  if (status === "accepted") return {
+    label: approaching ? "COURANTS EN RAPPROCHEMENT" : "CUISINE EN COURS", kitchen: "Préparation confirmée", terrain: approaching ? `${courier} · approche restaurant` : eta !== null ? `ETA dispatch estimée · ${Math.max(1, Math.round(eta))} min` : "Terrain en attente",
+    bridge: approaching ? "Le coursier se rapproche pendant la préparation. La remise reste fermée tant que la cuisine n’est pas marquée prête." : "Le système observe les deux rythmes sans forcer la cuisine ni le coursier.",
+    proof: approaching ? `Preuve : statut accepted + location ${read?.freshness}${signalDetail}.` : eta !== null ? "Preuve : statut accepted + ETA dispatch estimée." : "Preuve : statut accepted uniquement.", active: true,
+  };
+  return {
+    label: "RELAIS FERMÉ", kitchen: "Commande à accepter", terrain: "Aucune coordination requise",
+    bridge: "La rencontre cuisine ↔ coursier ne démarre qu’après acceptation réelle de la commande.",
+    proof: `Preuve : statut ${status || "pending"}.`, active: false,
+  };
+}
+
+function MerchantHandoffCurrent({ order, read }: { order: Order; read?: LiveLocationRead }) {
+  const view = merchantHandoffView(order, read);
+  return (
+    <View style={styles.confluenceCard}>
+      <View style={styles.confluenceTop}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.confluenceKicker}>CONFLUENCE · HANDOFF CURRENT</Text>
+          <Text style={styles.confluenceTitle}>Accorder cuisine et terrain.</Text>
+        </View>
+        <View style={[styles.confluenceBadge, view.active && styles.confluenceBadgeActive]}>
+          <Text style={[styles.confluenceBadgeText, view.active && styles.confluenceBadgeTextActive]}>{view.label}</Text>
+        </View>
+      </View>
+      <View style={styles.confluenceStreams}>
+        <View style={styles.confluenceStream}><Text style={styles.confluenceStreamLabel}>CUISINE</Text><Text style={styles.confluenceStreamValue}>{view.kitchen}</Text></View>
+        <View style={styles.confluenceJoin}><View style={styles.confluenceJoinLine} /><View style={[styles.confluenceJoinDrop, view.active && styles.confluenceJoinDropActive]} /><View style={styles.confluenceJoinLine} /></View>
+        <View style={styles.confluenceStream}><Text style={styles.confluenceStreamLabel}>TERRAIN</Text><Text style={styles.confluenceStreamValue}>{view.terrain}</Text></View>
+      </View>
+      <Text style={styles.confluenceBridge}>{view.bridge}</Text>
+      <Text style={styles.confluenceProof}>{view.proof}</Text>
+    </View>
+  );
 }
 
 function merchantFlowIndex(status: string) {
@@ -487,6 +563,7 @@ export default function MerchantOrdersFocus() {
             </View>
           ) : null}
           <HandoffRail status={status} compact={compact} reduceMotion={reduceMotion} />
+          {!compact ? <MerchantHandoffCurrent order={order} read={liveLocations[id]} /> : null}
           {["ready", "picked_up"].includes(status) ? (
             <View style={[styles.signalRow, compact && styles.signalRowCompact]}>
               <View style={[styles.signalDot, ["live", "recent"].includes(String(liveLocations[id]?.freshness)) && styles.signalDotLive]} />
@@ -615,6 +692,24 @@ export default function MerchantOrdersFocus() {
 }
 
 const styles = StyleSheet.create({
+  confluenceCard: { marginTop: 14, borderRadius: 22, padding: 14, backgroundColor: "rgba(30,16,10,0.72)", borderWidth: 1, borderColor: "rgba(244,177,105,0.22)", gap: 12 },
+  confluenceTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 },
+  confluenceKicker: { color: "#F4B169", fontSize: 9, fontWeight: "900", letterSpacing: 1.6 },
+  confluenceTitle: { color: "#FFF7EF", fontSize: 15, lineHeight: 20, fontWeight: "900", marginTop: 4 },
+  confluenceBadge: { maxWidth: 150, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 6, borderWidth: 1, borderColor: "rgba(244,177,105,0.18)", backgroundColor: "rgba(255,255,255,0.035)" },
+  confluenceBadgeActive: { borderColor: "rgba(91,224,181,0.34)", backgroundColor: "rgba(27,95,71,0.28)" },
+  confluenceBadgeText: { color: "rgba(255,247,239,0.58)", fontSize: 8.5, lineHeight: 11, fontWeight: "900", letterSpacing: 0.6, textAlign: "center" },
+  confluenceBadgeTextActive: { color: "#79E5BD" },
+  confluenceStreams: { flexDirection: "row", alignItems: "stretch", gap: 7 },
+  confluenceStream: { flex: 1, minHeight: 66, borderRadius: 16, padding: 10, backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1, borderColor: "rgba(244,177,105,0.10)" },
+  confluenceStreamLabel: { color: "rgba(255,247,239,0.54)", fontSize: 8.5, fontWeight: "900", letterSpacing: 1.1 },
+  confluenceStreamValue: { color: "#FFF7EF", fontSize: 12.5, lineHeight: 17, fontWeight: "800", marginTop: 6 },
+  confluenceJoin: { width: 26, alignItems: "center", justifyContent: "center" },
+  confluenceJoinLine: { width: 1, flex: 1, backgroundColor: "rgba(244,177,105,0.18)" },
+  confluenceJoinDrop: { width: 11, height: 11, borderTopLeftRadius: 7, borderTopRightRadius: 7, borderBottomLeftRadius: 7, borderBottomRightRadius: 3, borderWidth: 1, borderColor: "rgba(244,177,105,0.32)", backgroundColor: "rgba(244,177,105,0.12)", transform: [{ rotate: "45deg" }] },
+  confluenceJoinDropActive: { borderColor: "rgba(121,229,189,0.70)", backgroundColor: "rgba(121,229,189,0.24)" },
+  confluenceBridge: { color: "rgba(255,247,239,0.76)", fontSize: 12, lineHeight: 18, fontWeight: "700" },
+  confluenceProof: { color: "rgba(255,247,239,0.46)", fontSize: 9.5, lineHeight: 14, fontWeight: "700" },
   safe: { flex: 1, backgroundColor: "#120804" },
   sessionCard: { borderRadius: 26, padding: 20, marginBottom: 22, backgroundColor: "rgba(255,184,107,0.10)", borderWidth: 1, borderColor: "rgba(255,184,107,0.28)" },
   sessionKicker: { color: "#FFB86B", fontSize: 10, fontWeight: "900", letterSpacing: 2.4 },

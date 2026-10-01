@@ -30,6 +30,9 @@ import {
 import { buildMarketplaceOpportunityGraph } from "../lib/marketplace-opportunity-graph";
 import { buildMarketplaceLaunchPassports } from "../lib/marketplace-launch-passport";
 import { buildMarketplaceCulturalConstellations } from "../lib/marketplace-cultural-constellations";
+// DA_GALA_CAPILLARY_FUSION_V1 - light recommendation surfaces inherit the aquatic field through subtle internal refraction; no new timer or business mutation.
+// DA_GALA_OSMOTIC_SEAM_V1 - subtractive fusion dissolves visible seams: fewer explicit layers, softer edge memory, stronger surface continuity; no business mutation.
+// DA_GALA_PHASE_DECOHERENCE_V1 - multi-axis phase drift and boundary evaporation dissolve residual layer geometry while preserving business truth and existing animation clocks.
 
 type MenuItem = { name?: string; category?: string; price?: number; priceEUR?: number };
 type Partner = {
@@ -747,8 +750,23 @@ export default function GlobalMarketplaceHome() {
         onOpenSignal={radarLeadPartner ? () => openPartner(radarLeadPartner) : undefined}
       />
 
-      <View style={styles.essentialCard}>
+            <View style={styles.essentialCard}>
         <View style={styles.essentialAura} pointerEvents="none" />
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.essentialSubsurfaceVeil,
+            {
+              opacity: pulse.interpolate({ inputRange: [0, 0.28, 0.62, 1], outputRange: [0.18, 0.30, 0.36, 0.22] }),
+              transform: [
+                { translateX: pulse.interpolate({ inputRange: [0, 0.28, 0.62, 1], outputRange: [-8, 6, 13, -4] }) },
+                { translateY: pulse.interpolate({ inputRange: [0, 0.28, 0.62, 1], outputRange: [4, -2, -5, 2] }) },
+                { scaleX: pulse.interpolate({ inputRange: [0, 0.28, 0.62, 1], outputRange: [0.995, 1.014, 1.028, 1.0] }) },
+                { rotate: "-5deg" },
+              ],
+            },
+          ]}
+        />
         <View style={styles.essentialHeader}>
           <View style={{ flex: 1 }}>
             <Text style={styles.essentialKicker}>POUR VOUS · MAINTENANT</Text>
@@ -1186,7 +1204,7 @@ export default function GlobalMarketplaceHome() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "transparent" },
   content: { paddingHorizontal: 20, paddingBottom: 68 },
-  glowTop: { position: "absolute", width: 300, height: 300, borderRadius: 999, backgroundColor: "rgba(92,210,210,0.12)", right: -145, top: -145 },
+  glowTop: { position: "absolute", width: 300, height: 300, borderRadius: 999, backgroundColor: "rgba(92,210,210,0.13)", right: -145, top: -145 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   brand: { color: "#D9AE68", fontSize: 11, fontWeight: "900", letterSpacing: 2.3 },
   role: { color: "rgba(255,248,234,0.50)", fontSize: 11, fontWeight: "700", marginTop: 4 },
@@ -1196,11 +1214,11 @@ const styles = StyleSheet.create({
   eyebrow: { color: "#B77A4C", fontSize: 9, fontWeight: "900", letterSpacing: 2.2 },
   title: { color: "#FFF8EA", fontSize: 34, lineHeight: 38, fontWeight: "900", letterSpacing: -1.0, marginTop: 10, maxWidth: 345 },
   subtitle: { color: "rgba(255,248,234,0.64)", fontSize: 15, lineHeight: 23, marginTop: 13, maxWidth: 350 },
-  searchBox: { minHeight: 56, marginTop: 20, borderRadius: 20, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, backgroundColor: "rgba(0,0,0,0.22)", borderWidth: 1, borderColor: "rgba(255,255,255,0.10)" },
+  searchBox: { minHeight: 56, marginTop: 20, borderRadius: 21, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, backgroundColor: "rgba(0,0,0,0.21)", borderWidth: 1, borderColor: "rgba(255,255,255,0.10)" },
   searchIcon: { color: "#D9AE68", fontSize: 23, marginRight: 10 },
   searchInput: { flex: 1, color: "#FFFFFF", fontSize: 15, paddingVertical: 15 },
-  signatureGateway: { position: "relative", overflow: "hidden", minHeight: 112, marginTop: 14, borderRadius: 24, padding: 16, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "rgba(7,35,34,0.90)", borderWidth: 1, borderColor: "rgba(111,223,218,0.28)" },
-  signatureGatewayGlow: { position: "absolute", width: 168, height: 168, borderRadius: 999, right: -76, top: -92, backgroundColor: "rgba(92,210,210,0.14)", borderWidth: 1, borderColor: "rgba(143,226,192,0.16)" },
+  signatureGateway: { position: "relative", overflow: "hidden", minHeight: 112, marginTop: 14, borderRadius: 24, padding: 16, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "rgba(7,35,34,0.89)", borderWidth: 1, borderColor: "rgba(111,223,218,0.21)" },
+  signatureGatewayGlow: { position: "absolute", width: 168, height: 168, borderRadius: 999, right: -76, top: -92, backgroundColor: "rgba(92,210,210,0.13)", borderWidth: 1, borderColor: "rgba(143,226,192,0.13)" },
   signatureGatewayCopy: { flex: 1, minWidth: 0 },
   signatureGatewayKicker: { color: "#8FE2C0", fontSize: 8, fontWeight: "900", letterSpacing: 1.8 },
   signatureGatewayTitle: { color: "#FFF8EA", fontSize: 18, lineHeight: 22, fontWeight: "900", marginTop: 6 },
@@ -1208,7 +1226,7 @@ const styles = StyleSheet.create({
   signatureGatewayAction: { minWidth: 72, minHeight: 44, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 10, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: "#D9AE68" },
   signatureGatewayActionText: { color: "#17251C", fontSize: 10, fontWeight: "900" },
   signatureGatewayArrow: { color: "#17251C", fontSize: 16, fontWeight: "900" },
-  liveRibbon: { marginTop: 14, borderRadius: 26, padding: 16, backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1, borderColor: "rgba(217,174,104,0.16)", flexDirection: "row", alignItems: "center", gap: 12 },
+  liveRibbon: { marginTop: 14, borderRadius: 26, padding: 16, backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1, borderColor: "rgba(217,174,104,0.13)", flexDirection: "row", alignItems: "center", gap: 12 },
   liveOrb: { width: 14, height: 14, borderRadius: 99, backgroundColor: "#F2B45E", shadowColor: "#F2B45E", shadowOpacity: 0.85, shadowRadius: 10, shadowOffset: { width: 0, height: 0 } },
   liveCopy: { flex: 1 },
   liveEyebrow: { color: "#D9AE68", fontSize: 8, fontWeight: "900", letterSpacing: 1.8 },
@@ -1231,7 +1249,7 @@ const styles = StyleSheet.create({
   ecosystemNodeDetail: { color: "rgba(255,248,234,0.47)", fontSize: 9, fontWeight: "700", marginTop: 3, textAlign: "center" },
   ecosystemLine: { flex: 1, height: 2, marginTop: 16, backgroundColor: "rgba(255,255,255,0.08)" },
   ecosystemLineActive: { backgroundColor: "rgba(233,194,126,0.68)" },
-  storySurface: { marginTop: 18, borderRadius: 20, padding: 15, backgroundColor: "rgba(217,174,104,0.08)", borderWidth: 1, borderColor: "rgba(217,174,104,0.12)" },
+  storySurface: { marginTop: 18, borderRadius: 21, padding: 15, backgroundColor: "rgba(217,174,104,0.08)", borderWidth: 1, borderColor: "rgba(217,174,104,0.13)" },
   storyNow: { color: "#D9AE68", fontSize: 9, fontWeight: "900", letterSpacing: 2 },
   storyText: { color: "#F9EEDB", fontSize: 15, lineHeight: 22, fontWeight: "800", marginTop: 8, minHeight: 44 },
   storyDots: { flexDirection: "row", gap: 6, marginTop: 12 },
@@ -1247,7 +1265,7 @@ const styles = StyleSheet.create({
   horizonStateTextLive: { color: "#CFF8D9" },
   horizonTitle: { color: "#17251C", fontSize: 24, lineHeight: 29, fontWeight: "900", marginTop: 13, maxWidth: 310 },
   horizonBody: { color: "rgba(23,37,28,0.66)", fontSize: 13, lineHeight: 20, fontWeight: "700", marginTop: 9 },
-  horizonRail: { height: 3, borderRadius: 99, marginTop: 18, marginRight: 112, backgroundColor: "rgba(23,37,28,0.12)", overflow: "hidden" },
+  horizonRail: { height: 3, borderRadius: 99, marginTop: 18, marginRight: 112, backgroundColor: "rgba(23,37,28,0.08)", overflow: "hidden" },
   horizonSignal: { width: 44, height: 3, borderRadius: 99, backgroundColor: "#B76836" },
   horizonAxes: { flexDirection: "row", gap: 8, marginTop: 16 },
   horizonAxis: { flex: 1 },
@@ -1260,8 +1278,8 @@ const styles = StyleSheet.create({
   continueTitle: { color: "#1A1207", fontSize: 19, fontWeight: "900", marginTop: 6 },
   continueText: { color: "rgba(27,19,8,0.72)", marginTop: 5, maxWidth: 270 },
   continueArrow: { color: "#1A1207", fontSize: 30, fontWeight: "600" },
-  radarCard: { position: "relative", overflow: "hidden", marginTop: 16, borderRadius: 32, padding: 21, backgroundColor: "#10283A", borderWidth: 1, borderColor: "rgba(109,205,255,0.18)" },
-  radarOrbit: { position: "absolute", width: 240, height: 240, borderRadius: 999, borderWidth: 1, borderColor: "rgba(109,205,255,0.12)", right: -105, top: -112 },
+  radarCard: { position: "relative", overflow: "hidden", marginTop: 16, borderRadius: 34, padding: 21, backgroundColor: "#10283A", borderWidth: 1, borderColor: "rgba(109,205,255,0.18)" },
+  radarOrbit: { position: "absolute", width: 240, height: 240, borderRadius: 999, borderWidth: 1, borderColor: "rgba(109,205,255,0.08)", right: -105, top: -112 },
   radarHeader: { flexDirection: "row", alignItems: "flex-start", gap: 14 },
   radarKicker: { color: "#82D7FF", fontSize: 9, fontWeight: "900", letterSpacing: 2 },
   radarTitle: { color: "#F4FAFF", fontSize: 24, lineHeight: 29, fontWeight: "900", marginTop: 8 },
@@ -1272,8 +1290,8 @@ const styles = StyleSheet.create({
   radarLabel: { color: "rgba(236,247,255,0.47)", fontSize: 9, lineHeight: 13, fontWeight: "800", marginTop: 4, maxWidth: 92 },
   radarTruth: { marginTop: 18, borderRadius: 16, padding: 11, backgroundColor: "rgba(130,215,255,0.08)" },
   radarTruthText: { color: "#A9E4FF", fontSize: 8, lineHeight: 13, fontWeight: "900", letterSpacing: 1.2 },
-  constellationCard: { position: "relative", overflow: "hidden", marginTop: 16, borderRadius: 32, padding: 21, backgroundColor: "#0C1D29", borderWidth: 1, borderColor: "rgba(159,225,255,0.15)" },
-  constellationHalo: { position: "absolute", width: 230, height: 230, borderRadius: 999, right: -112, top: -116, borderWidth: 1, borderColor: "rgba(159,225,255,0.14)", backgroundColor: "rgba(130,215,255,0.035)" },
+  constellationCard: { position: "relative", overflow: "hidden", marginTop: 16, borderRadius: 34, padding: 21, backgroundColor: "#0C1D29", borderWidth: 1, borderColor: "rgba(159,225,255,0.13)" },
+  constellationHalo: { position: "absolute", width: 230, height: 230, borderRadius: 999, right: -112, top: -116, borderWidth: 1, borderColor: "rgba(159,225,255,0.08)", backgroundColor: "rgba(130,215,255,0.035)" },
   constellationHeader: { flexDirection: "row", alignItems: "flex-start", gap: 14 },
   constellationKicker: { color: "#9FE1FF", fontSize: 9, fontWeight: "900", letterSpacing: 1.8 },
   constellationTitle: { color: "#F4FAFF", fontSize: 24, lineHeight: 29, fontWeight: "900", marginTop: 8, maxWidth: 315 },
@@ -1287,13 +1305,13 @@ const styles = StyleSheet.create({
   constellationAction: { marginTop: 18, borderRadius: 16, padding: 11, backgroundColor: "rgba(159,225,255,0.08)" },
   constellationActionText: { color: "#A9E4FF", fontSize: 8, fontWeight: "900", letterSpacing: 1.2 },
   signalLensCard: { position: "relative", overflow: "hidden", marginTop: 16, borderRadius: 30, padding: 20, backgroundColor: "#0D2118", borderWidth: 1, borderColor: "rgba(217,174,104,0.17)" },
-  signalLensHalo: { position: "absolute", width: 220, height: 220, borderRadius: 999, right: -120, top: -130, backgroundColor: "rgba(217,174,104,0.055)", borderWidth: 1, borderColor: "rgba(217,174,104,0.10)" },
+  signalLensHalo: { position: "absolute", width: 220, height: 220, borderRadius: 999, right: -120, top: -130, backgroundColor: "rgba(217,174,104,0.050)", borderWidth: 1, borderColor: "rgba(217,174,104,0.08)" },
   signalLensHeader: { flexDirection: "row", alignItems: "flex-start", gap: 14 },
   signalLensKicker: { color: "#D9AE68", fontSize: 9, fontWeight: "900", letterSpacing: 2 },
   signalLensTitle: { color: "#FFF8EA", fontSize: 24, lineHeight: 29, fontWeight: "900", marginTop: 8 },
   signalLensText: { color: "rgba(255,248,234,0.56)", fontSize: 13, lineHeight: 20, marginTop: 10 },
   signalLensPulse: { width: 12, height: 12, borderRadius: 99, backgroundColor: "#D9AE68", shadowColor: "#D9AE68", shadowOpacity: 0.8, shadowRadius: 10 },
-  signalLensRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 14, padding: 14, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1, borderColor: "rgba(255,255,255,0.07)" },
+  signalLensRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 14, padding: 14, borderRadius: 21, backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1, borderColor: "rgba(255,255,255,0.07)" },
   signalLensIndex: { width: 36, height: 36, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(217,174,104,0.13)" },
   signalLensIndexText: { color: "#E9C98F", fontSize: 11, fontWeight: "900" },
   signalLensRowKicker: { color: "rgba(233,201,143,0.72)", fontSize: 8, fontWeight: "900", letterSpacing: 1.5 },
@@ -1302,15 +1320,16 @@ const styles = StyleSheet.create({
   signalLensArrow: { color: "#D9AE68", fontSize: 23, fontWeight: "700" },
   signalLensTruth: { marginTop: 14, paddingTop: 13, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.06)" },
   signalLensTruthText: { color: "rgba(255,248,234,0.42)", fontSize: 9, lineHeight: 14, fontWeight: "800", letterSpacing: 0.5 },
-  essentialCard: { position: "relative", overflow: "hidden", marginTop: 16, borderRadius: 32, padding: 21, backgroundColor: "#F2E6CD" },
-  essentialAura: { position: "absolute", width: 230, height: 230, borderRadius: 999, right: -118, top: -132, backgroundColor: "rgba(183,104,54,0.16)" },
+  essentialCard: { position: "relative", overflow: "hidden", marginTop: 16, borderRadius: 32, padding: 21, backgroundColor: "rgba(242,230,205,0.89)", borderWidth: 1, borderColor: "rgba(111,223,218,0.050)" },
+  essentialAura: { position: "absolute", width: 282, height: 268, borderRadius: 999, right: -164, top: -166, backgroundColor: "rgba(183,104,54,0.050)" },
+  essentialSubsurfaceVeil: { position: "absolute", width: 370, height: 156, right: -156, top: 90, borderTopLeftRadius: 170, borderTopRightRadius: 54, borderBottomRightRadius: 148, borderBottomLeftRadius: 42, backgroundColor: "rgba(38,140,116,0.050)", shadowColor: "#8FE2C0", shadowOpacity: 0.028, shadowRadius: 36, shadowOffset: { width: 0, height: 0 } },
   essentialHeader: { flexDirection: "row", alignItems: "flex-start", gap: 14 },
   essentialKicker: { color: "#8B5532", fontSize: 9, fontWeight: "900", letterSpacing: 1.9 },
   essentialTitle: { color: "#17251C", fontSize: 29, lineHeight: 34, fontWeight: "900", marginTop: 9, maxWidth: 305 },
   essentialPulse: { width: 14, height: 14, borderRadius: 99, backgroundColor: "#B76836", shadowColor: "#B76836", shadowOpacity: 0.55, shadowRadius: 10 },
   essentialText: { color: "rgba(23,37,28,0.66)", fontSize: 14, lineHeight: 21, fontWeight: "700", marginTop: 13 },
   essentialFacts: { flexDirection: "row", gap: 9, marginTop: 19 },
-  essentialFact: { flex: 1, minHeight: 72, borderRadius: 19, padding: 12, backgroundColor: "rgba(23,37,28,0.055)" },
+  essentialFact: { flex: 1, minHeight: 72, borderRadius: 19, padding: 12, backgroundColor: "rgba(23,37,28,0.030)", borderWidth: 1, borderColor: "rgba(23,37,28,0.012)" },
   essentialFactValue: { color: "#17251C", fontSize: 22, fontWeight: "900" },
   essentialFactLabel: { color: "rgba(23,37,28,0.52)", fontSize: 9, lineHeight: 13, fontWeight: "800", marginTop: 4 },
   essentialAction: { marginTop: 18, borderRadius: 18, paddingHorizontal: 16, paddingVertical: 14, backgroundColor: "#17251C", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
@@ -1354,7 +1373,7 @@ const styles = StyleSheet.create({
   signatureTitle: { color: "#FFF8EA", fontSize: 24, lineHeight: 29, fontWeight: "900", marginTop: 7, maxWidth: 310 },
   signatureCounter: { color: "rgba(255,248,234,0.38)", fontSize: 9, fontWeight: "900", marginBottom: 4 },
   signaturePortal: { position: "relative", overflow: "hidden", borderRadius: 30, backgroundColor: "#102219", borderWidth: 1, borderColor: "rgba(217,174,104,0.20)" },
-  signaturePortalAura: { position: "absolute", width: 260, height: 260, borderRadius: 999, right: -156, top: -158, backgroundColor: "rgba(217,174,104,0.055)", borderWidth: 1, borderColor: "rgba(217,174,104,0.09)" },
+  signaturePortalAura: { position: "absolute", width: 260, height: 260, borderRadius: 999, right: -156, top: -158, backgroundColor: "rgba(217,174,104,0.050)", borderWidth: 1, borderColor: "rgba(217,174,104,0.09)" },
   signaturePortalVisual: { position: "relative", minHeight: 162, padding: 18, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
   tasteCanvasDeep: { position: "absolute", width: 220, height: 220, borderRadius: 999, left: -96, bottom: -142, opacity: 0.72 },
   tasteCanvasMist: { position: "absolute", width: 190, height: 190, borderRadius: 999, right: -70, top: -110 },
@@ -1388,7 +1407,7 @@ const styles = StyleSheet.create({
   signatureRail: { gap: 9, paddingTop: 12, paddingRight: 18, paddingBottom: 4 },
   signatureNode: { width: 154, minHeight: 64, borderRadius: 20, padding: 10, flexDirection: "row", alignItems: "center", gap: 9, backgroundColor: "rgba(255,255,255,0.025)", borderWidth: 1, borderColor: "rgba(255,255,255,0.07)" },
   signatureNodeActive: { backgroundColor: "rgba(217,174,104,0.10)", borderColor: "rgba(217,174,104,0.32)" },
-  signatureNodeMonogram: { width: 34, height: 34, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.055)" },
+  signatureNodeMonogram: { width: 34, height: 34, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.050)" },
   signatureNodeMonogramActive: { backgroundColor: "#D9AE68" },
   signatureNodeMonogramText: { color: "rgba(255,248,234,0.62)", fontSize: 10, fontWeight: "900" },
   signatureNodeMonogramTextActive: { color: "#17251C" },
@@ -1440,7 +1459,7 @@ const styles = StyleSheet.create({
   ambientKicker: { color: "rgba(130,215,255,0.72)", fontSize: 8, fontWeight: "900", letterSpacing: 1.8 },
   ambientTitle: { color: "rgba(255,248,234,0.78)", fontSize: 15, fontWeight: "900", marginTop: 5 },
   ambientCounter: { color: "rgba(255,248,234,0.32)", fontSize: 9, fontWeight: "900" },
-  ambientSignalCard: { minHeight: 74, borderRadius: 22, paddingHorizontal: 14, paddingVertical: 13, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "rgba(130,215,255,0.035)", borderWidth: 1, borderColor: "rgba(130,215,255,0.12)" },
+  ambientSignalCard: { minHeight: 74, borderRadius: 22, paddingHorizontal: 14, paddingVertical: 13, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "rgba(130,215,255,0.035)", borderWidth: 1, borderColor: "rgba(130,215,255,0.13)" },
   ambientOrb: { width: 10, height: 10, borderRadius: 99, backgroundColor: "#82D7FF", shadowColor: "#82D7FF", shadowOpacity: 0.48, shadowRadius: 8 },
   ambientCopy: { flex: 1, minWidth: 0 },
   ambientName: { color: "#FFF8EA", fontSize: 15, fontWeight: "900" },
@@ -1461,7 +1480,7 @@ const styles = StyleSheet.create({
   networkStats: { marginTop: 20, flexDirection: "row", justifyContent: "space-between", gap: 8 },
   networkValue: { color: "#17251C", fontSize: 25, fontWeight: "900" },
   networkLabel: { color: "rgba(23,37,28,0.55)", fontSize: 10, fontWeight: "800", marginTop: 3, maxWidth: 90 },
-  radarLead: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 22, padding: 15, marginTop: 17, backgroundColor: "rgba(255,255,255,0.055)", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
+  radarLead: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 22, padding: 15, marginTop: 17, backgroundColor: "rgba(255,255,255,0.050)", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
   radarLeadKicker: { color: "#8CE6B8", fontSize: 8, fontWeight: "900", letterSpacing: 1.6 },
   radarLeadTitle: { color: "#FFF8EA", fontSize: 17, fontWeight: "900", marginTop: 5 },
   radarLeadText: { color: "rgba(255,248,234,0.48)", fontSize: 10, fontWeight: "800", marginTop: 4 },
@@ -1508,7 +1527,7 @@ const styles = StyleSheet.create({
     gap: 12,
     backgroundColor: "rgba(4,27,31,0.78)",
     borderWidth: 1,
-    borderColor: "rgba(111,223,218,0.24)",
+    borderColor: "rgba(111,223,218,0.21)",
   },
   futureRailPulse: {
     width: 10,

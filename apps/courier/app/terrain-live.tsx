@@ -70,6 +70,17 @@ type CourierPresenceProfile = {
 
 const cleanPresence = (value: unknown) => String(value || "").replace(/\s+/g, " ").trim();
 
+// DA_GALA_FALLBACK_ERADICATION_V1 - technical auth/session keys never render raw.
+function humanizeCourierTechnicalState(value: unknown): string {
+  const raw = String(value || "").trim();
+  if (!raw) return "Le terrain n’a pas encore confirmé cette donnée.";
+  if (raw.includes("courier_oidc_session_required") || raw.includes("Session courier indisponible")) return "Identité Courier requise pour charger les données terrain.";
+  if (raw.includes("orders_auth_required")) return "Votre session Courier doit être renouvelée pour continuer.";
+  if (/network request failed|failed to fetch|networkerror/i.test(raw)) return "Connexion terrain momentanément indisponible. Les dernières données confirmées restent visibles.";
+  if (/^[a-z0-9._-]+$/i.test(raw)) return "État terrain momentanément indisponible. Réessayez dans un instant.";
+  return raw;
+}
+
 function proofIsCurrent(proof: PresenceProof | undefined, destination: string) {
   if (!proof?.token || !proof?.expiresAt || cleanPresence(proof.destination) !== destination) return false;
   const expiresAt = new Date(proof.expiresAt).getTime();
@@ -930,7 +941,7 @@ export default function CourierHome() {
               accessibilityLabel="Terrain en mode dégradé. Relancer la synchronisation"
             >
               <Text style={styles.inlineErrorTitle}>Terrain en mode dégradé</Text>
-              <Text style={styles.inlineErrorText}>{error}</Text>
+              <Text style={styles.inlineErrorText}>{humanizeCourierTechnicalState(error)}</Text>
               <Text style={styles.inlineErrorRetry}>Relancer la synchronisation</Text>
             </Pressable>
           ) : priority ? (
@@ -1225,7 +1236,7 @@ const styles = StyleSheet.create({
   cardBody: { color: "rgba(3,36,20,0.62)", fontSize: 14, lineHeight: 21, fontWeight: "700", marginTop: 10 },
   activationPassport: {
     marginTop: 22,
-    borderRadius: 22,
+    borderRadius: 21,
     padding: 15,
     backgroundColor: "rgba(3,36,20,0.06)",
     borderWidth: 1,
@@ -1264,7 +1275,7 @@ const styles = StyleSheet.create({
   stageLabel: { color: "rgba(3,36,20,0.54)", fontSize: 10, fontWeight: "900", marginTop: 7 },
   stageLine: { flex: 1, height: 2, marginTop: 21, backgroundColor: "rgba(3,36,20,0.10)" },
   stageLineActive: { backgroundColor: "rgba(32,167,93,0.68)" },
-  missionSurface: { flexDirection: "row", alignItems: "center", gap: 14, marginTop: 22, borderRadius: 22, padding: 17, backgroundColor: "rgba(3,36,20,0.065)", borderWidth: 1, borderColor: "rgba(3,36,20,0.08)" },
+  missionSurface: { flexDirection: "row", alignItems: "center", gap: 14, marginTop: 22, borderRadius: 21, padding: 17, backgroundColor: "rgba(3,36,20,0.065)", borderWidth: 1, borderColor: "rgba(3,36,20,0.08)" },
   missionKicker: { color: "#207445", fontSize: 8, fontWeight: "900", letterSpacing: 1.7 },
   missionId: { color: "#032414", fontSize: 20, lineHeight: 25, fontWeight: "900", marginTop: 6 },
   missionRestaurant: { color: "#0B5B34", fontSize: 13, fontWeight: "900", marginTop: 6 },
@@ -1272,9 +1283,9 @@ const styles = StyleSheet.create({
   missionAddress: { color: "#0B5B34", fontSize: 13, lineHeight: 18, fontWeight: "900", marginTop: 9 },
   missionRouteHint: { color: "rgba(3,36,20,0.46)", fontSize: 9, fontWeight: "900", letterSpacing: 1.1, marginTop: 5 },
   missionArrow: { color: "#137843", fontSize: 27, fontWeight: "800" },
-  inlineState: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 22, borderRadius: 20, padding: 16, backgroundColor: "rgba(3,36,20,0.06)" },
+  inlineState: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 22, borderRadius: 21, padding: 16, backgroundColor: "rgba(3,36,20,0.06)" },
   inlineStateText: { color: "rgba(3,36,20,0.62)", fontWeight: "800" },
-  inlineError: { marginTop: 22, borderRadius: 20, padding: 16, backgroundColor: "rgba(144,34,24,0.10)" },
+  inlineError: { marginTop: 22, borderRadius: 21, padding: 16, backgroundColor: "rgba(144,34,24,0.10)" },
   inlineErrorTitle: { color: "#7E2118", fontSize: 15, fontWeight: "900" },
   inlineErrorText: { color: "rgba(92,26,18,0.68)", fontSize: 12, lineHeight: 18, marginTop: 5 },
   inlineErrorRetry: { color: "#7E2118", fontSize: 10, fontWeight: "900", marginTop: 9 },
@@ -1283,7 +1294,7 @@ const styles = StyleSheet.create({
   networkNoticeText: { color: "rgba(3,36,20,0.58)", fontSize: 11, lineHeight: 16, marginTop: 4 },
   networkNoticeMeta: { color: "rgba(3,36,20,0.38)", fontSize: 9, lineHeight: 13, marginTop: 3, fontWeight: "800" },
   networkNoticeAction: { color: "#0B5B34", fontSize: 11, fontWeight: "900" },
-  primaryAction: { minHeight: 56, flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 20, borderRadius: 20, paddingHorizontal: 18, paddingVertical: 15, backgroundColor: "#07331E" },
+  primaryAction: { minHeight: 56, flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 20, borderRadius: 21, paddingHorizontal: 18, paddingVertical: 15, backgroundColor: "#07331E" },
   primaryActionText: { color: "#E8FFF0", fontSize: 15, fontWeight: "900" },
   primaryActionArrow: { color: "#75EFA4", fontSize: 25, fontWeight: "800" },
   snapshot: { flexDirection: "row", alignItems: "center", gap: 14, borderRadius: 26, padding: 18, backgroundColor: "#041E12", borderWidth: 1, borderColor: "rgba(117,239,164,0.14)", marginBottom: 14 },
@@ -1292,19 +1303,19 @@ const styles = StyleSheet.create({
   snapshotMeta: { color: "rgba(227,255,236,0.46)", fontSize: 11, fontWeight: "800", marginTop: 5 },
   snapshotButton: { borderRadius: 999, paddingHorizontal: 15, paddingVertical: 11, backgroundColor: "rgba(117,239,164,0.10)" },
   snapshotButtonText: { color: "#A8FBC5", fontSize: 12, fontWeight: "900" },
-  toolsToggle: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, borderRadius: 22, padding: 18, backgroundColor: "#062718", borderWidth: 1, borderColor: "rgba(117,239,164,0.13)" },
+  toolsToggle: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, borderRadius: 21, padding: 18, backgroundColor: "#062718", borderWidth: 1, borderColor: "rgba(117,239,164,0.13)" },
   toolsKicker: { color: "#75EFA4", fontSize: 9, fontWeight: "900", letterSpacing: 2.1 },
   toolsTitle: { color: "#F3FFF7", fontSize: 16, fontWeight: "900", marginTop: 5 },
   toolsIcon: { color: "#75EFA4", fontSize: 27, fontWeight: "800" },
   toolsGrid: { gap: 10, marginTop: 10 },
-  toolCard: { borderRadius: 20, padding: 16, backgroundColor: "#051E14", borderWidth: 1, borderColor: "rgba(255,255,255,0.05)" },
+  toolCard: { borderRadius: 21, padding: 16, backgroundColor: "#051E14", borderWidth: 1, borderColor: "rgba(255,255,255,0.05)" },
   toolTitle: { color: "#F3FFF7", fontSize: 16, fontWeight: "900" },
   toolText: { color: "rgba(227,255,236,0.56)", fontSize: 13, lineHeight: 19, marginTop: 5 },
   activationGuidance: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    borderRadius: 22,
+    borderRadius: 21,
     padding: 16,
     marginBottom: 10,
     backgroundColor: "rgba(108,245,169,0.08)",

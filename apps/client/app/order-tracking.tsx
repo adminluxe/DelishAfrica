@@ -3,7 +3,6 @@ import React from "react";
 import {
   ActivityIndicator,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 declare const process: {
   env?: Record<string, string | undefined>;

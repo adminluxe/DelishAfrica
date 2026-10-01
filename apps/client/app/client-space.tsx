@@ -5,7 +5,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Switch,
@@ -13,9 +12,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from 'expo-location';
-import * as SecureStore from 'expo-secure-store';
+import { daSecureGetLargeString, daSecureSetLargeString } from '../utils/daSecureChunks';
 import { router } from 'expo-router';
+import { useDaPkceAuth } from '../hooks/useDaPkceAuth';
 import { daInspectProfileTrust, DaProfileTrustResult } from '../utils/daProfileTrust';
 import { daAccountScopeId, daAccountStorageKey } from '../utils/daOrdersApi';
 import { daProbeTerritoryTruth, type DaTerritoryTruthResult } from '../utils/daTerritoryTruth';
@@ -70,7 +71,7 @@ async function loadClientProfile(): Promise<ClientProfileLite | null> {
     const cached = clientProfileMemory.get(scope);
     if (cached) return cached;
     const scopedKey = await daAccountStorageKey(PROFILE_KEY);
-    const raw = await SecureStore.getItemAsync(scopedKey);
+    const raw = await daSecureGetLargeString(scopedKey);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as ClientProfileLite;
     if (!parsed || typeof parsed !== 'object' || !parsed.id) return null;
@@ -87,9 +88,7 @@ async function saveClientProfile(profile: ClientProfileLite): Promise<void> {
   const scopedKey = await daAccountStorageKey(PROFILE_KEY);
   clientProfileMemory.set(scope, profile);
   bag()[scopedKey] = profile;
-  await SecureStore.setItemAsync(scopedKey, JSON.stringify(profile), {
-    keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-  });
+  await daSecureSetLargeString(scopedKey, JSON.stringify(profile));
 }
 
 const sessionToken = () => `da-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
@@ -173,13 +172,31 @@ export default function ClientSpaceScreen() {
   const [profileId, setProfileId] = useState(existing?.id || '');
   const [hydrating, setHydrating] = useState(true);
   const [lastSavedAt, setLastSavedAt] = useState(existing?.updatedAt || '');
+  const [showExtraVerification, setShowExtraVerification] = useState(false);
+  const auth = useDaPkceAuth();
+  const accountConnected = auth.session.status === 'authenticated';
+  const accountIdentity = auth.session.displayName || auth.session.email || '';
+
+  async function handleAccountAction() {
+    if (accountConnected) {
+      router.push('/live-tracking' as any);
+      return;
+    }
+
+    const next = await auth.signIn();
+    if (next.status === 'error') {
+      Alert.alert(
+        'Connexion DelishAfrica',
+        'La connexion a été interrompue. Réessayez dans un instant.',
+      );
+    }
+  }
 
   const proofFresh = (proof: DaIdentityProof | null, destination: string) =>
     Boolean(proof && proof.destination === destination && Date.parse(proof.expiresAt) > Date.now());
   const phoneVerified = proofFresh(phoneProof, clean(phone));
   const emailVerified = proofFresh(emailProof, clean(email).toLowerCase());
   const addressVerified = Boolean(addressTruth?.deliverable && addressTruth.formattedAddress === clean(address));
-  const ownershipReady = phoneVerified && emailVerified;
 
   const basics = useMemo(() => {
     const issues: string[] = [];
@@ -256,6 +273,20 @@ export default function ClientSpaceScreen() {
     });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (hydrating || !accountConnected) return;
+
+    const displayName = clean(auth.session.displayName || "");
+    const sessionEmail = clean(auth.session.email || "").toLowerCase();
+
+    if (!clean(email) && sessionEmail) setEmail(sessionEmail);
+    if (!clean(firstName) && displayName) {
+      const parts = displayName.split(/\s+/).filter(Boolean);
+      if (parts.length > 0) setFirstName(parts[0]);
+      if (!clean(lastName) && parts.length > 1) setLastName(parts.slice(1).join(" "));
+    }
+  }, [accountConnected, auth.session.displayName, auth.session.email, email, firstName, hydrating, lastName]);
 
   useEffect(() => {
     let active = true;
@@ -593,44 +624,8 @@ Utilisez uniquement le code le plus récent.`,
       Alert.alert('Informations à compléter', basics.join('\n'));
       return;
     }
-    if (continueToCheckout && !ownershipReady) {
-      Alert.alert('Preuve de possession requise', 'Validez le téléphone par SMS et l’email par code avant de commander.');
-      return;
-    }
     setChecking(true);
     try {
-      if (continueToCheckout) {
-        const [phoneAttestation, emailAttestation] = await Promise.all([
-          daAttestIdentityProof({
-            channel: 'sms',
-            role: 'client',
-            destination: clean(phone),
-            proofToken: phoneProof!.token,
-          }),
-          daAttestIdentityProof({
-            channel: 'email',
-            role: 'client',
-            destination: clean(email).toLowerCase(),
-            proofToken: emailProof!.token,
-          }),
-        ]);
-        if (!phoneAttestation.valid || !emailAttestation.valid) {
-          await persistActivationDraft({
-            proofs: {
-              phone: phoneAttestation.valid ? phoneProof! : undefined,
-              email: emailAttestation.valid ? emailProof! : undefined,
-            },
-            trust: undefined,
-          });
-          if (!phoneAttestation.valid) setPhoneProof(null);
-          if (!emailAttestation.valid) setEmailProof(null);
-          Alert.alert(
-            'Contact à revalider',
-            `${!phoneAttestation.valid ? 'Le téléphone' : ''}${!phoneAttestation.valid && !emailAttestation.valid ? ' et ' : ''}${!emailAttestation.valid ? "L’email" : ''} doit être vérifié à nouveau avant le checkout.`,
-          );
-          return;
-        }
-      }
       const result = await daInspectProfileTrust({
         role: 'client',
         name: `${firstName} ${lastName}`,
@@ -682,7 +677,7 @@ Utilisez uniquement le code le plus récent.`,
     }
   }
 
-  const truthCount = Number(addressVerified) + Number(phoneVerified) + Number(emailVerified);
+  const optionalProofCount = Number(phoneVerified) + Number(emailVerified);
   return (
     <SafeAreaView style={styles.safe}>
       {/* DA_J7B_LEGAL_LINK */}
@@ -696,38 +691,61 @@ Utilisez uniquement le code le plus récent.`,
         <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
           <Text style={styles.brand}>DELISHAFRICA®</Text>
           <Text style={styles.title}>Mon espace</Text>
-          <Text style={styles.subtitle}>Une adresse réelle. Deux contacts prouvés. Aucune commande gag.</Text>
+          <Text style={styles.subtitle}>Vos coordonnées, vos commandes et votre suivi. Une seule connexion suffit.</Text>
 
-          <View style={[styles.truthCard, truthCount === 3 && styles.truthCardReady]}>
-            <Text style={styles.truthKicker}>VÉRITÉ D’IDENTITÉ</Text>
-            <Text style={[styles.truthTitle, truthCount === 3 && styles.truthTitleReady]}>{truthCount}/3 preuves confirmées</Text>
-            <Text style={[styles.truthText, truthCount === 3 && styles.truthTextReady]}>
-              Adresse {addressVerified ? '✓' : '·'} · SMS {phoneVerified ? '✓' : '·'} · Email {emailVerified ? '✓' : '·'}
+          <View style={[styles.truthCard, addressVerified && styles.truthCardReady]}>
+            <Text style={styles.truthKicker}>COMMANDE RAPIDE</Text>
+            <Text style={[styles.truthTitle, addressVerified && styles.truthTitleReady]}>
+              {addressVerified ? 'Adresse de livraison prête' : 'Préparez votre livraison'}
+            </Text>
+            <Text style={[styles.truthText, addressVerified && styles.truthTextReady]}>
+              Aucun code SMS ou email n’est requis pour une commande standard.
             </Text>
           </View>
           <Text style={styles.continuityHint}>
             {hydrating
-              ? 'Restauration sécurisée de Mon Espace…'
+              ? 'Restauration de vos informations…'
               : lastSavedAt
-                ? 'Mon Espace est mémorisé sur cet appareil.'
-                : 'Chaque preuve confirmée sera mémorisée immédiatement sur cet appareil.'}
+                ? 'Vos informations sont mémorisées sur cet appareil.'
+                : 'Renseignez uniquement les informations utiles à votre livraison.'}
           </Text>
 
           <View style={styles.secureAccountCard}>
             <View style={styles.secureAccountCopy}>
               <Text style={styles.secureAccountKicker}>COMPTE DELISHAFRICA</Text>
-              <Text style={styles.secureAccountTitle}>Connexion sécurisée</Text>
+              <Text style={styles.secureAccountTitle}>
+                {accountConnected ? 'Compte connecté' : 'Votre compte'}
+              </Text>
               <Text style={styles.secureAccountText}>
-                La session Keycloak est distincte des preuves locales SMS, e-mail et adresse.
+                {accountConnected
+                  ? accountIdentity
+                    ? `Connecté · ${accountIdentity}`
+                    : 'Votre session DelishAfrica est active.'
+                  : 'Connectez-vous ici en une seule étape pour retrouver vos commandes sur vos appareils.'}
               </Text>
             </View>
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push('/secure-session' as any)}
-              style={styles.secureAccountButton}
+              disabled={auth.busy || (!accountConnected && !auth.requestReady)}
+              onPress={handleAccountAction}
+              style={[
+                styles.secureAccountButton,
+                (auth.busy || (!accountConnected && !auth.requestReady)) && styles.disabled,
+              ]}
             >
-              <Text style={styles.secureAccountButtonText}>Ouvrir ma session</Text>
+              {auth.busy ? (
+                <ActivityIndicator color="#07130E" />
+              ) : (
+                <Text style={styles.secureAccountButtonText}>
+                  {accountConnected ? 'Voir mes commandes' : 'Se connecter / créer mon compte'}
+                </Text>
+              )}
             </Pressable>
+            {accountConnected ? (
+              <Pressable disabled={auth.busy} onPress={auth.logout} style={styles.backButton}>
+                <Text style={styles.backText}>Se déconnecter</Text>
+              </Pressable>
+            ) : null}
           </View>
 
           <View style={styles.card}>
@@ -739,33 +757,52 @@ Utilisez uniquement le code le plus récent.`,
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Contacts vérifiés</Text>
-            <Text style={styles.label}>Téléphone international *</Text>
+            <Text style={styles.cardTitle}>Coordonnées</Text>
+            <Text style={styles.label}>Téléphone *</Text>
             <TextInput value={phone} onChangeText={changePhone} placeholder="+32 4…" placeholderTextColor="#6F7685" style={styles.input} keyboardType="phone-pad" textContentType="telephoneNumber" />
-            <View style={styles.proofRow}>
-              <Pressable onPress={() => sendProof('sms')} disabled={proofBusy !== null || phoneVerified} style={[styles.miniButton, phoneVerified && styles.miniButtonReady]}>
-                {proofBusy === 'sms' ? <ActivityIndicator color="#07130E" /> : <Text style={styles.miniButtonText}>{phoneVerified ? 'SMS confirmé' : phoneSent ? 'Renvoyer le code' : 'Envoyer le code'}</Text>}
-              </Pressable>
-              {phoneSent && !phoneVerified ? <TextInput value={phoneCode} onChangeText={setPhoneCode} placeholder="Code SMS" placeholderTextColor="#6F7685" style={styles.codeInput} keyboardType="number-pad" maxLength={10} returnKeyType="done" onSubmitEditing={() => verifyProof('sms')} editable={proofBusy === null} /> : null}
-              {phoneSent && !phoneVerified ? <Pressable onPress={() => verifyProof('sms')} disabled={proofBusy !== null} style={styles.checkButton}><Text style={styles.checkButtonText}>Valider</Text></Pressable> : null}
-              {phoneSent && !phoneVerified && phoneAlternateAvailable ? (
-                <Pressable onPress={() => sendProof('sms', 'alternate')} disabled={proofBusy !== null} style={styles.alternateButton}>
-                  <Text style={styles.alternateButtonText}>Je n’ai rien reçu · route de secours</Text>
-                </Pressable>
-              ) : null}
-            </View>
-            {phoneProvider ? <Text style={styles.providerHint}>Route sécurisée : {phoneProvider}</Text> : null}
-              {phoneSent && !phoneVerified ? <Text style={styles.providerHint}>Utilisez uniquement le code le plus récent.</Text> : null}
 
             <Text style={styles.label}>Email *</Text>
             <TextInput value={email} onChangeText={changeEmail} placeholder="vous@fournisseur.com" placeholderTextColor="#6F7685" style={styles.input} keyboardType="email-address" textContentType="emailAddress" autoComplete="email" autoCapitalize="none" autoCorrect={false} />
-            <View style={styles.proofRow}>
-              <Pressable onPress={() => sendProof('email')} disabled={proofBusy !== null || emailVerified} style={[styles.miniButton, emailVerified && styles.miniButtonReady]}>
-                {proofBusy === 'email' ? <ActivityIndicator color="#07130E" /> : <Text style={styles.miniButtonText}>{emailVerified ? 'Email confirmé' : emailSent ? 'Renvoyer le code' : 'Envoyer le code'}</Text>}
-              </Pressable>
-              {emailSent && !emailVerified ? <TextInput value={emailCode} onChangeText={setEmailCode} placeholder="Code email" placeholderTextColor="#6F7685" style={styles.codeInput} keyboardType="number-pad" maxLength={10} returnKeyType="done" onSubmitEditing={() => verifyProof('email')} editable={proofBusy === null} /> : null}
-              {emailSent && !emailVerified ? <Pressable onPress={() => verifyProof('email')} disabled={proofBusy !== null} style={styles.checkButton}><Text style={styles.checkButtonText}>Valider</Text></Pressable> : null}
-            </View>
+
+            <Text style={styles.fieldHint}>
+              Ces coordonnées servent à la livraison et au reçu. Aucun code supplémentaire n’est nécessaire pour commander.
+            </Text>
+
+            <Pressable
+              onPress={() => setShowExtraVerification((current) => !current)}
+              style={styles.alternateButton}
+            >
+              <Text style={styles.alternateButtonText}>
+                {showExtraVerification ? 'Masquer la protection renforcée' : 'Protection renforcée facultative'}
+              </Text>
+            </Pressable>
+
+            {showExtraVerification ? (
+              <View>
+                <Text style={styles.providerHint}>Optionnel · {optionalProofCount}/2 contacts renforcés</Text>
+                <View style={styles.proofRow}>
+                  <Pressable onPress={() => sendProof('sms')} disabled={proofBusy !== null || phoneVerified} style={[styles.miniButton, phoneVerified && styles.miniButtonReady]}>
+                    {proofBusy === 'sms' ? <ActivityIndicator color="#07130E" /> : <Text style={styles.miniButtonText}>{phoneVerified ? 'SMS confirmé' : phoneSent ? 'Renvoyer le code' : 'Confirmer le téléphone'}</Text>}
+                  </Pressable>
+                  {phoneSent && !phoneVerified ? <TextInput value={phoneCode} onChangeText={setPhoneCode} placeholder="Code SMS" placeholderTextColor="#6F7685" style={styles.codeInput} keyboardType="number-pad" maxLength={10} returnKeyType="done" onSubmitEditing={() => verifyProof('sms')} editable={proofBusy === null} /> : null}
+                  {phoneSent && !phoneVerified ? <Pressable onPress={() => verifyProof('sms')} disabled={proofBusy !== null} style={styles.checkButton}><Text style={styles.checkButtonText}>Valider</Text></Pressable> : null}
+                  {phoneSent && !phoneVerified && phoneAlternateAvailable ? (
+                    <Pressable onPress={() => sendProof('sms', 'alternate')} disabled={proofBusy !== null} style={styles.alternateButton}>
+                      <Text style={styles.alternateButtonText}>Je n’ai rien reçu · autre méthode</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+                {phoneProvider ? <Text style={styles.providerHint}>Canal sécurisé : {phoneProvider}</Text> : null}
+
+                <View style={styles.proofRow}>
+                  <Pressable onPress={() => sendProof('email')} disabled={proofBusy !== null || emailVerified} style={[styles.miniButton, emailVerified && styles.miniButtonReady]}>
+                    {proofBusy === 'email' ? <ActivityIndicator color="#07130E" /> : <Text style={styles.miniButtonText}>{emailVerified ? 'Email confirmé' : emailSent ? 'Renvoyer le code' : 'Confirmer l’email'}</Text>}
+                  </Pressable>
+                  {emailSent && !emailVerified ? <TextInput value={emailCode} onChangeText={setEmailCode} placeholder="Code email" placeholderTextColor="#6F7685" style={styles.codeInput} keyboardType="number-pad" maxLength={10} returnKeyType="done" onSubmitEditing={() => verifyProof('email')} editable={proofBusy === null} /> : null}
+                  {emailSent && !emailVerified ? <Pressable onPress={() => verifyProof('email')} disabled={proofBusy !== null} style={styles.checkButton}><Text style={styles.checkButtonText}>Valider</Text></Pressable> : null}
+                </View>
+              </View>
+            ) : null}
           </View>
 
           <View style={styles.card}>
@@ -896,9 +933,9 @@ Utilisez uniquement le code le plus récent.`,
           </View>
 
           <Pressable disabled={checking} onPress={() => saveProfile(false)} style={[styles.primaryButton, checking && styles.disabled]} accessibilityRole="button">
-            {checking ? <ActivityIndicator color="#07130E" /> : <Text style={styles.primaryText}>Enregistrer les preuves</Text>}
+            {checking ? <ActivityIndicator color="#07130E" /> : <Text style={styles.primaryText}>Enregistrer mes informations</Text>}
           </Pressable>
-          <Pressable disabled={checking || !ownershipReady || !addressVerified} onPress={() => saveProfile(true)} style={[styles.secondaryButton, (!ownershipReady || !addressVerified) && styles.disabled]} accessibilityRole="button">
+          <Pressable disabled={checking || !addressVerified} onPress={() => saveProfile(true)} style={[styles.secondaryButton, (!addressVerified || checking) && styles.disabled]} accessibilityRole="button">
             <Text style={styles.secondaryText}>Continuer vers la commande</Text>
           </Pressable>
           <Pressable onPress={() => router.replace('/' as any)} style={styles.backButton}><Text style={styles.backText}>Retour à l’accueil</Text></Pressable>
@@ -911,7 +948,7 @@ Utilisez uniquement le code le plus récent.`,
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 }, safe: { flex: 1, backgroundColor: '#04150E' }, page: { padding: 22, paddingBottom: 72 },
+  flex: { flex: 1 }, safe: { flex: 1, backgroundColor: '#04150E' }, page: { width: '100%', maxWidth: 760, alignSelf: 'center', padding: 22, paddingBottom: 72 },
   brand: { color: '#E7B85F', fontSize: 18, fontWeight: '900', letterSpacing: 6, marginTop: 8 }, title: { color: '#FFF8EA', fontSize: 42, lineHeight: 48, fontWeight: '900', marginTop: 14 }, subtitle: { color: '#9BA79F', fontSize: 17, lineHeight: 25, marginTop: 10, marginBottom: 20 },
   truthCard: { padding: 18, borderRadius: 24, backgroundColor: '#0A2418', borderWidth: 1, borderColor: 'rgba(231,184,95,0.28)', marginBottom: 10 },
   secureAccountCard: { marginBottom: 16, padding: 18, borderRadius: 24, backgroundColor: '#102D20', borderWidth: 1, borderColor: 'rgba(231,184,95,0.28)' },

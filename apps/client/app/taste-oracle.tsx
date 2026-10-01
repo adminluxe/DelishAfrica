@@ -9,6 +9,8 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { AquaticSignature } from "../components/aquatic/AquaticSignature";
+import { ConfluenceOracleLens } from "../ui/confluence/ConfluenceOracleLens";
+import { useConfluenceSuggestion } from "../ui/confluence/useConfluenceSuggestion";
 
 type MoodKey = "comfort" | "discovery" | "energy" | "family" | "character" | "light";
 
@@ -135,9 +137,19 @@ const MOODS: Mood[] = [
   },
 ];
 
+const COUNTERFLOW: Record<MoodKey, MoodKey> = {
+  comfort: "light",
+  light: "character",
+  character: "discovery",
+  discovery: "family",
+  family: "energy",
+  energy: "comfort",
+};
+
 export default function TasteOracleScreen() {
   const [selectedKey, setSelectedKey] = useState<MoodKey>("discovery");
   const [reduceMotion, setReduceMotion] = useState(false);
+  const [confluenceNetworkEnabled, setConfluenceNetworkEnabled] = useState(true);
 
   useEffect(() => {
     let mounted = true;
@@ -155,6 +167,34 @@ export default function TasteOracleScreen() {
     () => MOODS.find((mood) => mood.key === selectedKey) || MOODS[0],
     [selectedKey],
   );
+
+  const counterflow = useMemo(
+    () => MOODS.find((mood) => mood.key === COUNTERFLOW[selected.key]) || MOODS[0],
+    [selected.key],
+  );
+
+  const oracleEvidence = useMemo(
+    () => [
+      { label: "Intention choisie", value: selected.label, kind: "fact" as const },
+      { label: "Intensité éditoriale", value: selected.intensity, kind: "context" as const },
+      { label: "Fraîcheur éditoriale", value: selected.freshness, kind: "context" as const },
+      { label: "Voyage proposé", value: selected.journey, kind: "context" as const },
+    ],
+    [selected],
+  );
+
+  const oracleSuggestion = useMemo(
+    () => `Suivre le courant ${selected.label.toLowerCase()} avec ${selected.dish}, accompagné de ${selected.drink}.`,
+    [selected],
+  );
+
+  const confluenceSuggestion = useConfluenceSuggestion({
+    oracle: "taste",
+    evidence: oracleEvidence,
+    localSuggestion: oracleSuggestion,
+    localHumanBoundary: "Aucune origine, identité culturelle ou préférence sensible n’est déduite. Vous choisissez l’intention ; vous gardez le dernier mot sur le plat.",
+    enabled: confluenceNetworkEnabled,
+  });
 
   return (
     <AquaticSignature reduceMotion={reduceMotion}>
@@ -261,6 +301,43 @@ export default function TasteOracleScreen() {
             ))}
           </View>
         </View>
+
+        <Pressable
+          style={({ pressed }) => [styles.counterflowCard, pressed && styles.pressed]}
+          onPress={() => setSelectedKey(counterflow.key)}
+          accessibilityRole="button"
+          accessibilityLabel={`Explorer le contre-courant ${counterflow.label}`}
+          accessibilityHint="Change uniquement votre intention actuelle, sans utiliser votre historique."
+        >
+          <View style={styles.counterflowCopy}>
+            <Text style={styles.counterflowKicker}>CONTRE-COURANT · SANS PROFILAGE</Text>
+            <Text style={styles.counterflowTitle}>Et si vous quittiez volontairement {selected.label.toLowerCase()} ?</Text>
+            <Text style={styles.counterflowText}>
+              Explorer {counterflow.label} · {counterflow.subtitle} Cette bifurcation part uniquement de votre choix actuel : aucun historique caché n’est utilisé.
+            </Text>
+          </View>
+          <View style={styles.counterflowAction}>
+            <Text style={styles.counterflowActionText}>Dévier →</Text>
+          </View>
+        </Pressable>
+
+        <ConfluenceOracleLens
+          accent="#9BEFE1"
+          engineLabel={confluenceSuggestion.engineLabel}
+          title="Pourquoi ce courant vous est proposé"
+          suggestion={confluenceSuggestion.suggestion}
+          evidence={oracleEvidence}
+          humanBoundary={confluenceSuggestion.humanBoundary}
+          footnote={confluenceSuggestion.footnote}
+          mode={confluenceSuggestion.mode}
+          uncertainty={confluenceSuggestion.uncertainty}
+          evidenceIndexes={confluenceSuggestion.evidenceIndexes}
+          generatedAt={confluenceSuggestion.generatedAt}
+          privacyNote={confluenceSuggestion.privacyNote}
+          excludedSignals={["Identité sensible", "Origine supposée", "Historique caché", "Données de paiement"]}
+          networkEnabled={confluenceNetworkEnabled}
+          onNetworkEnabledChange={setConfluenceNetworkEnabled}
+        />
 
         <View style={styles.promiseCard}>
           <Text style={styles.promiseKicker}>LE GOÛT COMME BOUSSOLE</Text>
@@ -395,6 +472,13 @@ const styles = StyleSheet.create({
   ritual: { color: "#5E4214", fontSize: 14, lineHeight: 21, fontWeight: "800", marginTop: 7 },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 18 },
   tag: { color: "#FFF8E7", backgroundColor: "#102A27", borderRadius: 999, paddingHorizontal: 13, paddingVertical: 8, fontSize: 11, fontWeight: "900" },
+  counterflowCard: { flexDirection: "row", alignItems: "center", gap: 14, borderRadius: 24, padding: 16, backgroundColor: "rgba(7,38,34,0.74)", borderWidth: 1, borderColor: "rgba(245,190,103,0.20)" },
+  counterflowCopy: { flex: 1 },
+  counterflowKicker: { color: "#F5BE67", fontSize: 9, fontWeight: "900", letterSpacing: 1.5 },
+  counterflowTitle: { color: "#FFF9EC", fontSize: 15, lineHeight: 20, fontWeight: "900", marginTop: 6 },
+  counterflowText: { color: "rgba(255,249,236,0.58)", fontSize: 11, lineHeight: 17, fontWeight: "700", marginTop: 5 },
+  counterflowAction: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 9, backgroundColor: "rgba(245,190,103,0.12)", borderWidth: 1, borderColor: "rgba(245,190,103,0.24)" },
+  counterflowActionText: { color: "#F5BE67", fontSize: 10.5, fontWeight: "900" },
   promiseCard: { borderRadius: 28, padding: 20, backgroundColor: "rgba(7,38,34,0.86)", borderWidth: 1, borderColor: "rgba(150,240,222,0.18)" },
   promiseKicker: { color: "#9BEFE1", fontSize: 10, fontWeight: "900", letterSpacing: 2.3 },
   promiseTitle: { color: "#FFF9EC", fontSize: 22, lineHeight: 27, fontWeight: "900", marginTop: 10 },

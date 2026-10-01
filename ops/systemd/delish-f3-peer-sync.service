@@ -1,0 +1,13 @@
+[Unit]
+Description=Refresh DelishAfrica OrchidPay F3 authorized Docker peers
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/delish-f3-peer-sync.py
+User=root
+Group=root
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes

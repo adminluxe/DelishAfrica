@@ -1,16 +1,16 @@
 import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-ActivityIndicator,
-RefreshControl,
-SafeAreaView,
-ScrollView,
-StyleSheet,
-Text,
-TouchableOpacity,
-View,
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { router } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router, useLocalSearchParams } from "expo-router";
 import { getDATheme } from "../ui/da/theme";
 
 import { MotionHero } from "../components/motion/MotionHero";
@@ -49,6 +49,14 @@ note?: string;
 at?: string;
 changedAt?: string;
 }>;
+assignmentProposal?: {
+status?: string;
+proposalStatus?: string;
+totalEtaMin?: number;
+etaMin?: number;
+confidence?: number;
+score?: number;
+};
 };
 
 const RAW_API =
@@ -192,14 +200,118 @@ if (status === "delivered") return 5;
 return 99;
 }
 
+function dispatchEtaMin(order?: DemoOrder): number | null {
+const proposal = order?.assignmentProposal;
+const raw = proposal?.totalEtaMin ?? proposal?.etaMin;
+const value = Number(raw);
+return Number.isFinite(value) && value > 0 ? value : null;
+}
+
 function etaFor(order?: DemoOrder) {
 const s = statusOf(order);
-if (s === "pending") return "35 min";
-if (s === "accepted") return "28 min";
-if (s === "ready") return "18 min";
-if (s === "picked_up") return "12 min";
 if (s === "delivered") return "Livrée";
+const eta = dispatchEtaMin(order);
+if (eta !== null) return `${Math.max(1, Math.round(eta))} min`;
+if (s === "picked_up") return "En route";
 return "—";
+}
+
+type ClientHandoffView = {
+label: string;
+kitchen: string;
+terrain: string;
+bridge: string;
+proof: string;
+active: boolean;
+};
+
+function clientHandoffView(order?: DemoOrder): ClientHandoffView {
+const s = statusOf(order);
+const eta = dispatchEtaMin(order);
+const etaText = eta !== null ? `${Math.max(1, Math.round(eta))} min` : "non reçu";
+
+if (s === "delivered") {
+return {
+label: "LIVRÉE",
+kitchen: "Service terminé",
+terrain: "Livraison confirmée",
+bridge: "Votre commande a été livrée.",
+proof: "Livraison confirmée par DelishAfrica.",
+active: false,
+};
+}
+if (s === "picked_up") {
+return {
+label: "EN ROUTE",
+kitchen: "Remise effectuée",
+terrain: "Coursier vers vous",
+bridge: "Le restaurant a remis votre commande au coursier. Elle est en route vers vous.",
+proof: "Remise au coursier confirmée.",
+active: true,
+};
+}
+if (s === "ready") {
+return {
+label: "PRÊTE",
+kitchen: "Commande prête",
+terrain: eta !== null ? `Coursier en approche · ${etaText}` : "Coursier à confirmer",
+bridge: "Votre commande est prête. DelishAfrica confirme le relais de livraison.",
+proof: eta !== null ? "Coursier en approche." : "Coursier en cours d’attribution.",
+active: true,
+};
+}
+if (s === "accepted") {
+return {
+label: "EN PRÉPARATION",
+kitchen: "Préparation confirmée",
+terrain: eta !== null ? `Livraison estimée · ${etaText}` : "Coursier à confirmer",
+bridge: "Le restaurant prépare votre commande. Le suivi livraison s’active dès qu’un coursier est confirmé.",
+proof: "Préparation confirmée.",
+active: true,
+};
+}
+return {
+label: "ENVOYÉE",
+kitchen: "Acceptation à venir",
+terrain: "Coursier à confirmer",
+bridge: "Votre commande a été envoyée au restaurant.",
+proof: "Commande transmise au restaurant.",
+active: false,
+};
+}
+
+function ClientHandoffCurrent({ order }: { order?: DemoOrder }) {
+const view = clientHandoffView(order);
+return (
+<View style={styles.confluenceCard}>
+<View style={styles.confluenceTop}>
+<View style={{ flex: 1 }}>
+<Text style={styles.confluenceKicker}>CUISINE · LIVRAISON</Text>
+<Text style={styles.confluenceTitle}>Votre commande, étape par étape.</Text>
+</View>
+<View style={[styles.confluenceBadge, view.active && styles.confluenceBadgeActive]}>
+<Text style={[styles.confluenceBadgeText, view.active && styles.confluenceBadgeTextActive]}>{view.label}</Text>
+</View>
+</View>
+<View style={styles.confluenceStreams}>
+<View style={styles.confluenceStream}>
+<Text style={styles.confluenceStreamLabel}>CUISINE</Text>
+<Text style={styles.confluenceStreamValue}>{view.kitchen}</Text>
+</View>
+<View style={styles.confluenceJoin}>
+<View style={styles.confluenceJoinLine} />
+<View style={[styles.confluenceJoinDrop, view.active && styles.confluenceJoinDropActive]} />
+<View style={styles.confluenceJoinLine} />
+</View>
+<View style={styles.confluenceStream}>
+<Text style={styles.confluenceStreamLabel}>TERRAIN</Text>
+<Text style={styles.confluenceStreamValue}>{view.terrain}</Text>
+</View>
+</View>
+<Text style={styles.confluenceBridge}>{view.bridge}</Text>
+<Text style={styles.confluenceProof}>{view.proof}</Text>
+</View>
+);
 }
 
 function etaDetail(order?: DemoOrder) {
@@ -257,8 +369,10 @@ return (
 const UI = getDATheme("client");
 
 export default function ClientLiveTrackingScreen() {
+const params = useLocalSearchParams<{ orderId?: string; publicId?: string }>();
+const requestedOrderId = String(params.orderId || params.publicId || "").trim();
 const [orders, setOrders] = useState<DemoOrder[]>([]);
-const [selectedId, setSelectedId] = useState<string | null>(null);
+const [selectedId, setSelectedId] = useState<string | null>(requestedOrderId || null);
 const [loading, setLoading] = useState(true);
 const [refreshing, setRefreshing] = useState(false);
 const [error, setError] = useState<string | null>(null);
@@ -280,6 +394,13 @@ return pickBestOrder(orders);
 
 const activeCount = orders.filter(isActive).length;
 const deliveredCount = orders.filter((order) => statusOf(order) === "delivered").length;
+const accountRequired = Boolean(
+  error &&
+    (
+      error.includes("Connexion DelishAfrica requise") ||
+      error.includes("Session Client Keycloak requise")
+    ),
+);
 
 async function refresh() {
 setError(null);
@@ -300,6 +421,10 @@ setLoading(false);
 setRefreshing(false);
 }
 }
+
+useEffect(() => {
+if (requestedOrderId) setSelectedId(requestedOrderId);
+}, [requestedOrderId]);
 
 useEffect(() => {
 refresh();
@@ -355,8 +480,28 @@ onPress={refresh}
 
 {error ? (
 <View style={styles.errorCard}>
-<Text style={styles.errorTitle}>Suivi momentanément indisponible</Text>
-<Text style={styles.errorText}>{error}</Text>
+<Text style={styles.errorTitle}>
+{accountRequired ? "Connectez-vous pour retrouver vos commandes" : "Suivi momentanément indisponible"}
+</Text>
+<Text style={styles.errorText}>
+{accountRequired
+  ? "La découverte reste libre. Votre compte est seulement nécessaire pour afficher vos commandes personnelles."
+  : error}
+</Text>
+{accountRequired ? (
+<TouchableOpacity
+  activeOpacity={0.86}
+  style={styles.secondaryButton}
+  onPress={() =>
+    router.push({
+      pathname: "/secure-session",
+      params: { next: "/live-tracking" },
+    } as never)
+  }
+>
+  <Text style={styles.secondaryButtonText}>Continuer avec DelishAfrica</Text>
+</TouchableOpacity>
+) : null}
 </View>
 ) : null}
 
@@ -410,6 +555,8 @@ onPress={() => setShowOrderDetails((value) => !value)}
 <View style={styles.compactStatusDot} />
 <Text style={styles.compactStatusText}>{etaDetail(selectedOrder)}</Text>
 </View>
+
+<ClientHandoffCurrent order={selectedOrder} />
 
 <View style={styles.timelineCard}>
 <Text style={styles.blockTitle}>Parcours de livraison</Text>
@@ -499,6 +646,31 @@ Suivi estimatif · paiement sécurisé inclus.
 }
 
 const styles = StyleSheet.create({
+confluenceCard: {
+backgroundColor: "rgba(9, 34, 43, 0.94)",
+borderRadius: 24,
+padding: 16,
+borderWidth: 1,
+borderColor: "rgba(117, 173, 255, 0.24)",
+gap: 13,
+},
+confluenceTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
+confluenceKicker: { color: UI.colors.accent2, fontSize: 10, fontWeight: "900", letterSpacing: 1.8 },
+confluenceTitle: { color: UI.colors.text, fontSize: 16, lineHeight: 21, fontWeight: "900", marginTop: 5, maxWidth: 220 },
+confluenceBadge: { maxWidth: 132, borderRadius: UI.radius.pill, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: UI.colors.border, backgroundColor: UI.colors.surface1 },
+confluenceBadgeActive: { borderColor: "rgba(82, 216, 199, 0.38)", backgroundColor: "rgba(19, 86, 82, 0.36)" },
+confluenceBadgeText: { color: UI.colors.muted, fontSize: 9, lineHeight: 12, fontWeight: "900", letterSpacing: 0.7, textAlign: "center" },
+confluenceBadgeTextActive: { color: UI.colors.success },
+confluenceStreams: { flexDirection: "row", alignItems: "stretch", gap: 8 },
+confluenceStream: { flex: 1, minHeight: 68, borderRadius: 17, padding: 11, backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1, borderColor: "rgba(174, 217, 255, 0.10)" },
+confluenceStreamLabel: { color: UI.colors.muted, fontSize: 9, fontWeight: "900", letterSpacing: 1.2 },
+confluenceStreamValue: { color: UI.colors.text, fontSize: 13, lineHeight: 18, fontWeight: "800", marginTop: 6 },
+confluenceJoin: { width: 28, alignItems: "center", justifyContent: "center" },
+confluenceJoinLine: { width: 1, flex: 1, backgroundColor: "rgba(117, 173, 255, 0.22)" },
+confluenceJoinDrop: { width: 12, height: 12, borderTopLeftRadius: 8, borderTopRightRadius: 8, borderBottomLeftRadius: 8, borderBottomRightRadius: 3, borderWidth: 1, borderColor: "rgba(174,217,255,0.34)", backgroundColor: "rgba(117,173,255,0.12)", transform: [{ rotate: "45deg" }] },
+confluenceJoinDropActive: { borderColor: "rgba(82,216,199,0.72)", backgroundColor: "rgba(82,216,199,0.28)" },
+confluenceBridge: { color: UI.colors.text2, fontSize: 13, lineHeight: 19, fontWeight: "700" },
+confluenceProof: { color: UI.colors.muted, fontSize: 10, lineHeight: 15, fontWeight: "700" },
 aquaVeil: { position: "absolute", top: -84, right: -132, width: 168, height: 168, borderRadius: UI.radius.pill, backgroundColor: "rgba(88, 211, 255, 0.020)", borderWidth: 1, borderColor: "rgba(200, 242, 255, 0.050)", transform: [{ scaleX: 1.24 }] },
 aquaDrop: { position: "absolute", top: 126, left: -34, width: 44, height: 44, borderRadius: UI.radius.pill, backgroundColor: "rgba(255, 255, 255, 0.014)", borderWidth: 1, borderColor: "rgba(210, 242, 255, 0.040)" },
 aquaRipple: { position: "absolute", top: 226, right: -28, width: 126, height: 22, borderRadius: UI.radius.pill, backgroundColor: "rgba(98, 202, 255, 0.020)", borderWidth: 1, borderColor: "rgba(220, 245, 255, 0.050)", transform: [{ rotate: "-14deg" }, { scaleX: 1.22 }] },
@@ -508,6 +680,9 @@ flex: 1,
 backgroundColor: UI.colors.bg0,
 },
 container: {
+width: "100%",
+maxWidth: 760,
+alignSelf: "center",
 padding: 22,
 paddingBottom: 44,
 gap: UI.space.x4,

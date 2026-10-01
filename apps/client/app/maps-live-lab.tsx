@@ -6,7 +6,6 @@ import {
   ActivityIndicator,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,6 +13,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Location from "expo-location";
 import { useLiveMapEngine } from "../components/live/LiveMapEngine";
