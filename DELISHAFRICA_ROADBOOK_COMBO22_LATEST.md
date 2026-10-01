@@ -493,3 +493,77 @@ Base: innovation/confluence-attention-covenant-20261001 @ 58a8f5c
 - Full trust gate : GREEN.
 - git diff --check : PASS.
 - Aucun OTA, build Store ou deploiement runtime declenche.
+
+---
+
+# DELISHAFRICA ROADBOOK UPDATE - 2026-10-02 - AI FRUGAL CHAPTER SEALED / AQUA ATMOSPHERE CURRENT V1 OPEN
+Branch: innovation/aqua-atmosphere-current-20261002
+Base: innovation/confluence-frugal-current-20261001 @ 336fea9
+
+## Cloture du chapitre IA frugale
+- Confluence Frugal Current reste scelle sur son commit/PR dedies.
+- Aucun merge, OTA, rebuild Store ou deploiement runtime n a ete declenche depuis ce laboratoire.
+- La suite IA reste disponible comme couche optionnelle mais le nouveau chantier actif passe volontairement a l element EAU.
+
+## Nouveau chapitre - Aqua Atmosphere Current V1
+### Intention
+- Faire cesser la pluie decorative permanente : l eau globale doit reagir a une meteo reelle.
+- Donner aux triplettes une atmosphere vivante sans demander une nouvelle permission de geolocalisation aux utilisateurs.
+- Conserver une commande de laboratoire pour forcer instantanement un climat visuel lors des QA / demos.
+- Ne jamais rendre la meteo critique pour le parcours metier : panne provider => stale puis fallback, jamais ecran bloque.
+
+## Source meteo
+- Provider retenu pour le laboratoire : MET Norway Locationforecast 2.0 compact.
+- Le backend est l unique appelant du provider ; aucune app mobile ne contacte directement le service meteo.
+- User-Agent DelishAfrica explicite + revalidation If-Modified-Since + cache upstream 15 minutes.
+- Attribution et licence exposees dans le contrat API : MET Norway / CC BY 4.0.
+- Le marche courant est ancre par configuration serveur ; Bruxelles / Ixelles est le fallback actuel du marche de lancement.
+- Les coordonnees de l ancre marche ne sont pas retournees aux apps.
+- Aucune nouvelle permission GPS n est demandee par la couche Atmosphere.
+
+## Weather material engine
+- Modes canoniques : clear / cloud / mist / rain / storm / snow / heat.
+- Variables provider lues : temperature, humidite, precipitation, vent, couverture nuageuse et symbol code.
+- Chaque mode produit un tuning materiau : rain, wetness, condensation, mist, glint, motion.
+- Client : pluie, wet-lens et brume reactives.
+- Courier : pluie, rivulets, humidite et brume reactives.
+- Merchant : pluie, condensation chaude, gouttes et brume reactives.
+- La vitesse de chute de pluie reagit aussi au facteur motion issu de la meteo.
+- Reduce Motion / Reduce Transparency restent prioritaires.
+
+## Commande Tonton - changer la meteo sans rebuild
+Script : `scripts/da_atmosphere_weather.sh`
+- `scripts/da_atmosphere_weather.sh rain 20`
+- `scripts/da_atmosphere_weather.sh mist 10`
+- `scripts/da_atmosphere_weather.sh storm 5`
+- `scripts/da_atmosphere_weather.sh auto`
+- Override borne dans le temps (1..720 min), fichier runtime chmod 600.
+- En dev les apps relisent sous environ 45 s ; en production cycle 10 min / retour premier plan.
+
+## Resilience / cout
+- Cache provider 15 min cote API pour eviter trafic inutile.
+- Revalidation HTTP Last-Modified / If-Modified-Since.
+- Si le provider tombe apres une lecture reelle : la derniere meteo devient `stale` plutot que de casser l atmosphere.
+- Sans aucune lecture disponible : fallback visuel calme et non bloquant.
+- Le polling app est 45 s uniquement en DEV pour la commande QA ; 10 min en production.
+
+## Probe deterministe
+- `scripts/da_atmosphere_probe.cjs` valide : live storm, cache sans second fetch, override mist sans fetch provider, fallback stale sur panne, absence de demande GPS et attribution.
+- Probe actuel : PASS.
+- Un appel direct reel vers MET Norway depuis le VPS a aussi retourne une trame valide pour l ancre Bruxelles/Ixelles.
+
+## Validation
+- `scripts/da_aqua_atmosphere_gate.sh` : GREEN.
+- API Nest build : PASS.
+- Atmosphere deterministic probe : PASS.
+- TypeScript Client / Courier / Merchant : PASS.
+- Expo export Client iOS + Android : PASS.
+- Expo export Courier iOS + Android : PASS.
+- Expo export Merchant iOS + Android : PASS.
+- Full Aqua Atmosphere gate : GREEN.
+- `git diff --check` : PASS.
+- Aucun OTA, rebuild Store ou deploiement runtime declenche.
+
+## Avant promotion production
+- Surfacer l attribution meteo de maniere visible dans la surface credits/legal du produit avant activation publique de la meteo live.
+- Valider visuellement les 7 modes sur appareils reels et verifier lisibilite / contraste sous pluie, brume et storm.

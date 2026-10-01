@@ -288,3 +288,63 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 6. Les compteurs de sante ne doivent contenir aucune preuve ni identifiant utilisateur.
 7. Le probe frugal doit rester dans le full trust gate.
 8. Les binaires Store en review restent geles jusqu a promotion explicite.
+
+---
+
+# ARCHITECTURE PIN UPDATE - 2026-10-02 - AQUA ATMOSPHERE CURRENT V1
+
+## Weather topology
+1. GlobalWaterAtmosphere mobile ne demande aucune nouvelle permission de localisation.
+2. `useAtmosphereCurrent` appelle uniquement `/api/v1/atmosphere/current`.
+3. `AtmosphereService` appelle MET Norway Locationforecast 2.0 compact via backend.
+4. Le provider recoit uniquement une ancre de marche configuree serveur, jamais une position utilisateur issue de cette couche globale.
+5. Cache backend 15 min + HTTP revalidation.
+6. Le service normalise les donnees en AtmosphereMode + AtmosphereTuning.
+7. Les trois apps traduisent le tuning dans leurs materiaux aquatiques existants sans changer la logique metier.
+
+## Canonical modes
+- clear
+- cloud
+- mist
+- rain
+- storm
+- snow
+- heat
+
+## Tuning contract
+- `rain`: presence/intensite de pluie.
+- `wetness`: presence optique de verre mouille / gouttes.
+- `condensation`: buee / rivulets / condensation.
+- `mist`: voile atmospherique.
+- `glint`: reserve pour la reponse speculaire.
+- `motion`: vitesse relative des courants/pluie, toujours soumise a Reduce Motion.
+
+## Privacy contract
+- Pas de demande GPS par la couche Atmosphere globale.
+- Pas de coordonnees marche retournees aux clients.
+- Pas de provider weather direct depuis les apps.
+- Pas de stockage de position utilisateur.
+- Le changement futur vers une meteo contextuelle Courier/Client devra reutiliser uniquement une position deja consentie et passer par une nouvelle revue privacy explicite.
+
+## Provider contract
+- Identification User-Agent obligatoire.
+- Attribution MET Norway / CC BY 4.0 conservee dans le contrat.
+- Revalidation `If-Modified-Since` quand Last-Modified est disponible.
+- Panne provider => stale si possible, sinon fallback non bloquant.
+- Aucune dependance SDK weather ajoutee.
+
+## Runtime override contract
+- `services/api-nest/.runtime/atmosphere/override.json` est runtime-only / ignore Git.
+- Modes commandes via `scripts/da_atmosphere_weather.sh`.
+- Override expire automatiquement logiquement via `expiresAt` ; `auto` supprime le fichier.
+- Un override ne modifie aucune donnee metier et ne pretend jamais changer la meteo reelle : il change uniquement le rendu Atmosphere des apps.
+
+## Invariants
+1. La meteo ne peut jamais bloquer auth, commande, paiement, dispatch ou navigation.
+2. Aucun appel provider weather ne doit partir directement d une app.
+3. Aucune nouvelle permission de localisation ne doit etre introduite par cette couche globale.
+4. Les hooks weather des trois apps restent byte-identical.
+5. Reduce Motion / Reduce Transparency restent prioritaires.
+6. Le gate Aqua doit couvrir API build, probe, TypeScript et exports iOS/Android des trois apps.
+7. Toute activation production doit inclure une attribution visible conforme a la licence source.
+8. Les builds Store en review restent geles tant qu aucune promotion explicite n est decidee.

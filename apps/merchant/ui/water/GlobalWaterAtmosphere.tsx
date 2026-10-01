@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { usePathname } from "expo-router";
+import { useAtmosphereCurrent } from "./useAtmosphereCurrent";
 import {
   AccessibilityInfo,
   Animated,
@@ -32,6 +33,8 @@ const DA_GALA_HOME_REDUCED_TRANSPARENCY_PRESENCE = 0.18;
  */
 export function GlobalWaterAtmosphere() {
   const pathname = usePathname();
+  const atmosphere = useAtmosphereCurrent();
+  const weatherMotion = Math.max(0.45, atmosphere.tuning.motion);
   const { height: viewportHeight } = useWindowDimensions();
   const isHome = pathname === "/" || pathname === "/home";
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -80,7 +83,7 @@ export function GlobalWaterAtmosphere() {
     const nearLoop = Animated.loop(
       Animated.timing(rainNearPhase, {
         toValue: 1,
-        duration: 5600,
+        duration: Math.round(5600 / weatherMotion),
         easing: Easing.linear,
         useNativeDriver: true,
         isInteraction: false,
@@ -89,7 +92,7 @@ export function GlobalWaterAtmosphere() {
     const farLoop = Animated.loop(
       Animated.timing(rainFarPhase, {
         toValue: 1,
-        duration: 9400,
+        duration: Math.round(9400 / weatherMotion),
         easing: Easing.linear,
         useNativeDriver: true,
         isInteraction: false,
@@ -101,7 +104,7 @@ export function GlobalWaterAtmosphere() {
       nearLoop.stop();
       farLoop.stop();
     };
-  }, [rainFarPhase, rainNearPhase, reduceMotion]);
+  }, [rainFarPhase, rainNearPhase, reduceMotion, weatherMotion]);
 
   useEffect(() => {
     phase.stopAnimation();
@@ -213,9 +216,16 @@ export function GlobalWaterAtmosphere() {
   const tileHeight = Math.max(760, viewportHeight + 240);
   const rainNearY = rainNearPhase.interpolate({ inputRange: [0, 1], outputRange: [0, tileHeight] });
   const rainFarY = rainFarPhase.interpolate({ inputRange: [0, 1], outputRange: [0, tileHeight] });
-  const rainMasterOpacity = reduceTransparency ? 0.26 : 1;
+  const rainMasterOpacity = (reduceTransparency ? 0.18 : 1) * atmosphere.tuning.rain;
+  const wetPresence = Animated.multiply(
+    presence,
+    reduceTransparency ? Math.min(atmosphere.tuning.wetness, 0.28) : atmosphere.tuning.wetness,
+  );
 
-  const condensationOpacity = phase.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.09, 0.14, 0.09] });
+  const condensationOpacity = Animated.multiply(
+    phase.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.09, 0.14, 0.09] }),
+    atmosphere.tuning.condensation,
+  );
   const condensationX = phase.interpolate({ inputRange: [0, 0.5, 1], outputRange: [-1, 1.2, -1] });
   const condensationY = phase.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1.0, -1.1, 1.0] });
   const condensationScale = phase.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1.002, 1.005, 1.002] });
@@ -296,7 +306,20 @@ export function GlobalWaterAtmosphere() {
         </Animated.View>
       </View>
 
-      <Animated.View style={[styles.layer, { opacity: presence }]}>
+      <View
+        style={[
+          styles.weatherMist,
+          {
+            opacity:
+              atmosphere.tuning.mist * (reduceTransparency ? 0.08 : 0.3),
+          },
+        ]}
+      >
+        <View style={[styles.weatherMistBlob, styles.weatherMistBlobA]} />
+        <View style={[styles.weatherMistBlob, styles.weatherMistBlobB]} />
+      </View>
+
+      <Animated.View style={[styles.layer, { opacity: wetPresence }]}>
         <Animated.Image
           source={MERCHANT_GLOBAL_CONDENSATION}
           resizeMode="cover"
@@ -417,6 +440,30 @@ const styles = StyleSheet.create({
   rainLayer: {
     ...StyleSheet.absoluteFillObject,
     overflow: "hidden",
+  },
+  weatherMist: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+  },
+  weatherMistBlob: {
+    position: "absolute",
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 235, 212, 0.14)",
+  },
+  weatherMistBlobA: {
+    width: 420,
+    height: 164,
+    left: -192,
+    top: "17%",
+    transform: [{ rotate: "-10deg" }],
+  },
+  weatherMistBlobB: {
+    width: 366,
+    height: 132,
+    right: -174,
+    top: "62%",
+    backgroundColor: "rgba(222, 245, 238, 0.10)",
+    transform: [{ rotate: "10deg" }],
   },
   rainTrack: {
     position: "absolute",
