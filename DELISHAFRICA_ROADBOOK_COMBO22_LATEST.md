@@ -115,3 +115,18 @@ Scope: Client + Courier, harmonisé Merchant
 - DelishAfrica ne poursuit pas le paradigme chatbot = IA.
 - La ligne produit devient : preuve visible + confidentialité explicite + contre-factuel compréhensible + action humaine réversible.
 - Aucun Store build, OTA update ou déploiement runtime déclenché pendant ce palier.
+
+## Trust Current V1.4 - Zero-Leak Gate local
+- Ajout d un garde de confidentialité dans les trois apps AVANT tout appel Confluence serveur.
+- Les signaux ressemblant à email, URL, identifiant de commande DelishAfrica, UUID ou numéro de téléphone déclenchent un fallback embarqué immédiat.
+- Dans ce cas, aucune requête Confluence n est envoyée : la recommandation locale reste active et le Passeport IA indique `transit serveur bloqué localement avant tout envoi`.
+- Ce garde client complète le garde serveur déjà existant ; il ne le remplace pas.
+- Aucun nouveau package, aucune permission native, aucune persistance et aucun endpoint supplémentaire.
+
+### Validation V1.4
+- `git diff --check` : PASS.
+- TypeScript Client/Courier/Merchant : PASS.
+- Expo export iOS + Android : PASS pour les 3 apps.
+- Parité du hook Confluence maintenue sur les triplettes.
+- Aucun Store build, OTA update ou déploiement runtime déclenché.
+- PR de travail isolée : GitHub #17 (draft).

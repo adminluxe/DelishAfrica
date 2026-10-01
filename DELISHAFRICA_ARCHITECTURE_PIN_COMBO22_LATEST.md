@@ -89,3 +89,10 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Le texte doit décrire le contrat métier existant, jamais prédire un résultat futur non garanti.
 - Aucun bouton de prévisualisation ne peut appeler les endpoints accept/reject.
 - Accept, pickup et delivered restent trois gestes séparés.
+
+## Zero-Leak Gate contract V1.4
+- La première frontière de confidentialité est désormais locale dans `useConfluenceSuggestion`.
+- Si une preuve ou la suggestion locale ressemble à une donnée sensible, le hook doit rester en mode `embedded` et court-circuiter l appel HTTP Confluence.
+- Le serveur conserve ses propres gardes `requestContainsSensitiveEvidence` + scrub : défense en profondeur obligatoire.
+- Le texte UI peut affirmer `transit serveur bloqué localement avant tout envoi` uniquement lorsque le garde local a effectivement court-circuité la requête.
+- Les trois hooks Client/Courier/Merchant doivent rester byte-identical.
