@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from 'expo-router';
 
 export default function OidcCallbackRecoveryScreen() {
@@ -8,12 +9,12 @@ export default function OidcCallbackRecoveryScreen() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.card}>
         <Text style={styles.kicker}>DELISHAFRICA®</Text>
-        <Text style={styles.title}>Retour sécurisé reçu</Text>
+        <Text style={styles.title}>Connexion sécurisée reçue</Text>
         <Text style={styles.body}>
-          Le moteur PKCE traite le retour dans la session qui a ouvert le navigateur. Aucun jeton n’est lu sur cet écran.
+          La connexion a bien été reçue. DelishAfrica finalise votre session et vous ramène dans l’application.
         </Text>
         <Pressable style={styles.button} onPress={() => router.replace('/secure-session')}>
-          <Text style={styles.buttonText}>Revenir à la session</Text>
+          <Text style={styles.buttonText}>Continuer dans DelishAfrica</Text>
         </Pressable>
       </View>
     </SafeAreaView>

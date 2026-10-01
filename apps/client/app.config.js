@@ -11,6 +11,8 @@ const CLIENT_ANDROID_PACKAGE = IS_DEV ? "com.delishafrica.client.dev" : "com.del
 const CLIENT_BOOT_BACKGROUND = "#051411";
 const CLIENT_CAMERA_PURPOSE =
   "DelishAfrica utilise l’appareil photo uniquement si vous choisissez de scanner une carte de paiement pour renseigner plus rapidement ses informations. Aucune image n’est conservée par DelishAfrica.";
+const CLIENT_LOCATION_PURPOSE =
+  "DelishAfrica utilise votre position uniquement si vous choisissez de détecter votre zone de livraison et de faciliter la saisie de votre adresse.";
 
 const iconPath = fs.existsSync("./assets/icon.png") ? "./assets/icon.png" : undefined;
 const splashPath = fs.existsSync("./assets/splash-client.png") ? "./assets/splash-client.png" : undefined;
@@ -70,6 +72,7 @@ module.exports = ({ config }) => {
         ...((config.ios && config.ios.infoPlist) || {}),
         CFBundleDisplayName: CLIENT_DISPLAY_NAME,
         NSCameraUsageDescription: CLIENT_CAMERA_PURPOSE,
+        NSLocationWhenInUseUsageDescription: CLIENT_LOCATION_PURPOSE,
       },
       splash: {
         image: splashPath,

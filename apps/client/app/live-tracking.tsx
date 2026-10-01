@@ -1,16 +1,16 @@
 import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-ActivityIndicator,
-RefreshControl,
-SafeAreaView,
-ScrollView,
-StyleSheet,
-Text,
-TouchableOpacity,
-View,
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { router } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router, useLocalSearchParams } from "expo-router";
 import { getDATheme } from "../ui/da/theme";
 
 import { MotionHero } from "../components/motion/MotionHero";
@@ -232,50 +232,50 @@ const etaText = eta !== null ? `${Math.max(1, Math.round(eta))} min` : "non reç
 
 if (s === "delivered") {
 return {
-label: "RELAIS TERMINÉ",
+label: "LIVRÉE",
 kitchen: "Service terminé",
 terrain: "Livraison confirmée",
-bridge: "Le parcours est clôturé. Aucune estimation n’est encore nécessaire.",
-proof: "Preuve : statut serveur delivered.",
+bridge: "Votre commande a été livrée.",
+proof: "Livraison confirmée par DelishAfrica.",
 active: false,
 };
 }
 if (s === "picked_up") {
 return {
-label: "RELAIS CONFIRMÉ",
+label: "EN ROUTE",
 kitchen: "Remise effectuée",
 terrain: "Coursier vers vous",
-bridge: "Le passage restaurant → coursier est confirmé. Le trajet client devient le signal principal.",
-proof: "Preuve : statut serveur picked_up.",
+bridge: "Le restaurant a remis votre commande au coursier. Elle est en route vers vous.",
+proof: "Remise au coursier confirmée.",
 active: true,
 };
 }
 if (s === "ready") {
 return {
-label: eta !== null ? "RENCONTRE EN APPROCHE" : "FENÊTRE OUVERTE",
+label: "PRÊTE",
 kitchen: "Commande prête",
-terrain: eta !== null ? `Approche estimée · ${etaText}` : "Coursier à confirmer",
-bridge: "La cuisine a fini. DelishAfrica distingue maintenant ce qui est prêt de ce qui reste estimé côté terrain.",
-proof: eta !== null ? "Preuve : statut ready + ETA dispatch reçu." : "Preuve : statut ready ; aucun ETA dispatch reçu.",
+terrain: eta !== null ? `Coursier en approche · ${etaText}` : "Coursier à confirmer",
+bridge: "Votre commande est prête. DelishAfrica confirme le relais de livraison.",
+proof: eta !== null ? "Coursier en approche." : "Coursier en cours d’attribution.",
 active: true,
 };
 }
 if (s === "accepted") {
 return {
-label: "CONVERGENCE EN COURS",
+label: "EN PRÉPARATION",
 kitchen: "Préparation confirmée",
-terrain: eta !== null ? `Fenêtre terrain estimée · ${etaText}` : "Terrain en attente",
-bridge: "Le repas et le coursier suivent deux courants distincts. Aucun horaire précis n’est inventé sans signal dispatch.",
-proof: eta !== null ? "Preuve : statut accepted + ETA dispatch reçu." : "Preuve : statut accepted uniquement.",
+terrain: eta !== null ? `Livraison estimée · ${etaText}` : "Coursier à confirmer",
+bridge: "Le restaurant prépare votre commande. Le suivi livraison s’active dès qu’un coursier est confirmé.",
+proof: "Préparation confirmée.",
 active: true,
 };
 }
 return {
-label: "COURANTS EN ATTENTE",
+label: "ENVOYÉE",
 kitchen: "Acceptation à venir",
-terrain: "Aucun relais ouvert",
-bridge: "La coordination commence lorsque le restaurant confirme la commande.",
-proof: "Preuve : statut serveur pending.",
+terrain: "Coursier à confirmer",
+bridge: "Votre commande a été envoyée au restaurant.",
+proof: "Commande transmise au restaurant.",
 active: false,
 };
 }
@@ -286,8 +286,8 @@ return (
 <View style={styles.confluenceCard}>
 <View style={styles.confluenceTop}>
 <View style={{ flex: 1 }}>
-<Text style={styles.confluenceKicker}>CONFLUENCE · HANDOFF CURRENT</Text>
-<Text style={styles.confluenceTitle}>Cuisine et terrain, sans fausse certitude.</Text>
+<Text style={styles.confluenceKicker}>CUISINE · LIVRAISON</Text>
+<Text style={styles.confluenceTitle}>Votre commande, étape par étape.</Text>
 </View>
 <View style={[styles.confluenceBadge, view.active && styles.confluenceBadgeActive]}>
 <Text style={[styles.confluenceBadgeText, view.active && styles.confluenceBadgeTextActive]}>{view.label}</Text>
@@ -369,8 +369,10 @@ return (
 const UI = getDATheme("client");
 
 export default function ClientLiveTrackingScreen() {
+const params = useLocalSearchParams<{ orderId?: string; publicId?: string }>();
+const requestedOrderId = String(params.orderId || params.publicId || "").trim();
 const [orders, setOrders] = useState<DemoOrder[]>([]);
-const [selectedId, setSelectedId] = useState<string | null>(null);
+const [selectedId, setSelectedId] = useState<string | null>(requestedOrderId || null);
 const [loading, setLoading] = useState(true);
 const [refreshing, setRefreshing] = useState(false);
 const [error, setError] = useState<string | null>(null);
@@ -419,6 +421,10 @@ setLoading(false);
 setRefreshing(false);
 }
 }
+
+useEffect(() => {
+if (requestedOrderId) setSelectedId(requestedOrderId);
+}, [requestedOrderId]);
 
 useEffect(() => {
 refresh();
@@ -674,6 +680,9 @@ flex: 1,
 backgroundColor: UI.colors.bg0,
 },
 container: {
+width: "100%",
+maxWidth: 760,
+alignSelf: "center",
 padding: 22,
 paddingBottom: 44,
 gap: UI.space.x4,

@@ -13,7 +13,8 @@
 // DA_GALA_QUIET_LUXURY_V1 - zero-cost optical rhythm polish: softer hierarchy, quieter edges, fewer decorative signals; static styles only.
 // DA_GALA_EDGELESS_CONTINUITY_V1 - last-mile surface polish dissolves legacy spectral leaks and reduces card-edge fatigue; presentation only.
 import React from "react";
-import { Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
 type OrderAction = {

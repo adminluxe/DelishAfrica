@@ -157,7 +157,7 @@ export default function ClientSurfaceHome() {
         <View style={styles.topline}>
           <View style={styles.toplineCopy}>
             <Text style={styles.brand}>DELISHAFRICA®</Text>
-            <Text style={styles.role}>CLIENT · DISCOVERY OCEAN · S10J</Text>
+            <Text style={styles.role}>CLIENT · DISCOVERY OCEAN</Text>
           </View>
           <Pressable
             onPress={() => go("/client-space")}
@@ -178,8 +178,8 @@ export default function ClientSurfaceHome() {
           body="Cuisines ouvertes, signaux culturels et parcours en cours remontent dans un même courant, sans noyer votre choix."
           status="PRÊT"
           signalClass="estimated"
-          evidence="Cette Home présente le parcours disponible ; le marché détaillé se synchronise à son ouverture."
-          freshnessLabel="Aucune donnée temps réel n’est inventée sur cet écran."
+          evidence="Tables ouvertes, menus et parcours se mettent à jour à mesure que vous explorez."
+          freshnessLabel="Les informations détaillées sont actualisées à l’ouverture de chaque table."
           reduceMotion={reduceMotion}
           onPress={() => go("/live-market")}
           accessibilityLabel="Ouvrir DelishAfrica Radar et le marché vivant"
@@ -252,7 +252,7 @@ export default function ClientSurfaceHome() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "transparent" },
-  content: { paddingHorizontal: 21, gap: 21 },
+  content: { width: "100%", maxWidth: 820, alignSelf: "center", paddingHorizontal: 21, gap: 21 },
   topline: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 16 },
   toplineCopy: { flex: 1, minWidth: 0 },
   brand: { color: "#F5BE57", fontSize: 16, fontWeight: "900", letterSpacing: 3.1 },
