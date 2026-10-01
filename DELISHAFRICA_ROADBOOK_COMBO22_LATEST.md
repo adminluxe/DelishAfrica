@@ -304,3 +304,41 @@ Decision: NE PAS absorber ce worktree en bloc. Arbitrage fichier par fichier uni
 - Expo export iOS + Android Merchant = PASS.
 - Parite byte-identical de `ConfluenceOracleLens.tsx` entre les triplettes = PASS.
 - Gate specifique `courier_refusal_rate_excluded_from_assignment_score` = PASS.
+
+
+---
+
+# DELISHAFRICA ROADBOOK UPDATE - 2026-10-01 - CONFLUENCE EVIDENCE FIREWALL V1
+
+## Intention
+- Empecher le perimetre de donnees IA de grandir silencieusement au fil d'une evolution UI ou d'un refactor.
+- Faire du contrat de preuve une frontiere de securite executable avant le reseau, pas seulement une convention de developpement.
+
+## Defense en profondeur livree
+- Le serveur Confluence possedait deja un `ALLOWED_LABELS` strict par Oracle dans `confluence-ai.policy.ts`.
+- Les trois apps appliquent maintenant le meme principe localement via `EVIDENCE_CONTRACT` dans `useConfluenceSuggestion.ts`.
+- Taste Oracle n'autorise vers Confluence que: Intention choisie, Intensite editoriale, Fraicheur editoriale, Voyage propose.
+- Route Oracle n'autorise que: Statut commande, Fenetre de remise, ETA dispatch, Score dispatch.
+- Service Oracle n'autorise que: Commande, Statut serveur, Charge observee, Article visible.
+- Un label inattendu, duplique ou un depassement du nombre de preuves autorise fait basculer immediatement la lecture en mode embarque avant tout appel HTTP.
+- Le Passeport IA dit alors explicitement: `Evidence Firewall · schema de preuve inattendu bloque avant reseau`.
+
+## Pourquoi ce palier compte
+- Une future fonctionnalite ne peut plus ajouter par accident un nom, profil, signal marketing ou nouveau champ au transit IA sans modifier deliberement le contrat.
+- Le garde local protege le premier hop; le garde serveur reste actif en second rideau.
+- La securite devient fail-closed des deux cotes sans supprimer la valeur locale pour l'utilisateur.
+
+## Cout / securite
+- Zero nouvelle dependance.
+- Zero appel reseau supplementaire; un contrat non conforme supprime l'appel.
+- Zero persistence supplementaire.
+- Hook byte-identical Client / Courier / Merchant conserve.
+- Aucun OTA, rebuild Store ou deploiement runtime declenche.
+
+## Validation
+- Gate quick: GREEN.
+- `scripts/da_confluence_trust_gate.sh --full`: GREEN.
+- API Nest build: PASS.
+- TypeScript Client / Courier / Merchant: PASS.
+- Expo export iOS + Android sur Client / Courier / Merchant: PASS.
+- Verifications nouvelles: evidence_firewall_contract, validator, user truth copy et ordre du garde avant reseau = PASS.

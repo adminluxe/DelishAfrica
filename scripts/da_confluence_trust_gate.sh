@@ -37,7 +37,7 @@ cmp -s "$CLIENT_HOOK" "$MERCHANT_HOOK" || fail "hook_parity_client_merchant"
 pass "hook_byte_parity_3_apps"
 
 require_text "requestLooksSensitiveLocally" "$CLIENT_HOOK" "local_sensitive_guard_present"
-require_text "if (privacyBlocked)" "$CLIENT_HOOK" "local_sensitive_short_circuit_present"
+require_text "if (evidenceContractBlocked || privacyBlocked)" "$CLIENT_HOOK" "local_sensitive_short_circuit_present"
 require_text "transit serveur bloqué localement avant tout envoi" "$CLIENT_HOOK" "local_zero_leak_copy_present"
 require_text "provider_sensitive_output_guard" "$CLIENT_HOOK" "provider_sensitive_fallback_explained"
 require_text "provider_evidence_guard" "$CLIENT_HOOK" "provider_evidence_fallback_explained"
@@ -66,6 +66,13 @@ require_text "LIGNE ROUGE · HORS LECTURE" "$CLIENT_LENS" "algorithmic_red_line_
 require_text "excludedSignals=" "$CLIENT_ORACLE" "client_excluded_signals_present"
 require_text "Taux de refus" "$COURIER_ORACLE" "courier_refusal_exclusion_disclosed"
 require_text "excludedSignals=" "$MERCHANT_ORACLE" "merchant_excluded_signals_present"
+require_text "EVIDENCE_CONTRACT" "$CLIENT_HOOK" "evidence_firewall_contract_present"
+require_text "evidenceContractViolation" "$CLIENT_HOOK" "evidence_firewall_validator_present"
+require_text "Evidence Firewall" "$CLIENT_HOOK" "evidence_firewall_user_truth_copy_present"
+require_text "Intention choisie" "$CLIENT_HOOK" "taste_evidence_contract_present"
+require_text "Taux de refus" "$COURIER_ORACLE" "courier_refusal_red_line_present"
+require_text "Statut commande" "$CLIENT_HOOK" "route_evidence_contract_present"
+require_text "Charge observée" "$CLIENT_HOOK" "service_evidence_contract_present"
 
 score_block="$(sed -n '/private scoreCourier(/,/private reason(/p' "$DISPATCH_SERVICE")"
 if grep -Fq "courier.acceptanceRate" <<<"$score_block"; then
@@ -78,10 +85,10 @@ provider_line="$(grep -nF "providerSuggestion(input" "$SERVICE" | head -1 | cut 
 [[ -n "$sensitive_line" && -n "$provider_line" && "$sensitive_line" -lt "$provider_line" ]] || fail "sensitive_guard_precedes_provider"
 pass "sensitive_guard_precedes_provider"
 
-local_guard_line="$(grep -nF "if (privacyBlocked)" "$CLIENT_HOOK" | head -1 | cut -d: -f1)"
+local_guard_line="$(grep -nF "if (evidenceContractBlocked || privacyBlocked)" "$CLIENT_HOOK" | head -1 | cut -d: -f1)"
 network_line="$(grep -nF "daOrdersFetch(" "$CLIENT_HOOK" | head -1 | cut -d: -f1)"
-[[ -n "$local_guard_line" && -n "$network_line" && "$local_guard_line" -lt "$network_line" ]] || fail "local_sensitive_guard_precedes_network"
-pass "local_sensitive_guard_precedes_network"
+[[ -n "$local_guard_line" && -n "$network_line" && "$local_guard_line" -lt "$network_line" ]] || fail "local_evidence_and_sensitive_guards_precede_network"
+pass "local_evidence_and_sensitive_guards_precede_network"
 
 if [[ "$MODE" == "--full" || "$MODE" == "full" ]]; then
   rm -rf "$TMP_ROOT"

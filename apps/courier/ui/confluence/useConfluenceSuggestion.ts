@@ -63,6 +63,11 @@ const API_BASE = RAW_API.replace(/\/$/, "").endsWith("/api/v1")
 
 const CACHE_TTL_MS = 60_000;
 const DEBOUNCE_MS = 520;
+const EVIDENCE_CONTRACT: Record<ConfluenceOracleKind, ReadonlySet<string>> = {
+  taste: new Set(["Intention choisie", "Intensité éditoriale", "Fraîcheur éditoriale", "Voyage proposé"]),
+  route: new Set(["Statut commande", "Fenêtre de remise", "ETA dispatch", "Score dispatch"]),
+  service: new Set(["Commande", "Statut serveur", "Charge observée", "Article visible"]),
+};
 const cache = new Map<string, { at: number; value: DisplayState }>();
 
 function looksSensitiveLocally(value: unknown): boolean {
@@ -86,6 +91,18 @@ function requestLooksSensitiveLocally(
 
 function compact(value: unknown, max = 420): string {
   return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+function evidenceContractViolation(
+  oracle: ConfluenceOracleKind,
+  evidence: ReadonlyArray<ConfluenceEvidenceInput>,
+): string | null {
+  const allowed = EVIDENCE_CONTRACT[oracle];
+  if (!allowed || evidence.length > allowed.size) return "evidence_scope_overflow";
+  const labels = evidence.map((item) => compact(item.label, 80));
+  if (new Set(labels).size !== labels.length) return "duplicate_evidence_label";
+  if (labels.some((label) => !allowed.has(label))) return "unexpected_evidence_label";
+  return null;
 }
 
 function requestKey(
@@ -233,6 +250,11 @@ export function useConfluenceSuggestion({
     [evidence, localSuggestion],
   );
 
+  const evidenceContractBlocked = useMemo(
+    () => evidenceContractViolation(oracle, evidence),
+    [evidence, oracle],
+  );
+
   const immediate = useMemo(
     () =>
       !enabled
@@ -244,17 +266,26 @@ export function useConfluenceSuggestion({
             "Vous avez choisi Local uniquement : la lecture reste sur l’appareil et aucune requête Confluence n’est envoyée.",
             "Passeport IA · Local uniquement choisi · aucun appel Confluence envoyé.",
           )
-        : privacyBlocked
+        : evidenceContractBlocked
           ? fallbackState(
               key,
               evidence,
               localSuggestion,
               localHumanBoundary,
-              "Un signal potentiellement sensible a été détecté avant le réseau : la lecture locale reste active.",
-              "Passeport IA · transit serveur bloqué localement avant tout envoi.",
+              "Le périmètre de preuve de cet Oracle a changé : la lecture reste locale tant que ce contrat n’est pas explicitement validé.",
+              "Passeport IA · Evidence Firewall · schéma de preuve inattendu bloqué avant réseau.",
             )
-          : fallbackState(key, evidence, localSuggestion, localHumanBoundary),
-    [enabled, evidence, key, localHumanBoundary, localSuggestion, privacyBlocked],
+          : privacyBlocked
+            ? fallbackState(
+                key,
+                evidence,
+                localSuggestion,
+                localHumanBoundary,
+                "Un signal potentiellement sensible a été détecté avant le réseau : la lecture locale reste active.",
+                "Passeport IA · transit serveur bloqué localement avant tout envoi.",
+              )
+            : fallbackState(key, evidence, localSuggestion, localHumanBoundary),
+    [enabled, evidence, evidenceContractBlocked, key, localHumanBoundary, localSuggestion, privacyBlocked],
   );
 
   const [resolved, setResolved] = useState<DisplayState | null>(null);
@@ -269,7 +300,7 @@ export function useConfluenceSuggestion({
       return undefined;
     }
 
-    if (privacyBlocked) {
+    if (evidenceContractBlocked || privacyBlocked) {
       setResolved(immediate);
       return undefined;
     }
@@ -324,7 +355,7 @@ export function useConfluenceSuggestion({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [enabled, evidence, immediate, key, localHumanBoundary, localSuggestion, oracle, privacyBlocked]);
+  }, [enabled, evidence, evidenceContractBlocked, immediate, key, localHumanBoundary, localSuggestion, oracle, privacyBlocked]);
 
   return resolved?.key === key ? resolved : immediate;
 }

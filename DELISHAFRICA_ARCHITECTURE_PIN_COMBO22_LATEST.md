@@ -183,3 +183,22 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Courier: ne pas utiliser taux de refus, identite personnelle ou donnees de paiement pour la lecture Route Oracle.
 - Merchant: ne pas utiliser identite client, donnees de paiement ou profilage historique pour la lecture Service Oracle.
 - Aucun de ces affichages ne donne l'autorisation de collecter ces donnees; au contraire, ils documentent une frontiere.
+
+
+---
+
+# ARCHITECTURE PIN UPDATE - 2026-10-01 - EVIDENCE FIREWALL V1
+
+## Contrat de preuve double-frontiere
+- Frontiere appareil: `apps/{client,courier,merchant}/ui/confluence/useConfluenceSuggestion.ts::EVIDENCE_CONTRACT`.
+- Frontiere serveur: `services/api-nest/src/confluence-ai/confluence-ai.policy.ts::ALLOWED_LABELS`.
+- Les deux contrats doivent rester semantiquement alignes pour `taste`, `route` et `service`.
+
+## Invariants
+1. Tout label de preuve non autorise doit rester local et court-circuiter le reseau Confluence.
+2. Un doublon de label ou un nombre de preuves superieur au scope autorise doit rester local.
+3. Le garde Evidence Firewall doit s'executer avant `daOrdersFetch`.
+4. Le garde de donnees sensibles reste independant et actif: Evidence Firewall ne le remplace pas.
+5. Le serveur continue a normaliser, scrubber et allowlister meme si le client a deja valide le contrat.
+6. Une extension future du perimetre de preuves exige une modification explicite des deux contrats + gate FULL GREEN.
+7. En cas de divergence, le comportement attendu est fail-closed local, jamais un transit opportuniste.
