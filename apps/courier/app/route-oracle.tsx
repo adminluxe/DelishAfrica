@@ -369,6 +369,11 @@ export default function RouteOracleScreen() {
     message: "",
     error: "",
   });
+  const [decisionPreviewOpen, setDecisionPreviewOpen] = useState(false);
+
+  useEffect(() => {
+    setDecisionPreviewOpen(false);
+  }, [state.offer?.orderId, state.offer?.proposalStatus]);
 
   const readOffers = useCallback(async (quiet = false) => {
     if (!quiet) {
@@ -907,6 +912,43 @@ export default function RouteOracleScreen() {
                 <Text style={styles.cardTitle}>Vous gardez le dernier mot.</Text>
 
                 <Pressable
+                  style={({ pressed }) => [styles.decisionPreviewButton, pressed && styles.buttonPressed]}
+                  onPress={() => setDecisionPreviewOpen((value) => !value)}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: decisionPreviewOpen }}
+                  accessibilityLabel={decisionPreviewOpen ? "Masquer le sas de décision" : "Prévisualiser les conséquences de votre décision"}
+                >
+                  <View style={styles.decisionPreviewButtonCopy}>
+                    <Text style={styles.decisionPreviewKicker}>SAS HUMAIN · AUCUNE ACTION ENVOYÉE</Text>
+                    <Text style={styles.decisionPreviewButtonText}>
+                      {decisionPreviewOpen ? "Masquer la prévisualisation" : "Voir ce qui se passe avant de choisir"}
+                    </Text>
+                  </View>
+                  <Text style={styles.decisionPreviewArrow}>{decisionPreviewOpen ? "↑" : "↓"}</Text>
+                </Pressable>
+
+                {decisionPreviewOpen ? (
+                  <View style={styles.decisionPreviewPanel}>
+                    <View style={styles.decisionPreviewRow}>
+                      <Text style={styles.decisionPreviewLabel}>SI VOUS ACCEPTEZ</Text>
+                      <Text style={styles.decisionPreviewText}>
+                        La mission rejoint votre cockpit. Le retrait et la livraison restent deux confirmations humaines séparées.
+                      </Text>
+                    </View>
+                    <View style={styles.decisionPreviewDivider} />
+                    <View style={styles.decisionPreviewRow}>
+                      <Text style={styles.decisionPreviewLabel}>SI VOUS DÉCLINEZ</Text>
+                      <Text style={styles.decisionPreviewText}>
+                        Cette proposition est libérée pour que le serveur puisse poursuivre le dispatch vers un autre coursier.
+                      </Text>
+                    </View>
+                    <Text style={styles.decisionPreviewFootnote}>
+                      Cette prévisualisation est locale : aucun appel réseau n’est envoyé tant que vous n’appuyez pas sur Accepter ou Décliner.
+                    </Text>
+                  </View>
+                ) : null}
+
+                <Pressable
                   style={[styles.primaryButton, state.deciding && styles.buttonDisabled]}
                   disabled={state.deciding}
                   onPress={() => void decide("accept")}
@@ -1080,6 +1122,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(110,240,176,0.050)",
   },
   secondaryText: { color: "#A7F7CF", fontSize: 17, fontWeight: "900" },
+  buttonPressed: { opacity: 0.76 },
   buttonDisabled: { opacity: 0.55 },
   errorCard: {
     borderRadius: 28,
@@ -1191,6 +1234,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(232,188,104,0.32)",
   },
+  decisionPreviewButton: { marginTop: 18, minHeight: 58, borderRadius: 18, paddingVertical: 11, paddingHorizontal: 13, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "rgba(232,188,104,0.055)", borderWidth: 1, borderColor: "rgba(232,188,104,0.20)" },
+  decisionPreviewButtonCopy: { flex: 1 },
+  decisionPreviewKicker: { color: "#E8BC68", fontSize: 8.5, fontWeight: "900", letterSpacing: 1.25 },
+  decisionPreviewButtonText: { color: "#FFF8E8", fontSize: 12.5, lineHeight: 17, fontWeight: "900", marginTop: 4 },
+  decisionPreviewArrow: { color: "#E8BC68", fontSize: 16, fontWeight: "900" },
+  decisionPreviewPanel: { marginTop: 10, borderRadius: 18, padding: 14, backgroundColor: "rgba(255,255,255,0.025)", borderWidth: 1, borderColor: "rgba(255,255,255,0.055)", gap: 11 },
+  decisionPreviewRow: { gap: 5 },
+  decisionPreviewLabel: { color: "#E8BC68", fontSize: 8.5, fontWeight: "900", letterSpacing: 1.15 },
+  decisionPreviewText: { color: "rgba(255,248,232,0.70)", fontSize: 11.5, lineHeight: 17, fontWeight: "700" },
+  decisionPreviewDivider: { height: 1, backgroundColor: "rgba(255,255,255,0.055)" },
+  decisionPreviewFootnote: { color: "rgba(255,248,232,0.40)", fontSize: 9.5, lineHeight: 14, fontWeight: "700" },
   acceptedCard: { position: "relative", overflow: "hidden", borderRadius: 30, padding: 25, backgroundColor: "rgba(221,251,234,0.89)", borderWidth: 1, borderColor: "rgba(110,240,176,0.08)" },
   acceptedKicker: {
     color: "#157B59",

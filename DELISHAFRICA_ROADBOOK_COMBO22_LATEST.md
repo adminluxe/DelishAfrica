@@ -91,3 +91,27 @@ Scope: Client + Courier, harmonisé Merchant
 - `git diff --check` : PASS.
 - Expo export iOS + Android : PASS sur les 3 apps.
 - Aucun Store build, OTA update ou déploiement runtime déclenché.
+
+## Client V1.3 - Contre-courant sans profilage
+- Taste Oracle propose désormais une bifurcation volontaire vers une autre intention éditoriale.
+- Cette bifurcation ne lit aucun historique, aucun profil caché et aucune préférence sensible : elle part uniquement du choix explicite actuel.
+- Un tap suffit pour changer de courant ; Confluence recalcule ensuite sa lecture sur les nouvelles preuves visibles.
+- Objectif : éviter la bulle de recommandation tout en gardant la découverte entièrement sous contrôle humain.
+- TypeScript Client : PASS.
+- Expo export Client iOS + Android : PASS.
+- Surcoût bundle mesuré vs AI Passport : ~2.2 KB.
+
+## Courier V1.3 - SAS humain / Decision Sandbox
+- Avant Accepter ou Décliner, le coursier peut ouvrir une prévisualisation locale des conséquences réelles de chaque choix.
+- Le SAS n envoie aucun appel réseau et ne modifie aucune mission.
+- Accepter est décrit comme entrée dans le cockpit uniquement ; retrait et livraison restent des confirmations humaines séparées.
+- Décliner est décrit comme libération de la proposition pour poursuite du dispatch serveur.
+- Le panneau est en progressive disclosure pour ne pas alourdir l interface.
+- TypeScript Courier : PASS.
+- Expo export Courier iOS + Android : PASS.
+- Surcoût bundle mesuré vs AI Passport : ~3.7 KB.
+
+## Positionnement innovation
+- DelishAfrica ne poursuit pas le paradigme chatbot = IA.
+- La ligne produit devient : preuve visible + confidentialité explicite + contre-factuel compréhensible + action humaine réversible.
+- Aucun Store build, OTA update ou déploiement runtime déclenché pendant ce palier.

@@ -78,3 +78,14 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Ces champs sont des garanties de transport/stockage, pas des slogans marketing : le provider est appelé avec `store:false` et la détection d évidence sensible bascule en fallback local avant transit fournisseur.
 - Le client ne doit jamais afficher « aucune donnée envoyée » : des preuves non sensibles peuvent être envoyées au provider lorsque le mode IA est réellement actif.
 - Formulation UI autorisée : données sensibles bloquées / stockage fournisseur désactivé.
+
+## Human agency layer V1.3
+### Client / Counterflow
+- La découverte alternative doit rester issue d une règle éditoriale transparente et de l intention courante, jamais d un profil sensible ou d une inférence culturelle.
+- Le changement de courant est une action utilisateur explicite et réversible.
+
+### Courier / Decision Sandbox
+- Toute prévisualisation avant Accept/Reject reste 100% locale et sans side effect.
+- Le texte doit décrire le contrat métier existant, jamais prédire un résultat futur non garanti.
+- Aucun bouton de prévisualisation ne peut appeler les endpoints accept/reject.
+- Accept, pickup et delivered restent trois gestes séparés.
