@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { usePathname } from "expo-router";
+import { useAtmosphereCurrent } from "./useAtmosphereCurrent";
 import {
   AccessibilityInfo,
   Animated,
@@ -31,6 +32,8 @@ const DA_GALA_HOME_REDUCED_TRANSPARENCY_PRESENCE = 0.18;
  */
 export function GlobalWaterAtmosphere() {
   const pathname = usePathname();
+  const atmosphere = useAtmosphereCurrent();
+  const weatherMotion = Math.max(0.45, atmosphere.tuning.motion);
   const { height: viewportHeight } = useWindowDimensions();
   const isHome = pathname === "/" || pathname === "/home";
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -79,7 +82,7 @@ export function GlobalWaterAtmosphere() {
     const nearLoop = Animated.loop(
       Animated.timing(rainNearPhase, {
         toValue: 1,
-        duration: 5600,
+        duration: Math.round(5600 / weatherMotion),
         easing: Easing.linear,
         useNativeDriver: true,
         isInteraction: false,
@@ -88,7 +91,7 @@ export function GlobalWaterAtmosphere() {
     const farLoop = Animated.loop(
       Animated.timing(rainFarPhase, {
         toValue: 1,
-        duration: 9400,
+        duration: Math.round(9400 / weatherMotion),
         easing: Easing.linear,
         useNativeDriver: true,
         isInteraction: false,
@@ -100,7 +103,7 @@ export function GlobalWaterAtmosphere() {
       nearLoop.stop();
       farLoop.stop();
     };
-  }, [rainFarPhase, rainNearPhase, reduceMotion]);
+  }, [rainFarPhase, rainNearPhase, reduceMotion, weatherMotion]);
 
   useEffect(() => {
     phase.stopAnimation();
@@ -214,7 +217,11 @@ export function GlobalWaterAtmosphere() {
   const tileHeight = Math.max(760, viewportHeight + 240);
   const rainNearY = rainNearPhase.interpolate({ inputRange: [0, 1], outputRange: [0, tileHeight] });
   const rainFarY = rainFarPhase.interpolate({ inputRange: [0, 1], outputRange: [0, tileHeight] });
-  const rainMasterOpacity = reduceTransparency ? 0.26 : 1;
+  const rainMasterOpacity = (reduceTransparency ? 0.18 : 1) * atmosphere.tuning.rain;
+  const wetPresence = Animated.multiply(
+    presence,
+    reduceTransparency ? Math.min(atmosphere.tuning.wetness, 0.28) : atmosphere.tuning.wetness,
+  );
 
   const translateX = phase.interpolate({ inputRange: [0, 0.5, 1], outputRange: [-1.3, 1.25, -1.3] });
   const translateY = phase.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.6, -1.2, 0.6] });
@@ -296,7 +303,20 @@ export function GlobalWaterAtmosphere() {
         </Animated.View>
       </View>
 
-      <Animated.View style={[styles.layer, { opacity: presence }]}>
+      <View
+        style={[
+          styles.weatherMist,
+          {
+            opacity:
+              atmosphere.tuning.mist * (reduceTransparency ? 0.08 : 0.28),
+          },
+        ]}
+      >
+        <View style={[styles.weatherMistBlob, styles.weatherMistBlobA]} />
+        <View style={[styles.weatherMistBlob, styles.weatherMistBlobB]} />
+      </View>
+
+      <Animated.View style={[styles.layer, { opacity: wetPresence }]}>
         <Animated.Image
           source={CLIENT_GLOBAL_WET_LENS}
           resizeMode="cover"
@@ -414,6 +434,30 @@ const styles = StyleSheet.create({
   rainLayer: {
     ...StyleSheet.absoluteFillObject,
     overflow: "hidden",
+  },
+  weatherMist: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+  },
+  weatherMistBlob: {
+    position: "absolute",
+    borderRadius: 999,
+    backgroundColor: "rgba(222, 248, 244, 0.16)",
+  },
+  weatherMistBlobA: {
+    width: 420,
+    height: 160,
+    left: -190,
+    top: "18%",
+    transform: [{ rotate: "-11deg" }],
+  },
+  weatherMistBlobB: {
+    width: 360,
+    height: 130,
+    right: -170,
+    top: "61%",
+    backgroundColor: "rgba(151, 222, 214, 0.12)",
+    transform: [{ rotate: "9deg" }],
   },
   rainTrack: {
     position: "absolute",

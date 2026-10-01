@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { usePathname } from "expo-router";
+import { useAtmosphereCurrent } from "./useAtmosphereCurrent";
 import {
   AccessibilityInfo,
   Animated,
@@ -32,6 +33,8 @@ const DA_GALA_HOME_REDUCED_TRANSPARENCY_PRESENCE = 0.18;
  */
 export function GlobalWaterAtmosphere() {
   const pathname = usePathname();
+  const atmosphere = useAtmosphereCurrent();
+  const weatherMotion = Math.max(0.45, atmosphere.tuning.motion);
   const { height: viewportHeight } = useWindowDimensions();
   const isHome = pathname === "/" || pathname === "/home";
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -85,7 +88,7 @@ export function GlobalWaterAtmosphere() {
     const nearLoop = Animated.loop(
       Animated.timing(nearPhase, {
         toValue: 1,
-        duration: 5600,
+        duration: Math.round(5600 / weatherMotion),
         easing: Easing.linear,
         useNativeDriver: true,
         isInteraction: false,
@@ -94,7 +97,7 @@ export function GlobalWaterAtmosphere() {
     const farLoop = Animated.loop(
       Animated.timing(farPhase, {
         toValue: 1,
-        duration: 9400,
+        duration: Math.round(9400 / weatherMotion),
         easing: Easing.linear,
         useNativeDriver: true,
         isInteraction: false,
@@ -104,14 +107,14 @@ export function GlobalWaterAtmosphere() {
       Animated.sequence([
         Animated.timing(glassPhase, {
           toValue: 1,
-          duration: 14600,
+          duration: Math.round(14600 / weatherMotion),
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
           isInteraction: false,
         }),
         Animated.timing(glassPhase, {
           toValue: 0,
-          duration: 16800,
+          duration: Math.round(16800 / weatherMotion),
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
           isInteraction: false,
@@ -127,7 +130,7 @@ export function GlobalWaterAtmosphere() {
       farLoop.stop();
       glassLoop.stop();
     };
-  }, [farPhase, glassPhase, isHome, nearPhase, reduceMotion]);
+  }, [farPhase, glassPhase, isHome, nearPhase, reduceMotion, weatherMotion]);
 
   useEffect(() => {
     presence.stopAnimation();
@@ -209,11 +212,20 @@ export function GlobalWaterAtmosphere() {
   }, [dropA, dropB, dropC, isHome, reduceMotion]);
 
   const tileHeight = Math.max(760, viewportHeight + 240);
+  const wetPresence = Animated.multiply(
+    presence,
+    reduceTransparency ? Math.min(atmosphere.tuning.wetness, 0.28) : atmosphere.tuning.wetness,
+  );
+  const farRainOpacity = 0.08 * atmosphere.tuning.rain;
+  const nearRainOpacity = 0.145 * atmosphere.tuning.rain;
   const nearFlowY = nearPhase.interpolate({ inputRange: [0, 1], outputRange: [0, tileHeight] });
   const farFlowY = farPhase.interpolate({ inputRange: [0, 1], outputRange: [0, tileHeight] });
   const glassDriftY = glassPhase.interpolate({ inputRange: [0, 0.5, 1], outputRange: [-1.2, 1.8, -1.2] });
   const glassDriftX = glassPhase.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0.8, 0] });
-  const glassOpacity = glassPhase.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.04, 0.065, 0.04] });
+  const glassOpacity = Animated.multiply(
+    glassPhase.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.04, 0.065, 0.04] }),
+    atmosphere.tuning.condensation,
+  );
   const dropletOpacity = glassPhase.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.36, 0.48, 0.36] });
   const glintOpacity = glassPhase.interpolate({
     inputRange: [0, 0.25, 0.5, 0.75, 1],
@@ -240,13 +252,26 @@ export function GlobalWaterAtmosphere() {
       importantForAccessibility="no-hide-descendants"
       style={styles.root}
     >
-      <Animated.View style={[styles.layer, { opacity: presence }]}>
+      <View
+        style={[
+          styles.weatherMist,
+          {
+            opacity:
+              atmosphere.tuning.mist * (reduceTransparency ? 0.08 : 0.3),
+          },
+        ]}
+      >
+        <View style={[styles.weatherMistBlob, styles.weatherMistBlobA]} />
+        <View style={[styles.weatherMistBlob, styles.weatherMistBlobB]} />
+      </View>
+
+      <Animated.View style={[styles.layer, { opacity: wetPresence }]}>
         <Animated.View
           style={[
             styles.rainTrack,
             {
               height: tileHeight * 2,
-              opacity: 0.08,
+              opacity: farRainOpacity,
               transform: [{ translateY: farFlowY }, { translateX: 8 }, { scaleX: 0.97 }],
             },
           ]}
@@ -260,7 +285,7 @@ export function GlobalWaterAtmosphere() {
             styles.rainTrack,
             {
               height: tileHeight * 2,
-              opacity: 0.145,
+              opacity: nearRainOpacity,
               transform: [{ translateY: nearFlowY }, { translateX: -3 }],
             },
           ]}
@@ -385,6 +410,30 @@ const styles = StyleSheet.create({
   layer: {
     ...StyleSheet.absoluteFillObject,
     overflow: "hidden",
+  },
+  weatherMist: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+  },
+  weatherMistBlob: {
+    position: "absolute",
+    borderRadius: 999,
+    backgroundColor: "rgba(221, 249, 240, 0.15)",
+  },
+  weatherMistBlobA: {
+    width: 424,
+    height: 158,
+    left: -194,
+    top: "18%",
+    transform: [{ rotate: "-12deg" }],
+  },
+  weatherMistBlobB: {
+    width: 370,
+    height: 134,
+    right: -176,
+    top: "62%",
+    backgroundColor: "rgba(126, 221, 178, 0.10)",
+    transform: [{ rotate: "8deg" }],
   },
   rainTrack: {
     position: "absolute",
