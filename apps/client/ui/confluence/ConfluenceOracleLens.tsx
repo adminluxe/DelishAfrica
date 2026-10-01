@@ -192,7 +192,9 @@ export function ConfluenceOracleLens({
             <View style={styles.blindSpotCard}>
               <View style={styles.blindSpotTop}>
                 <Text style={[styles.blindSpotKicker, { color: accent }]}>ANGLE MORT</Text>
-                <Text style={styles.blindSpotCount}>{blindSpots.length} signal{blindSpots.length > 1 ? "x" : ""}</Text>
+                <Text style={styles.blindSpotCount}>
+                  {blindSpots.length} {blindSpots.length > 1 ? "signaux" : "signal"}
+                </Text>
               </View>
               <Text style={styles.blindSpotTitle}>Ce que Confluence ne sait pas encore.</Text>
               <Text style={styles.blindSpotText}>
