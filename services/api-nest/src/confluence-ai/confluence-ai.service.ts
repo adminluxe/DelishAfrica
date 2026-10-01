@@ -66,7 +66,7 @@ const OUTPUT_SCHEMA = {
     },
     uncertainty: {
       type: 'string',
-      enum: ['facts_only', 'contains_estimates', 'insufficient_evidence'],
+      enum: ['facts_only', 'contains_context', 'contains_estimates', 'insufficient_evidence'],
     },
     caution: { type: 'string', minLength: 1, maxLength: 220 },
   },
@@ -195,6 +195,8 @@ export class ConfluenceAiService {
           generatedAt: new Date().toISOString(),
           structured: true,
           actionSideEffects: false,
+          providerStore: false,
+          sensitiveEvidenceTransit: false,
         },
       };
     } catch {
@@ -220,6 +222,8 @@ export class ConfluenceAiService {
         generatedAt: new Date().toISOString(),
         structured: true,
         actionSideEffects: false,
+        providerStore: false,
+        sensitiveEvidenceTransit: false,
       },
     };
   }
@@ -325,6 +329,7 @@ export class ConfluenceAiService {
     if (
       ![
         'facts_only',
+        'contains_context',
         'contains_estimates',
         'insufficient_evidence',
       ].includes(uncertainty)

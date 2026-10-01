@@ -75,6 +75,7 @@ function orderItem(order?: OrderLike): string {
 export default function MerchantServiceOracleScreen() {
   const [orders, setOrders] = useState<OrderLike[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [confluenceNetworkEnabled, setConfluenceNetworkEnabled] = useState(true);
 
   const load = useCallback(async () => {
     try {
@@ -125,6 +126,7 @@ body: JSON.stringify({}),
     evidence: oracleEvidence,
     localSuggestion: oracleSuggestion,
     localHumanBoundary: 'Cette lecture ne change aucun statut, n’accepte aucune commande et ne marque jamais un plat prêt à votre place.',
+    enabled: confluenceNetworkEnabled,
   });
 
   return (
@@ -203,6 +205,13 @@ body: JSON.stringify({}),
           evidence={oracleEvidence}
           humanBoundary={confluenceSuggestion.humanBoundary}
           footnote={confluenceSuggestion.footnote}
+          mode={confluenceSuggestion.mode}
+          uncertainty={confluenceSuggestion.uncertainty}
+          evidenceIndexes={confluenceSuggestion.evidenceIndexes}
+          generatedAt={confluenceSuggestion.generatedAt}
+          privacyNote={confluenceSuggestion.privacyNote}
+          networkEnabled={confluenceNetworkEnabled}
+          onNetworkEnabledChange={setConfluenceNetworkEnabled}
         />
 
         <View style={styles.promiseCard}>
