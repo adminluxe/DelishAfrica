@@ -9,6 +9,7 @@ import {
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { OrchidpayF3Service } from '../orchidpay-f3/orchidpay-f3.service';
 import type { DaAuthPrincipal } from '../auth/auth.types';
 import {
   CanonicalOrderQuote,
@@ -187,13 +188,19 @@ function emptyStore(): PaymentAuthorityStore {
 
 function readAuthorityStore(): PaymentAuthorityStore {
   const file = authorityStoreFile();
+  if (!fs.existsSync(file)) return emptyStore();
+
   try {
-    if (!fs.existsSync(file)) return emptyStore();
     const parsed = JSON.parse(fs.readFileSync(file, 'utf8')) as PaymentAuthorityStore;
-    if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.records)) return emptyStore();
+    if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.records)) {
+      throw new Error('payment_authority_store_invalid_shape');
+    }
     return parsed;
   } catch {
-    return emptyStore();
+    throw new ServiceUnavailableException({
+      ok: false,
+      code: 'payment_authority_store_unavailable',
+    });
   }
 }
 
@@ -209,8 +216,32 @@ function writeAuthorityStore(store: PaymentAuthorityStore): void {
       .slice(0, 5000),
   };
   const temporary = `${file}.${process.pid}.${Date.now()}.tmp`;
-  fs.writeFileSync(temporary, JSON.stringify(next, null, 2), { encoding: 'utf8', mode: 0o600 });
-  fs.renameSync(temporary, file);
+  let descriptor: number | null = null;
+  try {
+    fs.writeFileSync(temporary, JSON.stringify(next, null, 2), {
+      encoding: 'utf8',
+      mode: 0o600,
+    });
+    descriptor = fs.openSync(temporary, 'r');
+    fs.fsyncSync(descriptor);
+    fs.closeSync(descriptor);
+    descriptor = null;
+    fs.renameSync(temporary, file);
+    fs.chmodSync(file, 0o600);
+  } catch {
+    if (descriptor !== null) {
+      try {
+        fs.closeSync(descriptor);
+      } catch {}
+    }
+    try {
+      if (fs.existsSync(temporary)) fs.unlinkSync(temporary);
+    } catch {}
+    throw new ServiceUnavailableException({
+      ok: false,
+      code: 'payment_authority_store_unavailable',
+    });
+  }
 }
 
 function principalBinding(principal: DaAuthPrincipal): PaymentAuthorityPrincipal {
@@ -232,12 +263,24 @@ function principalMatches(record: PaymentAuthorityRecord, principal: DaAuthPrinc
 
 @Injectable()
 export class PaymentsService {
-  constructor(private readonly orderPolicy: CatalogOrderPolicyService) {}
+  constructor(
+    private readonly orderPolicy: CatalogOrderPolicyService,
+    private readonly orchidpayF3: OrchidpayF3Service,
+  ) {}
 
-  health() {
+  async health() {
+    let orchidpayF3Ready = false;
+    try {
+      const result = await this.orchidpayF3.health();
+      orchidpayF3Ready = result.ok === true;
+    } catch {
+      orchidpayF3Ready = false;
+    }
+
     return {
       ok: true,
       service: 'payments',
+      runtimeMode: process.env.NODE_ENV || 'unknown',
       stripeConfigured: this.hasStripeSecret(),
       publishableKeyConfigured: Boolean(this.publishableKey()),
       webhookConfigured: Boolean(this.webhookSecret()),
@@ -247,7 +290,12 @@ export class PaymentsService {
       financialFinalityGuard: 'charge_captured_unrefunded_undisputed_v1',
       refundAwareOrderCommit: true,
       disputeAwareOrderCommit: true,
-      paymentAuthorityStore: 'runtime_atomic_file_v1',
+      paymentAuthorityStore: 'runtime_atomic_file_v2_fail_closed',
+      orchidpayF3: {
+        ready: orchidpayF3Ready,
+        transport: 'private_unix_socket',
+        role: 'bounded_evidence_bridge',
+      },
       mockOrderCommitAllowed: false,
     };
   }
