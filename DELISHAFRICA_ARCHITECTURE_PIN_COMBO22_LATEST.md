@@ -202,3 +202,24 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 5. Le serveur continue a normaliser, scrubber et allowlister meme si le client a deja valide le contrat.
 6. Une extension future du perimetre de preuves exige une modification explicite des deux contrats + gate FULL GREEN.
 7. En cas de divergence, le comportement attendu est fail-closed local, jamais un transit opportuniste.
+
+---
+
+# ARCHITECTURE PIN UPDATE - 2026-10-01 - SOVEREIGN SILENCE V1
+
+## Confluence user-control contract
+- Type canonique UI : `ConfluenceAiMode = server | local | silent`.
+- Le state appartient à chaque écran Oracle et reste session-only.
+- `server` => `useConfluenceSuggestion(enabled=true)` si l Oracle métier est actif.
+- `local` => `useConfluenceSuggestion(enabled=false)` et la suggestion embarquée reste visible.
+- `silent` => `useConfluenceSuggestion(enabled=false)` et `ConfluenceOracleLens` ne rend aucune suggestion/preuve Confluence ; uniquement le contrôle de réactivation.
+
+## Invariants Sovereign Silence
+1. SILENCE ne doit déclencher aucun appel Confluence réseau.
+2. SILENCE ne doit afficher aucune suggestion Confluence, y compris un fallback local.
+3. Le parcours métier sous-jacent doit rester totalement utilisable.
+4. Le mode est non persistant tant qu aucune décision produit explicite ne change ce contrat.
+5. La sortie du silence doit rester disponible sur le même écran sans navigation vers Settings.
+6. Les trois Lens doivent rester byte-identical.
+7. Le gate doit échouer si `confluenceNetworkEnabled` réapparaît ou si le tri-state n est plus branché sur une app.
+8. Les builds Store actuellement en review restent gelés ; aucune promotion de ce laboratoire sans QA visuelle et décision explicite.
