@@ -23,8 +23,9 @@ CLIENT_ORACLE="$ROOT/apps/client/app/taste-oracle.tsx"
 COURIER_ORACLE="$ROOT/apps/courier/app/route-oracle.tsx"
 MERCHANT_ORACLE="$ROOT/apps/merchant/app/service-oracle.tsx"
 DISPATCH_SERVICE="$ROOT/services/api-nest/src/dispatch-intelligence/assignment-intelligence.service.ts"
+FRUGAL_PROBE="$ROOT/scripts/da_confluence_frugal_probe.cjs"
 
-for f in "$CLIENT_LENS" "$COURIER_LENS" "$MERCHANT_LENS" "$CLIENT_HOOK" "$COURIER_HOOK" "$MERCHANT_HOOK" "$SERVICE" "$POLICY" "$TYPES" "$CLIENT_ORACLE" "$COURIER_ORACLE" "$MERCHANT_ORACLE" "$DISPATCH_SERVICE"; do
+for f in "$CLIENT_LENS" "$COURIER_LENS" "$MERCHANT_LENS" "$CLIENT_HOOK" "$COURIER_HOOK" "$MERCHANT_HOOK" "$SERVICE" "$POLICY" "$TYPES" "$CLIENT_ORACLE" "$COURIER_ORACLE" "$MERCHANT_ORACLE" "$DISPATCH_SERVICE" "$FRUGAL_PROBE"; do
   require_file "$f"
 done
 pass "required_files"
@@ -65,6 +66,14 @@ require_text "Confluence libère l’écran et reviendra seulement si les preuve
 require_text "attentionFingerprint" "$CLIENT_LENS" "attention_evidence_fingerprint_present"
 require_text "setAcknowledgedFingerprint(attentionFingerprint)" "$CLIENT_LENS" "attention_acknowledgement_present"
 require_text "NOUVEAU SIGNAL" "$CLIENT_LENS" "attention_new_signal_reentry_present"
+require_text "SESSION_CACHE_MAX_ENTRIES" "$CLIENT_HOOK" "frugal_session_cache_present"
+require_text "sessionCacheGet" "$CLIENT_HOOK" "frugal_session_cache_read_present"
+require_text "sessionCacheSet" "$CLIENT_HOOK" "frugal_session_cache_write_present"
+require_text "PROVIDER_MEMO_TTL_MS" "$SERVICE" "frugal_provider_memo_present"
+require_text "providerFingerprint" "$SERVICE" "frugal_provider_fingerprint_present"
+require_text "providerInflight" "$SERVICE" "frugal_singleflight_present"
+require_text "frugalCompute" "$SERVICE" "frugal_compute_observability_present"
+require_text "computeSource" "$TYPES" "frugal_compute_source_typed"
 require_text "controller.abort()" "$CLIENT_HOOK" "network_abort_cleanup_present"
 require_text "signal: controller.signal" "$CLIENT_HOOK" "network_abort_signal_present"
 require_text "if (!enabled || !evidence.length)" "$CLIENT_HOOK" "disabled_mode_short_circuits_before_network"
@@ -97,6 +106,23 @@ provider_line="$(grep -nF "providerSuggestion(input" "$SERVICE" | head -1 | cut 
 [[ -n "$sensitive_line" && -n "$provider_line" && "$sensitive_line" -lt "$provider_line" ]] || fail "sensitive_guard_precedes_provider"
 pass "sensitive_guard_precedes_provider"
 
+memo_line="$(grep -nF "const memoized = this.providerMemoGet(key)" "$SERVICE" | head -1 | cut -d: -f1)"
+inflight_line="$(grep -nF "const inflight = this.providerInflight.get(key)" "$SERVICE" | head -1 | cut -d: -f1)"
+budget_line="$(grep -nF "const budget = this.consumeProviderBudget()" "$SERVICE" | head -1 | cut -d: -f1)"
+[[ -n "$memo_line" && -n "$inflight_line" && -n "$budget_line" && "$memo_line" -lt "$budget_line" && "$inflight_line" -lt "$budget_line" ]] || fail "frugal_reuse_precedes_provider_budget"
+pass "frugal_reuse_precedes_provider_budget"
+
+fingerprint_block="$(sed -n '/private providerFingerprint(/,/private providerMemoGet(/p' "$SERVICE")"
+if grep -Fq "localSuggestion" <<<"$fingerprint_block"; then
+  fail "frugal_provider_fingerprint_must_ignore_local_copy"
+fi
+pass "frugal_provider_fingerprint_evidence_only"
+
+if grep -Fq "CACHE_TTL_MS" "$CLIENT_HOOK"; then
+  fail "frugal_session_cache_must_be_evidence_keyed_not_time_polled"
+fi
+pass "frugal_session_cache_no_time_polling"
+
 disabled_line="$(grep -nF "if (!enabled || !evidence.length)" "$CLIENT_HOOK" | head -1 | cut -d: -f1)"
 local_guard_line="$(grep -nF "if (evidenceContractBlocked || privacyBlocked)" "$CLIENT_HOOK" | head -1 | cut -d: -f1)"
 network_line="$(grep -nF "daOrdersFetch(" "$CLIENT_HOOK" | head -1 | cut -d: -f1)"
@@ -123,6 +149,9 @@ if [[ "$MODE" == "--full" || "$MODE" == "full" ]]; then
 
   (cd "$ROOT/services/api-nest" && npm run build >"$TMP_ROOT/api-build.log" 2>&1) || { tail -120 "$TMP_ROOT/api-build.log" >&2; fail "api_build"; }
   pass "api_build"
+
+  (cd "$ROOT" && node "$FRUGAL_PROBE" >"$TMP_ROOT/frugal-probe.log" 2>&1) || { cat "$TMP_ROOT/frugal-probe.log" >&2; fail "frugal_compute_probe"; }
+  pass "frugal_compute_probe"
 
   for app in client courier merchant; do
     (cd "$ROOT/apps/$app" && npx tsc --noEmit >"$TMP_ROOT/tsc-$app.log" 2>&1) || { cat "$TMP_ROOT/tsc-$app.log" >&2; fail "tsc_$app"; }

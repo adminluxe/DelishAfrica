@@ -20,6 +20,7 @@ export type ConfluenceSuggestion = {
     provider: 'deterministic_local' | 'openai_responses';
     generatedAt: string;
     fallbackReason?: string;
+    computeSource?: 'fresh' | 'memoized' | 'coalesced';
     structured: true;
     actionSideEffects: false;
     providerStore: false;

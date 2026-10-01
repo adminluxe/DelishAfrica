@@ -244,3 +244,47 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 6. Les trois Lens restent byte-identical.
 7. Le gate vérifie Pacte, état de retrait, retour sur nouveau signal et absence de persistence.
 8. Aucun binaire Store actuellement en review ne doit être modifié par cette branche.
+
+---
+
+# ARCHITECTURE PIN UPDATE - 2026-10-01 - FRUGAL CURRENT V1
+
+## Compute hierarchy
+1. Local / Silent gate avant reseau.
+2. Evidence Firewall + Zero-Leak avant reseau.
+3. Cache mobile de session exact : zero requete serveur sur etat deja resolu.
+4. Serveur memo par fingerprint de preuves : zero provider call sur etat deja calcule.
+5. Singleflight : une seule Promise provider pour N requetes concurrentes identiques.
+6. Budget provider consomme uniquement si aucune reutilisation n est possible.
+7. Provider externe en dernier recours seulement.
+
+## Provider fingerprint
+- Version: `confluence-provider-v1`.
+- Entrees: model + oracle + locale + evidence(label,value,kind).
+- Exclusions volontaires: sujet auth, localSuggestion, generatedAt, wording precedent.
+- Justification: la sortie provider ne recoit que Oracle + preuves ; une copie locale ne doit pas provoquer de calcul externe.
+- Toute modification du prompt/provider contract doit incrementer `PROVIDER_MEMO_VERSION`.
+
+## Memo privacy contract
+- Memo serveur exclusivement in-memory.
+- Cle SHA-256, pas de preuve brute en index.
+- Sorties deja soumises aux guards sensibles/numeriques/evidence avant exposition.
+- TTL 6h + LRU 512 maximum.
+- Aucun stockage disque du memo.
+- Redemarrage process = memo vide.
+
+## Mobile cache contract
+- Session-only Map, LRU 96 maximum.
+- Aucun TTL de polling : une preuve identique reste une preuve identique dans la session.
+- Toute variation de key (preuve ou suggestion locale) declenche la resolution normale.
+- Aucun SecureStore / AsyncStorage ajoute.
+
+## Invariants cout
+1. Cache/memo/singleflight doivent preceder toute consommation de budget provider.
+2. Un changement de wording local seul ne doit jamais reveiller le provider.
+3. Un changement de preuve doit produire un nouveau fingerprint.
+4. Une sortie memoisee conserve son vrai `generatedAt` original.
+5. Aucun mecanisme d economie ne peut contourner les guards de sortie existants.
+6. Les compteurs de sante ne doivent contenir aucune preuve ni identifiant utilisateur.
+7. Le probe frugal doit rester dans le full trust gate.
+8. Les binaires Store en review restent geles jusqu a promotion explicite.

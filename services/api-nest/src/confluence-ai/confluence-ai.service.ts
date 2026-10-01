@@ -33,6 +33,11 @@ type ProviderOutput = {
 type RateWindow = { startedAt: number; count: number };
 type RuntimeConfig = { enabled: boolean; model: string };
 type ProviderBudget = { date: string; count: number };
+type ProviderComputeSource = 'fresh' | 'memoized' | 'coalesced';
+type ProviderMemoEntry = { at: number; generatedAt: string; output: ProviderOutput };
+type ProviderResolution =
+  | { ok: true; output: ProviderOutput; source: ProviderComputeSource; generatedAt: string }
+  | { ok: false; reason: 'provider_daily_cap' | 'provider_budget_unavailable' | 'provider_unavailable' };
 
 const PROVIDER_ENDPOINT = 'https://api.openai.com/v1/responses';
 const MAX_CALLS_PER_MINUTE = 10;
@@ -41,6 +46,9 @@ const MODEL_PIN = 'gpt-5.6-luna';
 const REASONING_EFFORT = 'low';
 const MAX_PROVIDER_CALLS_PER_DAY = 100;
 const MAX_OUTPUT_TOKENS = 360;
+const PROVIDER_MEMO_VERSION = 'confluence-provider-v1';
+const PROVIDER_MEMO_TTL_MS = 6 * 60 * 60 * 1000;
+const PROVIDER_MEMO_MAX_ENTRIES = 512;
 
 const RUNTIME_DIR = '/app/.runtime/confluence';
 const API_KEY_FILE = `${RUNTIME_DIR}/openai-api-key`;
@@ -76,6 +84,13 @@ const OUTPUT_SCHEMA = {
 @Injectable()
 export class ConfluenceAiService {
   private readonly rate = new Map<string, RateWindow>();
+  private readonly providerMemo = new Map<string, ProviderMemoEntry>();
+  private readonly providerInflight = new Map<string, Promise<ProviderMemoEntry | null>>();
+  private readonly computeStats = {
+    freshCalls: 0,
+    memoHits: 0,
+    coalescedHits: 0,
+  };
 
   constructor(private readonly auth: AuthService) {}
 
@@ -110,6 +125,19 @@ export class ConfluenceAiService {
         maxCallsPerDay: MAX_PROVIDER_CALLS_PER_DAY,
         callsToday: budget.available ? budget.count : null,
         available: budget.available,
+      },
+      frugalCompute: {
+        strategy: 'evidence_fingerprint_memo_plus_singleflight',
+        memoVersion: PROVIDER_MEMO_VERSION,
+        memoTtlMs: PROVIDER_MEMO_TTL_MS,
+        memoMaxEntries: PROVIDER_MEMO_MAX_ENTRIES,
+        memoEntries: this.providerMemo.size,
+        inFlight: this.providerInflight.size,
+        freshCallsSinceBoot: this.computeStats.freshCalls,
+        memoHitsSinceBoot: this.computeStats.memoHits,
+        coalescedHitsSinceBoot: this.computeStats.coalescedHits,
+        avoidedProviderCallsSinceBoot:
+          this.computeStats.memoHits + this.computeStats.coalescedHits,
       },
     };
   }
@@ -149,14 +177,11 @@ export class ConfluenceAiService {
     if (!input.evidence.length) return this.withFallback(local, 'insufficient_evidence');
     if (this.isTerminalForOracle(input)) return this.withFallback(local, 'terminal_flow');
 
-    const budget = this.consumeProviderBudget();
-    if (budget === 'cap') return this.withFallback(local, 'provider_daily_cap');
-    if (budget === 'unavailable') return this.withFallback(local, 'provider_budget_unavailable');
-
     try {
       const safetyIdentifier = this.safetyIdentifier(principal.subject);
-      const ai = await this.providerSuggestion(input, safetyIdentifier, config.model);
-      if (!ai) return this.withFallback(local, 'provider_unavailable');
+      const provider = await this.resolveProviderSuggestion(input, safetyIdentifier, config.model);
+      if (provider.ok === false) return this.withFallback(local, provider.reason);
+      const ai = provider.output;
 
       if (containsSensitiveText(`${ai.suggestion} ${ai.caution}`)) {
         return this.withFallback(local, 'provider_sensitive_output_guard');
@@ -192,7 +217,8 @@ export class ConfluenceAiService {
         humanBoundary: humanBoundaryFor(input.oracle, input.locale),
         meta: {
           provider: 'openai_responses',
-          generatedAt: new Date().toISOString(),
+          generatedAt: provider.generatedAt,
+          computeSource: provider.source,
           structured: true,
           actionSideEffects: false,
           providerStore: false,
@@ -233,6 +259,105 @@ export class ConfluenceAiService {
     fallbackReason: string,
   ): ConfluenceSuggestion {
     return { ...local, meta: { ...local.meta, fallbackReason } };
+  }
+
+  private providerFingerprint(input: ConfluenceNormalizedRequest, model: string): string {
+    return createHash('sha256')
+      .update('delishafrica|confluence|provider-memo|')
+      .update(PROVIDER_MEMO_VERSION)
+      .update('|')
+      .update(model)
+      .update('|')
+      .update(input.oracle)
+      .update('|')
+      .update(input.locale)
+      .update('|')
+      .update(JSON.stringify(input.evidence.map((item) => [item.label, item.value, item.kind])))
+      .digest('hex');
+  }
+
+  private providerMemoGet(key: string): ProviderMemoEntry | null {
+    const entry = this.providerMemo.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.at >= PROVIDER_MEMO_TTL_MS) {
+      this.providerMemo.delete(key);
+      return null;
+    }
+    this.providerMemo.delete(key);
+    this.providerMemo.set(key, entry);
+    this.computeStats.memoHits += 1;
+    return entry;
+  }
+
+  private providerMemoSet(key: string, entry: ProviderMemoEntry) {
+    this.providerMemo.delete(key);
+    this.providerMemo.set(key, entry);
+    while (this.providerMemo.size > PROVIDER_MEMO_MAX_ENTRIES) {
+      const oldest = this.providerMemo.keys().next().value as string | undefined;
+      if (!oldest) break;
+      this.providerMemo.delete(oldest);
+    }
+  }
+
+  private async resolveProviderSuggestion(
+    input: ConfluenceNormalizedRequest,
+    safetyIdentifier: string,
+    model: string,
+  ): Promise<ProviderResolution> {
+    const key = this.providerFingerprint(input, model);
+    const memoized = this.providerMemoGet(key);
+    if (memoized) {
+      return {
+        ok: true,
+        output: memoized.output,
+        source: 'memoized',
+        generatedAt: memoized.generatedAt,
+      };
+    }
+
+    const inflight = this.providerInflight.get(key);
+    if (inflight) {
+      this.computeStats.coalescedHits += 1;
+      const shared = await inflight;
+      if (!shared) return { ok: false, reason: 'provider_unavailable' };
+      return {
+        ok: true,
+        output: shared.output,
+        source: 'coalesced',
+        generatedAt: shared.generatedAt,
+      };
+    }
+
+    const budget = this.consumeProviderBudget();
+    if (budget === 'cap') return { ok: false, reason: 'provider_daily_cap' };
+    if (budget === 'unavailable') return { ok: false, reason: 'provider_budget_unavailable' };
+
+    this.computeStats.freshCalls += 1;
+    const task = this.providerSuggestion(input, safetyIdentifier, model)
+      .then((output) => {
+        if (!output) return null;
+        const entry: ProviderMemoEntry = {
+          at: Date.now(),
+          generatedAt: new Date().toISOString(),
+          output,
+        };
+        this.providerMemoSet(key, entry);
+        return entry;
+      })
+      .catch(() => null)
+      .finally(() => {
+        this.providerInflight.delete(key);
+      });
+
+    this.providerInflight.set(key, task);
+    const fresh = await task;
+    if (!fresh) return { ok: false, reason: 'provider_unavailable' };
+    return {
+      ok: true,
+      output: fresh.output,
+      source: 'fresh',
+      generatedAt: fresh.generatedAt,
+    };
   }
 
   private async providerSuggestion(
