@@ -1,0 +1,20 @@
+--- a/delish-orchidpay-f3-relay.py
++++ b/delish-orchidpay-f3-relay.py
+@@
+-def allowed_cgroup_sha256() -> str:
+-    value = str(os.environ.get("DELISH_ALLOWED_CGROUP_SHA256", "")).strip().lower()
+-    if not re.fullmatch(r"[0-9a-f]{64}", value):
++def allowed_cgroup_sha256() -> tuple[str, ...]:
++    raw = str(os.environ.get("DELISH_ALLOWED_CGROUP_SHA256", "")).strip().lower()
++    values = tuple(value.strip() for value in raw.split(",") if value.strip())
++    if not values or any(not re.fullmatch(r"[0-9a-f]{64}", value) for value in values):
+         raise RuntimeError("DELISH_ALLOWED_CGROUP_SHA256_INVALID")
+-    return value
++    return values
+@@
+-        expected = allowed_cgroup_sha256()
++        expected = allowed_cgroup_sha256()
+     except Exception:
+         return False
+-    return hmac.compare_digest(digest, expected)
++    return any(hmac.compare_digest(digest, candidate) for candidate in expected)

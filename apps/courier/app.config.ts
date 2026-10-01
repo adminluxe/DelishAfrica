@@ -1,5 +1,13 @@
 import { ConfigContext, ExpoConfig } from "expo/config";
 
+// DA_DEV_VARIANT_SIDE_BY_SIDE_V3 — DEV binary coexists with Store/TestFlight.
+const IS_DEV = process.env.APP_VARIANT === "development";
+const COURIER_APP_NAME = IS_DEV ? "DelishAfrica Courier DEV" : "DelishAfrica Courier";
+const COURIER_DISPLAY_NAME = IS_DEV ? "DA Courier DEV" : "DelishAfrica Courier";
+const COURIER_SCHEME = IS_DEV ? "delishafricacourierdev" : "delishafricacourier";
+const COURIER_IOS_BUNDLE_ID = IS_DEV ? "com.delishafrica.courier.dev" : "com.delishafrica.courier";
+const COURIER_ANDROID_PACKAGE = IS_DEV ? "com.delishafrica.courier.dev" : "com.delishafrica.courier";
+
 const COURIER_BOOT_BACKGROUND = "#00140B";
 const SPLASH_IMAGE = "./assets/splash.png";
 
@@ -10,10 +18,10 @@ const API_URL =
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: "DelishAfrica Courier",
+  name: COURIER_APP_NAME,
   slug: "delishafrica-courier",
   owner: "delishafrica",
-  scheme: "delishafricacourier",
+  scheme: COURIER_SCHEME,
   version: "3.0.0",
   orientation: "portrait",
   userInterfaceStyle: "dark",
@@ -27,7 +35,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     ...config.ios,
     supportsTablet: false,
-    bundleIdentifier: "com.delishafrica.courier",
+    bundleIdentifier: COURIER_IOS_BUNDLE_ID,
     backgroundColor: COURIER_BOOT_BACKGROUND,
     splash: {
       image: SPLASH_IMAGE,
@@ -36,13 +44,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     infoPlist: {
       ...(config.ios?.infoPlist ?? {}),
-      CFBundleDisplayName: "DelishAfrica Courier",
+      CFBundleDisplayName: COURIER_DISPLAY_NAME,
       UIViewControllerBasedStatusBarAppearance: false,
     },
   },
   android: {
     ...config.android,
-    package: "com.delishafrica.courier",
+    package: COURIER_ANDROID_PACKAGE,
     splash: {
       image: SPLASH_IMAGE,
       resizeMode: "contain",
@@ -63,6 +71,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     backgroundColor: COURIER_BOOT_BACKGROUND,
   },
   plugins: [
+    ["expo-dev-client", { addGeneratedScheme: IS_DEV }],
+    "expo-notifications",
+    [
+      "expo-location",
+      {
+        locationWhenInUsePermission: "Autorisez DelishAfrica Courier à utiliser votre position pendant une livraison afin d'estimer le trajet et l'heure d'arrivée.",
+      },
+    ],
+    "expo-web-browser",
     "expo-router",
     "expo-secure-store",
     [

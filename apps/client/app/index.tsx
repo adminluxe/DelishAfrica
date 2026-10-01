@@ -157,7 +157,7 @@ export default function ClientSurfaceHome() {
         <View style={styles.topline}>
           <View style={styles.toplineCopy}>
             <Text style={styles.brand}>DELISHAFRICA®</Text>
-            <Text style={styles.role}>CLIENT · DISCOVERY OCEAN · S10J</Text>
+            <Text style={styles.role}>CLIENT · DISCOVERY OCEAN</Text>
           </View>
           <Pressable
             onPress={() => go("/client-space")}
@@ -176,7 +176,10 @@ export default function ClientSurfaceHome() {
           label="RADAR · DISCOVERY OCEAN"
           title="Le marché vient à vous."
           body="Cuisines ouvertes, signaux culturels et parcours en cours remontent dans un même courant, sans noyer votre choix."
-          status="LIVE"
+          status="PRÊT"
+          signalClass="estimated"
+          evidence="Tables ouvertes, menus et parcours se mettent à jour à mesure que vous explorez."
+          freshnessLabel="Les informations détaillées sont actualisées à l’ouverture de chaque table."
           reduceMotion={reduceMotion}
           onPress={() => go("/live-market")}
           accessibilityLabel="Ouvrir DelishAfrica Radar et le marché vivant"
@@ -249,40 +252,40 @@ export default function ClientSurfaceHome() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "transparent" },
-  content: { paddingHorizontal: 22, gap: 22 },
+  content: { width: "100%", maxWidth: 820, alignSelf: "center", paddingHorizontal: 21, gap: 21 },
   topline: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 16 },
   toplineCopy: { flex: 1, minWidth: 0 },
   brand: { color: "#F5BE57", fontSize: 16, fontWeight: "900", letterSpacing: 3.1 },
   role: { color: "rgba(224,238,233,0.58)", fontSize: 10, fontWeight: "800", letterSpacing: 1.4, marginTop: 7 },
-  avatarButton: { width: 58, height: 58, borderRadius: 29, borderWidth: 1, borderColor: "rgba(176,237,226,0.28)", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(7,28,25,0.62)" },
+  avatarButton: { width: 55, height: 55, borderRadius: 27.5, borderWidth: 1, borderColor: "rgba(176,237,226,0.28)", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(7,28,25,0.62)" },
   avatarText: { color: "#E9F5F0", fontSize: 11, fontWeight: "900", letterSpacing: 1 },
-  signal: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: "rgba(76,211,194,0.24)", borderRadius: 24, padding: 16, backgroundColor: "rgba(4,29,26,0.58)" },
+  signal: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: "rgba(76,211,194,0.24)", borderRadius: 21, padding: 16, backgroundColor: "rgba(4,29,26,0.58)" },
   signalDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#F0B857" },
   signalCopy: { flex: 1 },
   signalLabel: { color: "#74E1C8", fontSize: 10, fontWeight: "900", letterSpacing: 2 },
   signalText: { color: "rgba(231,242,237,0.72)", fontSize: 12, lineHeight: 18, marginTop: 5 },
   signalState: { color: "#F1C064", fontSize: 12, fontWeight: "900", letterSpacing: 1.3 },
-  kicker: { color: "#D28B58", fontSize: 11, fontWeight: "900", letterSpacing: 2.6, marginTop: 8 },
-  hero: { color: "#FFF6E7", fontSize: 43, lineHeight: 47, fontWeight: "900", letterSpacing: -1.8 },
-  subtitle: { color: "rgba(219,231,226,0.70)", fontSize: 17, lineHeight: 27, maxWidth: 620 },
+  kicker: { color: "#D28B58", fontSize: 10, fontWeight: "900", letterSpacing: 2.6, marginTop: 8 },
+  hero: { color: "#FFF6E7", fontSize: 42, lineHeight: 47, fontWeight: "900", letterSpacing: -1.8 },
+  subtitle: { color: "rgba(219,231,226,0.70)", fontSize: 16, lineHeight: 26, maxWidth: 610 },
   primary: { minHeight: 174, borderRadius: 34, padding: 24, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", backgroundColor: "#F4E6C7", overflow: "hidden" },
   primaryCopy: { flex: 1, minWidth: 0, paddingRight: 18 },
-  primaryEyebrow: { color: "#A45C36", fontSize: 11, fontWeight: "900", letterSpacing: 2.5 },
-  primaryTitle: { color: "#12271F", fontSize: 30, fontWeight: "900", marginTop: 12, letterSpacing: -0.8 },
-  primaryBody: { color: "rgba(18,39,31,0.68)", fontSize: 14, lineHeight: 20, marginTop: 8 },
+  primaryEyebrow: { color: "#A45C36", fontSize: 10, fontWeight: "900", letterSpacing: 2.5 },
+  primaryTitle: { color: "#12271F", fontSize: 26, fontWeight: "900", marginTop: 12, letterSpacing: -0.8 },
+  primaryBody: { color: "rgba(18,39,31,0.68)", fontSize: 13, lineHeight: 20, marginTop: 8 },
   primaryArrow: { color: "#12271F", fontSize: 38, fontWeight: "600" },
-  sectionLabel: { color: "#CE8C60", fontSize: 11, fontWeight: "900", letterSpacing: 2.8, marginTop: 4 },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "stretch" },
-  card: { flexBasis: "47%", flexGrow: 1, minWidth: 148, minHeight: 174, borderRadius: 26, borderWidth: 1, borderColor: "rgba(202,232,223,0.15)", backgroundColor: "rgba(3,22,20,0.68)", padding: 18 },
+  sectionLabel: { color: "#CE8C60", fontSize: 10, fontWeight: "900", letterSpacing: 2.8, marginTop: 4 },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 13, alignItems: "stretch" },
+  card: { flexBasis: "47%", flexGrow: 1, minWidth: 144, minHeight: 174, borderRadius: 26, borderWidth: 1, borderColor: "rgba(202,232,223,0.15)", backgroundColor: "rgba(3,22,20,0.68)", padding: 18 },
   cardGold: { borderColor: "rgba(241,190,87,0.34)", backgroundColor: "rgba(45,32,13,0.52)" },
   cardAqua: { borderColor: "rgba(83,225,205,0.34)", backgroundColor: "rgba(4,37,33,0.68)" },
-  cardEyebrow: { color: "#74E1C8", fontSize: 9, fontWeight: "900", letterSpacing: 1.8 },
+  cardEyebrow: { color: "#74E1C8", fontSize: 10, fontWeight: "900", letterSpacing: 1.8 },
   cardTitle: { color: "#FFF6E7", fontSize: 20, fontWeight: "900", marginTop: 10 },
-  cardBody: { color: "rgba(226,238,233,0.64)", fontSize: 12, lineHeight: 18, marginTop: 8, paddingRight: 8 },
+  cardBody: { color: "rgba(226,238,233,0.64)", fontSize: 13, lineHeight: 20, marginTop: 8, paddingRight: 8 },
   cardArrow: { color: "#F3C067", fontSize: 22, marginTop: "auto", alignSelf: "flex-end" },
-  legacy: { borderRadius: 24, borderWidth: 1, borderColor: "rgba(117,190,177,0.22)", backgroundColor: "rgba(4,24,22,0.48)", padding: 18, flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 16 },
-  legacyEyebrow: { color: "#78C8B6", fontSize: 9, fontWeight: "900", letterSpacing: 1.7 },
-  legacyTitle: { color: "#EAF4F0", fontSize: 15, fontWeight: "800", marginTop: 5, flexShrink: 1 },
+  legacy: { borderRadius: 21, borderWidth: 1, borderColor: "rgba(117,190,177,0.22)", backgroundColor: "rgba(4,24,22,0.48)", padding: 18, flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 16 },
+  legacyEyebrow: { color: "#78C8B6", fontSize: 10, fontWeight: "900", letterSpacing: 1.7 },
+  legacyTitle: { color: "#EAF4F0", fontSize: 16, fontWeight: "800", marginTop: 5, flexShrink: 1 },
   legacyArrow: { color: "#E9BC68", fontSize: 24 },
   footer: { color: "rgba(198,216,209,0.42)", fontSize: 10, lineHeight: 16, textAlign: "center", paddingHorizontal: 18 },
   h2oCompositor: { flex: 1, position: "relative", overflow: "hidden" },

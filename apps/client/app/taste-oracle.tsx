@@ -9,6 +9,8 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { AquaticSignature } from "../components/aquatic/AquaticSignature";
+import { ConfluenceOracleLens } from "../ui/confluence/ConfluenceOracleLens";
+import { useConfluenceSuggestion } from "../ui/confluence/useConfluenceSuggestion";
 
 type MoodKey = "comfort" | "discovery" | "energy" | "family" | "character" | "light";
 
@@ -156,6 +158,28 @@ export default function TasteOracleScreen() {
     [selectedKey],
   );
 
+  const oracleEvidence = useMemo(
+    () => [
+      { label: "Intention choisie", value: selected.label, kind: "fact" as const },
+      { label: "Intensité éditoriale", value: selected.intensity, kind: "context" as const },
+      { label: "Fraîcheur éditoriale", value: selected.freshness, kind: "context" as const },
+      { label: "Voyage proposé", value: selected.journey, kind: "context" as const },
+    ],
+    [selected],
+  );
+
+  const oracleSuggestion = useMemo(
+    () => `Suivre le courant ${selected.label.toLowerCase()} avec ${selected.dish}, accompagné de ${selected.drink}.`,
+    [selected],
+  );
+
+  const confluenceSuggestion = useConfluenceSuggestion({
+    oracle: "taste",
+    evidence: oracleEvidence,
+    localSuggestion: oracleSuggestion,
+    localHumanBoundary: "Aucune origine, identité culturelle ou préférence sensible n’est déduite. Vous choisissez l’intention ; vous gardez le dernier mot sur le plat.",
+  });
+
   return (
     <AquaticSignature reduceMotion={reduceMotion}>
       <ScrollView
@@ -261,6 +285,16 @@ export default function TasteOracleScreen() {
             ))}
           </View>
         </View>
+
+        <ConfluenceOracleLens
+          accent="#9BEFE1"
+          engineLabel={confluenceSuggestion.engineLabel}
+          title="Pourquoi ce courant vous est proposé"
+          suggestion={confluenceSuggestion.suggestion}
+          evidence={oracleEvidence}
+          humanBoundary={confluenceSuggestion.humanBoundary}
+          footnote={confluenceSuggestion.footnote}
+        />
 
         <View style={styles.promiseCard}>
           <Text style={styles.promiseKicker}>LE GOÛT COMME BOUSSOLE</Text>

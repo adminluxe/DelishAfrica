@@ -103,6 +103,15 @@ function pressureScore(active: number, pending: number, ready: number) {
 return Math.min(100, Math.round(active * 9 + pending * 14 + ready * 6));
 }
 
+// DA_GALA_KITCHEN_PULSE_ZERO_RAW_V1 - never expose internal auth/network keys in the Merchant UI.
+function humanizeKitchenPulseError(raw: unknown) {
+const detail = String(raw || "").trim();
+if (/merchant_oidc_session_required|session restaurateur indisponible/i.test(detail)) return "Connexion Merchant requise pour lire les priorités cuisine.";
+if (/network|fetch|connexion|timeout|temps|http/i.test(detail)) return "Connexion momentanément indisponible. Le dernier état cuisine reste lisible.";
+if (/^[a-z0-9_.:-]+$/i.test(detail) && detail.includes("_")) return "Lecture cuisine momentanément indisponible.";
+return detail || "Impossible de lire la file cuisine.";
+}
+
 export default function KitchenPulseScreen() {
 const [orders, setOrders] = useState<OrderLike[]>([]);
 const [loading, setLoading] = useState(true);
@@ -132,7 +141,7 @@ throw new Error(`Service commandes indisponible (${response.status})`);
 
 setOrders(normalizeOrders(json));
 } catch (err: any) {
-setError(err?.message || "Impossible de lire la file cuisine.");
+setError(humanizeKitchenPulseError(err?.message || "Impossible de lire la file cuisine."));
 } finally {
 setLoading(false);
 setRefreshing(false);
@@ -269,7 +278,7 @@ Lecture cuisine basée sur les commandes existantes. Aucun statut n’est modifi
 {error ? (
 <View style={styles.notice}>
 <Text style={styles.noticeTitle}>Lecture indisponible</Text>
-<Text style={styles.noticeText}>{error}</Text>
+<Text style={styles.noticeText}>{humanizeKitchenPulseError(error)}</Text>
 </View>
 ) : null}
 
@@ -435,7 +444,7 @@ marginBottom: 14,
 },
 statCard: {
 width: "48%",
-borderRadius: 22,
+borderRadius: 21,
 padding: 16,
 backgroundColor: "rgba(255,248,239,0.07)",
 borderWidth: 1,
@@ -457,7 +466,7 @@ gap: 10,
 marginBottom: 14,
 },
 primaryButton: {
-borderRadius: 22,
+borderRadius: 21,
 paddingVertical: 16,
 paddingHorizontal: 18,
 alignItems: "center",
@@ -469,13 +478,13 @@ fontSize: 15,
 fontWeight: "900",
 },
 secondaryButton: {
-borderRadius: 22,
+borderRadius: 21,
 paddingVertical: 15,
 paddingHorizontal: 18,
 alignItems: "center",
 backgroundColor: "rgba(255,248,239,0.08)",
 borderWidth: 1,
-borderColor: "rgba(255,248,239,0.12)",
+borderColor: "rgba(255,248,239,0.13)",
 },
 secondaryButtonText: {
 color: "#FFF8EF",
@@ -510,7 +519,7 @@ fontSize: 20,
 fontWeight: "900",
 },
 notice: {
-borderRadius: 20,
+borderRadius: 21,
 padding: 16,
 backgroundColor: "rgba(255,248,239,0.06)",
 borderWidth: 1,
@@ -529,7 +538,7 @@ lineHeight: 19,
 fontWeight: "700",
 },
 orderRow: {
-borderRadius: 20,
+borderRadius: 21,
 padding: 14,
 backgroundColor: "rgba(255,248,239,0.06)",
 borderWidth: 1,
@@ -575,7 +584,7 @@ fontWeight: "900",
 },
 refreshButton: {
 marginTop: 14,
-borderRadius: 22,
+borderRadius: 21,
 paddingVertical: 15,
 alignItems: "center",
 backgroundColor: "rgba(247,178,103,0.10)",

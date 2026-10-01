@@ -570,6 +570,17 @@ throw new Error(payload?.message || payload?.error || `Signal live indisponible 
 return payload;
 }
 
+// DA_GALA_FALLBACK_ERADICATION_V1 - technical auth/session keys never render raw.
+function humanizeCourierTechnicalState(value: unknown): string {
+  const raw = String(value || "").trim();
+  if (!raw) return "Le terrain n’a pas encore confirmé cette donnée.";
+  if (raw.includes("courier_oidc_session_required") || raw.includes("Session courier indisponible")) return "Identité Courier requise pour charger les données terrain.";
+  if (raw.includes("orders_auth_required")) return "Votre session Courier doit être renouvelée pour continuer.";
+  if (/network request failed|failed to fetch|networkerror/i.test(raw)) return "Connexion terrain momentanément indisponible. Les dernières données confirmées restent visibles.";
+  if (/^[a-z0-9._-]+$/i.test(raw)) return "État terrain momentanément indisponible. Réessayez dans un instant.";
+  return raw;
+}
+
 export default function CourierRealMapScreen() {
 const routeParams = useLocalSearchParams<{ orderId?: string | string[]; publicId?: string | string[] }>();
 const requestedOrderId = normalizeText(
@@ -1008,7 +1019,7 @@ Permission : {guidance?.permission || "non demandée"}
 </Text>
 </View>
 
-{error ? <Text style={styles.error}>{error}</Text> : null}
+{error ? <Text style={styles.error}>{humanizeCourierTechnicalState(error)}</Text> : null}
 
 <TouchableOpacity
 activeOpacity={0.86}

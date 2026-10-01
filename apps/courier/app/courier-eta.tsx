@@ -292,6 +292,17 @@ mode: isPickedUp ? "direct_to_client" : "base_only",
 };
 }
 
+// DA_GALA_ETA_FALLBACK_ERADICATION_V2 - deep ETA surfaces never expose technical auth/session keys.
+function humanizeCourierEtaState(value: unknown): string {
+  const raw = String(value || "").trim();
+  if (!raw) return "Le terrain n’a pas encore confirmé cette donnée.";
+  if (raw.includes("courier_oidc_session_required") || raw.includes("Session courier indisponible")) return "Identité Courier requise pour charger l’ETA et les données terrain.";
+  if (raw.includes("orders_auth_required") || /\b(401|403)\b/.test(raw)) return "Votre session Courier doit être renouvelée pour continuer.";
+  if (/network request failed|failed to fetch|networkerror/i.test(raw)) return "Connexion terrain momentanément indisponible. Les dernières données confirmées restent visibles.";
+  if (/^[a-z0-9._-]+$/i.test(raw)) return "État terrain momentanément indisponible. Réessayez dans un instant.";
+  return raw;
+}
+
 export default function CourierEtaScreen() {
 const [loadingLocation, setLoadingLocation] = useState(false);
 const [loadingMission, setLoadingMission] = useState(false);
@@ -378,7 +389,7 @@ totalCount: 0,
 source: "error",
 });
 setEta(null);
-setMissionError(message);
+setMissionError(humanizeCourierEtaState(message));
 } finally {
 setLoadingMission(false);
 }
@@ -639,7 +650,12 @@ Mise à jour :{" "}
 ? new Date(etaToShow.capturedAt).toLocaleTimeString()
 : "pas encore calculée"}
 </Text>
-{locationError ? <Text style={styles.error}>{locationError}</Text> : null}
+{locationError ? (
+<View style={styles.daStateNotice}>
+<Text style={styles.daStateNoticeKicker}>POSITION TERRAIN</Text>
+<Text style={styles.daStateNoticeText}>{humanizeCourierEtaState(locationError)}</Text>
+</View>
+) : null}
 </View>
 </>
 ) : null}
@@ -677,7 +693,12 @@ L’ETA s’active dès qu’une commande est reçue, acceptée, prête ou en ro
 </View>
 ) : null}
 
-{missionError ? <Text style={styles.error}>{missionError}</Text> : null}
+{missionError ? (
+<View style={styles.daStateNotice}>
+<Text style={styles.daStateNoticeKicker}>IDENTITÉ / RÉSEAU</Text>
+<Text style={styles.daStateNoticeText}>{humanizeCourierEtaState(missionError)}</Text>
+</View>
+) : null}
 </View>
 )}
 
@@ -930,6 +951,9 @@ fontSize: 14,
 lineHeight: 20,
 fontWeight: "600",
 },
+daStateNotice: { backgroundColor: "rgba(142,240,179,0.07)", borderWidth: 1, borderColor: "rgba(142,240,179,0.22)", borderRadius: 18, padding: 14, gap: 5 },
+daStateNoticeKicker: { color: "#8EF0B3", fontSize: 10, fontWeight: "900", letterSpacing: 1.3 },
+daStateNoticeText: { color: "#DFFBE8", fontSize: 13, lineHeight: 19, fontWeight: "800" },
 error: {
 color: "#FFD2D2",
 fontSize: 13,

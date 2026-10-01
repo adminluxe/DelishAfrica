@@ -1,3 +1,19 @@
+// DA_GALA_TACTILE_GRAVITY_ANCHOR_LADDER_V1 - heavy actions stay bottom-grounded while lighter controls progressively recenter their press pivot; resting surfaces and business behavior remain frozen.
+// DA_GALA_TACTILE_ANCHOR_GROUNDED_CONTACT_V1 - pressed deformation is grounded to the bottom contact edge; resting surfaces and business behavior remain frozen.
+// DA_GALA_TACTILE_MASS_ANISOTROPIC_COMPRESSION_V1 - area-equivalent directional compression on the validated contact plane; resting visuals and business behavior remain frozen.
+// DA_GALA_TACTILE_DEPTH_CONTACT_PLANE_V1 - directional pressed-depth added to the validated three-tier press grammar; resting visuals and business behavior remain frozen.
+// DA_GALA_TACTILE_CADENCE_HIERARCHICAL_PRESS_GRAMMAR_V1 - three-weight press cadence on known Client Orders + Merchant Ops interactions; resting visuals and business behavior stay frozen.
+// DA_GALA_TACTILE_SILENCE_SOFT_COMPRESSION_R1_HF1_V1 - live-tree-aware primary-action discovery + quiet pressed response; resting surfaces and business behavior stay frozen.
+// DA_GALA_FRAMELESS_RHYTHM_ONE_SURFACE_V1 - final framing reduction: anchors stay fixed while residual outlines dissolve into one continuous field.
+// DA_GALA_NEGATIVE_SPACE_SIGNAL_FIRST_V1 - final optical quieting: information leads, support surfaces recede; Courier and shared materials remain frozen.
+// DA_GALA_UNIFIED_CADENCE_R1_V1 - exact-tree convergence: Client + Merchant refine toward Courier benchmark; shared materials and Courier stay frozen.
+// DA_GALA_SILENT_CHROME_V1 - global subtraction pass: visual chrome recedes, decision anchors and operational signals stay intact; static styles only.
+// DA_GALA_VELVET_CONTRAST_V1 - focal gravity: dark secondary planes recede while human-decision anchors remain luminous; static styles only.
+// DA_GALA_SELECTIVE_FOCUS_V1 - selective optical focus: primary actions stay crisp while secondary material dissolves; static styles only.
+// DA_GALA_QUIET_LUXURY_V1 - zero-cost optical rhythm polish: softer hierarchy, quieter edges, fewer decorative signals; static styles only.
+// DA_GALA_EDGELESS_CONTINUITY_V1 - last-mile surface polish dissolves legacy spectral leaks and reduces card-edge fatigue; presentation only.
+// DA_GALA_INTERACTION_OSMOSIS_V1 - shared actions inherit each app chroma while deep surfaces breathe more freely; no new timer, dependency or business mutation.
+// DA_GALA_DEEP_OSMOSIS_V1 - deep navigation adopts the same emerald/amber living field as the hero surfaces; translucent cards preserve water continuity without changing business logic.
 import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -167,6 +183,17 @@ if (payload?.order) return [payload.order];
 return [];
 }
 
+// DA_GALA_MERCHANT_OPS_HUMAN_STATE_V2 - supervision copy never renders raw auth/network keys.
+function humanizeMerchantOpsState(value: unknown): string {
+  const raw = String(value || "").trim();
+  if (!raw) return "Supervision momentanément indisponible. Réessayez dans un instant.";
+  if (raw.includes("merchant_oidc_session_required") || raw.includes("Session restaurateur indisponible")) return "Identité Merchant requise pour ouvrir la supervision opérationnelle.";
+  if (raw.includes("orders_auth_required") || /\b(401|403)\b/.test(raw)) return "Votre session Merchant doit être renouvelée pour continuer.";
+  if (/network request failed|failed to fetch|networkerror/i.test(raw)) return "Connexion au service Merchant momentanément indisponible. Les dernières données locales restent préservées.";
+  if (/^[a-z0-9._-]+$/i.test(raw)) return "Supervision momentanément indisponible. Réessayez dans un instant.";
+  return raw;
+}
+
 export default function OpsDashboardLiteScreen() {
 const [orders, setOrders] = useState<DemoOrder[]>([]);
 const [refreshing, setRefreshing] = useState(false);
@@ -187,7 +214,7 @@ setMessage(`${list.length} commande(s) synchronisée(s).`);
 const reason = String(error?.message || error || '');
 const needsSession = reason.includes('merchant_oidc_session_required') || reason.includes('Session restaurateur indisponible');
 setSessionRequired(needsSession);
-setMessage(needsSession ? 'Connexion Merchant requise · aucune session simulée.' : `Supervision momentanément indisponible · ${reason}`);
+setMessage(needsSession ? 'Connexion Merchant requise · aucune session simulée.' : humanizeMerchantOpsState(reason));
 } finally {
 setRefreshing(false);
 setLoading(false);
@@ -261,7 +288,7 @@ count: number;
 const active = selectedStatus === id;
 return (
 <Pressable
-style={[styles.filterButton, active && styles.filterButtonActive]}
+style={({ pressed }) => [styles.filterButton, active && styles.filterButtonActive, pressed && styles.daPressMicro]}
 onPress={() => setSelectedStatus(id)}
 >
 <Text style={[styles.filterLabel, active && styles.filterLabelActive]}>{label}</Text>
@@ -392,7 +419,7 @@ Décider vite, voir loin : flux, pression cuisine et remise au même endroit.
 </View>
 </View>
 
-<Pressable style={styles.refreshButton} onPress={sessionRequired ? () => router.push("/auth-session" as any) : load}>
+<Pressable style={({ pressed }) => [styles.refreshButton, pressed && styles.daPressSecondary]} onPress={sessionRequired ? () => router.push("/auth-session" as any) : load}>
 {refreshing || loading ? (
 <ActivityIndicator />
 ) : (
@@ -437,11 +464,11 @@ Le control room privilégie la prochaine décision utile et conserve le contexte
 </Text>
 </View>
 
-<Pressable style={styles.secondaryButton} onPress={() => router.push("/orders" as any)}>
+<Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.daPressPrimary]} onPress={() => router.push("/orders" as any)}>
 <Text style={styles.secondaryButtonText}>Retour cockpit cuisine</Text>
 </Pressable>
 
-<Pressable style={styles.backButton} onPress={() => router.replace("/")}>
+<Pressable style={({ pressed }) => [styles.backButton, pressed && styles.daPressMicro]} onPress={() => router.replace("/")}>
 <Text style={styles.backText}>Retour espace partenaire</Text>
 </Pressable>
 </ScrollView>
@@ -450,15 +477,15 @@ Le control room privilégie la prochaine décision utile et conserve le contexte
 }
 
 const styles = StyleSheet.create({
-aquaRipple: { position: "absolute", top: 226, right: -28, width: 126, height: 22, borderRadius: 999, backgroundColor: "rgba(120, 245, 255, 0.020)", borderWidth: 1, borderColor: "rgba(230, 255, 250, 0.050)", transform: [{ rotate: "-14deg" }, { scaleX: 1.22 }] },
-aquaFoam: { position: "absolute", top: 408, left: -118, width: 126, height: 126, borderRadius: 999, backgroundColor: "rgba(255, 246, 230, 0.014)", borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.038)" },
-aquaVeil: { position: "absolute", top: -84, right: -132, width: 168, height: 168, borderRadius: 999, backgroundColor: "rgba(120, 245, 255, 0.018)", borderWidth: 1, borderColor: "rgba(214, 255, 248, 0.046)", transform: [{ scaleX: 1.24 }] },
-aquaDrop: { position: "absolute", top: 126, left: -34, width: 44, height: 44, borderRadius: 999, backgroundColor: "rgba(255, 255, 255, 0.014)", borderWidth: 1, borderColor: "rgba(225, 255, 248, 0.040)" },
-safe: { flex: 1, backgroundColor: "#05080D" },
+aquaRipple: { position: "absolute", top: 226, right: -28, width: 126, height: 22, borderRadius: 999, backgroundColor: "rgba(105, 216, 193, 0.006)", borderWidth: 0.5, borderColor: "rgba(105, 216, 193, 0.017)", transform: [{ rotate: "-14deg" }, { scaleX: 1.22 }] },
+aquaFoam: { position: "absolute", top: 408, left: -118, width: 126, height: 126, borderRadius: 999, backgroundColor: "rgba(255, 246, 230, 0.006)", borderWidth: 0.5, borderColor: "rgba(255, 255, 255, 0.018)" },
+aquaVeil: { position: "absolute", top: -84, right: -132, width: 168, height: 168, borderRadius: 999, backgroundColor: "rgba(233, 166, 75, 0.005)", borderWidth: 0.5, borderColor: "rgba(233, 166, 75, 0.015)", transform: [{ scaleX: 1.24 }] },
+aquaDrop: { position: "absolute", top: 126, left: -34, width: 44, height: 44, borderRadius: 999, backgroundColor: "rgba(255, 255, 255, 0.006)", borderWidth: 0.5, borderColor: "rgba(225, 255, 248, 0.018)" },
+safe: { flex: 1, backgroundColor: "transparent" },
 page: { padding: 18, paddingBottom: 84 },
 header: { marginBottom: 22 },
 brand: {
-color: "#8AB9FF",
+color: "#E9A64B",
 fontSize: 20,
 fontWeight: "900",
 letterSpacing: 7,
@@ -471,15 +498,15 @@ lineHeight: 48,
 fontWeight: "900",
 },
 subtitle: {
-color: "#B8C2D6",
+color: "rgba(220,203,184,0.78)",
 fontSize: 17,
 lineHeight: 26,
 marginTop: 12,
 fontWeight: "600",
 },
 hero: {
-backgroundColor: "#0A1520",
-borderColor: "rgba(118,239,223,0.28)",
+backgroundColor: "rgba(44,29,18,0.63)",
+borderColor: "rgba(233,166,75,0.070)",
 borderWidth: 1,
 borderRadius: 34,
 padding: 22,
@@ -487,13 +514,13 @@ marginBottom: 18,
 },
 heroTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
 heroKicker: {
-color: "#8AB9FF",
+color: "#E9A64B",
 fontSize: 14,
 fontWeight: "900",
 letterSpacing: 1.2,
 },
 live: {
-color: "#8AB9FF",
+color: "#E9A64B",
 borderColor: "rgba(138,185,255,0.55)",
 borderWidth: 1,
 borderRadius: 999,
@@ -511,7 +538,7 @@ fontWeight: "900",
 marginTop: 24,
 },
 heroText: {
-color: "#C8D1E4",
+color: "rgba(222,204,184,0.82)",
 fontSize: 17,
 lineHeight: 26,
 fontWeight: "700",
@@ -525,7 +552,7 @@ marginTop: 16,
 metric: {
 flex: 1,
 backgroundColor: "rgba(255,255,255,0.06)",
-borderColor: "rgba(255,255,255,0.10)",
+borderColor: "rgba(255,255,255,0.008)",
 borderWidth: 1,
 borderRadius: 20,
 padding: 14,
@@ -536,7 +563,7 @@ metric_ok: { borderColor: "rgba(112,255,168,0.28)" },
 metric_done: { opacity: 0.82 },
 metricValue: { color: "#FFFFFF", fontSize: 30, fontWeight: "900" },
 metricLabel: {
-color: "#AEB9CE",
+color: "rgba(196,177,158,0.76)",
 fontSize: 12,
 lineHeight: 16,
 marginTop: 6,
@@ -546,7 +573,7 @@ textTransform: "uppercase",
 letterSpacing: 1.8,
 },
 refreshButton: {
-borderColor: "#8AB9FF",
+borderColor: "#E9A64B",
 borderWidth: 2,
 borderRadius: 22,
 paddingVertical: 18,
@@ -559,7 +586,7 @@ fontSize: 18,
 fontWeight: "900",
 },
 message: {
-color: "#8AB9FF",
+color: "#E9A64B",
 fontSize: 14,
 lineHeight: 20,
 fontWeight: "800",
@@ -572,8 +599,8 @@ gap: 10,
 marginBottom: 24,
 },
 filterButton: {
-backgroundColor: "#111A2C",
-borderColor: "rgba(255,255,255,0.10)",
+backgroundColor: "rgba(48,32,20,0.53)",
+borderColor: "rgba(255,255,255,0.008)",
 borderWidth: 1,
 borderRadius: 18,
 paddingHorizontal: 14,
@@ -581,11 +608,11 @@ paddingVertical: 12,
 minWidth: 96,
 },
 filterButtonActive: {
-backgroundColor: "#8AB9FF",
-borderColor: "#8AB9FF",
+backgroundColor: "#E9A64B",
+borderColor: "#E9A64B",
 },
 filterLabel: {
-color: "#B8C2D6",
+color: "rgba(220,203,184,0.78)",
 fontSize: 12,
 fontWeight: "900",
 letterSpacing: 1.8,
@@ -599,7 +626,7 @@ fontWeight: "900",
 marginTop: 4,
 },
 filterLabelActive: {
-color: "#07101E",
+color: "#211307",
 },
 sectionHead: {
 marginTop: 2,
@@ -611,14 +638,14 @@ fontSize: 32,
 fontWeight: "900",
 },
 sectionSubtitle: {
-color: "#9AA5BA",
+color: "rgba(181,164,146,0.70)",
 fontSize: 16,
 fontWeight: "700",
 marginTop: 5,
 },
 orderRow: {
-backgroundColor: "#111A2C",
-borderColor: "rgba(255,255,255,0.10)",
+backgroundColor: "rgba(48,32,20,0.53)",
+borderColor: "rgba(255,255,255,0.008)",
 borderWidth: 1,
 borderRadius: 26,
 padding: 18,
@@ -637,7 +664,7 @@ lineHeight: 33,
 fontWeight: "900",
 },
 orderMeta: {
-color: "#B8C2D6",
+color: "rgba(220,203,184,0.78)",
 fontSize: 16,
 lineHeight: 23,
 fontWeight: "800",
@@ -655,10 +682,10 @@ status_ok: {
 backgroundColor: "#0A3A21",
 },
 status_done: {
-backgroundColor: "#1E293D",
+backgroundColor: "rgba(51,42,32,0.78)",
 },
 status_neutral: {
-backgroundColor: "#1C2434",
+backgroundColor: "rgba(48,38,30,0.78)",
 },
 statusText: {
 color: "#FFFFFF",
@@ -677,7 +704,7 @@ borderRadius: 18,
 padding: 14,
 },
 infoKicker: {
-color: "#8AB9FF",
+color: "#E9A64B",
 fontSize: 12,
 fontWeight: "900",
 letterSpacing: 1.2,
@@ -692,15 +719,15 @@ lineHeight: 22,
 fontWeight: "800",
 },
 address: {
-color: "#AEB9CE",
+color: "rgba(196,177,158,0.76)",
 fontSize: 15,
 lineHeight: 23,
 fontWeight: "700",
 marginTop: 14,
 },
 emptyCard: {
-backgroundColor: "#111A2C",
-borderColor: "rgba(255,255,255,0.10)",
+backgroundColor: "rgba(48,32,20,0.53)",
+borderColor: "rgba(255,255,255,0.008)",
 borderWidth: 1,
 borderRadius: 26,
 padding: 26,
@@ -718,7 +745,7 @@ fontWeight: "900",
 textAlign: "center",
 },
 emptyText: {
-color: "#AEB9CE",
+color: "rgba(196,177,158,0.76)",
 fontSize: 16,
 lineHeight: 24,
 textAlign: "center",
@@ -748,8 +775,8 @@ lineHeight: 23,
 fontWeight: "700",
 },
 secondaryButton: {
-backgroundColor: "#111A2C",
-borderColor: "rgba(255,255,255,0.14)",
+backgroundColor: "rgba(48,32,20,0.53)",
+borderColor: "rgba(255,255,255,0.014)",
 borderWidth: 1,
 borderRadius: 22,
 paddingVertical: 18,
@@ -766,7 +793,7 @@ alignItems: "center",
 paddingVertical: 20,
 },
 backText: {
-color: "#8AB9FF",
+color: "#E9A64B",
 fontSize: 18,
 fontWeight: "900",
 },
@@ -779,9 +806,9 @@ paddingHorizontal: 16,
 paddingVertical: 14,
 marginBottom: 16,
 borderRadius: 22,
-backgroundColor: "rgba(6,22,34,0.88)",
+backgroundColor: "rgba(31,22,15,0.575)",
 borderWidth: 1,
-borderColor: "rgba(118,239,223,0.26)",
+borderColor: "rgba(105,216,193,0.034)",
 },
 futureSignal: {
 width: 11,
@@ -795,4 +822,20 @@ shadowRadius: 12,
 futureRailKicker: { color: "#76EFDF", fontSize: 9, fontWeight: "900", letterSpacing: 1.8 },
 futureRailText: { color: "rgba(235,250,255,0.76)", fontSize: 12, lineHeight: 17, fontWeight: "700", marginTop: 4 },
 futureRailMeta: { color: "#FFD27A", fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
+
+  daPressPrimary: {
+    opacity: 0.92,
+    transformOrigin: "center bottom",
+    transform: [{ scaleX: 0.990 }, { scaleY: 0.982 }, { translateY: 1 }],
+  },
+  daPressSecondary: {
+    opacity: 0.96,
+    transformOrigin: "center 75%",
+    transform: [{ scaleX: 0.994 }, { scaleY: 0.990 }, { translateY: 0.55 }],
+  },
+  daPressMicro: {
+    opacity: 0.975,
+    transformOrigin: "center center",
+    transform: [{ scaleX: 0.997 }, { scaleY: 0.995 }, { translateY: 0.25 }],
+  }
 });

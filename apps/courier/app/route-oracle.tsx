@@ -18,6 +18,11 @@ import {
   syncCourierPresence,
 } from "../utils/daPresenceStore";
 import { WaterRouteCurrent } from "../ui/water/WaterRouteCurrent";
+// DA_GALA_CAPILLARY_FUSION_V1 - Route Oracle keeps its mature dark-water grammar while light mission surfaces receive restrained capillary refraction; no new timer or business mutation.
+// DA_GALA_OSMOTIC_SEAM_V1 - Courier remains the visual reference: only edge contrast and caustic hardness are reduced, structure is preserved.
+// DA_GALA_PHASE_DECOHERENCE_V1 - multi-axis phase drift and boundary evaporation dissolve residual layer geometry while preserving business truth and existing animation clocks.
+import { ConfluenceOracleLens } from "../ui/confluence/ConfluenceOracleLens";
+import { useConfluenceSuggestion } from "../ui/confluence/useConfluenceSuggestion";
 
 const RAW_API =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
@@ -220,6 +225,59 @@ function findPriorityOffer(payload: AnyRecord): OfferView | null {
       if (b.proposalStatus === "accepted" && a.proposalStatus !== "accepted") return 1;
       return (b.score ?? -1) - (a.score ?? -1);
     })[0] ?? null;
+}
+
+type CourierHandoffView = { label: string; kitchen: string; terrain: string; bridge: string; proof: string; active: boolean };
+
+function courierHandoffView(offer: OfferView): CourierHandoffView {
+  const status = clean(offer.order?.status || "pending").toLowerCase();
+  const eta = offer.etaMin;
+  const etaText = eta !== null ? `${Math.max(1, Math.round(eta))} min` : "non reçue";
+
+  if (status === "picked_up" || status === "delivered") return {
+    label: "RELAIS EFFECTUÉ", kitchen: "Remise confirmée", terrain: status === "delivered" ? "Livraison terminée" : "Trajet client actif",
+    bridge: "Le retrait n’est plus une estimation : la commande a franchi le relais restaurant → coursier.",
+    proof: `Preuve : statut serveur ${status}.`, active: true,
+  };
+  if (status === "ready") return {
+    label: "FENÊTRE DE RETRAIT OUVERTE", kitchen: "Commande prête", terrain: eta !== null ? `Approche estimée · ${etaText}` : "ETA dispatch non reçue",
+    bridge: "La cuisine est prête. L’ETA aide à lire l’approche, mais seul votre geste explicite confirme la récupération.",
+    proof: eta !== null ? "Preuve : statut ready + ETA dispatch." : "Preuve : statut ready uniquement.", active: true,
+  };
+  if (status === "accepted") return {
+    label: "CUISINE EN COURS", kitchen: "Préparation confirmée", terrain: eta !== null ? `ETA mission estimée · ${etaText}` : "Approche non chiffrée",
+    bridge: "Ne courez pas après une estimation : Route Oracle garde la proposition lisible jusqu’au vrai signal prêt.",
+    proof: eta !== null ? "Preuve : statut accepted + ETA dispatch estimée." : "Preuve : statut accepted uniquement.", active: true,
+  };
+  return {
+    label: "RETRAIT FERMÉ", kitchen: "Commande non prête", terrain: eta !== null ? `ETA mission estimée · ${etaText}` : "Aucun départ requis",
+    bridge: "Le dispatch peut proposer une mission ; il ne transforme pas une commande non prête en ordre de départ.",
+    proof: eta !== null ? `Preuve : statut ${status} + ETA dispatch.` : `Preuve : statut serveur ${status}.`, active: false,
+  };
+}
+
+function CourierHandoffCurrent({ offer }: { offer: OfferView }) {
+  const view = courierHandoffView(offer);
+  return (
+    <View style={styles.confluenceCard}>
+      <View style={styles.confluenceTop}>
+        <View style={styles.flex}>
+          <Text style={styles.confluenceKicker}>CONFLUENCE · HANDOFF CURRENT</Text>
+          <Text style={styles.confluenceTitle}>Lire la remise avant d’agir.</Text>
+        </View>
+        <View style={[styles.confluenceBadge, view.active && styles.confluenceBadgeActive]}>
+          <Text style={[styles.confluenceBadgeText, view.active && styles.confluenceBadgeTextActive]}>{view.label}</Text>
+        </View>
+      </View>
+      <View style={styles.confluenceStreams}>
+        <View style={styles.confluenceStream}><Text style={styles.confluenceStreamLabel}>CUISINE</Text><Text style={styles.confluenceStreamValue}>{view.kitchen}</Text></View>
+        <View style={styles.confluenceJoin}><View style={styles.confluenceJoinLine} /><View style={[styles.confluenceJoinDrop, view.active && styles.confluenceJoinDropActive]} /><View style={styles.confluenceJoinLine} /></View>
+        <View style={styles.confluenceStream}><Text style={styles.confluenceStreamLabel}>ROUTE</Text><Text style={styles.confluenceStreamValue}>{view.terrain}</Text></View>
+      </View>
+      <Text style={styles.confluenceBridge}>{view.bridge}</Text>
+      <Text style={styles.confluenceProof}>{view.proof}</Text>
+    </View>
+  );
 }
 
 async function postJson(path: string, body: AnyRecord = {}): Promise<AnyRecord> {
@@ -596,6 +654,43 @@ export default function RouteOracleScreen() {
   const proposalReady = state.offer?.proposalStatus === "proposed";
   const proposalAccepted = state.offer?.proposalStatus === "accepted";
 
+  const oracleLens = useMemo(() => {
+    const offer = state.offer;
+    if (!offer) return null;
+    const handoff = courierHandoffView(offer);
+    const status = clean(offer.order?.status || "pending").toLowerCase();
+    const etaLabel = offer.etaMin !== null ? `${Math.max(1, Math.round(offer.etaMin))} min` : "Non reçue";
+    const suggestion =
+      status === "ready"
+        ? "La cuisine est prête : utilisez l’ETA comme contexte, puis confirmez le retrait uniquement quand il a réellement eu lieu."
+        : status === "accepted"
+          ? "La cuisine prépare encore : gardez la mission lisible et attendez le vrai signal prêt avant de traiter la remise comme ouverte."
+          : status === "picked_up" || status === "delivered"
+            ? "Le relais est déjà confirmé : ne rejouez aucune décision de retrait."
+            : "Le dispatch peut proposer une mission, mais aucun signal ne justifie encore de traiter le retrait comme ouvert.";
+
+    return {
+      suggestion,
+      evidence: [
+        { label: "Statut commande", value: status, kind: "fact" as const },
+        { label: "Fenêtre de remise", value: handoff.label, kind: "context" as const },
+        { label: "ETA dispatch", value: etaLabel, kind: offer.etaMin !== null ? "estimate" as const : "context" as const },
+        { label: "Score dispatch", value: offer.score !== null ? `${Math.round(offer.score)}/100` : "Non reçu", kind: offer.score !== null ? "estimate" as const : "context" as const },
+      ],
+    };
+  }, [state.offer]);
+
+  const confluenceSuggestion = useConfluenceSuggestion({
+    oracle: "route",
+    evidence: oracleLens?.evidence ?? [],
+    localSuggestion:
+      oracleLens?.suggestion ??
+      "Aucune proposition active : attendre une preuve dispatch avant toute lecture.",
+    localHumanBoundary:
+      "Cette lecture n’accepte, ne récupère et ne livre aucune mission à votre place. Les trois gestes restent explicitement humains.",
+    enabled: Boolean(oracleLens),
+  });
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView
@@ -608,7 +703,9 @@ export default function RouteOracleScreen() {
           />
         }
       >
-        <View style={styles.hero}>
+                <View style={styles.hero}>
+          <View pointerEvents="none" style={styles.heroSubsurfaceVeil} />
+          <View pointerEvents="none" style={styles.heroCausticTrace} />
           <Text style={styles.brand}>DELISHAFRICA® · COURIER</Text>
           <Text style={styles.title}>Route Oracle</Text>
           <Text style={styles.subtitle}>
@@ -672,8 +769,12 @@ export default function RouteOracleScreen() {
           onOpen={proposalAccepted ? () => router.push("/orders" as any) : undefined}
         />
 
+        {state.offer ? <CourierHandoffCurrent offer={state.offer} /> : null}
+
         {!state.online ? (
-          <View style={styles.presenceCard}>
+                    <View style={styles.presenceCard}>
+            <View pointerEvents="none" style={styles.lightSurfaceVeil} />
+            <View pointerEvents="none" style={styles.lightSurfaceCaustic} />
             <Text style={styles.sectionKicker}>PRÉSENCE TERRAIN</Text>
             <Text style={styles.cardTitle}>Entrez dans le radar du dispatch.</Text>
             <Text style={styles.body}>
@@ -738,7 +839,9 @@ export default function RouteOracleScreen() {
 
         {state.offer ? (
           <>
-            <View style={styles.offerCard}>
+                        <View style={styles.offerCard}>
+              <View pointerEvents="none" style={styles.lightSurfaceVeil} />
+              <View pointerEvents="none" style={styles.lightSurfaceCaustic} />
               <View style={styles.offerTop}>
                 <View style={styles.flex}>
                   <Text style={styles.sectionKicker}>PROPOSITION CIBLÉE</Text>
@@ -764,6 +867,18 @@ export default function RouteOracleScreen() {
                 ))}
               </View>
             </View>
+
+            {oracleLens ? (
+              <ConfluenceOracleLens
+                accent="#6EF0B0"
+                engineLabel={confluenceSuggestion.engineLabel}
+                title="Route Oracle explique avant de proposer"
+                suggestion={confluenceSuggestion.suggestion}
+                evidence={oracleLens.evidence}
+                humanBoundary={confluenceSuggestion.humanBoundary}
+                footnote={confluenceSuggestion.footnote}
+              />
+            ) : null}
 
             <View style={styles.whyCard}>
               <Text style={styles.sectionKicker}>POURQUOI VOUS ?</Text>
@@ -809,7 +924,9 @@ export default function RouteOracleScreen() {
             ) : null}
 
             {proposalAccepted ? (
-              <View style={styles.acceptedCard}>
+                            <View style={styles.acceptedCard}>
+                <View pointerEvents="none" style={styles.lightSurfaceVeil} />
+                <View pointerEvents="none" style={styles.lightSurfaceCaustic} />
                 <Text style={styles.acceptedKicker}>MISSION CONFIRMÉE</Text>
                 <Text style={styles.acceptedTitle}>La mission est à vous.</Text>
                 <Text style={styles.acceptedText}>
@@ -842,15 +959,37 @@ export default function RouteOracleScreen() {
 }
 
 const styles = StyleSheet.create({
+  confluenceCard: { borderRadius: 26, padding: 16, backgroundColor: "rgba(4, 40, 30, 0.89)", borderWidth: 1, borderColor: "rgba(110,240,176,0.20)", gap: 13 },
+  confluenceTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 },
+  confluenceKicker: { color: "#6EF0B0", fontSize: 9, fontWeight: "900", letterSpacing: 1.6 },
+  confluenceTitle: { color: "#FFF8E8", fontSize: 16, lineHeight: 21, fontWeight: "900", marginTop: 5 },
+  confluenceBadge: { maxWidth: 150, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 6, borderWidth: 1, borderColor: "rgba(110,240,176,0.13)", backgroundColor: "rgba(255,255,255,0.035)" },
+  confluenceBadgeActive: { borderColor: "rgba(110,240,176,0.42)", backgroundColor: "rgba(23,105,77,0.28)" },
+  confluenceBadgeText: { color: "rgba(255,248,232,0.54)", fontSize: 8.5, lineHeight: 11, fontWeight: "900", letterSpacing: 0.6, textAlign: "center" },
+  confluenceBadgeTextActive: { color: "#89F4C2" },
+  confluenceStreams: { flexDirection: "row", alignItems: "stretch", gap: 7 },
+  confluenceStream: { flex: 1, minHeight: 66, borderRadius: 16, padding: 10, backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1, borderColor: "rgba(110,240,176,0.08)" },
+  confluenceStreamLabel: { color: "rgba(255,248,232,0.50)", fontSize: 8.5, fontWeight: "900", letterSpacing: 1.1 },
+  confluenceStreamValue: { color: "#FFF8E8", fontSize: 12.5, lineHeight: 17, fontWeight: "800", marginTop: 6 },
+  confluenceJoin: { width: 26, alignItems: "center", justifyContent: "center" },
+  confluenceJoinLine: { width: 1, flex: 1, backgroundColor: "rgba(110,240,176,0.08)" },
+  confluenceJoinDrop: { width: 11, height: 11, borderTopLeftRadius: 7, borderTopRightRadius: 7, borderBottomLeftRadius: 7, borderBottomRightRadius: 3, borderWidth: 1, borderColor: "rgba(110,240,176,0.30)", backgroundColor: "rgba(110,240,176,0.08)", transform: [{ rotate: "45deg" }] },
+  confluenceJoinDropActive: { borderColor: "rgba(137,244,194,0.78)", backgroundColor: "rgba(137,244,194,0.26)" },
+  confluenceBridge: { color: "rgba(255,248,232,0.74)", fontSize: 12, lineHeight: 18, fontWeight: "700" },
+  confluenceProof: { color: "rgba(255,248,232,0.44)", fontSize: 9.5, lineHeight: 14, fontWeight: "700" },
   safe: { flex: 1, backgroundColor: "#001C14" },
   content: { padding: 22, paddingBottom: 48, gap: 18 },
   hero: {
+    position: "relative",
+    overflow: "hidden",
     borderRadius: 34,
     padding: 28,
-    backgroundColor: "#062B20",
+    backgroundColor: "rgba(6,43,32,0.89)",
     borderWidth: 1,
-    borderColor: "rgba(110,240,176,0.34)",
+    borderColor: "rgba(110,240,176,0.21)",
   },
+  heroSubsurfaceVeil: { position: "absolute", width: 338, height: 128, right: -126, top: 118, borderTopLeftRadius: 150, borderTopRightRadius: 42, borderBottomRightRadius: 130, borderBottomLeftRadius: 34, backgroundColor: "rgba(110,240,176,0.050)", transform: [{ rotate: "-4deg" }], shadowColor: "#6EF0B0", shadowOpacity: 0.05, shadowRadius: 26, shadowOffset: { width: 0, height: 0 } },
+  heroCausticTrace: { position: "absolute", width: 176, height: 1, right: 34, top: 202, borderRadius: 99, backgroundColor: "rgba(232,255,243,0.08)", transform: [{ rotate: "-4deg" }], shadowColor: "#DFFFF0", shadowOpacity: 0.08, shadowRadius: 11, shadowOffset: { width: 0, height: 0 } },
   brand: { color: "#6EF0B0", fontSize: 13, fontWeight: "900", letterSpacing: 4 },
   title: {
     color: "#FFF8E8",
@@ -868,9 +1007,9 @@ const styles = StyleSheet.create({
   },
   contractRow: {
     marginTop: 24,
-    borderRadius: 22,
+    borderRadius: 21,
     padding: 18,
-    backgroundColor: "rgba(255,255,255,0.045)",
+    backgroundColor: "rgba(255,255,255,0.050)",
     flexDirection: "row",
     gap: 14,
     alignItems: "center",
@@ -891,7 +1030,9 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginTop: 6,
   },
-  presenceCard: { borderRadius: 30, padding: 25, backgroundColor: "#E7FFF3" },
+  presenceCard: { position: "relative", overflow: "hidden", borderRadius: 30, padding: 25, backgroundColor: "rgba(231,255,243,0.89)", borderWidth: 1, borderColor: "rgba(110,240,176,0.08)" },
+  lightSurfaceVeil: { position: "absolute", width: 270, height: 110, right: -82, top: 52, borderTopLeftRadius: 122, borderTopRightRadius: 38, borderBottomRightRadius: 108, borderBottomLeftRadius: 30, backgroundColor: "rgba(23,123,89,0.050)", transform: [{ rotate: "-5deg" }], shadowColor: "#6EF0B0", shadowOpacity: 0.040, shadowRadius: 24, shadowOffset: { width: 0, height: 0 } },
+  lightSurfaceCaustic: { position: "absolute", width: 146, height: 1, right: 28, top: 122, borderRadius: 99, backgroundColor: "rgba(255,255,255,0.21)", transform: [{ rotate: "-5deg" }], shadowColor: "#FFFFFF", shadowOpacity: 0.11, shadowRadius: 10, shadowOffset: { width: 0, height: 0 } },
   sectionKicker: {
     color: "#157B59",
     fontSize: 12,
@@ -914,7 +1055,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     marginTop: 22,
-    borderRadius: 22,
+    borderRadius: 21,
     minHeight: 62,
     alignItems: "center",
     justifyContent: "center",
@@ -924,14 +1065,14 @@ const styles = StyleSheet.create({
   primaryText: { color: "#001E15", fontSize: 18, fontWeight: "900" },
   secondaryButton: {
     marginTop: 12,
-    borderRadius: 22,
+    borderRadius: 21,
     minHeight: 58,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 20,
     borderWidth: 1,
-    borderColor: "rgba(110,240,176,0.32)",
-    backgroundColor: "rgba(110,240,176,0.06)",
+    borderColor: "rgba(110,240,176,0.34)",
+    backgroundColor: "rgba(110,240,176,0.050)",
   },
   secondaryText: { color: "#A7F7CF", fontSize: 17, fontWeight: "900" },
   buttonDisabled: { opacity: 0.55 },
@@ -964,10 +1105,10 @@ const styles = StyleSheet.create({
     padding: 28,
     backgroundColor: "#08271E",
     borderWidth: 1,
-    borderColor: "rgba(110,240,176,0.18)",
+    borderColor: "rgba(110,240,176,0.13)",
   },
   waitTitle: { color: "#FFF8E8", fontSize: 27, fontWeight: "900", marginTop: 16 },
-  offerCard: { borderRadius: 32, padding: 25, backgroundColor: "#E9FFF5" },
+  offerCard: { position: "relative", overflow: "hidden", borderRadius: 34, padding: 25, backgroundColor: "rgba(233,255,245,0.89)", borderWidth: 1, borderColor: "rgba(110,240,176,0.08)" },
   offerTop: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
   flex: { flex: 1 },
   offerTitle: {
@@ -999,7 +1140,7 @@ const styles = StyleSheet.create({
   metrics: { flexDirection: "row", gap: 9, marginTop: 22 },
   metric: {
     flex: 1,
-    borderRadius: 20,
+    borderRadius: 21,
     padding: 15,
     backgroundColor: "#CFF2E2",
     minHeight: 92,
@@ -1018,7 +1159,7 @@ const styles = StyleSheet.create({
     padding: 25,
     backgroundColor: "#0C2B22",
     borderWidth: 1,
-    borderColor: "rgba(110,240,176,0.2)",
+    borderColor: "rgba(110,240,176,0.21)",
   },
   reasons: { marginTop: 18, gap: 13 },
   reasonRow: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
@@ -1045,7 +1186,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(232,188,104,0.32)",
   },
-  acceptedCard: { borderRadius: 30, padding: 25, backgroundColor: "#DDFBEA" },
+  acceptedCard: { position: "relative", overflow: "hidden", borderRadius: 30, padding: 25, backgroundColor: "rgba(221,251,234,0.89)", borderWidth: 1, borderColor: "rgba(110,240,176,0.08)" },
   acceptedKicker: {
     color: "#157B59",
     fontSize: 12,

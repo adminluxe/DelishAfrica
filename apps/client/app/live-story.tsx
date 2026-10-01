@@ -1,15 +1,15 @@
 import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-ActivityIndicator,
-Pressable,
-RefreshControl,
-SafeAreaView,
-ScrollView,
-StyleSheet,
-Text,
-View,
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
 type OrderStatus = "pending" | "accepted" | "ready" | "picked_up" | "delivered" | string;

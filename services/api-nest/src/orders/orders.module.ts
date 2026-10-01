@@ -3,6 +3,7 @@ import { AuthModule } from '../auth/auth.module';
 import { CatalogFoundationModule } from '../catalog-foundation/catalog-foundation.module';
 import { OrderPolicyModule } from '../order-policy/order-policy.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { FinancialStateModule } from '../financial-state/financial-state.module';
 import { OrdersAccessService } from './orders.access.service';
 import { CourierPresenceService } from './courier-presence.service';
 import { OrdersDispatchService } from './orders.dispatch.service';
@@ -12,7 +13,7 @@ import { OrdersLiveLocationController } from './orders.live-location.controller'
 import { OrdersService } from './orders.service';
 
 @Module({
-  imports: [AuthModule, CatalogFoundationModule, OrderPolicyModule, PaymentsModule],
+  imports: [AuthModule, CatalogFoundationModule, OrderPolicyModule, PaymentsModule, FinancialStateModule],
   controllers: [OrdersController, OrdersLiveLocationController],
   providers: [OrdersService, OrdersAuthGuard, OrdersAccessService, CourierPresenceService, OrdersDispatchService],
   exports: [OrdersService, OrdersAuthGuard, OrdersAccessService, CourierPresenceService, OrdersDispatchService],

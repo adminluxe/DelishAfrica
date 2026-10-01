@@ -5,6 +5,9 @@ APP="${1:-}"
 PORT="${2:-}"
 MODE="${3:---tunnel}"
 
+# DA_DEV_VARIANT_SIDE_BY_SIDE_V3 — Metro always resolves the DEV variant.
+export APP_VARIANT="${APP_VARIANT:-development}"
+
 ROOT="${DA_ROOT:-/opt/delishafrica/monorepo}"
 APPS_DIR="$ROOT/apps"
 
@@ -34,8 +37,8 @@ fi
 [[ -d "$DIR" ]] || die "App dir not found for $APP in $APPS_DIR"
 
 CACHE_BASE="${HOME}/.cache/delishafrica"
-export TMPDIR="${CACHE_BASE}/tmp"
-export METRO_CACHE_DIR="${CACHE_BASE}/metro"
+export TMPDIR="${CACHE_BASE}/tmp/${APP}"
+export METRO_CACHE_DIR="${CACHE_BASE}/metro/${APP}"
 mkdir -p "$TMPDIR" "$METRO_CACHE_DIR"
 
 unset EXPO_NO_METRO_WORKSPACE_ROOT || true
@@ -46,6 +49,7 @@ echo "[DA] app=$APP"
 echo "[DA] dir=$DIR"
 echo "[DA] port=$PORT"
 echo "[DA] mode=$MODE"
+echo "[DA] APP_VARIANT=$APP_VARIANT"
 echo "[DA] TMPDIR=$TMPDIR"
 echo "[DA] METRO_CACHE_DIR=$METRO_CACHE_DIR"
 

@@ -15,10 +15,18 @@
       "pnpm": "9.15.4",
       "cache": {
         "key": "delishafrica-pnpm-9.15.4-v2"
+      },
+      "channel": "development",
+      "env": {
+        "APP_VARIANT": "development"
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "channel": "production"
+    },
+    "preview": {
+      "channel": "preview"
     }
   },
   "submit": {

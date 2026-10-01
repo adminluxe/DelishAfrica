@@ -1,5 +1,13 @@
 import { ConfigContext, ExpoConfig } from "expo/config";
 
+// DA_DEV_VARIANT_SIDE_BY_SIDE_V3 — DEV binary coexists with Store/TestFlight.
+const IS_DEV = process.env.APP_VARIANT === "development";
+const MERCHANT_APP_NAME = IS_DEV ? "DelishAfrica Merchant DEV" : "DelishAfrica Merchant";
+const MERCHANT_DISPLAY_NAME = IS_DEV ? "DA Merchant DEV" : "DelishAfrica Merchant";
+const MERCHANT_SCHEME = IS_DEV ? "delishafricamerchantdev" : "delishafricamerchant";
+const MERCHANT_IOS_BUNDLE_ID = IS_DEV ? "com.delishafrica.merchant.dev" : "com.delishafrica.merchant";
+const MERCHANT_ANDROID_PACKAGE = IS_DEV ? "com.delishafrica.merchant.dev" : "com.delishafrica.merchant";
+
 const MERCHANT_BOOT_BACKGROUND = "#120804";
 const SPLASH_IMAGE = "./assets/splash.png";
 
@@ -10,10 +18,10 @@ const API_URL =
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: "DelishAfrica Merchant",
+  name: MERCHANT_APP_NAME,
   slug: "delishafrica-merchant",
   owner: "delishafrica",
-  scheme: "delishafricamerchant",
+  scheme: MERCHANT_SCHEME,
   version: "3.0.0",
   orientation: "portrait",
   userInterfaceStyle: "dark",
@@ -27,7 +35,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     ...config.ios,
     supportsTablet: false,
-    bundleIdentifier: "com.delishafrica.merchant",
+    bundleIdentifier: MERCHANT_IOS_BUNDLE_ID,
     backgroundColor: MERCHANT_BOOT_BACKGROUND,
     splash: {
       image: SPLASH_IMAGE,
@@ -36,13 +44,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     infoPlist: {
       ...(config.ios?.infoPlist ?? {}),
-      CFBundleDisplayName: "DelishAfrica Merchant",
+      CFBundleDisplayName: MERCHANT_DISPLAY_NAME,
       UIViewControllerBasedStatusBarAppearance: false,
     },
   },
   android: {
     ...config.android,
-    package: "com.delishafrica.merchant",
+    package: MERCHANT_ANDROID_PACKAGE,
     splash: {
       image: SPLASH_IMAGE,
       resizeMode: "contain",
@@ -63,6 +71,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     backgroundColor: MERCHANT_BOOT_BACKGROUND,
   },
   plugins: [
+    ["expo-dev-client", { addGeneratedScheme: IS_DEV }],
+    "expo-notifications",
+    "expo-web-browser",
     "expo-router",
     "expo-secure-store",
     [
