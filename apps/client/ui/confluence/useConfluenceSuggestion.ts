@@ -3,6 +3,7 @@ import { daOrdersFetch } from "../../utils/daOrdersApi";
 
 export type ConfluenceOracleKind = "taste" | "service" | "route";
 export type ConfluenceEvidenceKind = "fact" | "estimate" | "context";
+export type ConfluenceUncertainty = "facts_only" | "contains_context" | "contains_estimates" | "insufficient_evidence";
 
 export type ConfluenceEvidenceInput = {
   label: string;
@@ -16,7 +17,7 @@ type ConfluenceServerPayload = {
   oracle?: ConfluenceOracleKind;
   suggestion?: string;
   evidenceIndexes?: number[];
-  uncertainty?: "facts_only" | "contains_estimates" | "insufficient_evidence";
+  uncertainty?: ConfluenceUncertainty;
   caution?: string;
   humanBoundary?: string;
   meta?: {
@@ -25,6 +26,8 @@ type ConfluenceServerPayload = {
     fallbackReason?: string;
     structured?: boolean;
     actionSideEffects?: boolean;
+    providerStore?: boolean;
+    sensitiveEvidenceTransit?: boolean;
   };
 };
 
@@ -35,6 +38,10 @@ type DisplayState = {
   engineLabel: string;
   footnote: string;
   mode: "embedded" | "server_local" | "ai";
+  evidenceIndexes: number[];
+  uncertainty: ConfluenceUncertainty;
+  generatedAt?: string;
+  privacyNote: string;
 };
 
 type Params = {
@@ -58,6 +65,25 @@ const CACHE_TTL_MS = 60_000;
 const DEBOUNCE_MS = 520;
 const cache = new Map<string, { at: number; value: DisplayState }>();
 
+function looksSensitiveLocally(value: unknown): boolean {
+  const text = String(value ?? "").trim();
+  if (!text) return false;
+  const lower = text.toLowerCase();
+  if (lower.includes("@") || lower.includes("http://") || lower.includes("https://") || lower.includes("www.")) return true;
+  if (/\bDA-[A-Z0-9][A-Z0-9-]{3,}\b/i.test(text)) return true;
+  if (/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i.test(text)) return true;
+  if (/[+]?\d[\d\s().-]{7,}\d/.test(text)) return true;
+  return false;
+}
+
+function requestLooksSensitiveLocally(
+  evidence: ReadonlyArray<ConfluenceEvidenceInput>,
+  localSuggestion: string,
+): boolean {
+  return evidence.some((item) => looksSensitiveLocally(item.label) || looksSensitiveLocally(item.value)) ||
+    looksSensitiveLocally(localSuggestion);
+}
+
 function compact(value: unknown, max = 420): string {
   return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
 }
@@ -74,11 +100,20 @@ function requestKey(
   ]);
 }
 
+function uncertaintyFromEvidence(evidence: ReadonlyArray<ConfluenceEvidenceInput>): ConfluenceUncertainty {
+  if (!evidence.length) return "insufficient_evidence";
+  if (evidence.some((item) => item.kind === "estimate")) return "contains_estimates";
+  if (evidence.some((item) => item.kind === "context" || !item.kind)) return "contains_context";
+  return "facts_only";
+}
+
 function fallbackState(
   key: string,
+  evidence: ReadonlyArray<ConfluenceEvidenceInput>,
   localSuggestion: string,
   localHumanBoundary: string,
   reason = "Le cerveau serveur reste optionnel : cette lecture embarquée ne bloque jamais le parcours.",
+  privacyNote = "Passeport IA · aucune clé fournisseur dans l’app · suggestion locale de secours.",
 ): DisplayState {
   return {
     key,
@@ -87,6 +122,9 @@ function fallbackState(
     engineLabel: "Confluence embarqué · preuve locale",
     footnote: reason,
     mode: "embedded",
+    evidenceIndexes: evidence.map((_, index) => index),
+    uncertainty: uncertaintyFromEvidence(evidence),
+    privacyNote,
   };
 }
 
@@ -95,14 +133,30 @@ function humanFallbackReason(reason: unknown): string {
   if (!value || value === "feature_disabled") return "IA externe désactivée · réponse déterministe du serveur.";
   if (value === "provider_unconfigured") return "Fournisseur IA non configuré · réponse déterministe du serveur.";
   if (value === "insufficient_evidence") return "Preuves insuffisantes · réponse déterministe du serveur.";
+  if (value === "sensitive_evidence_detected") return "Un signal sensible a été bloqué côté serveur · aucune sortie fournisseur utilisée.";
+  if (value === "terminal_flow") return "Le parcours est déjà dans un état terminal · aucune nouvelle lecture IA nécessaire.";
+  if (value === "provider_daily_cap") return "Budget IA quotidien atteint · continuité déterministe activée sans bloquer le parcours.";
+  if (value === "provider_budget_unavailable") return "Compteur de budget IA indisponible · sécurité fail-closed, lecture déterministe.";
+  if (value === "provider_sensitive_output_guard") return "Une sortie fournisseur contenant un signal sensible a été rejetée · lecture déterministe conservée.";
+  if (value === "provider_evidence_guard") return "Une sortie fournisseur non suffisamment reliée aux preuves visibles a été rejetée.";
   if (value === "numerical_claim_guard") return "Une précision non prouvée a été bloquée · retour déterministe.";
   if (value === "provider_unavailable") return "Fournisseur IA indisponible · retour déterministe.";
   return "Réponse déterministe du serveur.";
 }
 
+function privacyNoteFromServer(value: ConfluenceServerPayload): string {
+  const sensitiveBlocked = value.meta?.sensitiveEvidenceTransit === false;
+  const storeOff = value.meta?.providerStore === false;
+  if (sensitiveBlocked && storeOff) {
+    return "Passeport IA · données sensibles bloquées · stockage fournisseur désactivé.";
+  }
+  return "Passeport IA · protections fail-closed actives côté serveur.";
+}
+
 function validateServer(
   raw: unknown,
   key: string,
+  evidence: ReadonlyArray<ConfluenceEvidenceInput>,
   localSuggestion: string,
   localHumanBoundary: string,
 ): DisplayState | null {
@@ -112,6 +166,20 @@ function validateServer(
   const suggestion = compact(value.suggestion, 420);
   const humanBoundary = compact(value.humanBoundary, 420) || localHumanBoundary;
   const caution = compact(value.caution, 220);
+  const evidenceIndexes = Array.from(
+    new Set(
+      (Array.isArray(value.evidenceIndexes) ? value.evidenceIndexes : [])
+        .filter((index) => Number.isInteger(index) && index >= 0 && index < evidence.length),
+    ),
+  );
+  const uncertainty =
+    value.uncertainty === "facts_only" ||
+    value.uncertainty === "contains_context" ||
+    value.uncertainty === "contains_estimates" ||
+    value.uncertainty === "insufficient_evidence"
+      ? value.uncertainty
+      : uncertaintyFromEvidence(evidence);
+  const generatedAt = compact(value.meta?.generatedAt, 80) || undefined;
   if (!suggestion || value.meta?.actionSideEffects === true) return null;
 
   if (value.mode === "ai") {
@@ -122,6 +190,10 @@ function validateServer(
       engineLabel: "Confluence AI serveur · sortie structurée",
       footnote: caution || "Suggestion IA bornée aux preuves visibles.",
       mode: "ai",
+      evidenceIndexes,
+      uncertainty,
+      generatedAt,
+      privacyNote: privacyNoteFromServer(value),
     };
   }
 
@@ -134,10 +206,14 @@ function validateServer(
       engineLabel: "Confluence serveur · fallback déterministe",
       footnote: [caution, fallbackReason].filter(Boolean).join(" "),
       mode: "server_local",
+      evidenceIndexes: evidenceIndexes.length ? evidenceIndexes : evidence.map((_, index) => index),
+      uncertainty,
+      generatedAt,
+      privacyNote: privacyNoteFromServer(value),
     };
   }
 
-  return fallbackState(key, localSuggestion, localHumanBoundary);
+  return fallbackState(key, evidence, localSuggestion, localHumanBoundary);
 }
 
 export function useConfluenceSuggestion({
@@ -152,9 +228,33 @@ export function useConfluenceSuggestion({
     [evidence, localSuggestion, oracle],
   );
 
+  const privacyBlocked = useMemo(
+    () => requestLooksSensitiveLocally(evidence, localSuggestion),
+    [evidence, localSuggestion],
+  );
+
   const immediate = useMemo(
-    () => fallbackState(key, localSuggestion, localHumanBoundary),
-    [key, localHumanBoundary, localSuggestion],
+    () =>
+      !enabled
+        ? fallbackState(
+            key,
+            evidence,
+            localSuggestion,
+            localHumanBoundary,
+            "Vous avez choisi Local uniquement : la lecture reste sur l’appareil et aucune requête Confluence n’est envoyée.",
+            "Passeport IA · Local uniquement choisi · aucun appel Confluence envoyé.",
+          )
+        : privacyBlocked
+          ? fallbackState(
+              key,
+              evidence,
+              localSuggestion,
+              localHumanBoundary,
+              "Un signal potentiellement sensible a été détecté avant le réseau : la lecture locale reste active.",
+              "Passeport IA · transit serveur bloqué localement avant tout envoi.",
+            )
+          : fallbackState(key, evidence, localSuggestion, localHumanBoundary),
+    [enabled, evidence, key, localHumanBoundary, localSuggestion, privacyBlocked],
   );
 
   const [resolved, setResolved] = useState<DisplayState | null>(null);
@@ -169,18 +269,25 @@ export function useConfluenceSuggestion({
       return undefined;
     }
 
+    if (privacyBlocked) {
+      setResolved(immediate);
+      return undefined;
+    }
+
     const cached = cache.get(key);
     if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
       setResolved(cached.value);
       return undefined;
     }
 
+    const controller = new AbortController();
     const timer = setTimeout(() => {
       void (async () => {
         try {
           const response = await daOrdersFetch(`${API_BASE}/confluence/ai/suggest`, {
             method: "POST",
             headers: { "Content-Type": "application/json", Accept: "application/json" },
+            signal: controller.signal,
             body: JSON.stringify({
               oracle,
               locale: "fr",
@@ -191,16 +298,18 @@ export function useConfluenceSuggestion({
 
           if (!response.ok) throw new Error(`HTTP_${response.status}`);
           const json = await response.json().catch(() => null);
-          const next = validateServer(json, key, localSuggestion, localHumanBoundary);
+          const next = validateServer(json, key, evidence, localSuggestion, localHumanBoundary);
           if (!next) throw new Error("INVALID_CONFLUENCE_RESPONSE");
 
           cache.set(key, { at: Date.now(), value: next });
           if (mine === generation.current) setResolved(next);
         } catch {
+          if (controller.signal.aborted) return;
           if (mine === generation.current) {
             setResolved(
               fallbackState(
                 key,
+                evidence,
                 localSuggestion,
                 localHumanBoundary,
                 "Serveur Confluence non joint ou session indisponible · la suggestion locale reste active.",
@@ -211,8 +320,11 @@ export function useConfluenceSuggestion({
       })();
     }, DEBOUNCE_MS);
 
-    return () => clearTimeout(timer);
-  }, [enabled, evidence, key, localHumanBoundary, localSuggestion, oracle]);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [enabled, evidence, immediate, key, localHumanBoundary, localSuggestion, oracle, privacyBlocked]);
 
   return resolved?.key === key ? resolved : immediate;
 }

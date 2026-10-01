@@ -22,5 +22,7 @@ export type ConfluenceSuggestion = {
     fallbackReason?: string;
     structured: true;
     actionSideEffects: false;
+    providerStore: false;
+    sensitiveEvidenceTransit: false;
   };
 };
