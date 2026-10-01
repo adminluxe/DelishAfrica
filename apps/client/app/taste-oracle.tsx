@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { AquaticSignature } from "../components/aquatic/AquaticSignature";
-import { ConfluenceOracleLens } from "../ui/confluence/ConfluenceOracleLens";
+import { ConfluenceOracleLens, type ConfluenceAiMode } from "../ui/confluence/ConfluenceOracleLens";
 import { useConfluenceSuggestion } from "../ui/confluence/useConfluenceSuggestion";
 
 type MoodKey = "comfort" | "discovery" | "energy" | "family" | "character" | "light";
@@ -149,7 +149,7 @@ const COUNTERFLOW: Record<MoodKey, MoodKey> = {
 export default function TasteOracleScreen() {
   const [selectedKey, setSelectedKey] = useState<MoodKey>("discovery");
   const [reduceMotion, setReduceMotion] = useState(false);
-  const [confluenceNetworkEnabled, setConfluenceNetworkEnabled] = useState(true);
+  const [confluenceAiMode, setConfluenceAiMode] = useState<ConfluenceAiMode>("server");
 
   useEffect(() => {
     let mounted = true;
@@ -193,7 +193,7 @@ export default function TasteOracleScreen() {
     evidence: oracleEvidence,
     localSuggestion: oracleSuggestion,
     localHumanBoundary: "Aucune origine, identité culturelle ou préférence sensible n’est déduite. Vous choisissez l’intention ; vous gardez le dernier mot sur le plat.",
-    enabled: confluenceNetworkEnabled,
+    enabled: confluenceAiMode === "server",
   });
 
   return (
@@ -335,8 +335,8 @@ export default function TasteOracleScreen() {
           generatedAt={confluenceSuggestion.generatedAt}
           privacyNote={confluenceSuggestion.privacyNote}
           excludedSignals={["Identité sensible", "Origine supposée", "Historique caché", "Données de paiement"]}
-          networkEnabled={confluenceNetworkEnabled}
-          onNetworkEnabledChange={setConfluenceNetworkEnabled}
+          aiMode={confluenceAiMode}
+          onAiModeChange={setConfluenceAiMode}
         />
 
         <View style={styles.promiseCard}>

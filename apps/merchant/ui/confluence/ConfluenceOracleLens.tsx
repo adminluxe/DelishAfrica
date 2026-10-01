@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 export type OracleEvidenceKind = "fact" | "estimate" | "context";
 export type OracleUncertainty = "facts_only" | "contains_context" | "contains_estimates" | "insufficient_evidence";
 export type OracleTrustMode = "embedded" | "server_local" | "ai";
+export type ConfluenceAiMode = "server" | "local" | "silent";
 
 export type OracleEvidence = {
   label: string;
@@ -25,8 +26,8 @@ type Props = {
   generatedAt?: string;
   privacyNote?: string;
   excludedSignals?: string[];
-  networkEnabled?: boolean;
-  onNetworkEnabledChange?: (next: boolean) => void;
+  aiMode?: ConfluenceAiMode;
+  onAiModeChange?: (next: ConfluenceAiMode) => void;
 };
 
 const KIND_LABEL: Record<OracleEvidenceKind, string> = {
@@ -49,8 +50,8 @@ export function ConfluenceOracleLens({
   generatedAt,
   privacyNote,
   excludedSignals = [],
-  networkEnabled = true,
-  onNetworkEnabledChange,
+  aiMode = "server",
+  onAiModeChange,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
 
@@ -87,6 +88,69 @@ export function ConfluenceOracleLens({
           : "session active";
       })()
     : "session active";
+
+  const aiChoices: Array<{ key: ConfluenceAiMode; label: string; accessibilityLabel: string }> = [
+    { key: "server", label: "SERVEUR", accessibilityLabel: "Autoriser Confluence à consulter le serveur" },
+    { key: "local", label: "LOCAL", accessibilityLabel: "Utiliser Confluence uniquement en lecture locale" },
+    { key: "silent", label: "SILENCE", accessibilityLabel: "Mettre Confluence en silence sur cet écran" },
+  ];
+
+  const aiChoiceControl = onAiModeChange ? (
+    <View style={styles.aiChoiceWrap}>
+      <View style={styles.aiChoiceTop}>
+        <Text style={[styles.aiChoiceKicker, { color: accent }]}>CHOIX IA</Text>
+        <Text style={styles.aiChoiceHint}>session · non mémorisé</Text>
+      </View>
+      <View style={styles.aiChoiceRow}>
+        {aiChoices.map((choice) => {
+          const selected = aiMode === choice.key;
+          return (
+            <Pressable
+              key={choice.key}
+              onPress={() => onAiModeChange(choice.key)}
+              style={({ pressed }) => [
+                styles.aiChoicePill,
+                selected && { borderColor: `${accent}77`, backgroundColor: `${accent}12` },
+                pressed && styles.pressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              accessibilityLabel={choice.accessibilityLabel}
+            >
+              <Text style={[styles.aiChoiceLabel, selected && { color: accent }]}>{choice.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  ) : null;
+
+  if (aiMode === "silent") {
+    return (
+      <View style={[styles.shell, styles.silentShell]}>
+        <View pointerEvents="none" style={styles.currentTop} />
+        <View pointerEvents="none" style={styles.currentBottom} />
+        <View style={styles.header}>
+          <View style={[styles.drop, { borderColor: `${accent}77` }]}>
+            <View style={[styles.dropCore, { backgroundColor: accent, opacity: 0.35 }]} />
+          </View>
+          <View style={styles.headerCopy}>
+            <Text style={[styles.kicker, { color: accent }]}>CONFLUENCE · SOUVERAIN</Text>
+            <Text style={styles.engine}>IA en silence · parcours manuel intact</Text>
+          </View>
+          <View style={[styles.badge, { borderColor: `${accent}33` }]}>
+            <Text style={[styles.badgeText, { color: accent }]}>SILENCE</Text>
+          </View>
+        </View>
+        <Text style={styles.silentTitle}>Vous avez demandé le silence.</Text>
+        <Text style={styles.silentBody}>
+          Aucune suggestion Confluence n’est affichée et aucune requête Confluence n’est envoyée. Le reste de l’application continue normalement.
+        </Text>
+        {aiChoiceControl}
+        <Text style={styles.silentFootnote}>Ce choix reste local à cette session et peut être changé à tout moment.</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.shell}>
@@ -132,22 +196,7 @@ export function ConfluenceOracleLens({
             <Text style={[styles.privacyKicker, { color: accent }]}>PASSEPORT IA</Text>
             <Text style={styles.privacyText}>{privacyNote.replace(/^Passeport IA ·\s*/i, "")}</Text>
           </View>
-          {onNetworkEnabledChange ? (
-            <Pressable
-              onPress={() => onNetworkEnabledChange(!networkEnabled)}
-              style={({ pressed }) => [
-                styles.privacyMode,
-                { borderColor: `${accent}${networkEnabled ? "55" : "33"}` },
-                pressed && styles.pressed,
-              ]}
-              accessibilityRole="switch"
-              accessibilityState={{ checked: networkEnabled }}
-              accessibilityLabel={networkEnabled ? "Passer Confluence en mode local uniquement" : "Autoriser Confluence à consulter le serveur"}
-            >
-              <Text style={[styles.privacyModeKicker, { color: accent }]}>CHOIX IA</Text>
-              <Text style={styles.privacyModeValue}>{networkEnabled ? "SERVEUR AUTORISÉ" : "LOCAL UNIQUEMENT"}</Text>
-            </Pressable>
-          ) : null}
+          {aiChoiceControl}
         </View>
       ) : null}
 
@@ -343,13 +392,21 @@ const styles = StyleSheet.create({
   trustDivider: { width: 1, backgroundColor: "rgba(255,255,255,0.07)" },
   trustLabel: { color: "rgba(255,249,236,0.36)", fontSize: 7.5, fontWeight: "900", letterSpacing: 1.05 },
   trustValue: { color: "#FFF9EC", fontSize: 9.5, lineHeight: 13, fontWeight: "900", marginTop: 5 },
-  privacyRail: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 14, paddingVertical: 8, paddingHorizontal: 10, backgroundColor: "rgba(255,255,255,0.018)", borderWidth: 1, borderColor: "rgba(255,255,255,0.045)" },
+  privacyRail: { gap: 10, borderRadius: 14, paddingVertical: 9, paddingHorizontal: 10, backgroundColor: "rgba(255,255,255,0.018)", borderWidth: 1, borderColor: "rgba(255,255,255,0.045)" },
   privacyCopy: { flex: 1 },
   privacyKicker: { fontSize: 7.5, fontWeight: "900", letterSpacing: 1.1 },
   privacyText: { color: "rgba(255,249,236,0.50)", fontSize: 9.5, lineHeight: 14, fontWeight: "700", marginTop: 3 },
-  privacyMode: { maxWidth: 122, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1, backgroundColor: "rgba(255,255,255,0.025)" },
-  privacyModeKicker: { fontSize: 7, fontWeight: "900", letterSpacing: 1 },
-  privacyModeValue: { color: "#FFF9EC", fontSize: 8.5, lineHeight: 12, fontWeight: "900", marginTop: 3 },
+  aiChoiceWrap: { gap: 6 },
+  aiChoiceTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  aiChoiceKicker: { fontSize: 7, fontWeight: "900", letterSpacing: 1.05 },
+  aiChoiceHint: { color: "rgba(255,249,236,0.30)", fontSize: 7.5, fontWeight: "800" },
+  aiChoiceRow: { flexDirection: "row", gap: 6 },
+  aiChoicePill: { flex: 1, minHeight: 34, borderRadius: 11, paddingHorizontal: 7, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.055)", backgroundColor: "rgba(255,255,255,0.022)" },
+  aiChoiceLabel: { color: "rgba(255,249,236,0.48)", fontSize: 8, fontWeight: "900", letterSpacing: 0.65 },
+  silentShell: { gap: 11, backgroundColor: "rgba(4, 20, 20, 0.965)" },
+  silentTitle: { color: "#FFF9EC", fontSize: 17, lineHeight: 22, fontWeight: "900", letterSpacing: -0.15 },
+  silentBody: { color: "rgba(255,249,236,0.66)", fontSize: 12, lineHeight: 18, fontWeight: "700" },
+  silentFootnote: { color: "rgba(255,249,236,0.34)", fontSize: 9, lineHeight: 13, fontWeight: "700" },
   flow: { flexDirection: "row", alignItems: "stretch", minHeight: 74 },
   flowCell: { flex: 1, borderRadius: 17, padding: 10, backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1, borderColor: "rgba(255,255,255,0.05)" },
   flowLabel: { color: "rgba(255,249,236,0.42)", fontSize: 8, fontWeight: "900", letterSpacing: 1.2 },

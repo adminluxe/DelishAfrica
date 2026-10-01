@@ -21,7 +21,7 @@ import { WaterRouteCurrent } from "../ui/water/WaterRouteCurrent";
 // DA_GALA_CAPILLARY_FUSION_V1 - Route Oracle keeps its mature dark-water grammar while light mission surfaces receive restrained capillary refraction; no new timer or business mutation.
 // DA_GALA_OSMOTIC_SEAM_V1 - Courier remains the visual reference: only edge contrast and caustic hardness are reduced, structure is preserved.
 // DA_GALA_PHASE_DECOHERENCE_V1 - multi-axis phase drift and boundary evaporation dissolve residual layer geometry while preserving business truth and existing animation clocks.
-import { ConfluenceOracleLens } from "../ui/confluence/ConfluenceOracleLens";
+import { ConfluenceOracleLens, type ConfluenceAiMode } from "../ui/confluence/ConfluenceOracleLens";
 import { useConfluenceSuggestion } from "../ui/confluence/useConfluenceSuggestion";
 
 const RAW_API =
@@ -370,7 +370,7 @@ export default function RouteOracleScreen() {
     error: "",
   });
   const [decisionPreviewOpen, setDecisionPreviewOpen] = useState(false);
-  const [confluenceNetworkEnabled, setConfluenceNetworkEnabled] = useState(true);
+  const [confluenceAiMode, setConfluenceAiMode] = useState<ConfluenceAiMode>("server");
 
   useEffect(() => {
     setDecisionPreviewOpen(false);
@@ -694,7 +694,7 @@ export default function RouteOracleScreen() {
       "Aucune proposition active : attendre une preuve dispatch avant toute lecture.",
     localHumanBoundary:
       "Cette lecture n’accepte, ne récupère et ne livre aucune mission à votre place. Les trois gestes restent explicitement humains.",
-    enabled: Boolean(oracleLens) && confluenceNetworkEnabled,
+    enabled: Boolean(oracleLens) && confluenceAiMode === "server",
   });
 
   return (
@@ -889,8 +889,8 @@ export default function RouteOracleScreen() {
           generatedAt={confluenceSuggestion.generatedAt}
           privacyNote={confluenceSuggestion.privacyNote}
           excludedSignals={["Taux de refus", "Nom ou identité personnelle", "Données de paiement"]}
-          networkEnabled={confluenceNetworkEnabled}
-          onNetworkEnabledChange={setConfluenceNetworkEnabled}
+          aiMode={confluenceAiMode}
+          onAiModeChange={setConfluenceAiMode}
               />
             ) : null}
 

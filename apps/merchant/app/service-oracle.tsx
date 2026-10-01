@@ -2,7 +2,7 @@ import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { ConfluenceOracleLens } from '../ui/confluence/ConfluenceOracleLens';
+import { ConfluenceOracleLens, type ConfluenceAiMode } from '../ui/confluence/ConfluenceOracleLens';
 import { useConfluenceSuggestion } from '../ui/confluence/useConfluenceSuggestion';
 
 type OrderLike = {
@@ -75,7 +75,7 @@ function orderItem(order?: OrderLike): string {
 export default function MerchantServiceOracleScreen() {
   const [orders, setOrders] = useState<OrderLike[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [confluenceNetworkEnabled, setConfluenceNetworkEnabled] = useState(true);
+  const [confluenceAiMode, setConfluenceAiMode] = useState<ConfluenceAiMode>("server");
 
   const load = useCallback(async () => {
     try {
@@ -126,7 +126,7 @@ body: JSON.stringify({}),
     evidence: oracleEvidence,
     localSuggestion: oracleSuggestion,
     localHumanBoundary: 'Cette lecture ne change aucun statut, n’accepte aucune commande et ne marque jamais un plat prêt à votre place.',
-    enabled: confluenceNetworkEnabled,
+    enabled: confluenceAiMode === "server",
   });
 
   return (
@@ -211,8 +211,8 @@ body: JSON.stringify({}),
           generatedAt={confluenceSuggestion.generatedAt}
           privacyNote={confluenceSuggestion.privacyNote}
           excludedSignals={["Identité client", "Données de paiement", "Profilage historique"]}
-          networkEnabled={confluenceNetworkEnabled}
-          onNetworkEnabledChange={setConfluenceNetworkEnabled}
+          aiMode={confluenceAiMode}
+          onAiModeChange={setConfluenceAiMode}
         />
 
         <View style={styles.promiseCard}>

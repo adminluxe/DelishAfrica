@@ -342,3 +342,50 @@ Decision: NE PAS absorber ce worktree en bloc. Arbitrage fichier par fichier uni
 - TypeScript Client / Courier / Merchant: PASS.
 - Expo export iOS + Android sur Client / Courier / Merchant: PASS.
 - Verifications nouvelles: evidence_firewall_contract, validator, user truth copy et ordre du garde avant reseau = PASS.
+
+---
+
+# DELISHAFRICA ROADBOOK UPDATE - 2026-10-01 - CONFLUENCE SOVEREIGN SILENCE V1
+Branch: innovation/confluence-sovereign-silence-20261001
+Base: reconcile/project-master-20261001 @ 7970e9c
+
+## Intention
+- Faire de la confiance IA un droit de retrait réel, visible et immédiatement réversible.
+- Ne pas forcer une recommandation locale ou serveur lorsqu un utilisateur veut simplement utiliser le produit sans couche Confluence visible.
+- Conserver le parcours métier intact : couper Confluence ne doit jamais bloquer commande, service, mission ou navigation.
+
+## Innovation livrée
+- Le Passeport IA évolue vers un choix de session à trois états : SERVEUR / LOCAL / SILENCE.
+- SERVEUR : Confluence peut appeler le backend sous Evidence Firewall, Zero-Leak Gate et guardrails serveur.
+- LOCAL : aucune requête Confluence n est envoyée ; la lecture embarquée reste visible.
+- SILENCE : aucune requête Confluence n est envoyée ET aucune suggestion Confluence n est affichée sur l écran.
+- Le mode SILENCE conserve uniquement un rail souverain compact permettant de réactiver SERVEUR ou LOCAL à tout moment.
+- Le choix reste volontairement session-only et n est pas mémorisé : aucun nouveau profilage ni nouvelle préférence persistée.
+
+## Triplettes
+- Client / Taste Oracle : Sovereign Silence actif.
+- Courier / Route Oracle : Sovereign Silence actif.
+- Merchant / Service Oracle : Sovereign Silence actif.
+- `ConfluenceOracleLens.tsx` reste byte-identical entre les trois apps.
+
+## Garde-fous techniques
+- `enabled` du hook n est vrai qu en mode SERVEUR.
+- Le gate vérifie que le short-circuit `!enabled` précède tout `daOrdersFetch`.
+- Les contrôles booléens historiques `confluenceNetworkEnabled` sont interdits par le gate afin d éviter un retour silencieux à un modèle binaire incomplet.
+- Evidence Firewall, Zero-Leak Gate, Algorithmic Red Line, Blind Spots, AbortController et actionSideEffects=false restent intacts.
+- Aucun endpoint, permission native, package, stockage ou collecte personnelle ajouté.
+
+## Validation
+- `scripts/da_confluence_trust_gate.sh` quick : GREEN.
+- API Nest build : PASS.
+- TypeScript Client / Courier / Merchant : PASS.
+- Expo export Client iOS + Android : PASS.
+- Expo export Courier iOS + Android : PASS.
+- Expo export Merchant iOS + Android : PASS.
+- `scripts/da_confluence_trust_gate.sh --full` : GREEN.
+- Aucun OTA, aucun rebuild Store et aucun déploiement runtime déclenché.
+
+## Positionnement produit
+- DelishAfrica ne demande pas une confiance aveugle envers l IA.
+- L utilisateur peut choisir une IA serveur contrôlée, une intelligence locale sans réseau, ou aucun conseil IA affiché du tout.
+- La souveraineté utilisateur devient une capacité produit, pas une promesse de confidentialité cachée dans des réglages.
