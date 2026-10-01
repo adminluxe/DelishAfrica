@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodic refresh of OrchidPay F3 authorized DelishAfrica peers
+
+[Timer]
+OnBootSec=20
+OnUnitActiveSec=60
+AccuracySec=5
+Unit=delish-f3-peer-sync.service
+
+[Install]
+WantedBy=timers.target
