@@ -147,3 +147,17 @@ Scope: Client + Courier, harmonisé Merchant
 - Parité du hook Confluence maintenue sur les triplettes.
 - Aucun Store build, OTA update ou déploiement runtime déclenché.
 - PR de travail isolée : GitHub #17 (draft).
+
+## Trust Current V1.5 - fallback explainability
+- Les fallbacks serveur ne sont plus un silence générique : l utilisateur peut comprendre pourquoi Confluence est repassé en lecture déterministe.
+- Raisons désormais rendues lisibles : preuve sensible détectée, parcours terminal, plafond de budget IA, compteur budget indisponible, fournisseur indisponible, sortie sensible bloquée, précision numérique non prouvée, sortie insuffisamment reliée aux preuves visibles.
+- L objectif est de montrer qu un refus ou un fallback est une décision de sécurité, pas une panne cachée.
+- Aucun nouvel appel réseau, aucune nouvelle persistance et aucune nouvelle surface de navigation.
+
+### Validation V1.5
+- Gate quick : GREEN avec vérification explicite des principaux fallbacks provider.
+- Gate FULL : GREEN.
+- API Nest build : PASS.
+- TypeScript Client/Courier/Merchant : PASS.
+- Expo export iOS + Android : PASS pour les 3 apps.
+- Aucun Store build, OTA update ou déploiement runtime déclenché.

@@ -105,3 +105,8 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Le serveur conserve ses propres gardes `requestContainsSensitiveEvidence` + scrub : défense en profondeur obligatoire.
 - Le texte UI peut affirmer `transit serveur bloqué localement avant tout envoi` uniquement lorsque le garde local a effectivement court-circuité la requête.
 - Les trois hooks Client/Courier/Merchant doivent rester byte-identical.
+
+## Explainable fallback contract V1.5
+- Tout fallback Confluence connu doit avoir une traduction humaine stable côté app ; ne pas masquer un guardrail derrière un message générique si le serveur fournit `fallbackReason`.
+- Les messages doivent décrire le mécanisme réel (blocage, budget, indisponibilité, preuve insuffisante) sans inventer de diagnostic ni de probabilité.
+- Le fallback reste une lecture déterministe sans side effect et ne doit jamais pousser l utilisateur à contourner un garde de sécurité.

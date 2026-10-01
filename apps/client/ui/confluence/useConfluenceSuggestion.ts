@@ -133,6 +133,12 @@ function humanFallbackReason(reason: unknown): string {
   if (!value || value === "feature_disabled") return "IA externe désactivée · réponse déterministe du serveur.";
   if (value === "provider_unconfigured") return "Fournisseur IA non configuré · réponse déterministe du serveur.";
   if (value === "insufficient_evidence") return "Preuves insuffisantes · réponse déterministe du serveur.";
+  if (value === "sensitive_evidence_detected") return "Un signal sensible a été bloqué côté serveur · aucune sortie fournisseur utilisée.";
+  if (value === "terminal_flow") return "Le parcours est déjà dans un état terminal · aucune nouvelle lecture IA nécessaire.";
+  if (value === "provider_daily_cap") return "Budget IA quotidien atteint · continuité déterministe activée sans bloquer le parcours.";
+  if (value === "provider_budget_unavailable") return "Compteur de budget IA indisponible · sécurité fail-closed, lecture déterministe.";
+  if (value === "provider_sensitive_output_guard") return "Une sortie fournisseur contenant un signal sensible a été rejetée · lecture déterministe conservée.";
+  if (value === "provider_evidence_guard") return "Une sortie fournisseur non suffisamment reliée aux preuves visibles a été rejetée.";
   if (value === "numerical_claim_guard") return "Une précision non prouvée a été bloquée · retour déterministe.";
   if (value === "provider_unavailable") return "Fournisseur IA indisponible · retour déterministe.";
   return "Réponse déterministe du serveur.";
