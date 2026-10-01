@@ -195,6 +195,8 @@ export class ConfluenceAiService {
           generatedAt: new Date().toISOString(),
           structured: true,
           actionSideEffects: false,
+          providerStore: false,
+          sensitiveEvidenceTransit: false,
         },
       };
     } catch {
@@ -220,6 +222,8 @@ export class ConfluenceAiService {
         generatedAt: new Date().toISOString(),
         structured: true,
         actionSideEffects: false,
+        providerStore: false,
+        sensitiveEvidenceTransit: false,
       },
     };
   }

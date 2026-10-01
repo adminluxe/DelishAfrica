@@ -76,3 +76,18 @@ Scope: Client + Courier, harmonisé Merchant
 - TypeScript 3 apps : PASS.
 - Expo exports : iOS + Android PASS pour Client, Courier et Merchant.
 - Surcoût bundle mesuré vs Trust Current V1 : environ +177 à +201 octets selon app/plateforme ; aucune dépendance ni requête réseau ajoutée.
+
+## Trust Current V1.2 - Passeport IA
+- Ajout d un passeport de confidentialité compact directement dans la lentille Confluence.
+- Le backend expose explicitement deux garanties structurelles : `providerStore=false` et `sensitiveEvidenceTransit=false`.
+- En mode serveur, l UI affiche : données sensibles bloquées + stockage fournisseur désactivé.
+- En secours embarqué, l UI rappelle qu aucune clé fournisseur n est présente dans l app et que la suggestion locale reste disponible.
+- Le passeport complète le triptyque moteur / preuves / incertitude sans ajouter de chatbot ni de nouvelle navigation.
+- Aucun nouvel appel réseau, aucun nouvel identifiant collecté, aucune persistance ajoutée.
+
+### Validation V1.2
+- API Nest build : PASS.
+- TypeScript Client/Courier/Merchant : PASS.
+- `git diff --check` : PASS.
+- Expo export iOS + Android : PASS sur les 3 apps.
+- Aucun Store build, OTA update ou déploiement runtime déclenché.

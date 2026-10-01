@@ -881,6 +881,7 @@ export default function RouteOracleScreen() {
           uncertainty={confluenceSuggestion.uncertainty}
           evidenceIndexes={confluenceSuggestion.evidenceIndexes}
           generatedAt={confluenceSuggestion.generatedAt}
+          privacyNote={confluenceSuggestion.privacyNote}
               />
             ) : null}
 

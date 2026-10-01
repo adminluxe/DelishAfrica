@@ -207,6 +207,7 @@ body: JSON.stringify({}),
           uncertainty={confluenceSuggestion.uncertainty}
           evidenceIndexes={confluenceSuggestion.evidenceIndexes}
           generatedAt={confluenceSuggestion.generatedAt}
+          privacyNote={confluenceSuggestion.privacyNote}
         />
 
         <View style={styles.promiseCard}>

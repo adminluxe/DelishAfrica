@@ -26,6 +26,8 @@ type ConfluenceServerPayload = {
     fallbackReason?: string;
     structured?: boolean;
     actionSideEffects?: boolean;
+    providerStore?: boolean;
+    sensitiveEvidenceTransit?: boolean;
   };
 };
 
@@ -39,6 +41,7 @@ type DisplayState = {
   evidenceIndexes: number[];
   uncertainty: ConfluenceUncertainty;
   generatedAt?: string;
+  privacyNote: string;
 };
 
 type Params = {
@@ -101,6 +104,7 @@ function fallbackState(
     mode: "embedded",
     evidenceIndexes: evidence.map((_, index) => index),
     uncertainty: uncertaintyFromEvidence(evidence),
+    privacyNote: "Passeport IA · aucune clé fournisseur dans l’app · suggestion locale de secours.",
   };
 }
 
@@ -112,6 +116,15 @@ function humanFallbackReason(reason: unknown): string {
   if (value === "numerical_claim_guard") return "Une précision non prouvée a été bloquée · retour déterministe.";
   if (value === "provider_unavailable") return "Fournisseur IA indisponible · retour déterministe.";
   return "Réponse déterministe du serveur.";
+}
+
+function privacyNoteFromServer(value: ConfluenceServerPayload): string {
+  const sensitiveBlocked = value.meta?.sensitiveEvidenceTransit === false;
+  const storeOff = value.meta?.providerStore === false;
+  if (sensitiveBlocked && storeOff) {
+    return "Passeport IA · données sensibles bloquées · stockage fournisseur désactivé.";
+  }
+  return "Passeport IA · protections fail-closed actives côté serveur.";
 }
 
 function validateServer(
@@ -154,6 +167,7 @@ function validateServer(
       evidenceIndexes,
       uncertainty,
       generatedAt,
+      privacyNote: privacyNoteFromServer(value),
     };
   }
 
@@ -169,6 +183,7 @@ function validateServer(
       evidenceIndexes: evidenceIndexes.length ? evidenceIndexes : evidence.map((_, index) => index),
       uncertainty,
       generatedAt,
+      privacyNote: privacyNoteFromServer(value),
     };
   }
 

@@ -23,6 +23,7 @@ type Props = {
   uncertainty?: OracleUncertainty;
   evidenceIndexes?: number[];
   generatedAt?: string;
+  privacyNote?: string;
 };
 
 const KIND_LABEL: Record<OracleEvidenceKind, string> = {
@@ -43,6 +44,7 @@ export function ConfluenceOracleLens({
   uncertainty = "facts_only",
   evidenceIndexes,
   generatedAt,
+  privacyNote,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
 
@@ -113,6 +115,13 @@ export function ConfluenceOracleLens({
           <Text style={styles.trustValue}>{uncertaintyLabel}</Text>
         </View>
       </View>
+
+      {privacyNote ? (
+        <View style={styles.privacyRail}>
+          <Text style={[styles.privacyKicker, { color: accent }]}>PASSEPORT IA</Text>
+          <Text style={styles.privacyText}>{privacyNote.replace(/^Passeport IA ·\s*/i, "")}</Text>
+        </View>
+      ) : null}
 
       <View style={styles.flow}>
         <View style={styles.flowCell}>
@@ -260,6 +269,9 @@ const styles = StyleSheet.create({
   trustDivider: { width: 1, backgroundColor: "rgba(255,255,255,0.07)" },
   trustLabel: { color: "rgba(255,249,236,0.36)", fontSize: 7.5, fontWeight: "900", letterSpacing: 1.05 },
   trustValue: { color: "#FFF9EC", fontSize: 9.5, lineHeight: 13, fontWeight: "900", marginTop: 5 },
+  privacyRail: { flexDirection: "row", alignItems: "center", gap: 9, borderRadius: 14, paddingVertical: 8, paddingHorizontal: 10, backgroundColor: "rgba(255,255,255,0.018)", borderWidth: 1, borderColor: "rgba(255,255,255,0.045)" },
+  privacyKicker: { fontSize: 7.5, fontWeight: "900", letterSpacing: 1.1 },
+  privacyText: { flex: 1, color: "rgba(255,249,236,0.50)", fontSize: 9.5, lineHeight: 14, fontWeight: "700" },
   flow: { flexDirection: "row", alignItems: "stretch", minHeight: 74 },
   flowCell: { flex: 1, borderRadius: 17, padding: 10, backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1, borderColor: "rgba(255,255,255,0.05)" },
   flowLabel: { color: "rgba(255,249,236,0.42)", fontSize: 8, fontWeight: "900", letterSpacing: 1.2 },

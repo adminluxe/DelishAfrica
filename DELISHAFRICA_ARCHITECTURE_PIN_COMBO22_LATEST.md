@@ -71,3 +71,10 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - `contains_estimates` = au moins une estimation.
 - `insufficient_evidence` = aucune preuve exploitable.
 - Interdiction architecturale : ne jamais afficher CONTEXTE comme FAIT et ne jamais convertir cette taxonomie en pseudo-probabilité sans calibration réelle.
+
+## AI Passport contract V1.2
+- Toute réponse Confluence contient `meta.providerStore=false`.
+- Toute réponse Confluence contient `meta.sensitiveEvidenceTransit=false`.
+- Ces champs sont des garanties de transport/stockage, pas des slogans marketing : le provider est appelé avec `store:false` et la détection d évidence sensible bascule en fallback local avant transit fournisseur.
+- Le client ne doit jamais afficher « aucune donnée envoyée » : des preuves non sensibles peuvent être envoyées au provider lorsque le mode IA est réellement actif.
+- Formulation UI autorisée : données sensibles bloquées / stockage fournisseur désactivé.
