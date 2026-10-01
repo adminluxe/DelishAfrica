@@ -203,6 +203,10 @@ body: JSON.stringify({}),
           evidence={oracleEvidence}
           humanBoundary={confluenceSuggestion.humanBoundary}
           footnote={confluenceSuggestion.footnote}
+          mode={confluenceSuggestion.mode}
+          uncertainty={confluenceSuggestion.uncertainty}
+          evidenceIndexes={confluenceSuggestion.evidenceIndexes}
+          generatedAt={confluenceSuggestion.generatedAt}
         />
 
         <View style={styles.promiseCard}>

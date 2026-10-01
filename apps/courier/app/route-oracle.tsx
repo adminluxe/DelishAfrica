@@ -877,6 +877,10 @@ export default function RouteOracleScreen() {
                 evidence={oracleLens.evidence}
                 humanBoundary={confluenceSuggestion.humanBoundary}
                 footnote={confluenceSuggestion.footnote}
+          mode={confluenceSuggestion.mode}
+          uncertainty={confluenceSuggestion.uncertainty}
+          evidenceIndexes={confluenceSuggestion.evidenceIndexes}
+          generatedAt={confluenceSuggestion.generatedAt}
               />
             ) : null}
 
