@@ -59,6 +59,12 @@ require_text "Local uniquement choisi" "$CLIENT_HOOK" "local_only_user_choice_co
 require_text "ConfluenceAiMode = \"server\" | \"local\" | \"silent\"" "$CLIENT_LENS" "sovereign_silence_mode_contract_present"
 require_text "Aucune suggestion Confluence n’est affichée et aucune requête Confluence n’est envoyée" "$CLIENT_LENS" "sovereign_silence_truth_copy_present"
 require_text "SILENCE" "$CLIENT_LENS" "sovereign_silence_control_present"
+require_text "PACTE D’ATTENTION" "$CLIENT_LENS" "attention_covenant_present"
+require_text "Rien de nouveau dans les preuves" "$CLIENT_LENS" "attention_quiet_state_present"
+require_text "Confluence libère l’écran et reviendra seulement si les preuves changent" "$CLIENT_LENS" "attention_return_contract_present"
+require_text "attentionFingerprint" "$CLIENT_LENS" "attention_evidence_fingerprint_present"
+require_text "setAcknowledgedFingerprint(attentionFingerprint)" "$CLIENT_LENS" "attention_acknowledgement_present"
+require_text "NOUVEAU SIGNAL" "$CLIENT_LENS" "attention_new_signal_reentry_present"
 require_text "controller.abort()" "$CLIENT_HOOK" "network_abort_cleanup_present"
 require_text "signal: controller.signal" "$CLIENT_HOOK" "network_abort_signal_present"
 require_text "if (!enabled || !evidence.length)" "$CLIENT_HOOK" "disabled_mode_short_circuits_before_network"
@@ -105,6 +111,11 @@ for oracle_file in "$CLIENT_ORACLE" "$COURIER_ORACLE" "$MERCHANT_ORACLE"; do
   fi
 done
 pass "legacy_boolean_ai_control_removed"
+
+if grep -Eq "SecureStore|AsyncStorage|localStorage|persist" "$CLIENT_LENS"; then
+  fail "attention_covenant_must_remain_session_only"
+fi
+pass "attention_covenant_session_only"
 
 if [[ "$MODE" == "--full" || "$MODE" == "full" ]]; then
   rm -rf "$TMP_ROOT"
