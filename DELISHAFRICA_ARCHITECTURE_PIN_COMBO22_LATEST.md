@@ -378,9 +378,13 @@ Le cockpit devient une surface de consultation/retour, pas une étape obligatoir
 ## Route compute budget
 - Mode baseline : DRIVE + TRAFFIC_AWARE via le service Routes existant.
 - TWO_WHEELER est opt-in par marché uniquement lorsqu il est officiellement couvert par le provider; Belgique et Cameroun restent DRIVE dans la baseline actuelle.
-- Recompute automatique : au plus tôt après 20 s ou après mouvement >= 90 m selon l état local.
+- Hard throttle provider : aucune requête non forcée avant 12 s.
+- Recompute normal : après mouvement >= 180 m OU route âgée >= 75 s.
 - Changement d étape restaurant -> client invalide immédiatement la route et force une nouvelle résolution.
 - Aucun polling route haute fréquence.
+- FOLLOW camera est local et ne déclenche aucun appel route ; les mises à jour de position animent seulement la caméra entre deux résolutions provider.
+- Pan manuel coupe FOLLOW ; réactivation explicitement humaine.
+- Reduce Motion désactive pitch/animation de caméra.
 
 ## Key boundaries
 ### Android map rendering key

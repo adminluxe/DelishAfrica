@@ -2,6 +2,7 @@ import { daOrdersFetch } from "../utils/daOrdersApi";
 // DA_A5A3A7S16R9A2C_FOREGROUND_POSITION_ROUTE_ETA_V1
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AccessibilityInfo,
   ActivityIndicator,
   Alert,
   Linking,
@@ -34,6 +35,8 @@ type PermissionMode = "idle" | "requesting" | "granted" | "denied" | "error";
 type CourierFix = {
   coordinate: LatLng;
   accuracy: number | null;
+  heading: number | null;
+  speedMetersPerSecond: number | null;
   capturedAt: number;
 };
 
@@ -84,8 +87,9 @@ const INITIAL_REGION = {
 };
 
 const NETWORK_TIMEOUT_MS = 8000;
-const ROUTE_REFRESH_MS = 20_000;
-const ROUTE_REFRESH_MOVE_METERS = 90;
+const ROUTE_HARD_MIN_MS = 12_000;
+const ROUTE_REFRESH_MS = 75_000;
+const ROUTE_REFRESH_MOVE_METERS = 180;
 const ACTIVE_RANK: Record<string, number> = {
   picked_up: 0,
   on_the_way: 0,
@@ -324,6 +328,18 @@ function distanceKm(left: LatLng, right: LatLng) {
   return earthRadiusKm * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
 }
 
+function bearingDegrees(left: LatLng, right: LatLng) {
+  const leftLat = toRadians(left.latitude);
+  const rightLat = toRadians(right.latitude);
+  const longitudeDelta = toRadians(right.longitude - left.longitude);
+  const y = Math.sin(longitudeDelta) * Math.cos(rightLat);
+  const x =
+    Math.cos(leftLat) * Math.sin(rightLat) -
+    Math.sin(leftLat) * Math.cos(rightLat) * Math.cos(longitudeDelta);
+  const bearing = (Math.atan2(y, x) * 180) / Math.PI;
+  return (bearing + 360) % 360;
+}
+
 function formatDistance(value: number | null) {
   if (value === null) return "—";
   if (value < 1) return `${Math.max(10, Math.round(value * 1000 / 10) * 10)} m`;
@@ -528,6 +544,8 @@ export default function CourierIntegratedMapScreen() {
   const [routeBusy, setRouteBusy] = useState(false);
   const [routeError, setRouteError] = useState("");
   const [statusBusy, setStatusBusy] = useState(false);
+  const [followMode, setFollowMode] = useState(true);
+  const [reduceMotion, setReduceMotion] = useState(false);
 
   const pickup = useMemo(() => pickupCoordinate(mission), [mission]);
   const destination = useMemo(() => destinationCoordinate(mission), [mission]);
@@ -552,6 +570,29 @@ export default function CourierIntegratedMapScreen() {
     : routeBusy
       ? "ROUTE…"
       : "TRAJET DIRECT";
+  const arrivalRadiusMeters = phase.key === "delivery" ? 120 : 160;
+  const atTarget =
+    !fallbackCoordinates &&
+    directDistance !== null &&
+    directDistance * 1000 <= arrivalRadiusMeters &&
+    (locationFix?.accuracy === null ||
+      locationFix?.accuracy === undefined ||
+      locationFix.accuracy <= 120);
+
+  useEffect(() => {
+    let mounted = true;
+    void AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
+      if (mounted) setReduceMotion(enabled);
+    });
+    const subscription = AccessibilityInfo.addEventListener(
+      "reduceMotionChanged",
+      setReduceMotion,
+    );
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, []);
 
   const fitMission = useCallback(() => {
     requestAnimationFrame(() => {
@@ -591,6 +632,13 @@ export default function CourierIntegratedMapScreen() {
       },
       accuracy: Number.isFinite(Number(location.coords.accuracy))
         ? Number(location.coords.accuracy)
+        : null,
+      heading:
+        Number.isFinite(Number(location.coords.heading)) && Number(location.coords.heading) >= 0
+          ? Number(location.coords.heading)
+          : null,
+      speedMetersPerSecond: Number.isFinite(Number(location.coords.speed))
+        ? Number(location.coords.speed)
         : null,
       capturedAt: location.timestamp || Date.now(),
     });
@@ -682,9 +730,10 @@ export default function CourierIntegratedMapScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      if (!mission || statusOf(mission) === "delivered") return undefined;
       void startTracking();
       return () => stopTracking();
-    }, [startTracking, stopTracking]),
+    }, [mission, startTracking, stopTracking]),
   );
 
   const refreshRoadRoute = useCallback(
@@ -695,9 +744,11 @@ export default function CourierIntegratedMapScreen() {
       const movedMeters = previousOrigin
         ? distanceKm(previousOrigin, locationFix.coordinate) * 1000
         : Number.POSITIVE_INFINITY;
+      const routeAgeMs = now - lastRouteRequestAtRef.current;
+      if (!force && routeAgeMs < ROUTE_HARD_MIN_MS) return;
       if (
         !force &&
-        now - lastRouteRequestAtRef.current < ROUTE_REFRESH_MS &&
+        routeAgeMs < ROUTE_REFRESH_MS &&
         movedMeters < ROUTE_REFRESH_MOVE_METERS
       ) {
         return;
@@ -757,8 +808,38 @@ export default function CourierIntegratedMapScreen() {
   }, [fitMission, mission]);
 
   useEffect(() => {
-    if (routeCoordinates.length >= 2) fitCourierToTarget();
-  }, [fitCourierToTarget, routeCoordinates.length]);
+    if (routeCoordinates.length >= 2 && !followMode) fitCourierToTarget();
+  }, [fitCourierToTarget, followMode, routeCoordinates.length]);
+
+  useEffect(() => {
+    if (!locationFix || !followMode) return;
+    const heading =
+      locationFix.heading ?? bearingDegrees(locationFix.coordinate, activeTarget);
+    const zoom =
+      directDistance !== null && directDistance < 0.35
+        ? 17.8
+        : directDistance !== null && directDistance < 1.2
+          ? 16.8
+          : 15.8;
+
+    requestAnimationFrame(() => {
+      mapRef.current?.animateCamera(
+        {
+          center: locationFix.coordinate,
+          heading,
+          pitch: reduceMotion ? 0 : 48,
+          zoom,
+        },
+        { duration: reduceMotion ? 0 : 650 },
+      );
+    });
+  }, [
+    activeTarget,
+    directDistance,
+    followMode,
+    locationFix?.capturedAt,
+    reduceMotion,
+  ]);
 
   const locationStatus = useMemo(() => {
     if (permissionMode === "requesting") return "Demande de localisation en cours…";
@@ -875,7 +956,13 @@ export default function CourierIntegratedMapScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.commandLabel}>
-                {phase.key === "delivery" ? "CAP CLIENT" : "CAP RESTAURANT"}
+                {atTarget
+                  ? phase.key === "delivery"
+                    ? "ARRIVÉ CHEZ LE CLIENT"
+                    : "ARRIVÉ AU RESTAURANT"
+                  : phase.key === "delivery"
+                    ? "CAP CLIENT"
+                    : "CAP RESTAURANT"}
               </Text>
               <Text style={styles.commandTarget}>{activeTargetLabel || "Mission"}</Text>
             </View>
@@ -919,6 +1006,7 @@ export default function CourierIntegratedMapScreen() {
             loadingEnabled
             pitchEnabled
             rotateEnabled
+            onPanDrag={() => setFollowMode(false)}
             showsCompass
             showsScale
             accessibilityLabel="Carte de guidage Courier vers le prochain repère"
@@ -976,11 +1064,24 @@ export default function CourierIntegratedMapScreen() {
           <View style={styles.mapActionsFast}>
             <Pressable
               style={({ pressed }) => [styles.mapAction, pressed && styles.pressed]}
-              onPress={fitCourierToTarget}
+              onPress={() => {
+                if (followMode) {
+                  setFollowMode(false);
+                  fitCourierToTarget();
+                } else {
+                  setFollowMode(true);
+                }
+              }}
               accessibilityRole="button"
-              accessibilityLabel="Recentrer sur moi et la destination"
+              accessibilityLabel={
+                followMode
+                  ? "Voir l aperçu complet de la route"
+                  : "Reprendre le suivi automatique du coursier"
+              }
             >
-              <Text style={styles.mapActionText}>MOI + CIBLE</Text>
+              <Text style={styles.mapActionText}>
+                {followMode ? "APERÇU" : "SUIVRE"}
+              </Text>
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.mapAction, pressed && styles.pressed]}
@@ -1021,7 +1122,11 @@ export default function CourierIntegratedMapScreen() {
           >
             <View style={styles.nextActionCopy}>
               <Text style={styles.nextActionKicker}>
-                {nextMissionStatus === "picked_up" ? "AU RESTAURANT" : "CHEZ LE CLIENT"}
+                {atTarget
+                  ? "SUR PLACE · CONFIRMATION HUMAINE"
+                  : nextMissionStatus === "picked_up"
+                    ? "À CONFIRMER AU RESTAURANT"
+                    : "À CONFIRMER CHEZ LE CLIENT"}
               </Text>
               <Text style={styles.nextActionTitle}>
                 {statusBusy

@@ -605,7 +605,7 @@ Base: innovation/aqua-atmosphere-current-20261002 @ e55844d
 - Une future sélection market-aware pourra activer `TWO_WHEELER` uniquement dans les pays officiellement couverts, sans casser le parcours universel.
 - Si le provider Routes est disponible : distance, durée/ETA et polyline provider sont utilisées.
 - La polyline encodée est décodée localement puis amincie pour garder une carte fluide.
-- Recalcul fournisseur borné : 20 s minimum ou 90 m de déplacement avant nouveau calcul non forcé.
+- Recalcul fournisseur frugal : hard throttle 12 s ; ensuite nouveau calcul uniquement après 180 m de mouvement ou 75 s d âge de route.
 - En absence de provider routier : fallback honnête, libellé `ROUTE ESTIMÉE`, jamais `TRAFIC LIVE`.
 - Bouton `GPS ROUTIER ↗` conserve une sortie immédiate vers Apple Plans sur iOS ou Google Maps sur Android.
 - La carte ne prétend jamais inventer un itinéraire routier lorsque seule une estimation directe est disponible.
@@ -613,6 +613,11 @@ Base: innovation/aqua-atmosphere-current-20261002 @ e55844d
 ## Simplification UI
 - Nouveau deck : CAP RESTAURANT / CAP CLIENT + ETA + distance + niveau de vérité.
 - Carte devient la surface centrale.
+- `Mission Current` démarre en caméra FOLLOW : centre Courier, cap GPS (ou cap vers cible), pitch navigation et zoom progressif à l approche.
+- Un geste manuel sur la carte coupe FOLLOW ; le bouton `SUIVRE` le réactive, `APERÇU` montre le corridor complet.
+- Reduce Motion neutralise le pitch et l animation de caméra.
+- Signal d arrivée purement informatif : `ARRIVÉ AU RESTAURANT` / `ARRIVÉ CHEZ LE CLIENT` uniquement avec coordonnées mission réelles + proximité + précision raisonnable ; aucune mutation automatique.
+- La localisation n est plus demandée lorsque la carte est ouverte sans mission active ou sur une mission déjà livrée.
 - Suppression du parcours primaire vers l ancien `courier-real-map` depuis Missions.
 - `courier-real-map` reste dans le repo comme surface legacy de secours ; aucune suppression risquée avant validation appareils.
 - Accès secondaires réduits à `Détails commande` et `Cockpit`.
