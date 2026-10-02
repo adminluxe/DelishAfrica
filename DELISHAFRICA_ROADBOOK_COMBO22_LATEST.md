@@ -689,3 +689,46 @@ Base: innovation/courier-mission-current-20261002 @ 0e4540b
 - Confluence quick gate : GREEN.
 - git diff --check : PASS.
 - Aucun OTA, rebuild Store ou deploiement runtime declenche.
+
+---
+
+# DELISHAFRICA ROADBOOK UPDATE - 2026-10-02 - COURIER VECTOR DRIFT V1
+Branch: innovation/courier-vector-drift-current-20261002
+Base: innovation/courier-guidance-vector-20261002 @ c26e2a9
+
+## Intention
+- Faire évoluer `PROCHAIN GESTE` avec le mouvement réel du Courier sans acheter un nouvel appel Routes à chaque changement de rue.
+- Détecter un écart significatif au corridor et recalculer uniquement quand cela devient utile.
+- Garder le guidage simple : une instruction, une distance restante locale, une action humaine métier.
+
+## Progression locale des manoeuvres
+- Les `maneuvers[]` du preview provider sont parcourues localement par distance cumulée parcourue depuis le dernier calcul routier.
+- Seuls les déplacements GPS plausibles sont comptés : précision <= 100 m, delta entre 2 m et 120 m.
+- Le cue affiche la distance restante vers le prochain geste et son index dans la séquence.
+- Un nouveau preview provider remet proprement la progression locale à zéro.
+- Une route fallback conserve `maneuvers: []` : aucune instruction routière n est inventée.
+
+## Détection de dérive
+- Distance minimale au corridor polyline calculée localement.
+- Seuil volontairement tolérant : 220 m pour éviter les faux positifs liés au GPS et à la polyline amincie.
+- Au-delà du seuil, avec précision GPS raisonnable, un recalcul provider peut être forcé.
+- Cooldown dérive : 30 s minimum entre deux recalculs forcés.
+- Le message UI indique explicitement `Écart au corridor détecté, recalcul en cours.`
+
+## Discipline coût
+- Progression vers les prochains gestes : 100 % locale, zéro appel Routes supplémentaire.
+- Recalcul hors corridor uniquement sur anomalie et avec cooldown 30 s.
+- Les budgets normaux restent inchangés : hard throttle 12 s ; 180 m / 75 s pour le cycle standard.
+
+## Validation
+- Mission Current quick gate : GREEN.
+- API Nest build : PASS.
+- Route preview probe : PASS.
+- Courier TypeScript : PASS.
+- Courier Expo export iOS : PASS.
+- Courier Expo export Android : PASS.
+- Mission Current FULL gate : GREEN.
+- Aqua quick gate : GREEN.
+- Confluence quick gate : GREEN.
+- git diff --check : PASS.
+- Aucun OTA, rebuild Store ou déploiement runtime déclenché.

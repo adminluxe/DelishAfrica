@@ -427,3 +427,30 @@ Les deux doivent être GREEN avant rebuild/promote Courier.
 5. Le GPS routier natif reste accessible comme escape hatch.
 6. Le statut mission reste strictement controle par confirmation humaine + write/read.
 7. Le full gate doit valider API build, route probe, TypeScript et exports Courier iOS/Android.
+
+---
+
+# ARCHITECTURE PIN UPDATE - 2026-10-02 - COURIER VECTOR DRIFT V1
+
+## Local maneuver progression
+- Entrée : `maneuvers[]` du dernier `/routes/preview` réel.
+- État local : `routeProgressMeters` remis à zéro à chaque nouveau preview.
+- Le prochain geste est choisi par somme cumulative des distances de steps.
+- Les mouvements GPS improbables ou trop imprécis ne font pas avancer la progression.
+- Aucun appel réseau n est nécessaire pour passer localement du geste N au geste N+1.
+
+## Corridor drift contract
+- Corridor = polyline provider décodée/amincie déjà utilisée par Mission Current.
+- Dérive = distance minimale Courier -> points corridor > 220 m.
+- Détection ignorée si précision GPS > 100 m.
+- Recalcul forcé limité par un cooldown de 30 s.
+- Le mécanisme de dérive ne change jamais le statut de mission.
+
+## Invariants
+1. Une route fallback ne peut jamais produire une manoeuvre.
+2. La progression locale ne doit jamais augmenter la fréquence normale des appels Routes.
+3. Un GPS imprécis ne peut pas faire progresser les instructions ni déclencher un recalcul dérive.
+4. Toute nouvelle route provider réinitialise progression et origine de suivi.
+5. La dérive est un signal de recalcul, jamais une décision métier.
+6. Les mutations pickup/delivered restent confirmation humaine + write/read.
+7. Le full gate Courier doit rester GREEN sur API probe + TypeScript + exports iOS/Android.

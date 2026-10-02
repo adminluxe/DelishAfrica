@@ -95,6 +95,8 @@ const NETWORK_TIMEOUT_MS = 8000;
 const ROUTE_HARD_MIN_MS = 12_000;
 const ROUTE_REFRESH_MS = 75_000;
 const ROUTE_REFRESH_MOVE_METERS = 180;
+const OFF_ROUTE_THRESHOLD_METERS = 220;
+const OFF_ROUTE_REFRESH_COOLDOWN_MS = 30_000;
 const ACTIVE_RANK: Record<string, number> = {
   picked_up: 0,
   on_the_way: 0,
@@ -333,6 +335,16 @@ function distanceKm(left: LatLng, right: LatLng) {
   return earthRadiusKm * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
 }
 
+function nearestRoutePointDistanceMeters(point: LatLng, route: LatLng[]) {
+  if (!route.length) return null;
+  let nearest = Number.POSITIVE_INFINITY;
+  for (const candidate of route) {
+    const meters = distanceKm(point, candidate) * 1000;
+    if (meters < nearest) nearest = meters;
+  }
+  return Number.isFinite(nearest) ? nearest : null;
+}
+
 function bearingDegrees(left: LatLng, right: LatLng) {
   const leftLat = toRadians(left.latitude);
   const rightLat = toRadians(right.latitude);
@@ -372,6 +384,27 @@ function maneuverGlyph(value: unknown) {
   if (maneuver.includes("MERGE")) return "⤴";
   if (maneuver.includes("FORK")) return "⑂";
   return "↑";
+}
+
+function maneuverAtProgress(
+  maneuvers: NonNullable<RoutePreview["maneuvers"]>,
+  traveledMeters: number,
+) {
+  let cursor = 0;
+  for (let index = 0; index < maneuvers.length; index += 1) {
+    const maneuver = maneuvers[index];
+    const stepMeters = Math.max(0, Number(maneuver.distanceMeters) || 0);
+    const stepEnd = cursor + stepMeters;
+    if (traveledMeters < stepEnd || index === maneuvers.length - 1) {
+      return {
+        maneuver,
+        index,
+        remainingMeters: Math.max(0, Math.round(stepEnd - traveledMeters)),
+      };
+    }
+    cursor = stepEnd;
+  }
+  return null;
 }
 
 async function openNativeGuidance(destination: LatLng) {
@@ -542,6 +575,8 @@ export default function CourierIntegratedMapScreen() {
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
   const lastRouteRequestAtRef = useRef(0);
   const lastRouteOriginRef = useRef<LatLng | null>(null);
+  const routeProgressLastFixRef = useRef<LatLng | null>(null);
+  const lastDeviationRefreshAtRef = useRef(0);
   const routeRequestSeqRef = useRef(0);
   const statusMutationRef = useRef(false);
   const missionRef = useRef<Order | null>(null);
@@ -558,6 +593,7 @@ export default function CourierIntegratedMapScreen() {
   const [locationError, setLocationError] = useState("");
   const [routePreview, setRoutePreview] = useState<RoutePreview | null>(null);
   const [routeCoordinates, setRouteCoordinates] = useState<LatLng[]>([]);
+  const [routeProgressMeters, setRouteProgressMeters] = useState(0);
   const [routeBusy, setRouteBusy] = useState(false);
   const [routeError, setRouteError] = useState("");
   const [statusBusy, setStatusBusy] = useState(false);
@@ -587,12 +623,21 @@ export default function CourierIntegratedMapScreen() {
     : routeBusy
       ? "ROUTE…"
       : "TRAJET DIRECT";
-  const nextManeuver = routePreview?.maneuvers?.[0] || null;
+  const routeDeviationMeters = useMemo(() => {
+    if (!locationFix || routeCoordinates.length < 3) return null;
+    return nearestRoutePointDistanceMeters(locationFix.coordinate, routeCoordinates);
+  }, [locationFix, routeCoordinates]);
+  const maneuverProgress = routePreview?.maneuvers?.length
+    ? maneuverAtProgress(routePreview.maneuvers, routeProgressMeters)
+    : null;
+  const nextManeuver = maneuverProgress?.maneuver || null;
   const vectorCue = nextManeuver
     ? {
         glyph: maneuverGlyph(nextManeuver.maneuver),
         title: nextManeuver.instruction,
-        detail: `${formatDistance(nextManeuver.distanceMeters / 1000)} · voie calculée`,
+        detail: `${formatDistance((maneuverProgress?.remainingMeters || 0) / 1000)} · geste ${
+          (maneuverProgress?.index || 0) + 1
+        }/${routePreview?.maneuvers?.length || 1}`,
         provider: true,
       }
     : {
@@ -803,6 +848,8 @@ export default function CourierIntegratedMapScreen() {
         );
         if (seq !== routeRequestSeqRef.current) return;
         setRoutePreview(preview);
+        routeProgressLastFixRef.current = locationFix.coordinate;
+        setRouteProgressMeters(0);
         const decoded = preview.polyline ? thinRoute(decodePolyline(preview.polyline)) : [];
         setRouteCoordinates(
           decoded.length >= 2 ? decoded : [locationFix.coordinate, activeTarget],
@@ -810,6 +857,8 @@ export default function CourierIntegratedMapScreen() {
       } catch (error) {
         if (seq !== routeRequestSeqRef.current) return;
         setRoutePreview(null);
+        routeProgressLastFixRef.current = locationFix.coordinate;
+        setRouteProgressMeters(0);
         setRouteCoordinates([locationFix.coordinate, activeTarget]);
         setRouteError(
           error instanceof Error ? error.message : "Route routière indisponible.",
@@ -822,8 +871,67 @@ export default function CourierIntegratedMapScreen() {
   );
 
   useEffect(() => {
+    if (!locationFix || !routePreview?.maneuvers?.length || routePreview.fallback) {
+      routeProgressLastFixRef.current = locationFix?.coordinate || null;
+      if (!routePreview?.maneuvers?.length) setRouteProgressMeters(0);
+      return;
+    }
+
+    const previous = routeProgressLastFixRef.current;
+    routeProgressLastFixRef.current = locationFix.coordinate;
+    if (!previous) return;
+    if (locationFix.accuracy !== null && locationFix.accuracy > 100) return;
+    if (
+      routeDeviationMeters !== null &&
+      routeDeviationMeters > OFF_ROUTE_THRESHOLD_METERS
+    ) {
+      return;
+    }
+
+    const movedMeters = distanceKm(previous, locationFix.coordinate) * 1000;
+    if (movedMeters < 2 || movedMeters > 120) return;
+    setRouteProgressMeters((current) => current + movedMeters);
+  }, [
+    locationFix?.capturedAt,
+    routeDeviationMeters,
+    routePreview?.fallback,
+    routePreview?.meta?.computedAt,
+    routePreview?.maneuvers?.length,
+  ]);
+
+  useEffect(() => {
+    if (
+      !mission ||
+      !locationFix ||
+      routePreview?.fallback ||
+      routeDeviationMeters === null ||
+      routeDeviationMeters <= OFF_ROUTE_THRESHOLD_METERS ||
+      (locationFix.accuracy !== null && locationFix.accuracy > 100)
+    ) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastDeviationRefreshAtRef.current < OFF_ROUTE_REFRESH_COOLDOWN_MS) {
+      return;
+    }
+    lastDeviationRefreshAtRef.current = now;
+    setMessage("Écart de route détecté · recalcul du corridor…");
+    void refreshRoadRoute(true);
+  }, [
+    locationFix?.capturedAt,
+    mission,
+    refreshRoadRoute,
+    routeDeviationMeters,
+    routePreview?.fallback,
+  ]);
+
+  useEffect(() => {
     lastRouteRequestAtRef.current = 0;
     lastRouteOriginRef.current = null;
+    routeProgressLastFixRef.current = locationFix?.coordinate || null;
+    lastDeviationRefreshAtRef.current = 0;
+    setRouteProgressMeters(0);
     setRoutePreview(null);
     setRouteCoordinates([]);
     if (locationFix && mission) void refreshRoadRoute(true);
@@ -1158,6 +1266,9 @@ export default function CourierIntegratedMapScreen() {
           <Text style={styles.truthText}>
             {locationStatus}
             {routeError ? " · Route routière momentanément estimée." : ""}
+            {routeDeviationMeters !== null && routeDeviationMeters > OFF_ROUTE_THRESHOLD_METERS
+              ? " · Écart au corridor détecté, recalcul en cours."
+              : ""}
             {fallbackCoordinates ? " · Coordonnées de sécurité utilisées." : ""}
           </Text>
         </View>
