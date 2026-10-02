@@ -21,6 +21,12 @@ orderId?: string | null;
 source?: string | null;
 }
 
+export interface RouteManeuver {
+instruction: string;
+maneuver: string;
+distanceMeters: number;
+}
+
 export interface RoutePreviewMeta {
 trafficAware: boolean;
 computedAt: string;
@@ -37,6 +43,7 @@ distanceMeters: number;
 durationSeconds: number;
 etaMinutes: number;
 polyline: string | null;
+maneuvers: RouteManeuver[];
 confidence: number;
 fallback: boolean;
 meta: RoutePreviewMeta;

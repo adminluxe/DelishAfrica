@@ -21,8 +21,10 @@ TERRAIN="$ROOT/apps/courier/app/terrain-live.tsx"
 APP_CONFIG="$ROOT/apps/courier/app.config.ts"
 RELEASE_PREFLIGHT="$ROOT/scripts/da_courier_map_release_preflight.sh"
 ROUTE_PROBE="$ROOT/scripts/da_courier_mission_route_probe.cjs"
+ROUTE_SERVICE="$ROOT/services/api-nest/src/routes-preview/routes-preview.service.ts"
+ROUTE_TYPES="$ROOT/services/api-nest/src/routes-preview/routes-preview.types.ts"
 
-for file in "$MAP" "$ORDERS" "$ORACLE" "$HOME" "$TERRAIN" "$APP_CONFIG" "$RELEASE_PREFLIGHT" "$ROUTE_PROBE"; do
+for file in "$MAP" "$ORDERS" "$ORACLE" "$HOME" "$TERRAIN" "$APP_CONFIG" "$RELEASE_PREFLIGHT" "$ROUTE_PROBE" "$ROUTE_SERVICE" "$ROUTE_TYPES"; do
   [[ -f "$file" ]] || fail "missing:$file"
 done
 pass "required_files"
@@ -48,6 +50,12 @@ require_text 'Une mission · une cible · une action.' "$MAP" "single_mission_co
 require_text 'GPS ROUTIER ↗' "$MAP" "native_guidance_escape_hatch_present"
 require_text 'assignmentAccepted' "$MAP" "assignment_guard_present"
 require_text 'requestedOrderId' "$MAP" "exact_mission_deeplink_present"
+require_text 'PROCHAIN GESTE' "$MAP" "vector_next_maneuver_ui_present"
+require_text 'maneuverGlyph' "$MAP" "vector_maneuver_symbolizer_present"
+require_text 'routePreview?.maneuvers?.[0]' "$MAP" "vector_provider_maneuver_consumed"
+require_text 'routes.legs.steps.navigationInstruction.instructions' "$ROUTE_SERVICE" "provider_navigation_field_mask_present"
+require_text 'normalizeManeuvers' "$ROUTE_SERVICE" "provider_navigation_normalizer_present"
+require_text 'maneuvers: RouteManeuver[]' "$ROUTE_TYPES" "route_maneuvers_typed"
 
 require_text 'pathname: "/courier-integrated-map"' "$ORACLE" "oracle_accept_to_current"
 require_text 'launch: "accepted"' "$ORACLE" "oracle_immediate_launch_marker"

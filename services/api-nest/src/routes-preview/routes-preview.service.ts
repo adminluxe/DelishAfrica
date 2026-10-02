@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
 RoutePoint,
+RouteManeuver,
 RoutePreviewInput,
 RoutePreviewResponse,
 RouteProvider,
@@ -101,6 +102,26 @@ if (typeof value === 'number' && Number.isFinite(value)) return Math.round(value
 return null;
 }
 
+function normalizeManeuvers(route: any): RouteManeuver[] {
+const legs = Array.isArray(route?.legs) ? route.legs : [];
+const steps = legs.flatMap((leg: any) => (Array.isArray(leg?.steps) ? leg.steps : []));
+
+return steps
+.map((step: any) => {
+const instruction = String(step?.navigationInstruction?.instructions || '').trim();
+const maneuver = String(step?.navigationInstruction?.maneuver || 'STRAIGHT').trim().toUpperCase();
+const distanceMeters = toNumber(step?.distanceMeters);
+if (!instruction || distanceMeters === null || distanceMeters < 0) return null;
+return {
+instruction: instruction.slice(0, 180),
+maneuver: maneuver.slice(0, 64),
+distanceMeters: Math.max(0, Math.round(distanceMeters)),
+} satisfies RouteManeuver;
+})
+.filter((item: RouteManeuver | null): item is RouteManeuver => Boolean(item))
+.slice(0, 6);
+}
+
 @Injectable()
 export class RoutesPreviewService {
 async preview(input: RoutePreviewInput = {}): Promise<RoutePreviewResponse> {
@@ -156,6 +177,7 @@ distanceMeters: google.distanceMeters,
 durationSeconds: google.durationSeconds,
 etaMinutes,
 polyline: google.polyline,
+maneuvers: google.maneuvers,
 confidence: 0.9,
 fallback: false,
 meta: {
@@ -216,6 +238,7 @@ distanceMeters,
 durationSeconds,
 etaMinutes,
 polyline: null,
+maneuvers: [],
 confidence: clamp(args.confidence),
 fallback: true,
 meta: {
@@ -235,7 +258,7 @@ origin: RoutePoint;
 destination: RoutePoint;
 waypoints: RoutePoint[];
 mode: RouteTravelMode;
-}): Promise<{ distanceMeters: number; durationSeconds: number; polyline: string | null } | null> {
+}): Promise<{ distanceMeters: number; durationSeconds: number; polyline: string | null; maneuvers: RouteManeuver[] } | null> {
 const fetchFn = (globalThis as any).fetch;
 const AbortControllerCtor = (globalThis as any).AbortController;
 
@@ -286,7 +309,7 @@ method: 'POST',
 headers: {
 'Content-Type': 'application/json',
 'X-Goog-Api-Key': args.apiKey,
-'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline',
+'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.steps.distanceMeters,routes.legs.steps.navigationInstruction.instructions,routes.legs.steps.navigationInstruction.maneuver',
 },
 body: JSON.stringify(body),
 signal: controller?.signal,
@@ -304,6 +327,7 @@ const polyline =
 typeof route?.polyline?.encodedPolyline === 'string'
 ? route.polyline.encodedPolyline
 : null;
+const maneuvers = normalizeManeuvers(route);
 
 if (!distanceMeters || !durationSeconds) return null;
 
@@ -311,6 +335,7 @@ return {
 distanceMeters: Math.max(1, Math.round(distanceMeters)),
 durationSeconds: Math.max(1, Math.round(durationSeconds)),
 polyline,
+maneuvers,
 };
 } finally {
 if (timer) clearTimeout(timer);

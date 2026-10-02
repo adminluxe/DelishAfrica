@@ -652,3 +652,40 @@ Base: innovation/aqua-atmosphere-current-20261002 @ e55844d
 3. Exécuter `scripts/da_courier_map_release_preflight.sh` en mode strict => GREEN obligatoire.
 4. Device-pass réel Courier : acceptation -> carte < 2 min, restaurant -> pickup -> client -> delivered.
 5. Ensuite seulement inclure Courier dans le rebuild des triplettes.
+
+---
+
+# DELISHAFRICA ROADBOOK UPDATE - 2026-10-02 - COURIER GUIDANCE VECTOR V1
+Branch: innovation/courier-guidance-vector-20261002
+Base: innovation/courier-mission-current-20261002 @ 0e4540b
+
+## Intention
+- Donner au Courier un guidage in-app plus direct sans transformer DelishAfrica en clone de Google Maps.
+- N afficher qu un seul geste routier utile a la fois.
+- Ne jamais inventer de virage lorsque le provider routier n est pas disponible.
+- Garder la couche frugale actuelle : aucun nouvel appel route n est declenche uniquement pour l UI du prochain geste.
+
+## Vector cue
+- Le backend Routes demande maintenant les instructions de navigation et distances des steps dans le meme appel traffic-aware deja utilise pour la polyline et l ETA.
+- Les instructions sont normalisees et bornees a 6 manoeuvres maximum par preview.
+- La Map Mission Current consomme uniquement la premiere manoeuvre comme `PROCHAIN GESTE`.
+- Glyphes locaux : gauche, droite, demi-tour, rond-point, merge/fork et tout droit.
+- Le cue affiche instruction + distance du step lorsque le provider est reel.
+- Sans provider/route reelle : aucun faux virage n est produit ; le cue degrade vers `CAP MISSION` et rappelle que le GPS routier externe reste disponible.
+
+## Cout / sobriete
+- Zero appel provider supplementaire par rapport a Mission Current : les manoeuvres sont recuperees dans le field mask du calcul route existant.
+- Les memes hard throttles restent actifs : minimum 12 s, puis 180 m de mouvement ou 75 s d age de route.
+- Le provider reste backend-only.
+
+## Validation
+- Route probe enrichi : PASS sur field mask navigation, normalisation TURN_RIGHT + distance + instruction et absence de manoeuvre inventee en fallback.
+- API Nest build : PASS.
+- Courier TypeScript : PASS.
+- Courier Expo export iOS : PASS.
+- Courier Expo export Android : PASS.
+- Mission Current FULL gate : GREEN.
+- Aqua quick gate : GREEN.
+- Confluence quick gate : GREEN.
+- git diff --check : PASS.
+- Aucun OTA, rebuild Store ou deploiement runtime declenche.

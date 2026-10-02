@@ -46,6 +46,11 @@ type RoutePreview = {
   durationSeconds: number;
   etaMinutes: number;
   polyline: string | null;
+  maneuvers?: Array<{
+    instruction: string;
+    maneuver: string;
+    distanceMeters: number;
+  }>;
   confidence: number;
   fallback: boolean;
   meta?: {
@@ -357,6 +362,18 @@ function formatAccuracy(value: number | null) {
   return `±${Math.max(1, Math.round(value))} m`;
 }
 
+function maneuverGlyph(value: unknown) {
+  const maneuver = clean(value).toUpperCase();
+  if (maneuver.includes("UTURN_LEFT")) return "↶";
+  if (maneuver.includes("UTURN_RIGHT")) return "↷";
+  if (maneuver.includes("LEFT")) return "←";
+  if (maneuver.includes("RIGHT")) return "→";
+  if (maneuver.includes("ROUNDABOUT")) return "↻";
+  if (maneuver.includes("MERGE")) return "⤴";
+  if (maneuver.includes("FORK")) return "⑂";
+  return "↑";
+}
+
 async function openNativeGuidance(destination: LatLng) {
   const coordinates = `${destination.latitude},${destination.longitude}`;
   const url =
@@ -570,6 +587,24 @@ export default function CourierIntegratedMapScreen() {
     : routeBusy
       ? "ROUTE…"
       : "TRAJET DIRECT";
+  const nextManeuver = routePreview?.maneuvers?.[0] || null;
+  const vectorCue = nextManeuver
+    ? {
+        glyph: maneuverGlyph(nextManeuver.maneuver),
+        title: nextManeuver.instruction,
+        detail: `${formatDistance(nextManeuver.distanceMeters / 1000)} · voie calculée`,
+        provider: true,
+      }
+    : {
+        glyph: "↑",
+        title: `Continuez vers ${activeTargetLabel || "la prochaine cible"}`,
+        detail: routePreview?.fallback
+          ? "Cap local · GPS routier disponible"
+          : routeBusy
+            ? "Calcul du prochain geste…"
+            : "Cap mission",
+        provider: false,
+      };
   const arrivalRadiusMeters = phase.key === "delivery" ? 120 : 160;
   const atTarget =
     !fallbackCoordinates &&
@@ -1057,6 +1092,30 @@ export default function CourierIntegratedMapScreen() {
             ) : null}
           </MapView>
 
+          {mission && !atTarget ? (
+            <View pointerEvents="none" style={styles.vectorCue}>
+              <View
+                style={[
+                  styles.vectorGlyph,
+                  { borderColor: vectorCue.provider ? phase.accent : "rgba(255,255,255,0.16)" },
+                ]}
+              >
+                <Text style={[styles.vectorGlyphText, { color: phase.accent }]}>
+                  {vectorCue.glyph}
+                </Text>
+              </View>
+              <View style={styles.vectorCopy}>
+                <Text style={styles.vectorKicker}>
+                  {vectorCue.provider ? "PROCHAIN GESTE" : "CAP MISSION"}
+                </Text>
+                <Text numberOfLines={2} style={styles.vectorTitle}>
+                  {vectorCue.title}
+                </Text>
+                <Text style={styles.vectorDetail}>{vectorCue.detail}</Text>
+              </View>
+            </View>
+          ) : null}
+
           <View pointerEvents="none" style={styles.routeTruthBadge}>
             <Text style={styles.routeTruthBadgeText}>{routeTruthLabel}</Text>
           </View>
@@ -1223,6 +1282,13 @@ const styles = StyleSheet.create({
     borderColor: "rgba(142,240,179,0.34)",
     backgroundColor: "#082719",
   },
+  vectorCue: { position: "absolute", left: 14, right: 14, top: 58, minHeight: 82, borderRadius: 22, paddingHorizontal: 13, paddingVertical: 11, flexDirection: "row", alignItems: "center", gap: 11, backgroundColor: "rgba(3,26,18,0.94)", borderWidth: 1, borderColor: "rgba(142,240,179,0.24)" },
+  vectorGlyph: { width: 52, height: 52, borderRadius: 18, alignItems: "center", justifyContent: "center", borderWidth: 1.5, backgroundColor: "rgba(142,240,179,0.07)" },
+  vectorGlyphText: { fontSize: 27, lineHeight: 31, fontWeight: "900" },
+  vectorCopy: { flex: 1, minWidth: 0 },
+  vectorKicker: { color: "rgba(183,212,193,0.52)", fontSize: 8, fontWeight: "900", letterSpacing: 1.25 },
+  vectorTitle: { color: "#F7FFF9", fontSize: 15, lineHeight: 19, fontWeight: "900", marginTop: 2 },
+  vectorDetail: { color: "rgba(183,212,193,0.58)", fontSize: 9.5, lineHeight: 13, fontWeight: "800", marginTop: 3 },
   routeTruthBadge: { position: "absolute", top: 14, left: 14, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: "rgba(3,26,18,0.92)", borderWidth: 1, borderColor: "rgba(142,240,179,0.42)" },
   routeTruthBadgeText: { color: "#8EF0B3", fontSize: 9, fontWeight: "900", letterSpacing: 1.1 },
   mapActionsFast: { position: "absolute", right: 14, bottom: 14, flexDirection: "row", gap: 8 },

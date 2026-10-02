@@ -57,6 +57,10 @@ function assert(condition, message) {
       String(headers['X-Goog-FieldMask'] || '').includes('routes.polyline.encodedPolyline'),
       'route field mask must request polyline',
     );
+    assert(
+      String(headers['X-Goog-FieldMask'] || '').includes('routes.legs.steps.navigationInstruction.instructions'),
+      'route field mask must request navigation instructions',
+    );
     return {
       ok: true,
       status: 200,
@@ -67,6 +71,26 @@ function assert(condition, message) {
               distanceMeters: 2040,
               duration: '420s',
               polyline: { encodedPolyline: 'route-polyline-probe' },
+              legs: [
+                {
+                  steps: [
+                    {
+                      distanceMeters: 230,
+                      navigationInstruction: {
+                        instructions: 'Tournez à droite sur Rue du Bailli',
+                        maneuver: 'TURN_RIGHT',
+                      },
+                    },
+                    {
+                      distanceMeters: 620,
+                      navigationInstruction: {
+                        instructions: 'Continuez tout droit',
+                        maneuver: 'STRAIGHT',
+                      },
+                    },
+                  ],
+                },
+              ],
             },
           ],
         };
@@ -85,6 +109,11 @@ function assert(condition, message) {
   assert(live.distanceMeters === 2040, 'distance must be preserved');
   assert(live.etaMinutes === 7, '420s must normalize to 7 min');
   assert(Boolean(live.polyline), 'provider polyline must be preserved');
+  assert(Array.isArray(live.maneuvers) && live.maneuvers.length === 2, 'provider maneuvers must be normalized');
+  assert(live.maneuvers[0].maneuver === 'TURN_RIGHT', 'first maneuver type mismatch');
+  assert(live.maneuvers[0].distanceMeters === 230, 'first maneuver distance mismatch');
+  assert(live.maneuvers[0].instruction.includes('Rue du Bailli'), 'first maneuver instruction mismatch');
+  assert(Array.isArray(fallback.maneuvers) && fallback.maneuvers.length === 0, 'fallback must not invent maneuvers');
 
   console.log(
     JSON.stringify(
