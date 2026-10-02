@@ -348,3 +348,57 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 6. Le gate Aqua doit couvrir API build, probe, TypeScript et exports iOS/Android des trois apps.
 7. Toute activation production doit inclure une attribution visible conforme a la licence source.
 8. Les builds Store en review restent geles tant qu aucune promotion explicite n est decidee.
+
+---
+
+# ARCHITECTURE PIN UPDATE - 2026-10-02 - COURIER MISSION CURRENT / MAP JOKER
+
+## Primary Courier execution loop
+`Route Oracle accept` -> `Mission Current exact order` -> `Restaurant` -> human `picked_up` -> same screen `Client` -> human `delivered`.
+
+Le cockpit devient une surface de consultation/retour, pas une étape obligatoire après acceptation.
+
+## Mission Current invariants
+1. Une mission active prioritaire à la fois.
+2. Une cible opérationnelle à la fois.
+3. Une action métier dominante à la fois.
+4. L acceptation ne vaut jamais retrait.
+5. Le retrait ne vaut jamais livraison.
+6. Toute mutation de statut doit être réécrite puis relue avant d être traitée comme vérité.
+7. L `orderId` deeplinké est prioritaire sur la sélection automatique.
+8. Le tracking reste foreground-only dans cette phase.
+
+## Map truth hierarchy
+1. Position Courier consentie au premier plan.
+2. Coordonnées mission API.
+3. Route provider via backend `/routes/preview` si disponible.
+4. Fallback estimation directe/haversine explicitement étiqueté.
+5. Guidage natif externe toujours accessible comme escape hatch routier.
+
+## Route compute budget
+- Mode baseline : DRIVE + TRAFFIC_AWARE via le service Routes existant.
+- TWO_WHEELER est opt-in par marché uniquement lorsqu il est officiellement couvert par le provider; Belgique et Cameroun restent DRIVE dans la baseline actuelle.
+- Hard throttle provider : aucune requête non forcée avant 12 s.
+- Recompute normal : après mouvement >= 180 m OU route âgée >= 75 s.
+- Changement d étape restaurant -> client invalide immédiatement la route et force une nouvelle résolution.
+- Aucun polling route haute fréquence.
+- FOLLOW camera est local et ne déclenche aucun appel route ; les mises à jour de position animent seulement la caméra entre deux résolutions provider.
+- Pan manuel coupe FOLLOW ; réactivation explicitement humaine.
+- Reduce Motion désactive pitch/animation de caméra.
+
+## Key boundaries
+### Android map rendering key
+- Variable build : `DA_COURIER_ANDROID_GOOGLE_MAPS_API_KEY`.
+- Jamais hardcodée dans Git.
+- Restriction attendue : Android app `com.delishafrica.courier` + certificat de signature attendu.
+- Sa présence est contrôlée par le preflight release.
+
+### Backend Routes key
+- Variable serveur attendue : `GOOGLE_ROUTES_API_KEY` (prioritaire dans le service existant).
+- Jamais transmise au client.
+- `/routes/health` doit retourner `providerReady:true` et `keyExposedToClient:false` avant promotion de la Map Joker.
+
+## Release invariant
+`da_courier_mission_current_gate.sh` valide le code et les bundles.
+`da_courier_map_release_preflight.sh` valide les dépendances secrètes/runtime.
+Les deux doivent être GREEN avant rebuild/promote Courier.

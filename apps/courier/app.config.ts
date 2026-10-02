@@ -16,6 +16,11 @@ const API_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   "https://api.delishafrica.me";
 
+const ANDROID_GOOGLE_MAPS_API_KEY =
+  process.env.DA_COURIER_ANDROID_GOOGLE_MAPS_API_KEY ||
+  process.env.GOOGLE_MAPS_ANDROID_API_KEY ||
+  "";
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: COURIER_APP_NAME,
@@ -51,6 +56,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     ...config.android,
     package: COURIER_ANDROID_PACKAGE,
+    config: {
+      ...(config.android?.config ?? {}),
+      ...(ANDROID_GOOGLE_MAPS_API_KEY
+        ? { googleMaps: { apiKey: ANDROID_GOOGLE_MAPS_API_KEY } }
+        : {}),
+    },
     splash: {
       image: SPLASH_IMAGE,
       resizeMode: "contain",

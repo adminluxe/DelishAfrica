@@ -375,6 +375,13 @@ export default function CourierOrdersFocus() {
       await postJson(`/orders/demo/courier/offers/${decision}`, { orderId: id, id });
       await readOrders();
       setMessage(decision === "accept" ? `${id} · mission acceptée.` : `${id} · offre refusée.`);
+      if (decision === "accept") {
+        router.replace({
+          pathname: "/courier-integrated-map" as any,
+          params: { orderId: id, launch: "accepted" },
+        });
+        return;
+      }
     } catch (error) {
       setMessage("Décision non confirmée · dernière vérité conservée.");
       Alert.alert("Décision impossible", error instanceof Error ? error.message : "Erreur inconnue");
@@ -420,8 +427,18 @@ export default function CourierOrdersFocus() {
         </Pressable>
         <HandoffRail status={status} compact={compact} reduceMotion={reduceMotion} />
         {status === "picked_up" || (status === "ready" && accepted) ? (
-          <Pressable style={styles.mapButton} onPress={() => router.push({ pathname: "/courier-real-map" as any, params: { orderId: id } })}>
-            <Text style={styles.mapButtonText}>{status === "picked_up" ? "Voir le trajet vivant" : "Voir le guidage vers le restaurant"}</Text>
+          <Pressable
+            style={styles.mapButton}
+            onPress={() =>
+              router.push({
+                pathname: "/courier-integrated-map" as any,
+                params: { orderId: id, launch: status === "picked_up" ? "delivery" : "pickup" },
+              })
+            }
+          >
+            <Text style={styles.mapButtonText}>
+              {status === "picked_up" ? "Continuer vers le client" : "Partir vers le restaurant"}
+            </Text>
           </Pressable>
         ) : null}
         {offered ? (
