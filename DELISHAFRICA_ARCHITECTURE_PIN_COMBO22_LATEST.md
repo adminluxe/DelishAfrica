@@ -402,3 +402,28 @@ Le cockpit devient une surface de consultation/retour, pas une étape obligatoir
 `da_courier_mission_current_gate.sh` valide le code et les bundles.
 `da_courier_map_release_preflight.sh` valide les dépendances secrètes/runtime.
 Les deux doivent être GREEN avant rebuild/promote Courier.
+
+---
+
+# ARCHITECTURE PIN UPDATE - 2026-10-02 - COURIER GUIDANCE VECTOR V1
+
+## Navigation instruction contract
+- `/routes/preview` peut retourner `maneuvers[]` en plus de distance / ETA / polyline.
+- Une manoeuvre contient seulement `instruction`, `maneuver`, `distanceMeters`.
+- Maximum 6 manoeuvres sont exposees par preview afin de borner payload et surface de confiance.
+- Le mobile n affiche qu un prochain geste a la fois.
+- Une route fallback retourne toujours `maneuvers: []`.
+
+## Field mask provider
+- `routes.legs.steps.distanceMeters`
+- `routes.legs.steps.navigationInstruction.instructions`
+- `routes.legs.steps.navigationInstruction.maneuver`
+
+## Invariants
+1. Aucun prochain geste ne peut etre invente en fallback haversine.
+2. Les instructions provider sont bornees en longueur avant exposition.
+3. L ajout des manoeuvres ne doit jamais augmenter la frequence des appels Routes.
+4. Le cue degrade explicitement vers CAP MISSION lorsque la route routiere n est pas reelle.
+5. Le GPS routier natif reste accessible comme escape hatch.
+6. Le statut mission reste strictement controle par confirmation humaine + write/read.
+7. Le full gate doit valider API build, route probe, TypeScript et exports Courier iOS/Android.
