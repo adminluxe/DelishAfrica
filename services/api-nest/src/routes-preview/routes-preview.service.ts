@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import * as fs from 'fs';
 import {
 RoutePoint,
 RouteManeuver,
@@ -206,7 +207,21 @@ confidence: 0.62,
 });
 }
 
+providerReady(): boolean {
+return Boolean(this.googleApiKey());
+}
+
 private googleApiKey(): string {
+const keyFile = String(process.env.GOOGLE_ROUTES_API_KEY_FILE || '').trim();
+if (keyFile) {
+try {
+const fromFile = fs.readFileSync(keyFile, 'utf8').trim();
+if (fromFile) return fromFile;
+} catch {
+// Fail closed to env fallback; never log a path or secret value here.
+}
+}
+
 const raw =
 process.env.GOOGLE_ROUTES_API_KEY ||
 process.env.GOOGLE_MAPS_API_KEY ||
