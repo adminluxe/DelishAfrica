@@ -22,9 +22,12 @@ APP_CONFIG="$ROOT/apps/courier/app.config.ts"
 RELEASE_PREFLIGHT="$ROOT/scripts/da_courier_map_release_preflight.sh"
 ROUTE_PROBE="$ROOT/scripts/da_courier_mission_route_probe.cjs"
 ROUTE_SERVICE="$ROOT/services/api-nest/src/routes-preview/routes-preview.service.ts"
+ROUTE_CONTROLLER="$ROOT/services/api-nest/src/routes-preview/routes-preview.controller.ts"
 ROUTE_TYPES="$ROOT/services/api-nest/src/routes-preview/routes-preview.types.ts"
+COMPOSE="$ROOT/docker-compose.yml"
+KEY_INTAKE="$ROOT/scripts/da_courier_map_keys_intake.sh"
 
-for file in "$MAP" "$ORDERS" "$ORACLE" "$HOME" "$TERRAIN" "$APP_CONFIG" "$RELEASE_PREFLIGHT" "$ROUTE_PROBE" "$ROUTE_SERVICE" "$ROUTE_TYPES"; do
+for file in "$MAP" "$ORDERS" "$ORACLE" "$HOME" "$TERRAIN" "$APP_CONFIG" "$RELEASE_PREFLIGHT" "$ROUTE_PROBE" "$ROUTE_SERVICE" "$ROUTE_CONTROLLER" "$ROUTE_TYPES" "$COMPOSE" "$KEY_INTAKE"; do
   [[ -f "$file" ]] || fail "missing:$file"
 done
 pass "required_files"
@@ -61,6 +64,14 @@ require_text 'radius={arrivalRadiusMeters}' "$MAP" "route_aura_arrival_zone_pres
 require_text 'routes.legs.steps.navigationInstruction.instructions' "$ROUTE_SERVICE" "provider_navigation_field_mask_present"
 require_text 'normalizeManeuvers' "$ROUTE_SERVICE" "provider_navigation_normalizer_present"
 require_text 'maneuvers: RouteManeuver[]' "$ROUTE_TYPES" "route_maneuvers_typed"
+require_text 'GOOGLE_ROUTES_API_KEY_FILE' "$ROUTE_SERVICE" "routes_secret_file_contract_present"
+require_text "fs.readFileSync(keyFile, 'utf8')" "$ROUTE_SERVICE" "routes_secret_file_reader_present"
+require_text 'providerReady: this.routesPreview.providerReady()' "$ROUTE_CONTROLLER" "routes_health_uses_real_secret_resolution"
+require_text 'GOOGLE_ROUTES_API_KEY_FILE: "/run/secrets/da-google-routes-v1"' "$COMPOSE" "routes_secret_file_env_mounted"
+require_text '/opt/delishafrica/secrets/da_google_routes_v1.key:/run/secrets/da-google-routes-v1:ro' "$COMPOSE" "routes_secret_bind_mount_present"
+require_text 'DA_COURIER_ANDROID_GOOGLE_MAPS_API_KEY' "$KEY_INTAKE" "secure_android_maps_intake_present"
+require_text 'backend_routes_secret_file_present' "$RELEASE_PREFLIGHT" "preflight_checks_backend_secret_file"
+require_text 'android_google_maps_key_present_in_eas_production' "$RELEASE_PREFLIGHT" "preflight_checks_eas_production_name"
 
 require_text 'pathname: "/courier-integrated-map"' "$ORACLE" "oracle_accept_to_current"
 require_text 'launch: "accepted"' "$ORACLE" "oracle_immediate_launch_marker"

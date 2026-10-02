@@ -1,5 +1,7 @@
 'use strict';
 
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const servicePath = path.join(
@@ -17,6 +19,7 @@ function assert(condition, message) {
 }
 
 (async () => {
+  delete process.env.GOOGLE_ROUTES_API_KEY_FILE;
   delete process.env.GOOGLE_ROUTES_API_KEY;
   delete process.env.GOOGLE_MAPS_API_KEY;
   delete process.env.GOOGLE_API_KEY;
@@ -39,15 +42,18 @@ function assert(condition, message) {
   assert(fallback.fallback === true, 'fallback flag must be true');
   assert(fallback.meta.trafficAware === false, 'fallback must never claim traffic awareness');
   assert(fallback.etaMinutes > 0, 'fallback ETA must be positive');
+  assert(fallbackService.providerReady() === false, 'provider must be not ready without key');
 
-  process.env.GOOGLE_ROUTES_API_KEY = 'probe-key';
+  const keyFile = path.join(os.tmpdir(), `da-routes-probe-${process.pid}.key`);
+  fs.writeFileSync(keyFile, 'probe-file-key\n', { mode: 0o600 });
+  process.env.GOOGLE_ROUTES_API_KEY_FILE = keyFile;
   const originalFetch = global.fetch;
   let providerCalls = 0;
   global.fetch = async (_url, options = {}) => {
     providerCalls += 1;
     const headers = options.headers || {};
     const requestBody = JSON.parse(String(options.body || '{}'));
-    assert(headers['X-Goog-Api-Key'] === 'probe-key', 'server key must be sent only from backend');
+    assert(headers['X-Goog-Api-Key'] === 'probe-file-key', 'server key must be read from backend secret file');
     assert(requestBody.travelMode === 'DRIVE', 'courier baseline must request DRIVE');
     assert(
       requestBody.routingPreference === 'TRAFFIC_AWARE',
@@ -99,8 +105,11 @@ function assert(condition, message) {
   };
 
   const liveService = new RoutesPreviewService();
+  assert(liveService.providerReady() === true, 'provider must be ready from secret file');
   const live = await liveService.preview(input);
   global.fetch = originalFetch;
+  fs.rmSync(keyFile, { force: true });
+  delete process.env.GOOGLE_ROUTES_API_KEY_FILE;
 
   assert(providerCalls === 1, 'traffic-aware preview should make one provider call');
   assert(live.provider === 'google_routes', 'provider route must be identified');

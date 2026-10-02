@@ -445,3 +445,37 @@ Les deux doivent être GREEN avant rebuild/promote Courier.
 - La zone d arrivee ne s affiche pas sur coordonnees fallback.
 - Les marqueurs standards ne doivent pas redevenir la surface primaire sans decision explicite.
 - La lisibilite prime sur les effets ; pas de nouvelle animation GPU dans cette V1.
+
+---
+
+# ARCHITECTURE PIN UPDATE - 2026-10-02 - COURIER MAP SECURE PLUMBING V1
+
+## Secret boundary
+### Routes backend
+- Source canonique production : `/opt/delishafrica/secrets/da_google_routes_v1.key`.
+- Owner/mode attendus : root:root 0600.
+- Mount container : `/run/secrets/da-google-routes-v1:ro`.
+- Env container : `GOOGLE_ROUTES_API_KEY_FILE=/run/secrets/da-google-routes-v1`.
+- La valeur ne doit jamais être injectée dans Expo, EAS mobile ou réponse API.
+
+### Android Maps renderer
+- Variable build canonique : `DA_COURIER_ANDROID_GOOGLE_MAPS_API_KEY` dans EAS production.
+- Clé embarquée côté client par nature ; sa sécurité repose sur restriction Google Cloud package + SHA certificat et API Maps SDK Android uniquement.
+- Ne jamais réutiliser la clé Routes backend pour le rendu Android.
+
+## Readiness contract
+Map Joker promotion exige simultanément :
+1. Android package/bundle corrects.
+2. Variable Android Maps présente dans build context / EAS production.
+3. Secret file Routes présent sur VPS.
+4. Runtime API redémarré avec le mount secret.
+5. `/routes/health`: providerReady=true et keyExposedToClient=false.
+6. Mission Current FULL gate GREEN.
+7. Device-pass réel restaurant -> pickup -> client -> delivered.
+
+## Invariants
+- Aucun secret serveur dans Git.
+- Aucun secret serveur en argument de build mobile.
+- Aucun log de valeur de clé.
+- Le health n expose jamais la clé ni son chemin hôte.
+- L intake secret et l activation runtime restent deux opérations distinctes et auditables.

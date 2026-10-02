@@ -723,3 +723,52 @@ Base: innovation/courier-guidance-vector-20261002 @ c26e2a9
 - Courier Expo export iOS + Android : PASS.
 - git diff --check : PASS.
 - Aucun OTA, build Store ou deploiement runtime declenche.
+
+---
+
+# DELISHAFRICA ROADBOOK UPDATE - 2026-10-02 - COURIER MAP SECURE PLUMBING V1
+Branch: innovation/courier-map-secure-plumbing-20261002
+Base: innovation/courier-route-aura-20261002 @ 203645a
+
+## Intention
+- Préparer le rebuild Courier sans jamais mettre la clé Routes serveur dans Git, dans le bundle mobile ou dans `docker inspect`.
+- Séparer clairement la clé Android Maps (clé client restreinte package/certificat) de la clé Routes (secret backend).
+- Automatiser l intake demain sans afficher de valeur sensible dans les logs.
+
+## Backend Routes secret
+- `RoutesPreviewService` accepte désormais `GOOGLE_ROUTES_API_KEY_FILE` en priorité.
+- Le secret est lu depuis un fichier read-only ; le fallback env reste uniquement compatible legacy.
+- `providerReady()` utilise la même résolution réelle que le service, donc `/routes/health` ne peut plus déclarer ready sur une logique différente.
+- Docker compose prépare le montage : `/opt/delishafrica/secrets/da_google_routes_v1.key` -> `/run/secrets/da-google-routes-v1:ro`.
+- Le container ne reçoit que le chemin `GOOGLE_ROUTES_API_KEY_FILE`, jamais la valeur de la clé.
+
+## Android Maps build key
+- `app.config.ts` reste le point d injection `DA_COURIER_ANDROID_GOOGLE_MAPS_API_KEY`.
+- Le preflight accepte soit une injection locale explicite, soit la présence du nom de variable dans l environnement EAS `production`.
+- Aucune valeur EAS sensible n est demandée ni imprimée par le preflight.
+
+## Intake Tonton
+- Nouveau script interactif : `scripts/da_courier_map_keys_intake.sh`.
+- Saisie cachée des deux clés.
+- Clé Routes installée atomiquement root:root mode 600 dans `/opt/delishafrica/secrets/da_google_routes_v1.key`.
+- Clé Android envoyée dans EAS production avec visibilité `secret`.
+- Le script ne redémarre ni API ni build : activation runtime volontairement séparée de l intake secret.
+- Rappel obligatoire de restriction : Android package `com.delishafrica.courier` + certificat attendu ; Routes limité à l API Routes + egress VPS.
+
+## Preflight release renforcé
+- Vérifie package Android et bundle iOS.
+- Vérifie clé Android locale OU variable EAS production.
+- Vérifie présence du fichier secret Routes côté VPS sans lire sa valeur.
+- Vérifie `/routes/health` => providerReady:true et keyExposedToClient:false.
+- Etat actuel volontaire : BLOCKED 3 points, car aucune clé réelle n a encore été fournie et le runtime production n a pas été redéployé.
+
+## Validation labo
+- Mission Current FULL gate : GREEN.
+- API build : PASS.
+- Route probe via clé fichier temporaire mode 600 : PASS.
+- ProviderReady false sans secret / true avec secret fichier : PASS.
+- Courier TypeScript : PASS.
+- Courier exports iOS + Android : PASS.
+- `docker compose config` avec valeurs probe : PASS.
+- Scripts intake/preflight `bash -n` : PASS.
+- Aucun secret réel créé, aucun runtime redémarré, aucun OTA/build Store déclenché.
