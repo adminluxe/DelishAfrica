@@ -567,3 +567,83 @@ Script : `scripts/da_atmosphere_weather.sh`
 ## Avant promotion production
 - Surfacer l attribution meteo de maniere visible dans la surface credits/legal du produit avant activation publique de la meteo live.
 - Valider visuellement les 7 modes sur appareils reels et verifier lisibilite / contraste sous pluie, brume et storm.
+
+---
+
+# DELISHAFRICA ROADBOOK UPDATE - 2026-10-02 - COURIER MISSION CURRENT V1 / MAP JOKER OPEN
+Branch: innovation/courier-mission-current-20261002
+Base: innovation/aqua-atmosphere-current-20261002 @ e55844d
+
+## Intention
+- Réduire le parcours Courier après acceptation à la vérité opérationnelle minimale : une mission, une cible, une action.
+- Éliminer le détour acceptation -> cockpit -> carte.
+- Faire entrer le coursier dans son guidage restaurant immédiatement après l acceptation confirmée.
+- Conserver les mutations sensibles explicitement humaines et confirmées par relecture serveur.
+
+## Parcours Mission Current
+### Acceptation
+- Route Oracle : une acceptation confirmée redirige vers `/courier-integrated-map` avec `orderId` exact et marqueur `launch=accepted`.
+- Cockpit Missions : une acceptation confirmée fait la même redirection directe.
+- La carte respecte d abord l `orderId` demandé avant tout mécanisme de priorité automatique.
+
+### Étape 1 - restaurant
+- L écran ouvre directement sur le prochain repère utile : le restaurant.
+- Position Courier uniquement au premier plan, permission existante `while in use`.
+- Carte centrée Courier + cible dès qu une route est disponible.
+- Une seule action métier dominante : `Commande récupérée`.
+- L écriture `picked_up` est suivie de 3 relectures bornées ; sans confirmation serveur, la dernière vérité est conservée.
+
+### Étape 2 - client
+- Dès que `picked_up` est confirmé, la cible bascule dans le même écran vers le client.
+- La route et l ETA sont recalculées vers la nouvelle cible.
+- Une seule action métier dominante : `Commande remise`.
+- `delivered` suit le même contrat écriture + relecture avant fermeture de mission.
+
+## Joker Map - route routière progressive
+- La carte intégrée utilise désormais le proxy existant `/api/v1/routes/preview` en mode `DRIVE` comme baseline internationale traffic-aware.
+- Correctif couverture : Google ne liste actuellement ni la Belgique ni le Cameroun dans les marchés Routes `TWO_WHEELER`; ce mode n est donc pas utilisé comme défaut pour nos marchés immédiats.
+- Une future sélection market-aware pourra activer `TWO_WHEELER` uniquement dans les pays officiellement couverts, sans casser le parcours universel.
+- Si le provider Routes est disponible : distance, durée/ETA et polyline provider sont utilisées.
+- La polyline encodée est décodée localement puis amincie pour garder une carte fluide.
+- Recalcul fournisseur borné : 20 s minimum ou 90 m de déplacement avant nouveau calcul non forcé.
+- En absence de provider routier : fallback honnête, libellé `ROUTE ESTIMÉE`, jamais `TRAFIC LIVE`.
+- Bouton `GPS ROUTIER ↗` conserve une sortie immédiate vers Apple Plans sur iOS ou Google Maps sur Android.
+- La carte ne prétend jamais inventer un itinéraire routier lorsque seule une estimation directe est disponible.
+
+## Simplification UI
+- Nouveau deck : CAP RESTAURANT / CAP CLIENT + ETA + distance + niveau de vérité.
+- Carte devient la surface centrale.
+- Suppression du parcours primaire vers l ancien `courier-real-map` depuis Missions.
+- `courier-real-map` reste dans le repo comme surface legacy de secours ; aucune suppression risquée avant validation appareils.
+- Accès secondaires réduits à `Détails commande` et `Cockpit`.
+- Contrat affiché : `Une mission · une cible · une action.`
+
+## Sécurité Maps / clés
+- Audit runtime : `/routes/health` retourne actuellement `providerReady:false` et `keyExposedToClient:false`.
+- Audit Expo Courier : aucune clé Android Google Maps n est actuellement injectée dans la config production.
+- Audit EAS production projet + compte : aucun nom de variable Google/Map/Route détecté sans lecture de valeur sensible.
+- `app.config.ts` accepte maintenant `DA_COURIER_ANDROID_GOOGLE_MAPS_API_KEY` (ou compat `GOOGLE_MAPS_ANDROID_API_KEY`) sans aucune clé hardcodée.
+- Une clé Android future devra être restreinte à `com.delishafrica.courier` + certificat Android attendu.
+- La clé Routes backend doit rester exclusivement serveur, idéalement restreinte au service/API et à l origine réseau du VPS ; elle ne doit jamais entrer dans le bundle mobile.
+- Nouveau preflight strict : `scripts/da_courier_map_release_preflight.sh`.
+- État actuel de ce preflight : BLOCKED volontairement sur les 2 clés manquantes ; aucun rebuild Store ne doit être lancé en prétendant que la Map Joker est production-ready avant levée de ces deux blocages.
+
+## Validation labo
+- `git diff --check` : PASS.
+- TypeScript Courier : PASS.
+- Expo export Courier iOS : PASS.
+- Expo export Courier Android : PASS.
+- `scripts/da_courier_mission_current_gate.sh --full` final : GREEN après contrat de clé + correctif DRIVE traffic-aware.
+- API Nest build : PASS.
+- `scripts/da_courier_mission_route_probe.cjs` : PASS ; valide fallback honnête, clé uniquement backend, DRIVE + TRAFFIC_AWARE, ETA et polyline provider.
+- Aqua Atmosphere quick gate : GREEN.
+- Confluence Trust quick gate : GREEN.
+- Injection config Maps simulée avec valeur factice non secrète : PASS.
+- Aucun OTA, build Store ou déploiement runtime déclenché.
+
+## Gate avant rebuild des triplettes
+1. Créer/injecter la clé Android Maps restreinte et vérifier sa présence via Expo config sans afficher sa valeur.
+2. Activer une clé Google Routes serveur restreinte puis exiger `providerReady:true` sur `/routes/health`.
+3. Exécuter `scripts/da_courier_map_release_preflight.sh` en mode strict => GREEN obligatoire.
+4. Device-pass réel Courier : acceptation -> carte < 2 min, restaurant -> pickup -> client -> delivered.
+5. Ensuite seulement inclure Courier dans le rebuild des triplettes.

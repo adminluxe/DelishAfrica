@@ -664,7 +664,7 @@ export default function CourierHome() {
       return;
     }
     if (priority && ["picked_up", "on_the_way", "in_transit"].includes(priorityStatus)) {
-      router.push({ pathname: "/courier-real-map" as any, params: { orderId: orderId(priority) } });
+      router.push({ pathname: "/courier-integrated-map" as any, params: { orderId: orderId(priority), launch: "terrain" } });
       return;
     }
     if (priority && priorityStatus === "ready") {

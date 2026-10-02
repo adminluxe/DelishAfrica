@@ -611,7 +611,14 @@ export default function RouteOracleScreen() {
             "Mission acceptée. La commande reste prête jusqu’à votre confirmation de récupération.",
         }));
 
-        setTimeout(() => router.push("/orders" as any), 450);
+        setTimeout(
+          () =>
+            router.replace({
+              pathname: "/courier-integrated-map" as any,
+              params: { orderId: offer.orderId, launch: "accepted" },
+            }),
+          220,
+        );
         return;
       }
 
@@ -986,9 +993,14 @@ export default function RouteOracleScreen() {
 
                 <Pressable
                   style={styles.primaryButton}
-                  onPress={() => router.push("/orders" as any)}
+                  onPress={() =>
+                    router.replace({
+                      pathname: "/courier-integrated-map" as any,
+                      params: { orderId: state.offer?.orderId || "", launch: "accepted" },
+                    })
+                  }
                 >
-                  <Text style={styles.primaryText}>Ouvrir le cockpit mission</Text>
+                  <Text style={styles.primaryText}>Partir vers le restaurant</Text>
                 </Pressable>
               </View>
             ) : null}

@@ -34,7 +34,7 @@ type RouteCard = { eyebrow: string; title: string; body: string; path: string };
 const ROUTES: RouteCard[] = [
   { eyebrow: "OFFRES", title: "Missions", body: "Voir les propositions qui appartiennent à votre identité Courier.", path: "/orders" },
   { eyebrow: "INTELLIGENCE", title: "Route Oracle", body: "ETA, score terrain et acceptation authentifiée.", path: "/route-oracle" },
-  { eyebrow: "NAVIGATION", title: "Carte Live", body: "Retrait, itinéraire et progression de la mission.", path: "/courier-real-map" },
+  { eyebrow: "NAVIGATION", title: "Mission Current", body: "Une cible, une route réelle, une action.", path: "/courier-integrated-map" },
   { eyebrow: "PRÉSENCE", title: "Mon espace", body: "Disponibilité, zone active, confiance et profil terrain.", path: "/courier-space" },
 ];
 
