@@ -605,6 +605,9 @@ export default function CourierIntegratedMapScreen() {
             : "Cap mission",
         provider: false,
       };
+  const courierHeading = locationFix
+    ? locationFix.heading ?? bearingDegrees(locationFix.coordinate, activeTarget)
+    : 0;
   const arrivalRadiusMeters = phase.key === "delivery" ? 120 : 160;
   const atTarget =
     !fallbackCoordinates &&
@@ -1050,17 +1053,46 @@ export default function CourierIntegratedMapScreen() {
               coordinate={pickup}
               title={mission ? restaurantName(mission) : "Restaurant"}
               description="Point de retrait"
-              pinColor="#2EBD73"
-            />
+              anchor={{ x: 0.5, y: 0.5 }}
+            >
+              <View
+                style={[
+                  styles.missionMarker,
+                  { borderColor: "#8EF0B3" },
+                  phase.key !== "delivery" && styles.missionMarkerActive,
+                ]}
+              >
+                <Text style={[styles.missionMarkerText, { color: "#8EF0B3" }]}>R</Text>
+              </View>
+            </Marker>
             <Marker
               coordinate={destination}
               title={mission ? customerName(mission) : "Destination"}
               description={mission ? deliveryAddress(mission) : "Point de livraison"}
-              pinColor="#D9A928"
-            />
+              anchor={{ x: 0.5, y: 0.5 }}
+            >
+              <View
+                style={[
+                  styles.missionMarker,
+                  { borderColor: "#D9A928" },
+                  phase.key === "delivery" && styles.missionMarkerActive,
+                ]}
+              >
+                <Text style={[styles.missionMarkerText, { color: "#D9A928" }]}>C</Text>
+              </View>
+            </Marker>
+            {mission && !fallbackCoordinates ? (
+              <Circle
+                center={activeTarget}
+                radius={arrivalRadiusMeters}
+                fillColor={phase.key === "delivery" ? "rgba(217,169,40,0.07)" : "rgba(142,240,179,0.07)"}
+                strokeColor={phase.key === "delivery" ? "rgba(217,169,40,0.38)" : "rgba(142,240,179,0.38)"}
+                strokeWidth={1.5}
+              />
+            ) : null}
             <Polyline
               coordinates={[pickup, destination]}
-              strokeColor="rgba(142,240,179,0.22)"
+              strokeColor="rgba(142,240,179,0.16)"
               strokeWidth={4}
               lineDashPattern={[10, 10]}
             />
@@ -1077,7 +1109,24 @@ export default function CourierIntegratedMapScreen() {
                   coordinate={locationFix.coordinate}
                   title="Vous"
                   description={formatAccuracy(locationFix.accuracy)}
-                  pinColor="#337EFF"
+                  anchor={{ x: 0.5, y: 0.5 }}
+                  flat
+                  rotation={courierHeading}
+                >
+                  <View style={styles.courierMarkerAura}>
+                    <View style={styles.courierMarkerCore}>
+                      <Text style={styles.courierMarkerArrow}>▲</Text>
+                    </View>
+                  </View>
+                </Marker>
+                <Polyline
+                  coordinates={
+                    routeCoordinates.length >= 2
+                      ? routeCoordinates
+                      : [locationFix.coordinate, activeTarget]
+                  }
+                  strokeColor={phase.key === "delivery" ? "rgba(217,169,40,0.24)" : "rgba(142,240,179,0.24)"}
+                  strokeWidth={14}
                 />
                 <Polyline
                   coordinates={
@@ -1086,7 +1135,7 @@ export default function CourierIntegratedMapScreen() {
                       : [locationFix.coordinate, activeTarget]
                   }
                   strokeColor={phase.accent}
-                  strokeWidth={8}
+                  strokeWidth={6}
                 />
               </>
             ) : null}
@@ -1282,6 +1331,12 @@ const styles = StyleSheet.create({
     borderColor: "rgba(142,240,179,0.34)",
     backgroundColor: "#082719",
   },
+  missionMarker: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", borderWidth: 2, backgroundColor: "rgba(3,26,18,0.94)", shadowColor: "#000000", shadowOpacity: 0.28, shadowRadius: 7, shadowOffset: { width: 0, height: 3 }, elevation: 5 },
+  missionMarkerActive: { transform: [{ scale: 1.12 }], backgroundColor: "rgba(3,38,24,0.98)" },
+  missionMarkerText: { fontSize: 15, fontWeight: "900", letterSpacing: 0.4 },
+  courierMarkerAura: { width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(51,126,255,0.14)", borderWidth: 1, borderColor: "rgba(139,188,255,0.52)" },
+  courierMarkerCore: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: "#337EFF", borderWidth: 2, borderColor: "rgba(245,249,255,0.94)", shadowColor: "#337EFF", shadowOpacity: 0.42, shadowRadius: 7, shadowOffset: { width: 0, height: 0 }, elevation: 6 },
+  courierMarkerArrow: { color: "#FFFFFF", fontSize: 14, lineHeight: 16, fontWeight: "900", transform: [{ translateY: -1 }] },
   vectorCue: { position: "absolute", left: 14, right: 14, top: 58, minHeight: 82, borderRadius: 22, paddingHorizontal: 13, paddingVertical: 11, flexDirection: "row", alignItems: "center", gap: 11, backgroundColor: "rgba(3,26,18,0.94)", borderWidth: 1, borderColor: "rgba(142,240,179,0.24)" },
   vectorGlyph: { width: 52, height: 52, borderRadius: 18, alignItems: "center", justifyContent: "center", borderWidth: 1.5, backgroundColor: "rgba(142,240,179,0.07)" },
   vectorGlyphText: { fontSize: 27, lineHeight: 31, fontWeight: "900" },
