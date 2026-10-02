@@ -427,3 +427,21 @@ Les deux doivent être GREEN avant rebuild/promote Courier.
 5. Le GPS routier natif reste accessible comme escape hatch.
 6. Le statut mission reste strictement controle par confirmation humaine + write/read.
 7. Le full gate doit valider API build, route probe, TypeScript et exports Courier iOS/Android.
+
+---
+
+# ARCHITECTURE PIN UPDATE - 2026-10-02 - COURIER ROUTE AURA V1
+
+## Visual truth hierarchy
+1. Courier = beacon oriente par heading GPS / bearing local.
+2. Cible courante = marqueur R ou C actif + zone d arrivee si coordonnees reelles.
+3. Route active = halo + noyau couleur phase.
+4. Corridor restaurant-client = contexte secondaire pointille.
+5. Vector Cue = prochain geste, mais jamais faux virage en fallback.
+
+## Invariants Route Aura
+- Aucun style visuel ne peut declencher de nouvel appel route.
+- Le beacon Courier n utilise que la position deja consentie au premier plan.
+- La zone d arrivee ne s affiche pas sur coordonnees fallback.
+- Les marqueurs standards ne doivent pas redevenir la surface primaire sans decision explicite.
+- La lisibilite prime sur les effets ; pas de nouvelle animation GPU dans cette V1.

@@ -689,3 +689,37 @@ Base: innovation/courier-mission-current-20261002 @ 0e4540b
 - Confluence quick gate : GREEN.
 - git diff --check : PASS.
 - Aucun OTA, rebuild Store ou deploiement runtime declenche.
+
+---
+
+# DELISHAFRICA ROADBOOK UPDATE - 2026-10-02 - COURIER ROUTE AURA V1
+Branch: innovation/courier-route-aura-20261002
+Base: innovation/courier-guidance-vector-20261002 @ c26e2a9
+
+## Intention
+- Donner a la Map Mission Current une signature DelishAfrica immediate sans sacrifier la lisibilite operationnelle.
+- Eviter le clone de pins standard : chaque repere doit expliquer son role au premier coup d oeil.
+- Renforcer la perception de progression et d arrivee sans ajouter un seul appel reseau.
+
+## Route Aura
+- Restaurant et Client utilisent des marqueurs proprietaires `R` / `C`, avec accent de phase et halo actif sur la cible courante.
+- Le Courier utilise un beacon bleu oriente par heading GPS ou, a defaut, par bearing vers la cible.
+- La route active devient un corridor a double polyline : halo large translucide + noyau fin couleur phase.
+- La zone d arrivee reelle est visible comme cercle discret autour de la cible lorsqu on dispose de coordonnees mission reelles.
+- Le corridor restaurant-client de contexte reste volontairement discret et pointille.
+- Vector Guidance reste superpose au-dessus de la carte et garde le prochain geste unique.
+
+## Performance / sobriete
+- Zero dependance.
+- Zero nouvel appel API ou provider.
+- Trois marqueurs maximum + deux polylines actives ; surface volontairement bornee.
+- Aucun effet anime supplementaire impose au GPU.
+- Reduce Motion et le mode FOLLOW existant restent inchanges.
+
+## Validation
+- Mission Current FULL gate : GREEN.
+- API build + route probe : PASS.
+- Courier TypeScript : PASS.
+- Courier Expo export iOS + Android : PASS.
+- git diff --check : PASS.
+- Aucun OTA, build Store ou deploiement runtime declenche.
