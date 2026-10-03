@@ -3,7 +3,7 @@
     "name": "DelishAfrica Merchant",
     "slug": "delishafrica-merchant",
     "scheme": "delishafricamerchant",
-    "version": "3.0.0",
+    "version": "3.0.1",
     "ios": {
       "bundleIdentifier": "com.delishafrica.merchant",
       "buildNumber": "1772244486",

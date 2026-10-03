@@ -22,7 +22,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: "delishafrica-merchant",
   owner: "delishafrica",
   scheme: MERCHANT_SCHEME,
-  version: "3.0.0",
+  version: "3.0.1",
   orientation: "portrait",
   userInterfaceStyle: "dark",
   backgroundColor: MERCHANT_BOOT_BACKGROUND,
