@@ -812,3 +812,37 @@ Base: innovation/courier-guidance-vector-20261002 @ c26e2a9
 - Confluence quick gate : GREEN.
 - git diff --check : PASS.
 - Aucun OTA, rebuild Store ou déploiement runtime déclenché.
+
+
+# DELISHAFRICA ROADBOOK UPDATE - 2026-10-03 - TRIAD STORE SUBMISSION + ROUTES RUNTIME
+
+## Release authority
+- Release branch: `release/triad-final-20261002`.
+- Store snapshot baseline: `de285a2`; submit metadata fix: `b3951fd`.
+- App Store Connect IDs persisted in all three `eas.json` files and pushed to GitHub.
+- No API key value, service-account private key or Apple private key was committed.
+
+## Store delivery
+- Client Android 3.0.0 (8): EAS submission FINISHED to Google Play internal.
+- Client iOS 3.0.0 (23): EAS submission FINISHED; TestFlight confirms beta processing/upload.
+- Courier Android 3.0.0 (6): EAS submission FINISHED to Google Play internal.
+- Courier iOS 3.0.0 (9): EAS submission FINISHED; TestFlight confirms beta processing/upload.
+- Merchant Android 3.0.0 (8): EAS submission FINISHED to Google Play internal.
+- Merchant iOS 3.0.0 (15) failed repeatedly during upload with no EAS error payload.
+- Merchant rescue rebuild from `b3951fd`: iOS 3.0.1 (16), build `db54e83d-30e1-4d92-82cd-d52b165fd622`.
+- Merchant iOS rescue submission `9381603d-e13b-4f70-aba2-e52f6f3f69b4`: FINISHED; Apple upload accepted.
+
+## Courier Maps / Routes runtime
+- Backend secret file contract mounted read-only at `/run/secrets/da-google-routes-v1`.
+- Live API health reports `providerReady:true` and `keyExposedToClient:false`.
+- Live API core health remains GREEN after targeted runtime replacement.
+- Real route probe currently falls back to `fallback_google_unavailable`: Google provider not yet accepted.
+- Forensic probe proved the two Google key values were entered into the opposite intake slots.
+- The key currently on the backend is Android-app restricted; Google rejects server use.
+- The key embedded in Courier Android belongs to Google Cloud project number `916287925315`; Routes API is currently disabled/not propagated there.
+- Final release requires correcting the two secure intake slots and enabling Routes API before a replacement Courier Android build.
+
+## Release discipline
+- Existing Client/Merchant binaries are not rebuilt unnecessarily.
+- Courier Android version 6 must be superseded after the Maps/Routes key correction; Courier iOS 9 is unaffected by the Android Maps key.
+- Store and runtime claims remain evidence-based: EAS FINISHED does not imply production review approval.

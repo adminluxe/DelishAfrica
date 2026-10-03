@@ -503,3 +503,26 @@ Map Joker promotion exige simultanément :
 5. La dérive est un signal de recalcul, jamais une décision métier.
 6. Les mutations pickup/delivered restent confirmation humaine + write/read.
 7. Le full gate Courier doit rester GREEN sur API probe + TypeScript + exports iOS/Android.
+
+
+# ARCHITECTURE PIN UPDATE - 2026-10-03 - COURIER ROUTING SECRET BOUNDARY
+
+## Security boundary
+- Mobile Courier receives only the Android Maps SDK key through EAS production secret `DA_COURIER_ANDROID_GOOGLE_MAPS_API_KEY`.
+- The Routes backend key must never enter an app bundle or Git history.
+- Backend key authority is file-only: `/opt/delishafrica/secrets/da_google_routes_v1.key`, root-owned mode 600.
+- Runtime mount is read-only: `/run/secrets/da-google-routes-v1`.
+- API receives only `GOOGLE_ROUTES_API_KEY_FILE=/run/secrets/da-google-routes-v1`.
+- Public health must maintain `keyExposedToClient:false`.
+
+## Provider truth
+- `providerReady:true` proves secret resolution only; it is not sufficient proof of a successful Google Routes call.
+- Release gate must also execute a real route preview and require the Google provider result, not `fallback_google_unavailable`.
+- Android Maps and backend Routes use distinct keys and distinct application restrictions.
+- Routes egress authority is VPS public IP `194.164.72.250`.
+- Android Maps authority is package `com.delishafrica.courier` plus approved signing SHA-1 fingerprints.
+
+## Runtime deployment
+- Current production API container remains `delish-api` on localhost port 3010.
+- Secret mount/runtime changes are targeted to the API container only and must preserve rollback capability.
+- Courier Android Store rebuild is allowed only after secure intake is corrected and the real provider probe is GREEN.
