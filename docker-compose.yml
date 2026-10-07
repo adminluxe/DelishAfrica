@@ -53,6 +53,7 @@ services:
       INVITATION_WRITES: "0"
       INVITATION_ACCEPTANCE_WRITES: "1"
       DA_PROVIDER_BRIDGE_EXTERNAL_CALLS: "0"
+      GOOGLE_ROUTES_API_KEY_FILE: "/run/secrets/da-google-routes-v1"
     ports:
       - "127.0.0.1:3010:3010"
     volumes:
@@ -61,6 +62,7 @@ services:
       - api_nest_node_modules:/app/services/api-nest/node_modules
       - /opt/delishafrica/secrets/da_ops_authority_v1.key:/run/secrets/da-ops-authority-v1:ro
       - /opt/delishafrica/secrets/da_invitation_encryption_v1.key:/run/secrets/da-invitation-encryption-v1:ro
+      - /opt/delishafrica/secrets/da_google_routes_v1.key:/run/secrets/da-google-routes-v1:ro
     command:
       - bash
       - -lc

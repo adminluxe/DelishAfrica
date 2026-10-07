@@ -723,3 +723,153 @@ Base: innovation/courier-guidance-vector-20261002 @ c26e2a9
 - Courier Expo export iOS + Android : PASS.
 - git diff --check : PASS.
 - Aucun OTA, build Store ou deploiement runtime declenche.
+
+---
+
+# DELISHAFRICA ROADBOOK UPDATE - 2026-10-02 - COURIER MAP SECURE PLUMBING V1
+Branch: innovation/courier-map-secure-plumbing-20261002
+Base: innovation/courier-route-aura-20261002 @ 203645a
+
+## Intention
+- Préparer le rebuild Courier sans jamais mettre la clé Routes serveur dans Git, dans le bundle mobile ou dans `docker inspect`.
+- Séparer clairement la clé Android Maps (clé client restreinte package/certificat) de la clé Routes (secret backend).
+- Automatiser l intake demain sans afficher de valeur sensible dans les logs.
+
+## Backend Routes secret
+- `RoutesPreviewService` accepte désormais `GOOGLE_ROUTES_API_KEY_FILE` en priorité.
+- Le secret est lu depuis un fichier read-only ; le fallback env reste uniquement compatible legacy.
+- `providerReady()` utilise la même résolution réelle que le service, donc `/routes/health` ne peut plus déclarer ready sur une logique différente.
+- Docker compose prépare le montage : `/opt/delishafrica/secrets/da_google_routes_v1.key` -> `/run/secrets/da-google-routes-v1:ro`.
+- Le container ne reçoit que le chemin `GOOGLE_ROUTES_API_KEY_FILE`, jamais la valeur de la clé.
+
+## Android Maps build key
+- `app.config.ts` reste le point d injection `DA_COURIER_ANDROID_GOOGLE_MAPS_API_KEY`.
+- Le preflight accepte soit une injection locale explicite, soit la présence du nom de variable dans l environnement EAS `production`.
+- Aucune valeur EAS sensible n est demandée ni imprimée par le preflight.
+
+## Intake Tonton
+- Nouveau script interactif : `scripts/da_courier_map_keys_intake.sh`.
+- Saisie cachée des deux clés.
+- Clé Routes installée atomiquement root:root mode 600 dans `/opt/delishafrica/secrets/da_google_routes_v1.key`.
+- Clé Android envoyée dans EAS production avec visibilité `secret`.
+- Le script ne redémarre ni API ni build : activation runtime volontairement séparée de l intake secret.
+- Rappel obligatoire de restriction : Android package `com.delishafrica.courier` + certificat attendu ; Routes limité à l API Routes + egress VPS.
+
+## Preflight release renforcé
+- Vérifie package Android et bundle iOS.
+- Vérifie clé Android locale OU variable EAS production.
+- Vérifie présence du fichier secret Routes côté VPS sans lire sa valeur.
+- Vérifie `/routes/health` => providerReady:true et keyExposedToClient:false.
+- Etat actuel volontaire : BLOCKED 3 points, car aucune clé réelle n a encore été fournie et le runtime production n a pas été redéployé.
+
+## Validation labo
+- Mission Current FULL gate : GREEN.
+- API build : PASS.
+- Route probe via clé fichier temporaire mode 600 : PASS.
+- ProviderReady false sans secret / true avec secret fichier : PASS.
+- Courier TypeScript : PASS.
+- Courier exports iOS + Android : PASS.
+- `docker compose config` avec valeurs probe : PASS.
+- Scripts intake/preflight `bash -n` : PASS.
+- Aucun secret réel créé, aucun runtime redémarré, aucun OTA/build Store déclenché.
+
+---
+
+# DELISHAFRICA ROADBOOK UPDATE - 2026-10-02 - COURIER VECTOR DRIFT V1
+Branch: innovation/courier-vector-drift-current-20261002
+Base: innovation/courier-guidance-vector-20261002 @ c26e2a9
+
+## Intention
+- Faire évoluer `PROCHAIN GESTE` avec le mouvement réel du Courier sans acheter un nouvel appel Routes à chaque changement de rue.
+- Détecter un écart significatif au corridor et recalculer uniquement quand cela devient utile.
+- Garder le guidage simple : une instruction, une distance restante locale, une action humaine métier.
+
+## Progression locale des manoeuvres
+- Les `maneuvers[]` du preview provider sont parcourues localement par distance cumulée parcourue depuis le dernier calcul routier.
+- Seuls les déplacements GPS plausibles sont comptés : précision <= 100 m, delta entre 2 m et 120 m.
+- Le cue affiche la distance restante vers le prochain geste et son index dans la séquence.
+- Un nouveau preview provider remet proprement la progression locale à zéro.
+- Une route fallback conserve `maneuvers: []` : aucune instruction routière n est inventée.
+
+## Détection de dérive
+- Distance minimale au corridor polyline calculée localement.
+- Seuil volontairement tolérant : 220 m pour éviter les faux positifs liés au GPS et à la polyline amincie.
+- Au-delà du seuil, avec précision GPS raisonnable, un recalcul provider peut être forcé.
+- Cooldown dérive : 30 s minimum entre deux recalculs forcés.
+- Le message UI indique explicitement `Écart au corridor détecté, recalcul en cours.`
+
+## Discipline coût
+- Progression vers les prochains gestes : 100 % locale, zéro appel Routes supplémentaire.
+- Recalcul hors corridor uniquement sur anomalie et avec cooldown 30 s.
+- Les budgets normaux restent inchangés : hard throttle 12 s ; 180 m / 75 s pour le cycle standard.
+
+## Validation
+- Mission Current quick gate : GREEN.
+- API Nest build : PASS.
+- Route preview probe : PASS.
+- Courier TypeScript : PASS.
+- Courier Expo export iOS : PASS.
+- Courier Expo export Android : PASS.
+- Mission Current FULL gate : GREEN.
+- Aqua quick gate : GREEN.
+- Confluence quick gate : GREEN.
+- git diff --check : PASS.
+- Aucun OTA, rebuild Store ou déploiement runtime déclenché.
+
+
+---
+
+# DELISHAFRICA ROADBOOK UPDATE - 2026-10-07 - COURIER #27/#28 RECONCILIATION GREEN
+
+## Trigger
+The 7 October POG notary closure gate still carried one DelishAfrica source reservation:
+- PR #27 Secure Plumbing and PR #28 Vector Drift were both valid drafts but had diverged from different bases.
+- #27 was based on Route Aura (#26).
+- #28 was still based on Guidance Vector (#25).
+
+This topology was unsafe to promote independently because a later merge could silently lose either Route Aura/Secure Plumbing or Vector Drift behavior.
+
+## Reconciliation method
+A clean isolated checkout was created from PR #27 head:
+`9a7d69b0ffcfbdd7d0e3b44d1320f17d947d1bb3`
+
+PR #28 head:
+`82aea84f95c4809020714d6735cd8317f9f29b54`
+
+was merged into that branch.
+
+Three expected conflicts were resolved:
+- `DELISHAFRICA_ARCHITECTURE_PIN_COMBO22_LATEST.md`
+- `DELISHAFRICA_ROADBOOK_COMBO22_LATEST.md`
+- `scripts/da_courier_mission_current_gate.sh`
+
+The Courier map implementation auto-merged without conflict.
+
+Conflict policy:
+- keep Route Aura visual invariants;
+- keep Secure Plumbing key boundaries and preflight checks;
+- replace the obsolete fixed-first-maneuver gate assertion with Vector Drift progression/drift assertions;
+- keep all provider/security readiness checks.
+
+## Validation
+Quick gate: GREEN.
+
+Full gate:
+- API Nest build: PASS;
+- route preview probe: PASS;
+- Courier TypeScript: PASS;
+- Courier Expo iOS export: PASS;
+- Courier Expo Android export: PASS;
+- git diff --check: PASS.
+
+## Promotion discipline
+This reconciliation is source-only.
+No:
+- runtime deployment;
+- API restart;
+- secret intake;
+- OTA;
+- EAS Store build;
+- App Store / Play Store mutation.
+
+The reconciled branch becomes the only candidate for future Courier promotion. PR #27 and #28 must be treated as superseded once the combined PR exists.

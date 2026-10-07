@@ -445,3 +445,106 @@ Les deux doivent être GREEN avant rebuild/promote Courier.
 - La zone d arrivee ne s affiche pas sur coordonnees fallback.
 - Les marqueurs standards ne doivent pas redevenir la surface primaire sans decision explicite.
 - La lisibilite prime sur les effets ; pas de nouvelle animation GPU dans cette V1.
+
+---
+
+# ARCHITECTURE PIN UPDATE - 2026-10-02 - COURIER MAP SECURE PLUMBING V1
+
+## Secret boundary
+### Routes backend
+- Source canonique production : `/opt/delishafrica/secrets/da_google_routes_v1.key`.
+- Owner/mode attendus : root:root 0600.
+- Mount container : `/run/secrets/da-google-routes-v1:ro`.
+- Env container : `GOOGLE_ROUTES_API_KEY_FILE=/run/secrets/da-google-routes-v1`.
+- La valeur ne doit jamais être injectée dans Expo, EAS mobile ou réponse API.
+
+### Android Maps renderer
+- Variable build canonique : `DA_COURIER_ANDROID_GOOGLE_MAPS_API_KEY` dans EAS production.
+- Clé embarquée côté client par nature ; sa sécurité repose sur restriction Google Cloud package + SHA certificat et API Maps SDK Android uniquement.
+- Ne jamais réutiliser la clé Routes backend pour le rendu Android.
+
+## Readiness contract
+Map Joker promotion exige simultanément :
+1. Android package/bundle corrects.
+2. Variable Android Maps présente dans build context / EAS production.
+3. Secret file Routes présent sur VPS.
+4. Runtime API redémarré avec le mount secret.
+5. `/routes/health`: providerReady=true et keyExposedToClient=false.
+6. Mission Current FULL gate GREEN.
+7. Device-pass réel restaurant -> pickup -> client -> delivered.
+
+## Invariants
+- Aucun secret serveur dans Git.
+- Aucun secret serveur en argument de build mobile.
+- Aucun log de valeur de clé.
+- Le health n expose jamais la clé ni son chemin hôte.
+- L intake secret et l activation runtime restent deux opérations distinctes et auditables.
+
+---
+
+# ARCHITECTURE PIN UPDATE - 2026-10-02 - COURIER VECTOR DRIFT V1
+
+## Local maneuver progression
+- Entrée : `maneuvers[]` du dernier `/routes/preview` réel.
+- État local : `routeProgressMeters` remis à zéro à chaque nouveau preview.
+- Le prochain geste est choisi par somme cumulative des distances de steps.
+- Les mouvements GPS improbables ou trop imprécis ne font pas avancer la progression.
+- Aucun appel réseau n est nécessaire pour passer localement du geste N au geste N+1.
+
+## Corridor drift contract
+- Corridor = polyline provider décodée/amincie déjà utilisée par Mission Current.
+- Dérive = distance minimale Courier -> points corridor > 220 m.
+- Détection ignorée si précision GPS > 100 m.
+- Recalcul forcé limité par un cooldown de 30 s.
+- Le mécanisme de dérive ne change jamais le statut de mission.
+
+## Invariants
+1. Une route fallback ne peut jamais produire une manoeuvre.
+2. La progression locale ne doit jamais augmenter la fréquence normale des appels Routes.
+3. Un GPS imprécis ne peut pas faire progresser les instructions ni déclencher un recalcul dérive.
+4. Toute nouvelle route provider réinitialise progression et origine de suivi.
+5. La dérive est un signal de recalcul, jamais une décision métier.
+6. Les mutations pickup/delivered restent confirmation humaine + write/read.
+7. Le full gate Courier doit rester GREEN sur API probe + TypeScript + exports iOS/Android.
+
+
+---
+
+# ARCHITECTURE PIN UPDATE - 2026-10-07 - COURIER SECURE VECTOR RECONCILIATION
+
+## Purpose
+Reconcile the previously parallel Courier branches #27 Secure Plumbing and #28 Vector Drift before any future Courier promotion.
+
+## Canonical combined topology
+The reconciled branch is based on Route Aura (#26) and contains:
+1. Route Aura visual truth.
+2. Secure Plumbing server/mobile key separation.
+3. Vector Drift local maneuver progression and corridor deviation handling.
+
+## Security invariants preserved
+- Google Routes backend key remains server-side only through `GOOGLE_ROUTES_API_KEY_FILE`.
+- Android Maps key remains a separate package/certificate-restricted build key.
+- No server key is embedded in Expo/EAS mobile surfaces.
+- Runtime/provider activation remains separate from source promotion.
+- Fallback routes never invent provider maneuvers.
+
+## Guidance invariants preserved
+- Route Aura custom R/C markers, Courier beacon, dual route polyline and arrival radius remain present.
+- Maneuver progression advances locally from `maneuvers[]`.
+- Off-route threshold remains 220 m with 30 s forced-refresh cooldown.
+- GPS accuracy > 100 m cannot progress guidance or trigger drift refresh.
+- Mission pickup/delivered mutations remain human-confirmed and write/read verified.
+
+## Validation
+Reconciliation merge completed with three documentation/gate conflicts resolved by union, while the Courier map auto-merged without conflict.
+
+Full gate on isolated temporary checkout:
+- required/static invariants: PASS;
+- API Nest build: PASS;
+- route preview probe: PASS;
+- Courier TypeScript: PASS;
+- Courier Expo iOS export: PASS;
+- Courier Expo Android export: PASS;
+- git diff --check: PASS.
+
+No runtime deployment, OTA, EAS Store build, secret intake or provider mutation was performed.

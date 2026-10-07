@@ -12,11 +12,7 @@ return {
 ok: true,
 service: 'routes-preview',
 mode: 'google_routes_proxy_with_fallback',
-providerReady: Boolean(
-process.env.GOOGLE_ROUTES_API_KEY ||
-process.env.GOOGLE_MAPS_API_KEY ||
-process.env.GOOGLE_API_KEY,
-),
+providerReady: this.routesPreview.providerReady(),
 keyExposedToClient: false,
 };
 }
