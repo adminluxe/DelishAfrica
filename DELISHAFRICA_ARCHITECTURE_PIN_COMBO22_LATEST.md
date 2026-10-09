@@ -149,3 +149,11 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Contrat de configuration : `delivery.guestCheckoutCoverage`. Tant que non renseigné/approuvé, toutes les commandes invitées sont refusées.
 - Aucun endpoint public, Stripe Intent, migration prod ni autorisation de commande Guest activé.
 - Voir `docs/guest-checkout/ARCHITECTURE_PIN_P5B_MERCHANT_COVERAGE.md`.
+
+## CORRECTIF DE SÉCURITÉ 09/10/2026 : APPROBATION OPS INDÉPENDANTE P5-B
+- Le champ marchand `approvedByOps` n'est plus une preuve : ses éventuelles mentions antérieures sont OBSOLÈTES.
+- La zone est calculée depuis le catalogue publié et actif, avec pays, code postal, rayon, révision, approbation marchand.
+- La permission finale exige une entrée PostgreSQL **Ops distincte**, portant le SHA-256 du contrat normalisé et du partenaire, ni révoquée ni expirée.
+- L'adaptateur checkout ne peut que lire les approbations. Le workflow Ops RBAC pour écrire ces autorisations reste À CONSTRUIRE.
+- En absence de preuve indépendante : REFUS, aucun contournement par libellé `serviceAreaLabel`.
+- Architecture canonique : docs/guest-checkout/ARCHITECTURE_PIN_P5B_MERCHANT_COVERAGE.md.

@@ -112,3 +112,10 @@ Log VPS : `/tmp/da_guest_stage1_gate_20261009.log`.
 - Gate 45/45 PASS avec sorties EAS et production strictement intactes.
 - Détails : docs/guest-checkout/ROADBOOK_P5B_MERCHANT_COVERAGE_20261009.md.
 - Ne pas présenter le Guest Checkout comme accessible aux utilisateurs.
+
+## 12. P5-B APPROBATION OPS INDEPENDANTE — 09/10/2026
+- Audit : un simple attribut Ops dans les données éditables par un restaurant peut être forgé.
+- Solution : `PostgresGuestCoverageOpsApprovals`, vérification d'empreinte versionnée depuis un registre Ops séparé.
+- 52/52 tests cumulés PASS, PostgreSQL lab réel, services Stripe/Google simulés.
+- Aucun flux de paiement Guest ni migration PostgreSQL production ni EAS exécuté.
+- Pour les nouveaux tests, voir docs/guest-checkout/ROADBOOK_P5B_MERCHANT_COVERAGE_20261009.md.

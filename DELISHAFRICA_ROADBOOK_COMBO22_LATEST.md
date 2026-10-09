@@ -188,3 +188,12 @@ Scope: Client + Courier, harmonisé Merchant
 - Aucun impact sur la vraie API ou le catalogue ; zone réelle Merchant non encore configurée.
 - Suite prioritaire : couverture réelle gouvernée, Intent Stripe invité en mode test, compensation des interruptions, projection métier, Client sans Keycloak obligatoire.
 - Voir `docs/guest-checkout/ROADBOOK_P5B_MERCHANT_COVERAGE_20261009.md`.
+
+## SCELLAGE P5-B SECURITE OPS INDEPENDANTE — 09/10/2026
+- Renforcement du validateur : approbation Ops sortie du JSON Merchant et conservée dans un registre indépendant.
+- Migration lab `migrations/20261009_guest_coverage_ops_approvals.sql` exécutée sur PostgreSQL ISOLÉ uniquement.
+- Revocation, expiration, changement de zone ou révision => permission immédiatement refusée.
+- Nouveau gate P1→P5B : `FINAL_DA_GUEST_P5B_COVERAGE_GATE=PASS` ; **52/52** tests et TypeScript API/Client PASS.
+- Le précédent résultat **45/45** reste historique ; 52/52 le remplace comme état actuel.
+- Le parcours Stripe invité, la projection vers les apps professionnelles et l'expérience sans Keycloak restent NON LIVRÉS.
+- Preuves : docs/guest-checkout/ROADBOOK_P5B_MERCHANT_COVERAGE_20261009.md.

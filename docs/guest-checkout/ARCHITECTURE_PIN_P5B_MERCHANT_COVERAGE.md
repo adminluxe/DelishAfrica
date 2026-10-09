@@ -1,40 +1,57 @@
-# DELISHAFRICA — ARCHITECTURE PIN / P5-B COUVERTURE RESTAURANT
-Date : 09/10/2026 • Laboratoire uniquement, pas de paiement invité activé.
-Source : `services/api-nest/src/guest-checkout/guest-merchant-coverage-strict.ts`
-Branche : `feature/client-guest-coverage-strict-20261009`.
+# DELISHAFRICA — ARCHITECTURE PIN P5-B / AUTORISATION GEOGRAPHIQUE A DEUX NIVEAUX
 
-## Frontière de confiance
+**9 octobre 2026 — Laboratoire uniquement, fail closed, aucun paiement actif.**
+Branche : `feature/client-guest-coverage-strict-20261009`
+Sources : `guest-merchant-coverage-strict.ts`, `guest-coverage-ops-approval-pg.ts`.
+
+## Contrat d'autorisation
+
 ```text
-App Client (panier, Place ID, contact) --sans montant autoritaire-->
-    CatalogOrderPolicyService : prix et disponibilité
-    LocationTrustService.resolve() : adresse géocodée server-side
-    GuestMerchantCoverageStrict : PARTENAIRE PUBLIE + ACTIF
-        └── delivery.enabled = true
-        └── delivery.guestCheckoutCoverage.version = 1
-        └── enabled + approvedByMerchant + approvedByOps = true
-        └── zone.enabled + countryCode + postalCodes + centre GPS
-        └── distance réelle ≤ maxDistanceMeters [100, 25000]
-                 └── REJET PAR DEFAUT SANS REGLE APPROUVEE
-    GuestCheckoutLedger.attachVerifiedQuote()
-    GuestPrivateFulfillmentVault.seal() AES-256-GCM
-    [P5-C NON BRANCHE] Stripe PaymentIntent
-    [P3] Webhook signé / capture / transaction PG
-    [P4] Order privé préparé
-    [P5-D NON BRANCHE] projection Merchant/Courier
-    [P5-E NON BRANCHE] suivi privé Client
+Client : panier, placeId, coordonnées et consentement
+         |
+Catalogue serveur : vrais prix, stock et horaires
+         |
+Google Places côté serveur : adresse précise et codes postaux
+         |
+GuestMerchantCoverageStrict
+  ├─ partenaire PUBLIÉ et ACTIF, livraison enabled
+  ├─ contrat v1 validé par marchand (revision positive)
+  ├─ zone enabled, BE, code postal correspondant, GPS dans rayon autorisé
+  ├─ empreinte SHA-256 {partnerSlug, revision, toutes les zones normalisées}
+  └─ PostgresGuestCoverageOpsApprovals (SELECT seulement)
+       └─ registre Ops SÉPARÉ : digest identique, non révoqué, non expiré
+       └─ PAS de preuve : REFUS, aucune exception automatique
+         |
+GuestCheckoutLedger : devis immuable
+         |
+GuestPrivateFulfillmentVault : dossier AES-256-GCM complet
+         |
+DB trigger : jamais PAYMENT_PENDING sans dossier chiffré
+         |
+Stripe Guest PaymentIntent : NON BRANCHÉ EN P5-B
+         |
+Payment/Order commit, Merchant/Courier, suivi : NON BRANCHÉS
 ```
 
-## Autorisations
-Le libellé marketing « Bruxelles / Ixelles », des frais de livraison, un code postal Google confirmé, ou une localisation approximative ne suffisent JAMAIS.
-L'accès est accordé uniquement depuis le *catalogue de partenaires publiés* et une zone explicite approuvée à la fois par le restaurant et les opérations.
-Le schéma de zone est prévu, mais **aucune autorisation concrète n'a été créée ou déployée**. Sans zone renseignée, le système refuse le Guest Checkout.
+## Rôle de la preuve Ops indépendante
 
-## Preuves
-6 tests ciblés couvrant zone approvée, absence de règle, statut suspendu, approbation manquante, rayon dépassé, données malformées, injections de champs.
-Gate P5B cumulatif : `FINAL_DA_GUEST_P5B_COVERAGE_GATE=PASS` ; 45/45 tests, TypeScript API et Client conformes.
-Les épreuves P3/P4/P5-A utilisent PostgreSQL 16 isolé et Stripe/Google simulés.
-Production, API, stores, compte bancaire et déploiements inchangés.
+Un attribut `approvedByOps:true` dans un JSON modifiable par un marchand est insuffisant. La décision exige une entrée `da_guest_coverage_ops_approvals`, accessible en lecture seule au checkout. Un *vrai* administrateur Ops doit la signer par un workflow métier sous OIDC/RBAC et journalisation avant la production. Modifier le rayon, la révision ou les codes postaux entraîne un nouveau digest et invalide l'autorisation précédente.
 
-## Critère de la prochaine phase
-Mettre en place la saisie validée des zones professionnelles dans le catalogue, sous les permissions Merchant + Ops, avant tout déclenchement d'un paiement.
-Le service strict n'autorise aucune livraison de lui-même sans configuration métier.
+Le service refuse également si la base Ops est indisponible, ou si une approbation est expirée/révoquée. Il n'existe aucun accès implicite basé sur un libellé marketing.
+
+## Frontières techniques
+
+- `PublishedCatalogReader.findPublishedBySlug(slug, [])` : aucun partenaire de démonstration de repli.
+- `IndependentOpsCoverageApprovals.isApproved()` : contrat à deux clés `partnerSlug` et `coverageDigestSha256`.
+- `PostgresGuestCoverageOpsApprovals` : SELECT parametré, aucun accès d'écriture exposé au client.
+- `guestCheckoutCoverage` : seul contrat v1/révision, zone active, rayon de 100 à 25 000 mètres, pays BE, code postal et centre GPS valides.
+- Le permis de livraison effectif est `merchant coverage ∧ separate Ops approval`.
+- Aucun déploiement, aucun nouveau build, aucune migration de production.
+
+## Preuves et jalon
+
+Gate `scripts/da_guest_checkout_p5b_coverage_gate.sh` : **52/52 PASS**, API+Client TypeScript PASS, guards OIDC conservés. Base réelle **de laboratoire**, données Stripe/Google simulées. Preuve : `/tmp/da_guest_p5b_coverage_gate_secure_20261009.log`.
+
+Roadbook : `docs/guest-checkout/ROADBOOK_P5B_MERCHANT_COVERAGE_20261009.md`.
+
+**L'autorisation Ops réelle et la publication du Guest Checkout restent à réaliser dans les étapes ultérieures.**
