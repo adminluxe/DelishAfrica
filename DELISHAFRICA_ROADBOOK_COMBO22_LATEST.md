@@ -197,3 +197,10 @@ Scope: Client + Courier, harmonisé Merchant
 - Le précédent résultat **45/45** reste historique ; 52/52 le remplace comme état actuel.
 - Le parcours Stripe invité, la projection vers les apps professionnelles et l'expérience sans Keycloak restent NON LIVRÉS.
 - Preuves : docs/guest-checkout/ROADBOOK_P5B_MERCHANT_COVERAGE_20261009.md.
+
+## P5-C SECURITY MERGE GATE : REVOCATION BEFORE STRIPE
+- Audit en lecture seule du chantier parallèle P5-C Stripe Test; aucun fichier ni migration de son worktree modifié.
+- Décision: revalider l'autorisation Ops / couverture juste avant PaymentIntent; pas uniquement au devis. Un hôtel/adresse déjà scellé ne justifie pas un paiement si la zone vient d'être révoquée.
+- Harmoniser les deux schémas de couverture et disposer d'UNE autorité Ops gouvernée, auditable.
+- Rejouer P1-P5B (52 tests) + tests supplémentaires d'idempotence Stripe/crash/reprise après fusion; ne pas toucher aux stores ni au backend public.
+- Détails : docs/guest-checkout/P5C_CROSS_BRANCH_SECURITY_REVIEW_20261009.md.

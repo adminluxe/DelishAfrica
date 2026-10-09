@@ -157,3 +157,10 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - L'adaptateur checkout ne peut que lire les approbations. Le workflow Ops RBAC pour écrire ces autorisations reste À CONSTRUIRE.
 - En absence de preuve indépendante : REFUS, aucun contournement par libellé `serviceAreaLabel`.
 - Architecture canonique : docs/guest-checkout/ARCHITECTURE_PIN_P5B_MERCHANT_COVERAGE.md.
+
+## P5-C CROSS-BRANCH GATE : LIVE COVERAGE RECHECK
+- Deux modèles distincts de périmètre Ops: `da_guest_coverage_ops_approvals` par empreinte versionnée ET `da_guest_merchant_coverage` par zone Ops directe. Les deux sont des prototypes, jamais les activer simultanément.
+- Avant tout PaymentIntent invité, relire la couverture RESTAURANT+OPS au moment exact de la réservation pour couvrir la révocation entre devis et paiement.
+- Le coffre P4 ne porte pas encore toutes les preuves de position (placeId, coord. GPS, code postal, révision/digest d'autorisation); un schéma versionné chiffré est nécessaire pour la revalidation.
+- Tests P0 attendus avant merge: Ops révoqué à T1, tentative paiement à T2, refuse sans créer Stripe; base Postgres indisponible => fail closed.
+- Note: docs/guest-checkout/P5C_CROSS_BRANCH_SECURITY_REVIEW_20261009.md.

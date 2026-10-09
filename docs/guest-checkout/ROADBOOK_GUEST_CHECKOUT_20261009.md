@@ -119,3 +119,9 @@ Log VPS : `/tmp/da_guest_stage1_gate_20261009.log`.
 - 52/52 tests cumulés PASS, PostgreSQL lab réel, services Stripe/Google simulés.
 - Aucun flux de paiement Guest ni migration PostgreSQL production ni EAS exécuté.
 - Pour les nouveaux tests, voir docs/guest-checkout/ROADBOOK_P5B_MERCHANT_COVERAGE_20261009.md.
+
+## 13. P5-C SECURITY ACCEPTANCE GATE
+- Une autorisation géographique peut être révoquée ENTRE la création du devis et l'appel Stripe. Recontrôler couverture Merchant+Ops avant l'intention de paiement.
+- Étendre les preuves d'adresse/révision dans la charge PII chiffrée de façon versionnée, jamais dans des paramètres de prix fournis par le Client.
+- Comparer les deux branches P5B sans écraser leur historique; un seul schéma sera canonique.
+- Rapport de contrôle : docs/guest-checkout/P5C_CROSS_BRANCH_SECURITY_REVIEW_20261009.md.
