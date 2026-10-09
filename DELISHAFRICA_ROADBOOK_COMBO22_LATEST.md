@@ -130,3 +130,11 @@ Scope: Client + Courier, harmonisé Merchant
 - Parité du hook Confluence maintenue sur les triplettes.
 - Aucun Store build, OTA update ou déploiement runtime déclenché.
 - PR de travail isolée : GitHub #17 (draft).
+
+## ADDENDUM 2026-10-09 — CHANTIER GUEST CHECKOUT
+- Origine : retour testeur Client, double contrat profil local / Keycloak, paiement impossible sans login.
+- Branche isolée : feature/client-guest-checkout-secure-20261009.
+- Parcours sécurisé invitée P0 en cours ; première capacité temporaire codée, mais sans liaison checkout/Stripe/Orders.
+- Module preview fail-closed en production. Guards financiers intacts. Radar clarifié, placement conservé.
+- Preuves et plan complet : docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_20261009.md.
+- Ne pas merger/déployer ni payer en mode invité avant gate Stripe webhook -> commande durable.

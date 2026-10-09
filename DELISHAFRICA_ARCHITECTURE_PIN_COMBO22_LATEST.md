@@ -96,3 +96,10 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Le serveur conserve ses propres gardes `requestContainsSensitiveEvidence` + scrub : défense en profondeur obligatoire.
 - Le texte UI peut affirmer `transit serveur bloqué localement avant tout envoi` uniquement lorsque le garde local a effectivement court-circuité la requête.
 - Les trois hooks Client/Courier/Merchant doivent rester byte-identical.
+
+## ADDENDUM 2026-10-09 — GUEST CHECKOUT (BRANCHE ISOLÉE)
+- Nouvelle architecture cible Client : commande sans compte obligatoire, principal invité scellé, validation Stripe serveur, récupération sûre des commandes.
+- Palier 1 codé en worktree indépendant : guest-capability HMAC, preview interdite en production, tests P0 et copy Radar clarifiée.
+- ZÉRO déploiement et zéro paiement invité activé.
+- Document canonique de ce palier : docs/guest-checkout/ARCHITECTURE_GUEST_CHECKOUT_PIN_20261009.md.
+- Voir docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_20261009.md pour les gates manquants avant activation.

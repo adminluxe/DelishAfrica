@@ -179,17 +179,17 @@ export function WaterRadarV2({
     if (signal) {
       return {
         kicker: signal.kind === "live" ? "SIGNAL OUVERT" : "SIGNAL À L’HORIZON",
-        title: `${signal.name} remonte dans le courant.`,
+        title: signal.kind === "live" ? `Disponible : ${signal.name}.` : `À découvrir : ${signal.name}.`,
         body: signal.kind === "live"
-          ? "Une table réellement disponible est priorisée. Vous gardez toujours la décision."
-          : "Une adresse publique qualifiée apparaît en veille. Aucun statut d’ouverture n’est inventé.",
+          ? "Restaurant disponible à la commande. Touchez sa fiche pour choisir."
+          : "Adresse en veille : à découvrir, pas encore disponible à la commande.",
         marker: signal.kind === "live" ? "OUVERT" : "VEILLE",
       };
     }
     return {
       kicker: "RADAR CALME",
       title: "Le marché se dessine autour de vous.",
-      body: "Les signaux deviennent visibles à mesure qu’ils sont qualifiés, sans fabriquer de disponibilité.",
+      body: "Découvrez restaurants et cuisines. Les adresses en veille ne sont pas encore commandables.",
       marker: "ÉCOUTE",
     };
   }, [activeStage, hasActiveOrder, signal]);
@@ -372,7 +372,7 @@ export function WaterRadarV2({
           />
           <View style={{ flex: 1 }}>
             <Text style={[styles.kicker, { color: palette.signal }]}>RADAR · DISCOVERY OCEAN</Text>
-            <Text style={[styles.micro, { color: palette.body }]}>Intelligence explicable · choix humain</Text>
+            <Text style={[styles.micro, { color: palette.body }]}>Restaurants commandables · adresses en veille</Text>
           </View>
         </View>
         <View style={[styles.statusPill, { borderColor: palette.border, backgroundColor: palette.chip }]}>
@@ -467,11 +467,11 @@ export function WaterRadarV2({
         ]}
         accessibilityRole="button"
         accessibilityLabel="Ouvrir le pouls du réseau"
-        accessibilityHint="Affiche les signaux de développement déjà qualifiés"
+        accessibilityHint="Explique les restaurants disponibles et les adresses en veille"
       >
         <View style={{ flex: 1 }}>
           <Text style={[styles.pulseActionKicker, { color: palette.signal }]}>PULSE DU RÉSEAU</Text>
-          <Text style={[styles.pulseActionText, { color: palette.title }]}>Voir pourquoi ces signaux remontent.</Text>
+          <Text style={[styles.pulseActionText, { color: palette.title }]}>Comprendre les découvertes et leur disponibilité.</Text>
         </View>
         <Text style={[styles.signalArrow, { color: palette.accent }]}>→</Text>
       </Pressable>
