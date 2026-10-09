@@ -173,3 +173,11 @@ Scope: Client + Courier, harmonisé Merchant
 - Un seul chemin de données invité devra être câblé P5 ; PAS de double stockage du profil.
 - Preuves et schéma canonique : docs/guest-checkout/CONSOLIDATION_P4_DEUX_COFFRES.md.
 - Test réel Stripe, validation géographique serveur, projection Merchant/Courier et UI Client sans Keycloak NON FINIS.
+
+## ADDENDUM 2026-10-09 — GUEST P5-A TEST
+- Feature séparée pour éviter les travaux concurrents: feature/client-guest-checkout-p5-20261009, base c722cf6.
+- Quote serveur, Google Place server-side, validation de couverture Merchant injectable, scellement P4 en deux étapes reprenables.
+- 8 nouveaux tests P5-A, cumul P1/P2/P3/P4/P5-A 39/39 PASS dans Postgres lab 127.0.0.1:55438 ; TypeScript API/Client PASS.
+- Backends réels Google/Stripe non appelés; aucune commande invité ouverte au public.
+- Roadbook source : docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE5A_20261009.md.
+- Reste à bâtir P5-B : couverture réelle, CreateIntent Stripe, webhook branché, ordre durable Merchant/Courier, suivi privé et Client sans Keycloak obligatoire.

@@ -98,3 +98,10 @@ Log VPS : `/tmp/da_guest_stage1_gate_20261009.log`.
 - Gate cumulatif : 27/27 PASS sur PostgreSQL lab + Stripe simulé, TypeScript API/Client PASS.
 - Détails : docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE4_20261009.md.
 - Ne pas déployer ni soumettre build iOS/Android tant que le Client guest checkout n'est pas relié et testé.
+
+## 10. PALIER P5-A — CATALOGUE + ADRESSE
+- Parcours interne de devis canonique serveur et relecture Google Place + MerchantCoverage pour vérification de zone, sans prix client fiable.
+- Réutilise P2 Ledger et P4 PrivateVault, ne touche pas au module alternatif P4.
+- Validation sur base Postgres isolée; 8 tests supplémentaires P5-A, cumul 39 tests, gate script P5 = PASS.
+- Aucun endpoint guest Stripe ou order n'a été activé.
+- Document : docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE5A_20261009.md.

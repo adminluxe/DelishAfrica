@@ -135,3 +135,10 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - ALTERNATIVE LAB : GuestCheckoutQuoteContext/guest-delivery-vault (non câblé en production, ne pas dupliquer les données personnelles).
 - Décision : docs/guest-checkout/CONSOLIDATION_P4_DEUX_COFFRES.md.
 - Notes historiques restaurées : docs/guest-checkout/history/.
+
+## ADDENDUM 2026-10-09 — GUEST P5-A
+- Nouvel orchestrateur interne `GuestCanonicalCheckoutStager` : quote uniquement côté CatalogOrderPolicyService, relecture Google Place via LocationTrustService backend, couverture Merchant dédiée avant scellement AES-GCM.
+- Les valeurs `amount`, `city` et `address` envoyées par le téléphone ne font jamais autorité.
+- Pilotage territorial conservateur Bruxelles, codes postaux définis, puis couverture par partenaire à implémenter.
+- Aucun PaymentIntent, aucune route public guest, aucune commande pro exposée.
+- Architecture épinglée : docs/guest-checkout/ARCHITECTURE_PIN_STAGE5A_20261009.md.
