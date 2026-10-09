@@ -81,3 +81,8 @@ Log VPS : `/tmp/da_guest_stage1_gate_20261009.log`.
 - Gate consolidé PASS 12/12 ; ne pas confondre avec un Guest Checkout fonctionnel.
 - Rapport d'étape : docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE2_20261009.md.
 - Prochaine porte P3 : catalog policy authoritative + Stripe + commit postgres outbox unique + tests DB réels.
+
+## 8. PALIER 3 — FINANCIER LAB
+- 6 scénarios d’intégration via Postgres isolé, réponses Stripe simulées, transactions sérialisées et rollback.
+- Code sécurisé mais aucune nouvelle route publique. P4 reste indispensable.
+- Rapport : docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE3_20261009.md.

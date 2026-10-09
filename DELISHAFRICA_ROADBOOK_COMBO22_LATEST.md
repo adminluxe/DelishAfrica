@@ -146,3 +146,9 @@ Scope: Client + Courier, harmonisé Merchant
 - Test PostgreSQL réel et transaction webhook->ordre->outbox EN ATTENTE.
 - Aucun code production / build EAS / OTA / connexion Keycloak existante modifié.
 - Docs : docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE2_20261009.md.
+
+## ADDENDUM 2026-10-09 — GUEST P3
+- PostgreSQL isolé + preuve Stripe simulée : 6 scénarios PASS, y compris 8 webhooks concurrents, rollback et reprise après expiration.
+- Gate P3 consolidé attendu 18/18 tests.
+- Finalizer NON BRANCHÉ aux routes publiques. Livraison et création des vraies commandes en attente P4.
+- Voir docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE3_20261009.md.

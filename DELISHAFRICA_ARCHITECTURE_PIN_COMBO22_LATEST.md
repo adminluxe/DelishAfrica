@@ -110,3 +110,8 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Nouveau ledger : transitions atomiques ISSUED -> QUOTED -> PAYMENT_PENDING, devis immuable, PaymentIntent unique, tests en mémoire.
 - Le ledger n'est exposé à AUCUNE route REST ; Stripe réel et Order commit non branchés.
 - Source canonique : docs/guest-checkout/ARCHITECTURE_PIN_STAGE2_20261009.md.
+
+## ADDENDUM 2026-10-09 — GUEST FINALIZER P3
+- Chaîne serveur Stripe HMAC -> récupération Stripe API -> vérifications de charge -> transaction PG unique payment/outbox.
+- Ledger financier invité non expédiable, aucune PII et aucun compte pro impacté.
+- SQL production non migré. Architecture : docs/guest-checkout/ARCHITECTURE_PIN_STAGE3_20261009.md.
