@@ -164,3 +164,11 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Le coffre P4 ne porte pas encore toutes les preuves de position (placeId, coord. GPS, code postal, révision/digest d'autorisation); un schéma versionné chiffré est nécessaire pour la revalidation.
 - Tests P0 attendus avant merge: Ops révoqué à T1, tentative paiement à T2, refuse sans créer Stripe; base Postgres indisponible => fail closed.
 - Note: docs/guest-checkout/P5C_CROSS_BRANCH_SECURITY_REVIEW_20261009.md.
+
+## ADDENDUM 2026-10-09 — P5-C STRIPE OPS PROOF
+- P5A stager complète le dossier AES avec preuve de lieu Google server-side (Place ID, BE, code postal et GPS).
+- P4 coffre accepte les anciens paquets pour compatibilité de lecture mais les refuse explicitement comme preuve pour P5C Stripe.
+- P5C lit le dossier exclusivement via la capacité signe+empreinte Postgres et revérifie Merchant Coverage + approbation Ops séparée.
+- Reservation idempotente stable par ordre avant Stripe, contrôle avant/après IO externe, COMMIT Postgres de BOUND avant retour de clientSecret.
+- Revocation APRES secret déjà délivré et intent orphelin non compensé sont des risques P0 ouverts, pas encore prêts pour production.
+- Architecture spécifique: docs/guest-checkout/ARCHITECTURE_PIN_P5C_OPS_INTEGRATED_20261009.md.

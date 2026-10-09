@@ -204,3 +204,12 @@ Scope: Client + Courier, harmonisé Merchant
 - Harmoniser les deux schémas de couverture et disposer d'UNE autorité Ops gouvernée, auditable.
 - Rejouer P1-P5B (52 tests) + tests supplémentaires d'idempotence Stripe/crash/reprise après fusion; ne pas toucher aux stores ni au backend public.
 - Détails : docs/guest-checkout/P5C_CROSS_BRANCH_SECURITY_REVIEW_20261009.md.
+
+## ADDENDUM 2026-10-09 — P5-C OPS GATED INTEGRATED
+- Branche indépendante: feature/client-guest-p5c-ops-integrated-20261009, copie instantanée du prototype P5-C depuis le worktree parallèle, sans toucher à ses fichiers.
+- Intégration à la preuve Merchant+Ops indépendante et à la géométrie Google conservée exclusivement dans le coffre AES chiffré.
+- Revérifie la couverture a l'entrée, juste avant l'appel Stripe et après la réponse, avant toute remise de secret.
+- Tests: FINAL_DA_GUEST_P5C_OPS_INTEGRATED_GATE=PASS, 71/71 cumulés. PostgreSQL isolé 127.0.0.1:55439, fournisseurs Stripe et Google simulés, TypeScript API/Client PASS.
+- Restent bloquants: annulation/reconciliation des intents orphelins, vrai Stripe mode test, suivi privé, bridge Merchant/Courier, activation UX sans Keycloak et approbations commerciales réelles.
+- Roadbook détaillé: docs/guest-checkout/ROADBOOK_P5C_OPS_INTEGRATED_20261009.md.
+- Aucun déploiement, migration PG production, build EAS, OTA ou soumission stores exécuté.

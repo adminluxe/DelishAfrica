@@ -125,3 +125,10 @@ Log VPS : `/tmp/da_guest_stage1_gate_20261009.log`.
 - Étendre les preuves d'adresse/révision dans la charge PII chiffrée de façon versionnée, jamais dans des paramètres de prix fournis par le Client.
 - Comparer les deux branches P5B sans écraser leur historique; un seul schéma sera canonique.
 - Rapport de contrôle : docs/guest-checkout/P5C_CROSS_BRANCH_SECURITY_REVIEW_20261009.md.
+
+## 14. P5-C OPS GATED — LAB VALIDÉ LE 09/10/2026
+- Prototype P5C Stripe reconcilié avec la zone Ops indépendante P5B, sans toucher au worktree parallèle.
+- Preuve geographique du panier scellee dans AES et revalidée avec Ops avant/apres Stripe; debit réel interdit.
+- 19 tests P5C PASS, cumul P1-P5C 71/71 PASS, TypeScript API/Client PASS. Base PostgreSQL laboratore distincte port 55439.
+- Roadbook: docs/guest-checkout/ROADBOOK_P5C_OPS_INTEGRATED_20261009.md.
+- Activation Guest Checkout finale toujours NON, aucune route publique ouverte.

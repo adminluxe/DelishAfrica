@@ -64,3 +64,10 @@ La réservation P5-C utilise une clé Stripe stable `da-gc-pi-v1:{orderId}` et u
 - Aucun merge sur `/opt/delishafrica/monorepo`, aucun déploiement et aucun build store avant ce gate final.
 
 **Conclusion : l'absence de connexion forcée est l'objectif produit; l'autorisation de livrer et la preuve d'encaissement restent des invariants de sécurité.**
+
+## CONCLUSION D AUDIT P5-C LAB — 09/10/2026
+- La preuve géographique est maintenant incluse dans le paquet scellé P4 sous AES-256-GCM sur la branche P5C ops integrated.
+- La couverture Ops est revalidée avant création d'Intent et après réponse; 19/19 tests P5C et 71/71 cumulés.
+- Une seule variante P5B est retenue sur CETTE branche d'intégration: la couverture par empreinte avec approbation Ops indépendante.
+- Risque restant: course temporelle apres remise de clientSecret, annulation d'Intent et reconciliation bancaire reelle; aucune activation avant validation.
+- Source: docs/guest-checkout/ROADBOOK_P5C_OPS_INTEGRATED_20261009.md.

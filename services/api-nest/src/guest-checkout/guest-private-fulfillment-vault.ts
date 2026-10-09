@@ -29,10 +29,21 @@ export type GuestContactInput = Readonly<{
   consent: boolean;
 }>;
 
+export type GuestVerifiedLocationProof = Readonly<{
+  placeId: string;
+  countryCode: 'BE';
+  postalCode: string;
+  latitude: number;
+  longitude: number;
+  source: 'google_places_new';
+}>;
+
 export type TrustedDeliveryVerification = Readonly<{
   verifiedByServer: true;
   eligible: true;
   serviceAreaCode: string;
+  /** A server-side Google resolution may supply this optional P5C proof. */
+  locationProof?: GuestVerifiedLocationProof;
 }>;
 
 export type PrivateGuestFulfillment = {
@@ -53,6 +64,8 @@ export type PrivateGuestFulfillment = {
   subtotal: number;
   deliveryFee: number;
   serviceAreaCode: string;
+  /** Old P4 packets omit this; Stripe P5C rejects them. */
+  locationProof?: GuestVerifiedLocationProof;
   contact: {
     name: string;
     phone: string;
@@ -125,6 +138,17 @@ export function canonicalPrivateFulfillment(
   if (!contact || contact.consent !== true) {
     throw new Error('guest_private_consent_required');
   }
+  const location = delivery.locationProof;
+  if (location !== undefined && (
+      !location || !/^[A-Za-z0-9_-]{8,220}$/.test(location.placeId) ||
+      location.countryCode !== 'BE' || !/^\d{4}$/.test(location.postalCode) ||
+      !Number.isFinite(location.latitude) ||
+      location.latitude < -90 || location.latitude > 90 ||
+      !Number.isFinite(location.longitude) ||
+      location.longitude < -180 || location.longitude > 180 ||
+      location.source !== 'google_places_new')) {
+    throw new Error('guest_private_location_proof_invalid');
+  }
   const lineItems = quote.items.map((x) => {
     const id = ensureText(x.id, 1, 120, 'guest_private_item_invalid');
     const name = ensureText(x.name, 1, 200, 'guest_private_item_invalid');
@@ -162,6 +186,11 @@ export function canonicalPrivateFulfillment(
     currency: 'eur',
     lineItems, subtotal: quote.subtotal, deliveryFee: quote.deliveryFee,
     serviceAreaCode: delivery.serviceAreaCode,
+    ...(location ? { locationProof: {
+      placeId: location.placeId, countryCode: location.countryCode,
+      postalCode: location.postalCode, latitude: location.latitude,
+      longitude: location.longitude, source: location.source,
+    } } : {}),
     contact: {
       name, phone, email: email || null,
       address: ensureText(contact.address, 8, 500, 'guest_private_address_invalid'),
@@ -279,6 +308,72 @@ export class GuestPrivateFulfillmentVault {
    * INTERNAL ONLY: caller must have acquired the paid-order transaction lock.
    * It must never be reached from an endpoint with plain orderId as authority.
    */
+
+  /**
+   * Internal pre-payment read by HMAC + DB hash, never by bare orderId.
+   * Only returns location evidence; no customer PII escapes to Stripe.
+   * Historical P4 ciphertext without source-verified coordinates fails closed.
+   */
+  async readTrustedDeliveryForPayment(token: string): Promise<{
+    orderId: string;
+    partnerSlug: string;
+    quoteFingerprint: string;
+    amountCents: number;
+    serviceAreaCode: string;
+    locationProof: GuestVerifiedLocationProof;
+  }> {
+    const claims = verifyGuestCheckoutCapability(
+      this.capabilityKey, token, this.clock(),
+    );
+    if (!claims) throw new Error('guest_intent_capability_invalid');
+    const result = await this.db.query<EncryptedFulfillmentRow & {
+      guest_subject: string; mutation_id: string;
+    }>(
+      `SELECT v.order_id, v.quote_fingerprint, v.encryption_version,
+              v.encryption_key_id, v.iv, v.ciphertext, v.auth_tag,
+              v.payload_mac, s.guest_subject, s.mutation_id
+         FROM da_guest_fulfillment_vault v
+         JOIN da_guest_checkout_sessions s USING(order_id)
+        WHERE s.order_id = $1 AND s.capability_sha256 = $2::bytea
+          AND s.quote_fingerprint = v.quote_fingerprint
+          AND s.expires_at > now()
+          AND s.state IN ('quoted','payment_pending')
+        LIMIT 1`,
+      [claims.orderId, digestToken(token)],
+    );
+    const row = result.rows[0];
+    if (result.rowCount !== 1 || !row ||
+        row.guest_subject !== claims.subject ||
+        row.mutation_id !== claims.mutationId) {
+      throw new Error('guest_intent_delivery_proof_missing');
+    }
+    const packet = this.openForInternalPaidOrder(
+      row, claims.orderId, row.quote_fingerprint,
+    );
+    const proof = packet.locationProof;
+    if (!proof || !/^[A-Za-z0-9_-]{8,220}$/.test(proof.placeId) ||
+        proof.source !== 'google_places_new' || proof.countryCode !== 'BE' ||
+        !/^\d{4}$/.test(proof.postalCode) ||
+        !Number.isFinite(proof.latitude) || !Number.isFinite(proof.longitude) ||
+        proof.latitude < -90 || proof.latitude > 90 ||
+        proof.longitude < -180 || proof.longitude > 180) {
+      throw new Error('guest_intent_verified_location_missing');
+    }
+    return {
+      orderId: claims.orderId,
+      partnerSlug: packet.partnerSlug,
+      quoteFingerprint: packet.quoteFingerprint,
+      amountCents: packet.amountCents,
+      serviceAreaCode: packet.serviceAreaCode,
+      locationProof: {
+        placeId: proof.placeId, countryCode: proof.countryCode,
+        postalCode: proof.postalCode, latitude: proof.latitude,
+        longitude: proof.longitude, source: 'google_places_new',
+      },
+    };
+  }
+
+
   openForInternalPaidOrder(
     row: EncryptedFulfillmentRow,
     orderId: string,

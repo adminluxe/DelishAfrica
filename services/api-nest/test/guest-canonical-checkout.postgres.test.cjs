@@ -12,7 +12,7 @@ const {Pool}=require('/opt/delishafrica/monorepo/services/api-nest/.runtime-vend
 const {GuestCheckoutLedger}=require('../src/guest-checkout/guest-checkout-ledger.ts');
 const {GuestPrivateFulfillmentVault}=require('../src/guest-checkout/guest-private-fulfillment-vault.ts');
 const {GuestCanonicalCheckoutStager}=require('../src/guest-checkout/guest-canonical-checkout-stager.ts');
-const db=new Pool({host:'127.0.0.1',port:55438,database:'postgres',user:'afripayadmin'});
+const db=new Pool({host:'127.0.0.1',port:55439,database:'postgres',user:'afripayadmin'});
 const capKey=randomBytes(32),encKey=randomBytes(32);
 const ledger=new GuestCheckoutLedger(db,capKey);
 const vault=new GuestPrivateFulfillmentVault(db,capKey,new Map([['dek_p5lab',encKey]]),'dek_p5lab');
@@ -52,7 +52,7 @@ function mocked(adjust={}){
 }
 before(async()=>{
  const probe=await db.query('SELECT inet_server_port() AS port');
- assert.equal(probe.rows[0].port,55438);
+ assert.equal(probe.rows[0].port,55439);
  await db.query('TRUNCATE da_guest_checkout_sessions CASCADE');
 });
 after(async()=>db.end());
@@ -70,6 +70,8 @@ test('canonical server price wins; verified Google address replaces spoofed mobi
  assert.equal(contents.includes('Paris'),false);
  assert.equal(contents.includes('Test Voyageur'),false);
  const doc=vault.openForInternalPaidOrder(saved.rows[0],guest.orderId,quote.quoteFingerprint);
+ assert.equal(doc.locationProof.placeId,'googleplace_test001');
+ assert.equal(doc.locationProof.source,'google_places_new');
  assert.equal(doc.contact.city,'Ixelles');
  assert.equal(doc.contact.address,'12 Rue des Tests, 1050 Ixelles, Belgique');
  assert.equal(doc.amountCents,2190);

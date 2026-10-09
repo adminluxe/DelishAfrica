@@ -153,6 +153,14 @@ export class GuestCanonicalCheckoutStager {
     const delivery: TrustedDeliveryVerification={
       verifiedByServer:true,eligible:true,
       serviceAreaCode:allowed.serviceAreaCode,
+      locationProof: {
+        placeId:resolved.address.placeId,
+        countryCode:'BE',
+        postalCode:resolved.territory.postalCode,
+        latitude:resolved.address.latitude,
+        longitude:resolved.address.longitude,
+        source:'google_places_new',
+      },
     };
 
     // Recoverable sequence: a crash between quote and sealing leaves state
