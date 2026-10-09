@@ -42,7 +42,7 @@ Les scripts et tests préexistants sont repris **en entier** ; seules les adress
 
 Le transport Stripe HTTP accepte exclusivement les clés de **test** (y compris les clés restreintes `rk_test_`), un domaine fixe `https://api.stripe.com`, des identifiants validés et un délai borné. Les clés live sont refusées. Les cartes ne sont pas saisies ni transmises par notre backend : Stripe doit recevoir le moyen de paiement dans le SDK officiel mobile côté Client.
 
-**Important :** les onze tests utilisent un transport HTTP simulé. La connexion à un vrai compte Stripe Test n'est pas encore prouvée : aucune clé `STRIPE_TEST_SECRET_KEY` n'est présente dans l'environnement shell vérifié. Il n'y a eu aucune opération bancaire réelle.
+**Historique du gate initial :** les 11 tests contractuels HTTP demeurent simulés. Aucune clé n'était présente dans le shell de laboratoire : les accès TEST existants sont conservés dans les fichiers serveur protégés. **Mise à jour 09/10/2026 :** une sonde indépendante a validé CREATE, GET, replay idempotent et CANCEL auprès des véritables serveurs Stripe TEST, sans carte, confirmation ni fonds encaissés. Voir l'addendum et le rapport fournisseur ci-dessous.
 
 ## Preuves
 
@@ -65,3 +65,15 @@ Le transport Stripe HTTP accepte exclusivement les clés de **test** (y compris 
 - Projet prioritaire ensuite : Stripe TEST réel contrôlé, notifications Ops sécurisées, P5-F commandes Merchant/Courier, puis UX Client sans Keycloak obligatoire.
 
 **Conclusion :** un moniteur financier testable et un adaptateur HTTP Stripe test sont livrés en branche de laboratoire ; le parcours de paiement Guest en production reste NON OUVERT.
+
+## 2026-10-09 — Fournisseur Stripe TEST : validation extérieure
+La suite P1-P5-E reste validée en laboratoire (112/112 tests simulés).
+Une sonde indépendante sur le VPS a authentifié le compte Stripe TEST,
+créé une intention non confirmée de 0,50 EUR, rejoué la même demande
+avec la même clé d'idempotence et obtenu le même identifiant, relu puis
+annulé cette intention et relu le statut final canceled.
+Aucun moyen de paiement, aucune capture, aucun débit LIVE.
+Journal protégé : un seul état cancelled, permissions 0600.
+La paire des clés publiques/privées reste à confirmer côté compte.
+Preuve : docs/guest-checkout/ROADBOOK_P5E_STRIPE_REAL_PROVIDER_PASS_20261009.md.
+Le checkout invité public demeure NON activé.

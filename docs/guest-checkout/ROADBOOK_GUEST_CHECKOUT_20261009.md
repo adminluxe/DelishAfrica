@@ -146,3 +146,11 @@ Log VPS : `/tmp/da_guest_stage1_gate_20261009.log`.
 - Aucun worker planifié en production, aucune nouvelle route Guest Checkout publique.
 - Roadbook : docs/guest-checkout/ROADBOOK_P5E_20261009.md ; architecture : ARCHITECTURE_PIN_P5E_20261009.md.
 - Priorités P0 : Stripe TEST réel sous gestion des secrets, annulation/refund post-secret, console/alertes Ops, commande Merchant/Courier et suivi Guest.
+
+## 17. Stripe TEST externe vérifié — 09/10/2026
+Provider GET account, CREATE 0,50 EUR confirm=false, replay même Intent,
+GET, CANCEL et GET canceled : PASS sur Stripe TEST réel. Aucun débit.
+Dossier journal root-only unique à l'état cancelled.
+112/112 tests applicatifs simulés toujours distincts de cette preuve externe.
+Le système Guest Checkout n'est toujours pas activé en production.
+Voir ROADBOOK_P5E_STRIPE_REAL_PROVIDER_PASS_20261009.md.

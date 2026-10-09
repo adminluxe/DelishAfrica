@@ -82,3 +82,12 @@ Roadbook : `docs/guest-checkout/ROADBOOK_P5E_20261009.md`
 - Le Guest Checkout Client n'est PAS encore fonctionnel pour les utilisateurs distribués.
 
 **Conclusion : P5-E donne une fondation Ops/financière robuste en laboratoire ; la prochaine vraie verticale devra relier Stripe Test, la console Ops, le ledger commande et les trois applications.**
+
+## 2026-10-09 — Frontière fournisseur externe TEST
+Une sonde séparée de l'API Nest a confirmé les endpoints officiels
+GET account, CREATE PaymentIntent test non confirmé, rejeu idempotent,
+GET, CANCEL et GET canceled. Les tests du moniteur interne restent des mocks.
+Les données d'accès restent sur le VPS dans des fichiers protégés.
+La sonde garde une trace avant CREATE et interdit la répétition en cas
+d'état fournisseur inconnu. Aucun endpoint Guest public ajouté.
+Preuve : docs/guest-checkout/ROADBOOK_P5E_STRIPE_REAL_PROVIDER_PASS_20261009.md.

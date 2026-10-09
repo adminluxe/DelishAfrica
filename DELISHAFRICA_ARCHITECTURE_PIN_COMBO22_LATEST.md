@@ -189,3 +189,12 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Deux workers ne peuvent prendre le même dossier simultanément (SKIP LOCKED / bail), reprise possible après crash y compris post-commit P3.
 - L'adaptateur Stripe HTTP accepte exclusivement des clés de test et rejette `NODE_ENV=production` ; aucune clé test réellement connectée.
 - Notes techniques : docs/guest-checkout/ARCHITECTURE_PIN_P5E_20261009.md.
+
+## 2026-10-09 — Preuve frontière Stripe TEST réelle
+Sonde indépendante de Nest avec appels officiels TEST account, CREATE,
+GET, CANCEL ; montant 0,50 EUR sans moyen de paiement et sans confirmation.
+Idempotence confirmée, statut final canceled vérifié depuis Stripe.
+Protection par journal durable avant création ; pas d'accès financier LIVE.
+L'association public/secret au compte et PaymentSheet restent à prouver.
+Le checkout invité et les commandes Merchant/Courier restent non publiés.
+Référence : docs/guest-checkout/ROADBOOK_P5E_STRIPE_REAL_PROVIDER_PASS_20261009.md.

@@ -233,3 +233,12 @@ Scope: Client + Courier, harmonisé Merchant
 - Reste à faire : authentique Stripe TEST, scheduler/alerting Ops, RBAC, remboursement et révocation après remise du clientSecret, commandes métier et tracking Client sans Keycloak imposé.
 - Aucun déploiement, migration SQL production, push OTA ni build Store.
 - Passation : docs/guest-checkout/ROADBOOK_P5E_20261009.md.
+
+## 2026-10-09 — Jalon Stripe TEST réel validé
+La clé existante du VPS a authentifié Stripe TEST ; une intention de test
+non confirmée de 0,50 EUR a été créée, relue et annulée avec état final
+canceled, après démonstration du même identifiant au rejeu idempotent.
+Aucune carte, aucun paiement réel et aucune modification de production.
+Journal de reprise vérifié : unique état cancelled, permissions 0600.
+Étape distincte des 112/112 tests du module P5-E de laboratoire.
+Preuve : docs/guest-checkout/ROADBOOK_P5E_STRIPE_REAL_PROVIDER_PASS_20261009.md.
