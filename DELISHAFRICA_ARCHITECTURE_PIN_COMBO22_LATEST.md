@@ -142,3 +142,9 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Pilotage territorial conservateur Bruxelles, codes postaux définis, puis couverture par partenaire à implémenter.
 - Aucun PaymentIntent, aucune route public guest, aucune commande pro exposée.
 - Architecture épinglée : docs/guest-checkout/ARCHITECTURE_PIN_STAGE5A_20261009.md.
+
+## 2026-10-09 P5-B — ZONES MARCHANDES APPROUVÉES
+- La résolution Google d'une adresse ne constitue pas une preuve que le partenaire y livre.
+- Nouveau PublishedPartnerCoveragePolicy : restaurant publié actif + delivery.enabled + couverture approuvée Ops et non expirée, code postal et rectangle géographique.
+- Tables en laboratoire da_guest_merchant_coverage, pas de production; approvals Ops et permissions DB écriture encore à implémenter.
+- Détails: docs/guest-checkout/ARCHITECTURE_PIN_STAGE5B_20261009.md.

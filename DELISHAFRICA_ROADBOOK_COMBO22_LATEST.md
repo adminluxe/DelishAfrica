@@ -181,3 +181,10 @@ Scope: Client + Courier, harmonisé Merchant
 - Backends réels Google/Stripe non appelés; aucune commande invité ouverte au public.
 - Roadbook source : docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE5A_20261009.md.
 - Reste à bâtir P5-B : couverture réelle, CreateIntent Stripe, webhook branché, ordre durable Merchant/Courier, suivi privé et Client sans Keycloak obligatoire.
+
+## 2026-10-09 P5-B — 47 TESTS PASS
+- En P5-B, ServerCoveragePolicy ne permet plus de déclarer une livraison par simple zone supposée; elle consulte une table d'agréments Ops signifiée par un enregistrement serveur.
+- Huit nouveaux tests PostgreSQL réels et intégration P5-A. Gate cumulatif 47/47 PASS + TypeScript API/Client.
+- Aucun enregistrement de couverture réelle chargé en production; aucune transaction, nouvelle route, migration prod ou build.
+- Docs: docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE5B_20261009.md.
+- P5-C Stripe GuestIntent, finaliseur réellement branché et reprise paiement toujours à développer.

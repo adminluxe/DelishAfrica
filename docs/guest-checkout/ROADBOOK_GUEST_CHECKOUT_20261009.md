@@ -105,3 +105,9 @@ Log VPS : `/tmp/da_guest_stage1_gate_20261009.log`.
 - Validation sur base Postgres isolée; 8 tests supplémentaires P5-A, cumul 39 tests, gate script P5 = PASS.
 - Aucun endpoint guest Stripe ou order n'a été activé.
 - Document : docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE5A_20261009.md.
+
+## 11. P5-B — ZONES RÉELLES DE DESSERTE
+- Service fail-closed de couverture Merchant/OPS par code postal et bounding box géographique, séparé de la précision Google Places.
+- 8 tests P5-B; 47/47 cumulés PASS sur PG laboratoire avec fournisseurs simulés, TS API/Client PASS.
+- Aucun approbateur Ops ni permissions SQL de production ne sont encore provisionnés ; interdiction d'activer avec un champ approuvé non contrôlé.
+- Voir docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE5B_20261009.md.
