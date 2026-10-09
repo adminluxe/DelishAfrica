@@ -142,3 +142,10 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Pilotage territorial conservateur Bruxelles, codes postaux définis, puis couverture par partenaire à implémenter.
 - Aucun PaymentIntent, aucune route public guest, aucune commande pro exposée.
 - Architecture épinglée : docs/guest-checkout/ARCHITECTURE_PIN_STAGE5A_20261009.md.
+
+## ADDENDUM P5-B STRICT MERCHANT COVERAGE 2026-10-09
+- Vérification couverture réelle propriétaire par restaurant: Catalogue publié, statut actif, livraison activée, zone V1 approuvée Merchant ET Ops, code postal + rayon GPS.
+- Pas d'autorisation fondée sur `serviceAreaLabel`; aucun fallback de livraison par défaut.
+- Contrat de configuration : `delivery.guestCheckoutCoverage`. Tant que non renseigné/approuvé, toutes les commandes invitées sont refusées.
+- Aucun endpoint public, Stripe Intent, migration prod ni autorisation de commande Guest activé.
+- Voir `docs/guest-checkout/ARCHITECTURE_PIN_P5B_MERCHANT_COVERAGE.md`.

@@ -105,3 +105,10 @@ Log VPS : `/tmp/da_guest_stage1_gate_20261009.log`.
 - Validation sur base Postgres isolée; 8 tests supplémentaires P5-A, cumul 39 tests, gate script P5 = PASS.
 - Aucun endpoint guest Stripe ou order n'a été activé.
 - Document : docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE5A_20261009.md.
+
+## 11. P5-B COUVERTURE MERCHANT FAIL-CLOSED 09-10-2026
+- Service de vérification de la desserte publié, confirmé, opt-in explicite par restaurant et approuvé Ops.
+- Vérifie le pays + code postal + distance maximum, refuse par défaut en l'absence de couverture.
+- Gate 45/45 PASS avec sorties EAS et production strictement intactes.
+- Détails : docs/guest-checkout/ROADBOOK_P5B_MERCHANT_COVERAGE_20261009.md.
+- Ne pas présenter le Guest Checkout comme accessible aux utilisateurs.
