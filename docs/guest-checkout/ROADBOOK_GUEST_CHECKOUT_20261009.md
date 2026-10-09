@@ -74,3 +74,10 @@ Exécution officielle du script `scripts/da_guest_checkout_stage1_gate.sh` dans 
 - `git diff --check` : PASS.
 Log VPS : `/tmp/da_guest_stage1_gate_20261009.log`.
 **Décision : gate de fondation PASS, gate de livraison Guest Checkout FAIL/PENDING (pas encore de parcours paiement invité).**
+
+## 7. MISE A JOUR P2 - 09/10/2026
+- Le ledger PostgreSQL d'invité est codé et simulé avec 5 tests supplémentaires.
+- Migration SQL uniquement préparée ; stockage réel non encore testé ni activé.
+- Gate consolidé PASS 12/12 ; ne pas confondre avec un Guest Checkout fonctionnel.
+- Rapport d'étape : docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE2_20261009.md.
+- Prochaine porte P3 : catalog policy authoritative + Stripe + commit postgres outbox unique + tests DB réels.

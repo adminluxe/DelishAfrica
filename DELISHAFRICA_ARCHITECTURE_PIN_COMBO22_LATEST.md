@@ -103,3 +103,10 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - ZÉRO déploiement et zéro paiement invité activé.
 - Document canonique de ce palier : docs/guest-checkout/ARCHITECTURE_GUEST_CHECKOUT_PIN_20261009.md.
 - Voir docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_20261009.md pour les gates manquants avant activation.
+
+## ADDENDUM 2026-10-09 - GUEST LEDGER P2
+- P2: stockage invité PostgreSQL préparé, sans PII ni token brut ; contrôle par SHA256 du jeton signé.
+- Migration SQL : migrations/20261009_guest_checkout_ledger.sql (NON APPLIQUÉE).
+- Nouveau ledger : transitions atomiques ISSUED -> QUOTED -> PAYMENT_PENDING, devis immuable, PaymentIntent unique, tests en mémoire.
+- Le ledger n'est exposé à AUCUNE route REST ; Stripe réel et Order commit non branchés.
+- Source canonique : docs/guest-checkout/ARCHITECTURE_PIN_STAGE2_20261009.md.

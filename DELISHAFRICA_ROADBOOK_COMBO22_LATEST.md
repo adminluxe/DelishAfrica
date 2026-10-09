@@ -138,3 +138,11 @@ Scope: Client + Courier, harmonisé Merchant
 - Module preview fail-closed en production. Guards financiers intacts. Radar clarifié, placement conservé.
 - Preuves et plan complet : docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_20261009.md.
 - Ne pas merger/déployer ni payer en mode invité avant gate Stripe webhook -> commande durable.
+
+## ADDENDUM 2026-10-09 - PALIER 2 GUEST CHECKOUT
+- Palier 1 : capacité HMAC 4h + Radar pédagogique. 7 tests PASS.
+- Palier 2 : PostgreSQL guest ledger en branche isolée et migration non exécutée. 5 nouveaux tests PASS.
+- Gate consolidé : FINAL_DA_GUEST_CHECKOUT_STAGE2_GATE=PASS, 12/12 tests, TypeScript API/Client conforme.
+- Test PostgreSQL réel et transaction webhook->ordre->outbox EN ATTENTE.
+- Aucun code production / build EAS / OTA / connexion Keycloak existante modifié.
+- Docs : docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE2_20261009.md.
