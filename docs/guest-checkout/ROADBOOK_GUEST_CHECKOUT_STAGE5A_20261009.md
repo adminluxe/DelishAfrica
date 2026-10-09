@@ -51,3 +51,11 @@ Parent : `c722cf6`, consolidation P4 canonique 31 tests.
 8. Publication stores uniquement après revue du gate complet et validation.
 
 **Vérité : nous avons validé l'entrée du futur checkout invité, pas encore son paiement ou son suivi.**
+
+## Validation finale du gate P5-A — 09/10/2026
+- Gate lancé dans le worktree indépendant : `bash scripts/da_guest_checkout_stage5_gate.sh`.
+- Verdict lu dans le log : `FINAL_DA_GUEST_CHECKOUT_STAGE5_GATE=PASS` (code sortie 0), 39 tests cumulés / 39 réussis.
+- API + Client TypeScript sans erreur, vérification du trigger PostgreSQL actif et guards OIDC existants préservés.
+- Log de preuve VPS : `/tmp/da_guest_stage5_gate_20261009.log`.
+- Test Google Places et catalogue simulés, PostgreSQL laboratoire réel, Stripe simulé. Aucun débit, publication ni déploiement.
+- Ce jalon est l'entrée validée du futur checkout invité, PAS un checkout sans Keycloak fonctionnel en production.
