@@ -62,3 +62,9 @@ Client « Mon espace » [profil/adresse + consentement]
 - Dépôt actif : `/opt/delishafrica/monorepo` (ne pas toucher, modifications financières locales non committées).
 
 **Statut : validation chiffrée en lab, pas encore solution guest à livrer au Client.**
+
+## CANONICAL P5 STORAGE DECISION — 2026-10-09
+- L'adaptateur GuestCheckoutQuoteContext, branché sur da_guest_order_context, demeure une variante EXPERIMENTALE non utilisée en P5.
+- Le flux production proposé associera CatalogOrderPolicyService + vérification territoriale autoritaire + GuestCheckoutLedger + GuestPrivateFulfillmentVault + GuestPaidFulfillmentPreparer.
+- Un seul chemin de chiffrement de coordonnées devra devenir source de vérité à l'intégration.
+- Consulter docs/guest-checkout/CONSOLIDATION_P4_DEUX_COFFRES.md et docs/guest-checkout/history/.

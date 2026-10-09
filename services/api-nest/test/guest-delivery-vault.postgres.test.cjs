@@ -30,7 +30,7 @@ before(async()=>{
  const info=await db.query('SELECT inet_server_port() AS port');
  assert.equal(info.rows[0].port,55438);
  await db.query(readFileSync(path.join(__dirname,'../../../migrations/20261009_guest_delivery_context.sql'),'utf8'));
- await db.query('TRUNCATE da_guest_order_context,da_guest_financial_outbox,da_guest_verified_payments,da_guest_checkout_sessions');
+ await db.query('TRUNCATE da_guest_checkout_sessions CASCADE');
 });
 after(async()=>db.end());
 test('AES256 GCM hides fields; wrong order, tampered tag and key fail',()=>{

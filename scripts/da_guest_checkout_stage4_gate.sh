@@ -37,6 +37,8 @@ node --test "$ROOT/services/api-nest/test/guest-stripe-finalizer.postgres.test.c
 
 echo "== P4 ENCRYPTED FULFILLMENT / REAL PG LAB =="
 node --test "$ROOT/services/api-nest/test/guest-fulfillment.postgres.test.cjs"
+echo "== P4 ALTERNATIVE DELIVERY CONTEXT REGRESSION TESTS =="
+node --test "$ROOT/services/api-nest/test/guest-delivery-vault.postgres.test.cjs"
 
 echo "== DB TRIGGER EXISTS AND ACTIVE =="
 ACTIVE="$(psql -h 127.0.0.1 -p "$PORT" -U afripayadmin -d postgres -Atqc "SELECT t.tgenabled FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid WHERE c.relname='da_guest_checkout_sessions' AND t.tgname='da_guest_payment_fulfillment_gate' AND NOT t.tgisinternal")"
@@ -63,4 +65,4 @@ git -C "$ROOT" diff --check
 git -C "$ROOT" diff --cached --check
 
 echo "FINAL_DA_GUEST_CHECKOUT_STAGE4_GATE=PASS"
-echo "NOTE: 27/27 cumulative tests; PostgreSQL lab real, Stripe simulated, no live checkout."
+echo "NOTE: 31/31 cumulative tests; PostgreSQL lab real, Stripe simulated, no live checkout."

@@ -128,3 +128,10 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Payment P3 confirmé -> préparation interne d'ordre P4, transaction unique, aucun dispatch public.
 - Interdiction de contact professionnel, une route publique ou un suivi client tant que les flux P5 n'ont pas été validés.
 - Architecture détaillée : docs/guest-checkout/ARCHITECTURE_PIN_STAGE4_20261009.md.
+
+## CONFLIT P4 RESOLU — 2026-10-09
+- Deux modules P4 ont été produits dans deux worktrees et conservés dans la branche Guest Checkout.
+- CANONIQUE FUTUR : GuestPrivateFulfillmentVault + Ledger P2 + finalizer P3 + preparer P4.
+- ALTERNATIVE LAB : GuestCheckoutQuoteContext/guest-delivery-vault (non câblé en production, ne pas dupliquer les données personnelles).
+- Décision : docs/guest-checkout/CONSOLIDATION_P4_DEUX_COFFRES.md.
+- Notes historiques restaurées : docs/guest-checkout/history/.

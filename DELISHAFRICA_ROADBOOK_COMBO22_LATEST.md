@@ -161,8 +161,15 @@ Scope: Client + Courier, harmonisé Merchant
 
 ## ADDENDUM 2026-10-09 - GUEST P4 COMPLETE LAB
 - P4 conçu et testé en branche isolée, 9 nouveaux tests PostgreSQL réels, sans fuite plaintext PII.
-- Résultat final cumulatif : FINAL_DA_GUEST_CHECKOUT_STAGE4_GATE=PASS ; 27/27 tests + TS API/Client PASS.
+- Résultat final cumulatif : FINAL_DA_GUEST_CHECKOUT_STAGE4_GATE=PASS ; 31/31 tests + TS API/Client PASS.
 - P3 a été renforcé pour sceller un dossier de livraison avant l'association Stripe ; ses 6 tests restent verts.
 - ZÉRO changement d'API en production / de publication Stores / de branche principale.
 - Livrable/plan : docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE4_20261009.md.
 - Guest Checkout réellement disponible à l'utilisateur : EN ATTENTE des routes backend, montant calculé et paiement Stripe test, droits Merchant/Courier et parcours mobile.
+
+## ADDENDUM P4 CONSOLIDE — 2026-10-09
+- Chevauchement P4: commit alternatif 1427703 préservé + coffre primaire commit 2dc2bc7.
+- Le test alternatif P4 (4/4) a été repris; gate consolidé P1-P4 (31/31) PASS.
+- Un seul chemin de données invité devra être câblé P5 ; PAS de double stockage du profil.
+- Preuves et schéma canonique : docs/guest-checkout/CONSOLIDATION_P4_DEUX_COFFRES.md.
+- Test réel Stripe, validation géographique serveur, projection Merchant/Courier et UI Client sans Keycloak NON FINIS.

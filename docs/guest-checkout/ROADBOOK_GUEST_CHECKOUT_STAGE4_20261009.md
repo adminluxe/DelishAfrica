@@ -40,7 +40,7 @@ Le client utilise actuellement `checkout-preflight.tsx` et `daOrdersFetch` avec 
 - P2 : 5/5 PASS.
 - P3 : 6/6 PASS après introduction du trigger P4.
 - P4 : 9/9 PASS.
-- Total attendu dans le gate : **27/27**.
+- Total attendu dans le gate : **31/31**.
 - PostgreSQL réellement exécuté en laboratoire; **Stripe simulé**; aucune requête live de paiement.
 - Les anciennes migrations, ordres marchands et consoles Stores ne sont pas modifiés.
 
@@ -55,3 +55,11 @@ Le client utilise actuellement `checkout-preflight.tsx` et `daOrdersFetch` avec 
 - Ne pas activer d'OTA, de migration production ou de build payant avant gate P5.
 
 **Décision à ce stade : P4 fondation technique validable, checkout invité FINI = NON.**
+
+## RECONCILIATION P4 — 2026-10-09
+- Un second module de chiffrement a été détecté sur la branche (commit 1427703). Aucun fichier code existant supprimé.
+- Notes originales restaurées dans docs/guest-checkout/history/.
+- Le registre canonique sera guest-private-fulfillment-vault, la version guest-delivery-vault reste un prototype laboratoire.
+- Tests complémentaires de ce prototype 4/4 PASS, le gate est désormais 31/31 PASS.
+- Ne pas activer les deux coffres sur un même flux de commande.
+- Décision détaillée: docs/guest-checkout/CONSOLIDATION_P4_DEUX_COFFRES.md.
