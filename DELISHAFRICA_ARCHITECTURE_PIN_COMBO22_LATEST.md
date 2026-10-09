@@ -121,3 +121,10 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Devis imposé par catalogue serveur, context+état de devis écrits en transaction PG.
 - Aucune exposition HTTP et aucune livraison/commande réelle activée à ce stade.
 - Architecture : docs/guest-checkout/ARCHITECTURE_PIN_STAGE4_20261009.md.
+
+## ADDENDUM 2026-10-09 - GUEST P4 AES VAULT
+- Dossier privé de commande invité chiffré AES-256-GCM, avec AEAD AAD (orderId et quote), MAC et clé de versionnage.
+- Trigger DB bloquant tout PAYMENT_PENDING/PAID/COMMITTED sans payload de livraison scellé et concordant.
+- Payment P3 confirmé -> préparation interne d'ordre P4, transaction unique, aucun dispatch public.
+- Interdiction de contact professionnel, une route publique ou un suivi client tant que les flux P5 n'ont pas été validés.
+- Architecture détaillée : docs/guest-checkout/ARCHITECTURE_PIN_STAGE4_20261009.md.

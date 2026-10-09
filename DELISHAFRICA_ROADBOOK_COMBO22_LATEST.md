@@ -158,3 +158,11 @@ Scope: Client + Courier, harmonisé Merchant
 - Gate P1-P4 : 22 tests au total, TypeScript propre, aucune production modifiée.
 - API Client encore soumise au système de connexion existant ; fonctionnalité guest checkout non activée.
 - Voir docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE4_20261009.md.
+
+## ADDENDUM 2026-10-09 - GUEST P4 COMPLETE LAB
+- P4 conçu et testé en branche isolée, 9 nouveaux tests PostgreSQL réels, sans fuite plaintext PII.
+- Résultat final cumulatif : FINAL_DA_GUEST_CHECKOUT_STAGE4_GATE=PASS ; 27/27 tests + TS API/Client PASS.
+- P3 a été renforcé pour sceller un dossier de livraison avant l'association Stripe ; ses 6 tests restent verts.
+- ZÉRO changement d'API en production / de publication Stores / de branche principale.
+- Livrable/plan : docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE4_20261009.md.
+- Guest Checkout réellement disponible à l'utilisateur : EN ATTENTE des routes backend, montant calculé et paiement Stripe test, droits Merchant/Courier et parcours mobile.

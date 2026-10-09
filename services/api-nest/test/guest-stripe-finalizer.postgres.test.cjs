@@ -10,11 +10,24 @@ require.extensions['.ts']=(m,f)=>m._compile(ts.transpileModule(readFileSync(f,'u
 }).outputText,f);
 const {Pool}=require('/opt/delishafrica/monorepo/services/api-nest/.runtime-vendor/pg-runtime/node_modules/pg');
 const {GuestCheckoutLedger}=require('../src/guest-checkout/guest-checkout-ledger.ts');
+const {GuestPrivateFulfillmentVault}=require('../src/guest-checkout/guest-private-fulfillment-vault.ts');
 const {GuestStripeFinancialFinalizer}=require('../src/guest-checkout/guest-stripe-financial-finalizer.ts');
 const root=path.resolve(__dirname,'../../..');
 const db=new Pool({host:'127.0.0.1',port:55438,user:'afripayadmin',database:'postgres',max:6});
 const secret='development-webhook-secret-not-for-live';
-const key=randomBytes(32),fp='ab'.repeat(32);
+const key=randomBytes(32),encKey=randomBytes(32),fp='ab'.repeat(32);
+const vault=new GuestPrivateFulfillmentVault(db,key,new Map([['dek_labp3',encKey]]),'dek_labp3');
+const sealedQuote={
+ ok:true,version:1,partnerSlug:'thieyp',partnerName:'Thieyp Lab',
+ currency:'eur',availabilityDate:'2026-10-09',availabilityDay:'vendredi',
+ items:[{id:'sku_001',sku:'sku_001',name:'Plat Lab',category:'Plat',
+ quantity:2,unitAmount:950,lineAmount:1900,scheduledDay:null}],
+ subtotal:1900,deliveryFee:290,total:2190,minimumOrderAmount:0,
+ quoteFingerprint:fp,quotedAt:'2026-10-09T14:00:00.000Z'
+};
+const contact={name:'Lab Customer',phone:'+32470000000',
+ address:'23 Rue des Tests',city:'Bruxelles',consent:true};
+const area={verifiedByServer:true,eligible:true,serviceAreaCode:'brussels-center'};
 const snapshots=new Map();let seq=0;
 const reader={async fetchIntent(id){const p=snapshots.get(id);if(!p)throw Error('mock_missing');return structuredClone(p)}};
 const finalizer=(pool=db)=>new GuestStripeFinancialFinalizer(pool,reader,secret,false);
@@ -27,6 +40,7 @@ const event=(id,type='payment_intent.succeeded')=>{
 async function pending(){
  const ledger=new GuestCheckoutLedger(db,key),g=await ledger.issue();
  await ledger.attachVerifiedQuote(g.token,{amountCents:2190,currency:'eur',fingerprint:fp});
+ await vault.seal(g.token,sealedQuote,contact,area);
  const id='pi_guest_lab_'+(++seq);
  await ledger.bindTrustedPaymentIntent(g.token,id);
  const claims=JSON.parse(Buffer.from(g.token.split('.')[1],'base64url').toString());
@@ -41,7 +55,7 @@ async function pending(){
 before(async()=>{
  const r=await db.query('SELECT inet_server_port() AS port');
  assert.equal(r.rows[0].port,55438);
- for(const file of ['20261009_guest_checkout_ledger.sql','20261009_guest_verified_payment.sql'])
+ for(const file of ['20261009_guest_checkout_ledger.sql','20261009_guest_verified_payment.sql','20261009_guest_fulfillment_vault.sql'])
   await db.query(readFileSync(path.join(root,'migrations',file),'utf8'));
  await db.query('TRUNCATE da_guest_financial_outbox,da_guest_verified_payments,da_guest_checkout_sessions CASCADE');
 });
