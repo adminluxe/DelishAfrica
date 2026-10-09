@@ -86,3 +86,7 @@ Log VPS : `/tmp/da_guest_stage1_gate_20261009.log`.
 - 6 scénarios d’intégration via Postgres isolé, réponses Stripe simulées, transactions sérialisées et rollback.
 - Code sécurisé mais aucune nouvelle route publique. P4 reste indispensable.
 - Rapport : docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE3_20261009.md.
+
+## 9. PALIER 4 — VAULT
+- Coffre chiffré et préparation du devis avec transaction PG testée, non déployée.
+- Rapport P4 : docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE4_20261009.md.

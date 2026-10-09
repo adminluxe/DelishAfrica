@@ -152,3 +152,9 @@ Scope: Client + Courier, harmonisé Merchant
 - Gate P3 consolidé attendu 18/18 tests.
 - Finalizer NON BRANCHÉ aux routes publiques. Livraison et création des vraies commandes en attente P4.
 - Voir docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE3_20261009.md.
+
+## ADDENDUM 2026-10-09 — P4 DELIVERY VAULT
+- P4 : coffre de livraison AES-256-GCM, devis serveur fixé et transaction PostgreSQL. 4 tests P4 réussis.
+- Gate P1-P4 : 22 tests au total, TypeScript propre, aucune production modifiée.
+- API Client encore soumise au système de connexion existant ; fonctionnalité guest checkout non activée.
+- Voir docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE4_20261009.md.

@@ -115,3 +115,9 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Chaîne serveur Stripe HMAC -> récupération Stripe API -> vérifications de charge -> transaction PG unique payment/outbox.
 - Ledger financier invité non expédiable, aucune PII et aucun compte pro impacté.
 - SQL production non migré. Architecture : docs/guest-checkout/ARCHITECTURE_PIN_STAGE3_20261009.md.
+
+## ADDENDUM 2026-10-09 — P4 ENCRYPTED ORDER CONTEXT
+- Le contexte de livraison est chiffré AES-256-GCM avec AAD orderId et empreinte HMAC.
+- Devis imposé par catalogue serveur, context+état de devis écrits en transaction PG.
+- Aucune exposition HTTP et aucune livraison/commande réelle activée à ce stade.
+- Architecture : docs/guest-checkout/ARCHITECTURE_PIN_STAGE4_20261009.md.

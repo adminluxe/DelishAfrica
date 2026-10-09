@@ -43,7 +43,7 @@ before(async()=>{
  assert.equal(r.rows[0].port,55438);
  for(const file of ['20261009_guest_checkout_ledger.sql','20261009_guest_verified_payment.sql'])
   await db.query(readFileSync(path.join(root,'migrations',file),'utf8'));
- await db.query('TRUNCATE da_guest_financial_outbox,da_guest_verified_payments,da_guest_checkout_sessions');
+ await db.query('TRUNCATE da_guest_financial_outbox,da_guest_verified_payments,da_guest_checkout_sessions CASCADE');
 });
 after(async()=>{await db.end()});
 test('signed webhook commits exactly one financial record, never dispatch',async()=>{
