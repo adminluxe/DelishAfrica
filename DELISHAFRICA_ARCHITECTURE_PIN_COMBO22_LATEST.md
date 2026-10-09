@@ -121,3 +121,8 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Devis imposé par catalogue serveur, context+état de devis écrits en transaction PG.
 - Aucune exposition HTTP et aucune livraison/commande réelle activée à ce stade.
 - Architecture : docs/guest-checkout/ARCHITECTURE_PIN_STAGE4_20261009.md.
+
+## ADDENDUM 2026-10-09 — GUEST CLIENT SECURE RESUME
+- SecureStore porte la capacité Guest temporaire sans données personnelles.
+- Idempotence et reprise serveur nécessaires avant tout flux de paiement invité.
+- Détails : docs/guest-checkout/ARCHITECTURE_GUEST_CLIENT_PIN_20261009.md.

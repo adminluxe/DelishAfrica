@@ -158,3 +158,8 @@ Scope: Client + Courier, harmonisé Merchant
 - Gate P1-P4 : 22 tests au total, TypeScript propre, aucune production modifiée.
 - API Client encore soumise au système de connexion existant ; fonctionnalité guest checkout non activée.
 - Voir docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE4_20261009.md.
+
+## ADDENDUM 2026-10-09 — GUEST CLIENT DRAFT SDK
+- Branche Client UX isolée; récupération locale Guest Checkout via SecureStore.
+- 5 tests locaux PASS + TypeScript Client PASS. Aucun paiement invité activé.
+- Rapport : docs/guest-checkout/ROADBOOK_GUEST_CLIENT_UX_20261009.md.
