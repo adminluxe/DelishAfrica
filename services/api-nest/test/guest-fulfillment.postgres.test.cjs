@@ -17,7 +17,7 @@ const {GuestPrivateFulfillmentVault}=require('../src/guest-checkout/guest-privat
 const {GuestPaidFulfillmentPreparer}=require('../src/guest-checkout/guest-paid-fulfillment-preparer.ts');
 const {GuestStripeFinancialFinalizer}=require('../src/guest-checkout/guest-stripe-financial-finalizer.ts');
 const root=path.resolve(__dirname,'../../..');
-const pool=new Pool({host:'127.0.0.1',port:55440,user:'afripayadmin',database:'postgres',max:10});
+const pool=new Pool({host:'127.0.0.1',port:55441,user:'afripayadmin',database:'postgres',max:10});
 const capKey=randomBytes(32),encKey=randomBytes(32);
 const keyRing=new Map([['dek_lab2026',encKey]]);
 const vault=new GuestPrivateFulfillmentVault(pool,capKey,keyRing,'dek_lab2026');
@@ -51,7 +51,7 @@ const preparer=(db=pool)=>new GuestPaidFulfillmentPreparer(db,vault);
 
 before(async()=>{
  const probe=await pool.query('SELECT inet_server_port() AS p');
- assert.equal(probe.rows[0].p,55440);
+ assert.equal(probe.rows[0].p,55441);
  for(const name of ['20261009_guest_checkout_ledger.sql',
                      '20261009_guest_verified_payment.sql',
                      '20261009_guest_fulfillment_vault.sql']){

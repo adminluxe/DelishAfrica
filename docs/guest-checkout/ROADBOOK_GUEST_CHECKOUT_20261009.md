@@ -139,3 +139,10 @@ Log VPS : `/tmp/da_guest_stage1_gate_20261009.log`.
 - Gate final P1–P5-D : 82/82 PASS, TypeScript API/Client PASS, PostgreSQL lab 127.0.0.1:55440, sans opération bancaire réelle.
 - Il reste nécessaire de construire la reconciliation opérationnelle, l'adaptateur Stripe test, la projection métier et l'UX Guest de production.
 - Voir docs/guest-checkout/ROADBOOK_P5D_20261009.md et ARCHITECTURE_PIN_P5D_20261009.md.
+
+## 16. P5-E FINANCIAL OPS RECONCILIATION 09-10-2026
+- Le moniteur financier Ops, la file durable PostgreSQL de réconciliation et l'adaptateur Stripe HTTP TEST (non connecté au fournisseur réel) sont validés en laboratoire.
+- Vérification P1-P5E : 112/112 tests PASS, TypeScript API et les trois apps PASS, 55441 isolé, zéro paiement externe.
+- Aucun worker planifié en production, aucune nouvelle route Guest Checkout publique.
+- Roadbook : docs/guest-checkout/ROADBOOK_P5E_20261009.md ; architecture : ARCHITECTURE_PIN_P5E_20261009.md.
+- Priorités P0 : Stripe TEST réel sous gestion des secrets, annulation/refund post-secret, console/alertes Ops, commande Merchant/Courier et suivi Guest.

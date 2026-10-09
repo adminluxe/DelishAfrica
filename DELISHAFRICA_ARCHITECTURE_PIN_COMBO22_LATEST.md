@@ -181,3 +181,11 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Ces protections sont testées dans `feature/client-guest-p5d-reconciliation-20261009`, sans endpoint Guest public.
 - Roadbook : docs/guest-checkout/ROADBOOK_P5D_20261009.md.
 - Architecture : docs/guest-checkout/ARCHITECTURE_PIN_P5D_20261009.md.
+
+## ADDENDUM 2026-10-09 P5-E FINANCIAL OPS MONITOR
+- Chaîne canonique P5E : P1 token HMAC > P2 devis immuable > P5A Google serveur > P5B Ops indépendant > P4 AES > P5C Stripe TEST idempotent > P5D compensation sous bail > P5E scanner Ops et finaliseur P3 strict.
+- Le scanner est **interne, invoqué explicitement**, jamais exposé par HTTP ; il ne crée/annule/rembourse aucun Intent. P3 est le seul à confirmer un paiement en relisant les preuves indépendamment.
+- Table de surveillance : `da_guest_payment_reconciliation_alerts`, uniquement identifiants financiers, état, code d'incident, priorité, claim et échéance (pas d'identités, carte, adresse, secrets).
+- Deux workers ne peuvent prendre le même dossier simultanément (SKIP LOCKED / bail), reprise possible après crash y compris post-commit P3.
+- L'adaptateur Stripe HTTP accepte exclusivement des clés de test et rejette `NODE_ENV=production` ; aucune clé test réellement connectée.
+- Notes techniques : docs/guest-checkout/ARCHITECTURE_PIN_P5E_20261009.md.

@@ -12,7 +12,7 @@ const {Pool}=require('/opt/delishafrica/monorepo/services/api-nest/.runtime-vend
 const {GuestCheckoutLedger}=require('../src/guest-checkout/guest-checkout-ledger.ts');
 const {GuestCheckoutQuoteContext,sealGuestDelivery,openGuestDelivery}=
  require('../src/guest-checkout/guest-delivery-vault.ts');
-const db=new Pool({host:'127.0.0.1',port:55440,user:'afripayadmin',database:'postgres',max:6});
+const db=new Pool({host:'127.0.0.1',port:55441,user:'afripayadmin',database:'postgres',max:6});
 const signingKey=randomBytes(32),privacyKey=randomBytes(32);
 const policy={async quote(){
  return {ok:true,version:1,partnerSlug:'thieyp',partnerName:'Thieyp',currency:'eur',
@@ -28,7 +28,7 @@ const delivery={
 };
 before(async()=>{
  const info=await db.query('SELECT inet_server_port() AS port');
- assert.equal(info.rows[0].port,55440);
+ assert.equal(info.rows[0].port,55441);
  await db.query(readFileSync(path.join(__dirname,'../../../migrations/20261009_guest_delivery_context.sql'),'utf8'));
  await db.query('TRUNCATE da_guest_checkout_sessions CASCADE');
 });

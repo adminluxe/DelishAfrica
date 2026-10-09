@@ -149,7 +149,7 @@ Scope: Client + Courier, harmonisé Merchant
 
 ## ADDENDUM 2026-10-09 — GUEST P3
 - PostgreSQL isolé + preuve Stripe simulée : 6 scénarios PASS, y compris 8 webhooks concurrents, rollback et reprise après expiration.
-- Gate P3 consolidé attendu 18/18 tests.
+- Gate P3 consolidé attendu 18/19 tests.
 - Finalizer NON BRANCHÉ aux routes publiques. Livraison et création des vraies commandes en attente P4.
 - Voir docs/guest-checkout/ROADBOOK_GUEST_CHECKOUT_STAGE3_20261009.md.
 
@@ -222,3 +222,14 @@ Scope: Client + Courier, harmonisé Merchant
 - Aucun changement de production, de migration live, d'API publique, de profils Merchant/Courier, ni de build Store.
 - Code source complet, migration lab, tests et gate : docs/guest-checkout/ROADBOOK_P5D_20261009.md.
 - P0 NON RÉSOLUS : annulation/remboursement après remise du secret, worker alerte/reconciliation, Stripe réel en mode test, flux commande Merchant/Courier, Client sans Keycloak.
+
+## ADDENDUM 2026-10-09 P5-E OPS FINANCIAL RECONCILIATION
+- Branche isolée : `feature/client-guest-p5e-ops-reconciler-20261009`, héritée du P5-D scellé `88a0fd5`.
+- Scanner Ops interne `GuestPaymentReconciliationMonitor` : réclamation PostgreSQL `SKIP LOCKED`, baux récupérables, rapprochement Stripe en lecture seule, alertes durables sans PII.
+- Pour un Intent BOUND et Stripe `succeeded`, P3 peut revalider indépendamment la capture puis écrire paiement vérifié + outbox financière sous transaction, sans commande métier ni dispatch.
+- Crash après commit P3 : récupération de l'alerte financière sans dédoublement de l'écriture ni création de nouvel Intent.
+- Adaptateur Stripe HTTP REST créé : `sk_test_` / `rk_test_` uniquement, refus live/production, URL fixe, idempotence CREATE/CANCEL ; **11 tests via fake HTTP, aucun appel Stripe externe**.
+- Gate laboratoire P1-P5E : **112/112 PASS**, TypeScript API + Client + Merchant + Courier PASS sur PostgreSQL isolé port 55441.
+- Reste à faire : authentique Stripe TEST, scheduler/alerting Ops, RBAC, remboursement et révocation après remise du clientSecret, commandes métier et tracking Client sans Keycloak imposé.
+- Aucun déploiement, migration SQL production, push OTA ni build Store.
+- Passation : docs/guest-checkout/ROADBOOK_P5E_20261009.md.

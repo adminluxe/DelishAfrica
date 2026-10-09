@@ -21,7 +21,7 @@ const { GuestMerchantCoverageStrict, coverageApprovalDigest } =
 const { PostgresGuestCoverageOpsApprovals } =
   require('../src/guest-checkout/guest-coverage-ops-approval-pg.ts');
 
-const db = new Pool({ host: '127.0.0.1', port: 55440, user: 'afripayadmin', database: 'postgres', max: 10 });
+const db = new Pool({ host: '127.0.0.1', port: 55441, user: 'afripayadmin', database: 'postgres', max: 10 });
 const capKey = randomBytes(32), encKey = randomBytes(32);
 const ledger = new GuestCheckoutLedger(db, capKey);
 const vault = new GuestPrivateFulfillmentVault(db, capKey,
@@ -72,7 +72,7 @@ before(async () => {
   process.env.NODE_ENV = 'test';
   process.env.DA_GUEST_STRIPE_TEST_ONLY = '1';
   const probe = await db.query('SELECT inet_server_port() AS port');
-  assert.equal(probe.rows[0].port, 55440);
+  assert.equal(probe.rows[0].port, 55441);
   const sql = readFileSync(path.resolve(__dirname,
     '../../../migrations/20261009_guest_intent_creation_reservations.sql'), 'utf8');
   await db.query(sql);
