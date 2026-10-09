@@ -172,3 +172,12 @@ Auth/OIDC contracts, API business logic, Stripe, Dispatch, Orders state machine,
 - Reservation idempotente stable par ordre avant Stripe, contrôle avant/après IO externe, COMMIT Postgres de BOUND avant retour de clientSecret.
 - Revocation APRES secret déjà délivré et intent orphelin non compensé sont des risques P0 ouverts, pas encore prêts pour production.
 - Architecture spécifique: docs/guest-checkout/ARCHITECTURE_PIN_P5C_OPS_INTEGRATED_20261009.md.
+
+## P5-D — SAFE STRIPE ORPHAN RECONCILIATION 09/10/2026
+- Les Intent Stripe invités ont un registre de réservation par commande avec clé idempotente immuable, et de nouveaux états finaux `cancelled` / `review_required`.
+- `GuestOrphanIntentCompensator` verrouille la ligne de réservation PG, vérifie le bail, annule uniquement un Intent connu et vérifié et exige la confirmation distante du statut canceled ; toute incertitude est quarantinée.
+- Panne PostgreSQL après réponse Stripe : garder la clé et permettre le retry déterministe; ACK COMMIT perdu : NE PAS annuler un possible paiement déjà BOUND.
+- Vieillissement d'une réservation >23h : ne plus tenter de création avec la même clé, revue Ops obligatoire.
+- Ces protections sont testées dans `feature/client-guest-p5d-reconciliation-20261009`, sans endpoint Guest public.
+- Roadbook : docs/guest-checkout/ROADBOOK_P5D_20261009.md.
+- Architecture : docs/guest-checkout/ARCHITECTURE_PIN_P5D_20261009.md.

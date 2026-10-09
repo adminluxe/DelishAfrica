@@ -132,3 +132,10 @@ Log VPS : `/tmp/da_guest_stage1_gate_20261009.log`.
 - 19 tests P5C PASS, cumul P1-P5C 71/71 PASS, TypeScript API/Client PASS. Base PostgreSQL laboratore distincte port 55439.
 - Roadbook: docs/guest-checkout/ROADBOOK_P5C_OPS_INTEGRATED_20261009.md.
 - Activation Guest Checkout finale toujours NON, aucune route publique ouverte.
+
+## 15. P5-D — RECOVERY & COMPENSATION 09-10-2026
+- P5-D a ajouté des annulations Stripe simulées et une quarantaine PostgreSQL en cas de risque de double paiement.
+- Scénarios supplémentaires testés : disparition de réseau après création, annulation incertaine, conflit de bail, échec/ACK perdu de COMMIT, expiration de fenêtre idempotente, demande concurrente.
+- Gate final P1–P5-D : 82/82 PASS, TypeScript API/Client PASS, PostgreSQL lab 127.0.0.1:55440, sans opération bancaire réelle.
+- Il reste nécessaire de construire la reconciliation opérationnelle, l'adaptateur Stripe test, la projection métier et l'UX Guest de production.
+- Voir docs/guest-checkout/ROADBOOK_P5D_20261009.md et ARCHITECTURE_PIN_P5D_20261009.md.

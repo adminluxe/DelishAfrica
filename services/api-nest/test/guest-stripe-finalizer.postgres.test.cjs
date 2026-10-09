@@ -13,7 +13,7 @@ const {GuestCheckoutLedger}=require('../src/guest-checkout/guest-checkout-ledger
 const {GuestPrivateFulfillmentVault}=require('../src/guest-checkout/guest-private-fulfillment-vault.ts');
 const {GuestStripeFinancialFinalizer}=require('../src/guest-checkout/guest-stripe-financial-finalizer.ts');
 const root=path.resolve(__dirname,'../../..');
-const db=new Pool({host:'127.0.0.1',port:55439,user:'afripayadmin',database:'postgres',max:6});
+const db=new Pool({host:'127.0.0.1',port:55440,user:'afripayadmin',database:'postgres',max:6});
 const secret='development-webhook-secret-not-for-live';
 const key=randomBytes(32),encKey=randomBytes(32),fp='ab'.repeat(32);
 const vault=new GuestPrivateFulfillmentVault(db,key,new Map([['dek_labp3',encKey]]),'dek_labp3');
@@ -54,7 +54,7 @@ async function pending(){
 }
 before(async()=>{
  const r=await db.query('SELECT inet_server_port() AS port');
- assert.equal(r.rows[0].port,55439);
+ assert.equal(r.rows[0].port,55440);
  for(const file of ['20261009_guest_checkout_ledger.sql','20261009_guest_verified_payment.sql','20261009_guest_fulfillment_vault.sql'])
   await db.query(readFileSync(path.join(root,'migrations',file),'utf8'));
  await db.query('TRUNCATE da_guest_financial_outbox,da_guest_verified_payments,da_guest_checkout_sessions CASCADE');

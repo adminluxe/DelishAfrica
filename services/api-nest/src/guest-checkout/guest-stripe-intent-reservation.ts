@@ -4,6 +4,7 @@ import type { GuestSqlExecutor } from './guest-checkout-ledger';
 import type { GuestTransactionalDb } from './guest-stripe-financial-finalizer';
 import type { GuestPrivateFulfillmentVault } from './guest-private-fulfillment-vault';
 import { GuestMerchantCoverageStrict } from './guest-merchant-coverage-strict';
+import { GuestOrphanIntentCompensator } from './guest-orphan-intent-compensator';
 
 /**
  * P5-C — TEST-ONLY internal creation of one Stripe PaymentIntent per guest.
@@ -39,6 +40,8 @@ export type GuestIntentTransport = {
   mode: 'test';
   createIntent(params: GuestIntentParams): Promise<GuestTransportIntent>;
   getIntent(intentId: string): Promise<GuestTransportIntent>;
+  /** MUST be bounded by a timeout in the real TEST adapter. */
+  cancelIntent(intentId: string): Promise<GuestTransportIntent>;
 };
 
 export type GuestIntentStart =
@@ -66,13 +69,14 @@ type LedgerRow = {
 
 type AttemptRow = {
   order_id: string;
-  state: 'creating' | 'bound';
+  state: 'creating' | 'bound' | 'cancelled' | 'review_required';
   request_hash: string;
   idempotency_key: string;
   lease_owner: string | null;
   lease_until: Date | string | null;
   stripe_intent_id: string | null;
   attempt_count: number;
+  created_at: Date | string;
 };
 
 const VALID_INTENT = /^pi_[A-Za-z0-9_]{8,192}$/;
@@ -93,6 +97,8 @@ function requestDigest(params: GuestIntentParams): string {
 }
 
 export class GuestStripeIntentReservation {
+  private readonly compensator: GuestOrphanIntentCompensator;
+
   constructor(
     private readonly db: GuestSqlExecutor & GuestTransactionalDb,
     private readonly transport: GuestIntentTransport,
@@ -105,6 +111,7 @@ export class GuestStripeIntentReservation {
         !Buffer.isBuffer(signingKey) || signingKey.length !== 32) {
       throw new Error('guest_intent_test_configuration_invalid');
     }
+    this.compensator = new GuestOrphanIntentCompensator(db, transport);
   }
 
   private testOnly(): void {
@@ -280,7 +287,7 @@ export class GuestStripeIntentReservation {
          VALUES ($1,$2,$3,'creating',$4,now()+interval '90 seconds')
          ON CONFLICT DO NOTHING
          RETURNING order_id,state,request_hash,idempotency_key,
-                   lease_owner,lease_until,stripe_intent_id,attempt_count`,
+                   lease_owner,lease_until,stripe_intent_id,attempt_count,created_at`,
         [claims.orderId, params.idempotencyKey, expectedHash, leaseOwner],
       );
       if (inserted.rowCount === 1) {
@@ -292,7 +299,7 @@ export class GuestStripeIntentReservation {
     if (!reserved) {
       const selected = await this.db.query<AttemptRow>(
         `SELECT order_id,state,request_hash,idempotency_key,
-                lease_owner,lease_until,stripe_intent_id,attempt_count
+                lease_owner,lease_until,stripe_intent_id,attempt_count,created_at
            FROM da_guest_payment_intent_creation
           WHERE order_id=$1`,
         [claims.orderId],
@@ -303,15 +310,32 @@ export class GuestStripeIntentReservation {
           attempt.idempotency_key !== params.idempotencyKey) {
         throw new Error('guest_intent_reservation_mismatch');
       }
+      if (attempt.state === 'cancelled') {
+        throw new Error('guest_intent_cancelled_new_quote_required');
+      }
+      if (attempt.state === 'review_required') {
+        throw new Error('guest_intent_manual_reconciliation_required');
+      }
       if (attempt.state === 'bound') {
         if (row.state !== 'payment_pending' ||
             row.payment_intent_id !== attempt.stripe_intent_id) {
           throw new Error('guest_intent_database_binding_mismatch');
         }
-        return this.restore(attempt, params);
+        const restored = await this.restore(attempt, params);
+        // A revocation during the remote GET must also withhold the secret.
+        await this.requireCurrentDeliveryAuthorization(token, row, amount);
+        return restored;
       }
       if (row.state !== 'quoted') {
         throw new Error('guest_intent_state_requires_manual_reconciliation');
+      }
+      // Stripe only retains a given idempotency result for a limited time.
+      // Never attempt another CREATE on a reservation older than 23 hours.
+      const reservationSince = new Date(attempt.created_at).getTime();
+      if (!Number.isFinite(reservationSince) ||
+          reservationSince <= this.clock() - 23 * 60 * 60 * 1000) {
+        await this.compensator.quarantineExpired(claims.orderId);
+        throw new Error('guest_intent_manual_reconciliation_required');
       }
       const reclaimed = await this.db.query<AttemptRow>(
         `UPDATE da_guest_payment_intent_creation
@@ -323,7 +347,7 @@ export class GuestStripeIntentReservation {
             AND state='creating' AND lease_until <= now()
             AND attempt_count < 6
           RETURNING order_id,state,request_hash,idempotency_key,
-                    lease_owner,lease_until,stripe_intent_id,attempt_count`,
+                    lease_owner,lease_until,stripe_intent_id,attempt_count,created_at`,
         [claims.orderId, expectedHash, leaseOwner],
       );
       if (reclaimed.rowCount === 1) {
@@ -346,23 +370,70 @@ export class GuestStripeIntentReservation {
       throw new Error('guest_intent_reservation_lost');
     }
 
+    // Also guard against a long-running call before touching Stripe.
+    const reservedAt = new Date(attempt.created_at).getTime();
+    if (!Number.isFinite(reservedAt) ||
+        reservedAt <= this.clock() - 23 * 60 * 60 * 1000) {
+      await this.compensator.quarantineExpired(claims.orderId);
+      throw new Error('guest_intent_manual_reconciliation_required');
+    }
+
     // Authorize AGAIN immediately before the potentially slow Stripe call.
     // Ops may revoke after initial guest session validation/reservation.
     await this.requireCurrentDeliveryAuthorization(token, row, amount);
 
     // This may succeed remotely and then fail locally (network timeout).
     // Stripe's idempotency key and full request MUST remain identical on retry.
-    const remote = await this.transport.createIntent(params);
-    this.validateProviderResponse(remote, params);
+    let remote: GuestTransportIntent;
+    try {
+      remote = await this.transport.createIntent(params);
+    } catch {
+      // Remote CREATE may have succeeded before the network response was
+      // lost. Keep the fixed key and lease; no new key or client secret.
+      throw new Error('guest_intent_provider_request_uncertain');
+    }
+    try {
+      this.validateProviderResponse(remote, params);
+    } catch {
+      // A forged or inconsistent response may not refer to OUR payment.
+      // Do not cancel an untrusted remote ID. Quarantine for manual review.
+      const id = remote && VALID_INTENT.test(remote.id) ? remote.id : null;
+      await this.compensator.settleKnown(
+        claims.orderId, leaseOwner, id, false,
+        'provider_response_invalid',
+      ).catch(() => {
+        throw new Error('guest_intent_manual_reconciliation_required');
+      });
+      throw new Error('guest_stripe_test_intent_invalid');
+    }
 
-    // Deny access to a newly-revoked Intent even if Stripe created it while
-    // network IO was in flight. No client secret leaves this method.
-    // Cancellation/reconciliation of a never-presented Intent is a separate
-    // P5C activation prerequisite, not a reason to weaken this check.
-    await this.requireCurrentDeliveryAuthorization(token, row, amount);
+    // The Ops decision may be revoked while the request is in flight.
+    try {
+      await this.requireCurrentDeliveryAuthorization(token, row, amount);
+    } catch {
+      // A single cancellation under PostgreSQL row lock prevents a second
+      // worker from BINDING while we cancel the same provider Intent.
+      await this.compensator.settleKnown(
+        claims.orderId, leaseOwner, remote.id, true,
+        'coverage_revoked_after_create',
+      ).catch(() => {
+        throw new Error('guest_intent_manual_reconciliation_required');
+      });
+      throw new Error('guest_intent_delivery_authorization_denied');
+    }
 
-    const tx = await this.db.connect();
+    // Stripe has answered but PG may be completely unreachable before BEGIN.
+    // The idempotency reservation already exists. Keep it intact for retry
+    // with exactly the same key; never auto-cancel without a DB fencing lock.
+    let tx: Awaited<ReturnType<GuestTransactionalDb['connect']>>;
+    try {
+      tx = await this.db.connect();
+    } catch {
+      throw new Error('guest_intent_database_unavailable_reconciliation_pending');
+    }
     let open = false;
+    let uncertainCommit = false;
+    let transactionError: unknown = null;
     try {
       await tx.query('BEGIN');
       open = true;
@@ -391,7 +462,7 @@ export class GuestStripeIntentReservation {
       }
       const lease = await tx.query<AttemptRow>(
         `SELECT order_id,state,request_hash,idempotency_key,
-                lease_owner,lease_until,stripe_intent_id,attempt_count
+                lease_owner,lease_until,stripe_intent_id,attempt_count,created_at
            FROM da_guest_payment_intent_creation
           WHERE order_id=$1 FOR UPDATE`,
         [claims.orderId],
@@ -426,13 +497,27 @@ export class GuestStripeIntentReservation {
       if (saved.rowCount !== 1) {
         throw new Error('guest_intent_commit_conflict');
       }
+      uncertainCommit = true;
       await tx.query('COMMIT');
       open = false;
     } catch (error) {
       if (open) await tx.query('ROLLBACK').catch(() => undefined);
-      throw error;
+      transactionError = error;
     } finally {
       tx.release();
+    }
+
+    if (transactionError) {
+      // COMMIT may have reached PostgreSQL even if the connection dropped:
+      // never auto-cancel a potentially BOUND Intent in that ambiguous case.
+      // Without a confirmed COMMIT attempt we can cancel under the fence.
+      await this.compensator.settleKnown(
+        claims.orderId, leaseOwner, remote.id, !uncertainCommit,
+        uncertainCommit ? 'commit_outcome_uncertain' : 'database_binding_failed',
+      ).catch(() => {
+        throw new Error('guest_intent_manual_reconciliation_required');
+      });
+      throw new Error('guest_intent_binding_reconciliation_required');
     }
 
     return {

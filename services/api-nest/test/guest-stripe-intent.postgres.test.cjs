@@ -21,7 +21,7 @@ const { GuestMerchantCoverageStrict, coverageApprovalDigest } =
 const { PostgresGuestCoverageOpsApprovals } =
   require('../src/guest-checkout/guest-coverage-ops-approval-pg.ts');
 
-const db = new Pool({ host: '127.0.0.1', port: 55439, user: 'afripayadmin', database: 'postgres', max: 10 });
+const db = new Pool({ host: '127.0.0.1', port: 55440, user: 'afripayadmin', database: 'postgres', max: 10 });
 const capKey = randomBytes(32), encKey = randomBytes(32);
 const ledger = new GuestCheckoutLedger(db, capKey);
 const vault = new GuestPrivateFulfillmentVault(db, capKey,
@@ -72,13 +72,16 @@ before(async () => {
   process.env.NODE_ENV = 'test';
   process.env.DA_GUEST_STRIPE_TEST_ONLY = '1';
   const probe = await db.query('SELECT inet_server_port() AS port');
-  assert.equal(probe.rows[0].port, 55439);
+  assert.equal(probe.rows[0].port, 55440);
   const sql = readFileSync(path.resolve(__dirname,
     '../../../migrations/20261009_guest_intent_creation_reservations.sql'), 'utf8');
   await db.query(sql);
   const opsMigration = readFileSync(path.resolve(__dirname,
     '../../../migrations/20261009_guest_coverage_ops_approvals.sql'), 'utf8');
   await db.query(opsMigration);
+  const recoveryMigration=readFileSync(path.resolve(__dirname,
+    '../../../migrations/20261009_guest_intent_recovery.sql'),'utf8');
+  await db.query(recoveryMigration);
   await db.query('TRUNCATE da_guest_checkout_sessions CASCADE');
   await db.query('TRUNCATE da_guest_coverage_ops_approvals');
   await db.query(
@@ -114,6 +117,9 @@ class FakeStripe {
     this.invalidMetadata = false;
     this.livemode = false;
     this.delayMs = 0;
+    this.cancelCalls = 0;
+    this.cancelThrows = false;
+    this.cancelBadState = false;
   }
   async createIntent(params) {
     this.calls++;
@@ -148,6 +154,17 @@ class FakeStripe {
   async getIntent(id) {
     const found = this.byId.get(id);
     if (!found) throw new Error('fake_stripe_intent_not_found');
+    return structuredClone(found.intent);
+  }
+  async cancelIntent(id) {
+    this.cancelCalls++;
+    const found=this.byId.get(id);
+    if (!found) throw new Error('fake_stripe_intent_not_found');
+    if (this.cancelThrows) throw new Error('fake_stripe_cancel_timeout');
+    if (found.intent.status !== 'requires_payment_method') {
+      throw new Error('fake_stripe_intent_not_cancellable');
+    }
+    if (!this.cancelBadState) found.intent.status='canceled';
     return structuredClone(found.intent);
   }
 }
@@ -211,7 +228,7 @@ test('lost response AFTER provider creation recovers SAME idempotency key', asyn
   const guest = await prepared(), fake = new FakeStripe();
   fake.dropAfterCreate = true;
   const { service } = builder(fake);
-  await assert.rejects(service.start(guest.token), /socket_drop/);
+  await assert.rejects(service.start(guest.token), /provider_request_uncertain/);
   assert.equal(fake.records.size, 1);
   let attempt = await db.query('SELECT state FROM da_guest_payment_intent_creation WHERE order_id=$1',
     [guest.orderId]);
@@ -488,5 +505,259 @@ test('server catalog + Google Places staging hands a sealed guest order safely t
   const created=await service.start(guest.token);
   assert.equal(created.state,'created');
   assert.equal(created.amount,2190);
+  assert.equal(fake.calls,1);
+});
+
+test('P5D Ops revocation after remote creation cancels the only Intent and seals terminal reservation',async()=>{
+  const guest=await prepared();
+  class RevokedDuringProvider extends FakeStripe {
+    async createIntent(params){
+      const returned=await super.createIntent(params);
+      await db.query('UPDATE da_guest_coverage_ops_approvals SET revoked_at=now() WHERE partner_slug=$1',['thieyp']);
+      return returned;
+    }
+  }
+  const fake=new RevokedDuringProvider();
+  try {
+    await assert.rejects(builder(fake).service.start(guest.token),/delivery_authorization_denied/);
+    const row=await db.query('SELECT state,stripe_intent_id,reconciliation_reason FROM da_guest_payment_intent_creation WHERE order_id=$1',[guest.orderId]);
+    assert.equal(row.rows[0].state,'cancelled');
+    assert.equal(row.rows[0].reconciliation_reason,'coverage_revoked_after_create');
+    assert.equal(fake.cancelCalls,1);
+    assert.equal(fake.byId.get(row.rows[0].stripe_intent_id).intent.status,'canceled');
+    await assert.rejects(builder(fake).service.start(guest.token),/delivery_authorization_denied/);
+    assert.equal(fake.calls,1);
+  } finally {
+    await db.query('UPDATE da_guest_coverage_ops_approvals SET revoked_at=NULL WHERE partner_slug=$1',['thieyp']);
+  }
+  await assert.rejects(builder(fake).service.start(guest.token),/cancelled_new_quote_required/);
+  assert.equal(fake.calls,1);
+});
+
+test('P5D cancellation timeout quarantines Intent for Ops manual reconciliation',async()=>{
+  const guest=await prepared();
+  class RevokedDuringProvider extends FakeStripe {
+    async createIntent(params){
+      const r=await super.createIntent(params);
+      await db.query('UPDATE da_guest_coverage_ops_approvals SET revoked_at=now() WHERE partner_slug=$1',['thieyp']);
+      return r;
+    }
+  }
+  const fake=new RevokedDuringProvider();
+  fake.cancelThrows=true;
+  try {
+    await assert.rejects(builder(fake).service.start(guest.token),/delivery_authorization_denied/);
+    const state=await db.query('SELECT state,reconciliation_reason FROM da_guest_payment_intent_creation WHERE order_id=$1',[guest.orderId]);
+    assert.equal(state.rows[0].state,'review_required');
+    assert.equal(state.rows[0].reconciliation_reason,'cancel_failed');
+    assert.equal(fake.cancelCalls,1);
+  } finally {
+    await db.query('UPDATE da_guest_coverage_ops_approvals SET revoked_at=NULL WHERE partner_slug=$1',['thieyp']);
+  }
+  await assert.rejects(builder(fake).service.start(guest.token),/manual_reconciliation_required/);
+  assert.equal(fake.calls,1);
+});
+
+test('P5D Stripe noncancellable state cannot be marked cancelled',async()=>{
+  const guest=await prepared();
+  class ChangedState extends FakeStripe {
+    async createIntent(params){
+      const result=await super.createIntent(params);
+      await db.query('UPDATE da_guest_coverage_ops_approvals SET revoked_at=now() WHERE partner_slug=$1',['thieyp']);
+      return result;
+    }
+  }
+  const fake=new ChangedState();fake.cancelBadState=true;
+  try {
+    await assert.rejects(builder(fake).service.start(guest.token),/delivery_authorization_denied/);
+    const st=await db.query('SELECT state,reconciliation_reason FROM da_guest_payment_intent_creation WHERE order_id=$1',[guest.orderId]);
+    assert.equal(st.rows[0].state,'review_required');
+    assert.equal(st.rows[0].reconciliation_reason,'cancel_failed');
+    assert.equal(fake.cancelCalls,1);
+  } finally {
+    await db.query('UPDATE da_guest_coverage_ops_approvals SET revoked_at=NULL WHERE partner_slug=$1',['thieyp']);
+  }
+});
+
+test('P5D DB binding failure rolls back ledger and cancels provider under active fence',async()=>{
+  const guest=await prepared(),fake=new FakeStripe();
+  let injected=false;
+  const failing={
+    connect:async()=>{
+      const original=await db.connect();
+      return {
+        release:()=>original.release(),
+        async query(query,args) {
+          if (!injected && typeof query==='string' && query.includes("UPDATE da_guest_checkout_sessions") &&
+              query.includes("payment_intent_id=$2")) {
+            injected=true;throw Error('p5d_simulated_pg_write_rejected');
+          }
+          return original.query(query,args);
+        },
+      };
+    },
+    query:(sql,args)=>db.query(sql,args),
+  };
+  await assert.rejects(builder(fake,failing).service.start(guest.token),/binding_reconciliation_required/);
+  assert.equal(injected,true);
+  assert.equal(fake.calls,1);
+  assert.equal(fake.cancelCalls,1);
+  assert.equal((await db.query('SELECT state FROM da_guest_payment_intent_creation WHERE order_id=$1',[guest.orderId])).rows[0].state,'cancelled');
+  const ledgerRow=await db.query('SELECT state,payment_intent_id FROM da_guest_checkout_sessions WHERE order_id=$1',[guest.orderId]);
+  assert.equal(ledgerRow.rows[0].state,'quoted');
+  assert.equal(ledgerRow.rows[0].payment_intent_id,null);
+});
+
+test('P5D uncertain COMMIT outcome never automatically cancels a possibly bound payment',async()=>{
+  const guest=await prepared(),fake=new FakeStripe();
+  let simulated=false;
+  const uncertain={
+    query:(sql,args)=>db.query(sql,args),
+    async connect(){
+      const conn=await db.connect();
+      return {
+        release:()=>conn.release(),
+        async query(sql,args){
+          if (!simulated && sql==='COMMIT') {
+            simulated=true;throw Error('p5d_network_lost_before_commit_acknowledgement');
+          }
+          return conn.query(sql,args);
+        },
+      };
+    },
+  };
+  await assert.rejects(builder(fake,uncertain).service.start(guest.token),/binding_reconciliation_required/);
+  assert.equal(simulated,true);
+  assert.equal(fake.cancelCalls,0);
+  const row=await db.query('SELECT state,reconciliation_reason FROM da_guest_payment_intent_creation WHERE order_id=$1',[guest.orderId]);
+  assert.equal(row.rows[0].state,'review_required');
+  assert.equal(row.rows[0].reconciliation_reason,'commit_outcome_uncertain');
+});
+
+test('P5D Stripe response metadata mismatch quarantines without cancelling an untrusted remote ID',async()=>{
+  const guest=await prepared(),fake=new FakeStripe();
+  fake.invalidMetadata=true;
+  await assert.rejects(builder(fake).service.start(guest.token),/intent_invalid/);
+  assert.equal(fake.cancelCalls,0);
+  const row=await db.query('SELECT state,reconciliation_reason FROM da_guest_payment_intent_creation WHERE order_id=$1',[guest.orderId]);
+  assert.equal(row.rows[0].state,'review_required');
+  assert.equal(row.rows[0].reconciliation_reason,'provider_response_invalid');
+});
+
+test('P5D lost response after 24h cannot re-issue a Stripe Intent with forgotten key',async()=>{
+  const guest=await prepared(),fake=new FakeStripe();
+  fake.dropAfterCreate=true;
+  await assert.rejects(builder(fake).service.start(guest.token),/provider_request_uncertain/);
+  assert.equal(fake.calls,1);
+  assert.equal(fake.records.size,1);
+  await db.query(
+    "UPDATE da_guest_payment_intent_creation SET created_at=now()-interval '24 hours',lease_until=now()-interval '1 second' WHERE order_id=$1",
+    [guest.orderId],
+  );
+  await assert.rejects(builder(fake).service.start(guest.token),/manual_reconciliation_required/);
+  assert.equal(fake.calls,1);
+  const row=await db.query('SELECT state,reconciliation_reason FROM da_guest_payment_intent_creation WHERE order_id=$1',[guest.orderId]);
+  assert.equal(row.rows[0].state,'review_required');
+  assert.equal(row.rows[0].reconciliation_reason,'idempotency_window_expired');
+});
+
+test('P5D malicious competing lease cannot cancel another worker potentially binding the Intent',async()=>{
+  const guest=await prepared(),fake=new FakeStripe();
+  class FencingStripe extends FakeStripe {
+    async createIntent(params){
+      const returned=await super.createIntent(params);
+      await db.query("UPDATE da_guest_payment_intent_creation SET lease_owner=$2 WHERE order_id=$1",
+        [guest.orderId,'c'.repeat(32)]);
+      await db.query('UPDATE da_guest_coverage_ops_approvals SET revoked_at=now() WHERE partner_slug=$1',['thieyp']);
+      return returned;
+    }
+  }
+  const racing=new FencingStripe();
+  try {
+    await assert.rejects(builder(racing).service.start(guest.token),/manual_reconciliation_required/);
+    assert.equal(racing.cancelCalls,0);
+    const row=await db.query('SELECT state,lease_owner FROM da_guest_payment_intent_creation WHERE order_id=$1',[guest.orderId]);
+    assert.equal(row.rows[0].state,'creating');
+    assert.equal(row.rows[0].lease_owner,'c'.repeat(32));
+  } finally {
+    await db.query('UPDATE da_guest_coverage_ops_approvals SET revoked_at=NULL WHERE partner_slug=$1',['thieyp']);
+  }
+});
+
+
+test('P5D PostgreSQL connection loss AFTER provider response retains one safe key for retry',async()=>{
+  const guest=await prepared(),fake=new FakeStripe();
+  let offline=true;
+  const wrapped={
+    query:(sql,args)=>db.query(sql,args),
+    async connect(){
+      if(offline){offline=false;throw Error('p5d_connection_lost_after_stripe_response')}
+      return db.connect();
+    },
+  };
+  await assert.rejects(builder(fake,wrapped).service.start(guest.token),/database_unavailable_reconciliation_pending/);
+  assert.equal(fake.calls,1);
+  assert.equal(fake.cancelCalls,0);
+  assert.equal(fake.records.size,1);
+  const left=await db.query('SELECT state,idempotency_key FROM da_guest_payment_intent_creation WHERE order_id=$1',[guest.orderId]);
+  assert.equal(left.rows[0].state,'creating');
+  await db.query("UPDATE da_guest_payment_intent_creation SET lease_until=now()-interval '1 second' WHERE order_id=$1",[guest.orderId]);
+  const resumed=await builder(fake).service.start(guest.token);
+  assert.equal(resumed.state,'created');
+  assert.equal(resumed.idempotencyKey,left.rows[0].idempotency_key);
+  assert.equal(fake.records.size,1);
+  assert.equal(fake.calls,2);
+});
+
+test('P5D lost COMMIT ACK after successful PG COMMIT never cancels already bound Intent',async()=>{
+  const guest=await prepared(),fake=new FakeStripe();
+  let lost=false;
+  const wrapper={
+    query:(sql,args)=>db.query(sql,args),
+    async connect(){
+      const pg=await db.connect();
+      return {
+        release:()=>pg.release(),
+        async query(sql,args){
+          const reply=await pg.query(sql,args);
+          if(!lost && sql==='COMMIT'){
+            lost=true;
+            throw Error('p5d_commit_success_but_ack_lost');
+          }
+          return reply;
+        },
+      };
+    },
+  };
+  await assert.rejects(builder(fake,wrapper).service.start(guest.token),/manual_reconciliation_required/);
+  assert.equal(lost,true);
+  assert.equal(fake.cancelCalls,0);
+  assert.equal(fake.calls,1);
+  const record=await db.query(
+    'SELECT s.state AS order_state,s.payment_intent_id,r.state AS reserve_state FROM da_guest_checkout_sessions s JOIN da_guest_payment_intent_creation r USING(order_id) WHERE s.order_id=$1',
+    [guest.orderId],
+  );
+  assert.equal(record.rows[0].order_state,'payment_pending');
+  assert.equal(record.rows[0].reserve_state,'bound');
+  const safe=await builder(fake).service.start(guest.token);
+  assert.equal(safe.state,'restored');
+  assert.equal(safe.intentId,record.rows[0].payment_intent_id);
+  assert.equal(fake.calls,1);
+});
+
+test('P5D idempotency expiry refuses IO even while another lease remains active',async()=>{
+  const guest=await prepared(),fake=new FakeStripe();
+  fake.dropAfterCreate=true;
+  await assert.rejects(builder(fake).service.start(guest.token),/provider_request_uncertain/);
+  await db.query(
+    "UPDATE da_guest_payment_intent_creation SET created_at=now()-interval '24 hours',lease_until=now()+interval '10 minutes' WHERE order_id=$1",
+    [guest.orderId],
+  );
+  await assert.rejects(builder(fake).service.start(guest.token),/manual_reconciliation_required/);
+  assert.equal(fake.calls,1);
+  assert.equal((await db.query('SELECT state FROM da_guest_payment_intent_creation WHERE order_id=$1',[guest.orderId])).rows[0].state,'creating');
+  await db.query("UPDATE da_guest_payment_intent_creation SET lease_until=now()-interval '1 second' WHERE order_id=$1",[guest.orderId]);
+  await assert.rejects(builder(fake).service.start(guest.token),/manual_reconciliation_required/);
+  assert.equal((await db.query('SELECT state FROM da_guest_payment_intent_creation WHERE order_id=$1',[guest.orderId])).rows[0].state,'review_required');
   assert.equal(fake.calls,1);
 });

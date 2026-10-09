@@ -12,7 +12,7 @@ const {coverageApprovalDigest,GuestMerchantCoverageStrict}=
  require('../src/guest-checkout/guest-merchant-coverage-strict.ts');
 const {PostgresGuestCoverageOpsApprovals}=
  require('../src/guest-checkout/guest-coverage-ops-approval-pg.ts');
-const db=new Pool({host:'127.0.0.1',port:55439,user:'afripayadmin',database:'postgres'});
+const db=new Pool({host:'127.0.0.1',port:55440,user:'afripayadmin',database:'postgres'});
 const coverage={
  version:1,revision:1,enabled:true,approvedByMerchant:true,
  zones:[{
@@ -32,7 +32,7 @@ const strict=new GuestMerchantCoverageStrict({
 },approval);
 before(async()=>{
  const port=(await db.query('SELECT inet_server_port() AS p')).rows[0].p;
- assert.equal(port,55439);
+ assert.equal(port,55440);
  const sql=readFileSync(path.join(__dirname,
   '../../../migrations/20261009_guest_coverage_ops_approvals.sql'),'utf8');
  await db.query(sql);

@@ -213,3 +213,12 @@ Scope: Client + Courier, harmonisé Merchant
 - Restent bloquants: annulation/reconciliation des intents orphelins, vrai Stripe mode test, suivi privé, bridge Merchant/Courier, activation UX sans Keycloak et approbations commerciales réelles.
 - Roadbook détaillé: docs/guest-checkout/ROADBOOK_P5C_OPS_INTEGRATED_20261009.md.
 - Aucun déploiement, migration PG production, build EAS, OTA ou soumission stores exécuté.
+
+## DELISHAFRICA P5-D — INTENT COMPENSATION 09/10/2026
+- Paiement invité : compensation du PaymentIntent en cas de révocation Merchant/Ops APRÈS la création Stripe, sous verrou de ligne et contrôle du bail ; une réponse `canceled` vérifiée est exigée.
+- Échec d'annulation, statut non annulable, métadonnées douteuses et ACK PG de COMMIT perdu => `review_required` plutôt que recréation ou annulation hasardeuse.
+- Clé idempotente unique réservée dans PostgreSQL ; pas de nouveau `createIntent` si la réservation initiale est antérieure à 23 h.
+- **82/82 tests P1 à P5-D PASS**, TypeScript API + Client PASS sur PostgreSQL 16 de laboratoire exclusivement port 55440, Stripe/Google simulés.
+- Aucun changement de production, de migration live, d'API publique, de profils Merchant/Courier, ni de build Store.
+- Code source complet, migration lab, tests et gate : docs/guest-checkout/ROADBOOK_P5D_20261009.md.
+- P0 NON RÉSOLUS : annulation/remboursement après remise du secret, worker alerte/reconciliation, Stripe réel en mode test, flux commande Merchant/Courier, Client sans Keycloak.
