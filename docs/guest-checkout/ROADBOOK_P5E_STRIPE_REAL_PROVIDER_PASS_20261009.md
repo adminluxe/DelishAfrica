@@ -55,3 +55,7 @@ Un seul dossier de la sonde existe et il est **`cancelled`**, vérifié indépen
 **P5-E/Stripe TEST : étape externe CREATE → GET → CANCEL validée** ; l'étape suivante est l'intégration avec le module Nest invité **dans une branche isolée**, suivi du contrôle de l'identité de la paire de clés, de PaymentSheet iOS/Android, des webhooks et du registre Ops. Maintenir le blocage production.
 
 Aucune migration de production, aucun build EAS, aucune OTA, aucun merge sur le dépôt canonique et aucune action App Store/Google Play.
+
+## SUITE 2026-10-10 — P5-F STRIPE GUEST END-TO-END
+
+L'intégration ne se limite plus à la sonde P5-E autonome : sur une branche séparée P5-F, GuestStripeIntentReservation a réellement créé puis récupéré le même PaymentIntent Stripe TEST via StripeHttpTestTransport depuis une commande backend synthétique et une base PostgreSQL dédiée. Annulation GET canceled, sans carte ni charge. Le moniteur Ops détecte l'incohérence de la session bound annulée et n'émet aucun ordre métier. Paire publique/privée également prouvée. Voir ROADBOOK_P5F_REAL_STRIPE_E2E_20261010.md. La production Guest reste NON activée.

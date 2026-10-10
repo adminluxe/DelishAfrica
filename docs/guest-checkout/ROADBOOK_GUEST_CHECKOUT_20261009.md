@@ -154,3 +154,13 @@ Dossier journal root-only unique à l'état cancelled.
 112/112 tests applicatifs simulés toujours distincts de cette preuve externe.
 Le système Guest Checkout n'est toujours pas activé en production.
 Voir ROADBOOK_P5E_STRIPE_REAL_PROVIDER_PASS_20261009.md.
+
+## 18. P5-F — GUEST STRIPE PROVIDER E2E REAL TEST 2026-10-10
+
+- Après le P5-E fournisseur externe, la paire pk_test/sk_test existante a été prouvée par la relecture du même PaymentIntent Stripe TEST en lecture seule.
+- La véritable verticale GuestStripeIntentReservation (backend) a obtenu une intention Stripe TEST de 2190 cents depuis un ledger PostgreSQL de laboratoire 55442, un vault AES et des autorisations géographiques Merchant/Ops SYNTHÉTIQUES.
+- Appel répété : restauration du même Intent (pas de second CREATE). Annulation réelle Stripe et GET canceled confirmés.
+- GuestPaymentReconciliationMonitor classe la session bound non financière en incident Ops ; rien n'est libéré vers Merchant/Courier.
+- Rerun intégral du gate P1-P5-E 112/112 PASS, les quatre vérifications TypeScript PASS ; relecture indépendante Stripe PASS ; aucun débit.
+- Script complet, preuves et architecture : ROADBOOK_P5F_REAL_STRIPE_E2E_20261010.md et ARCHITECTURE_PIN_P5F_REAL_STRIPE_E2E_20261010.md.
+- Pas d'activation du checkout invité en production avant paiement TEST confirmé/webhook P3, OPS RBAC, vraie restauration Client sans Keycloak et projection Orders.

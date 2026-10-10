@@ -1,0 +1,31 @@
+waiting for server to start.... done
+server started
+P5E LAB ISOLATION: 127.0.0.1:55441 (no production DB connection)
+== P1_P2 (expected 12) ==
+PASS P1_P2: 12/12
+== P3_Stripe_Financial (expected 6) ==
+PASS P3_Stripe_Financial: 6/6
+== P4_Private_Vault (expected 9) ==
+PASS P4_Private_Vault: 9/9
+== P4_Historical_Vault (expected 4) ==
+PASS P4_Historical_Vault: 4/4
+== P5A_Catalog_Google (expected 8) ==
+PASS P5A_Catalog_Google: 8/8
+== P5B_Merchant_Coverage (expected 8) ==
+PASS P5B_Merchant_Coverage: 8/8
+== P5B_Ops_Approvals (expected 5) ==
+PASS P5B_Ops_Approvals: 5/5
+== P5D_Intent_Recovery (expected 30) ==
+PASS P5D_Intent_Recovery: 30/30
+== P5E_Ops_Reconciliation (expected 19) ==
+PASS P5E_Ops_Reconciliation: 19/19
+== P5E_Stripe_HTTP_Test_Contract (expected 11) ==
+PASS P5E_Stripe_HTTP_Test_Contract: 11/11
+== THREE MOBILE APPS AND API TYPESCRIPT ==
+== AUTH GUARDS AND PUBLIC ROUTE ISOLATION ==
+== CURRENT OPS REGISTRY AND ENCRYPTED CHECKOUT DB GUARDS ==
+== GUEST OPS WORKER NOT EXPOSED IN PUBLIC NEST CONTROLLERS ==
+== SOURCE DIFF INTEGRITY ==
+FINAL_DA_GUEST_P5E_OPS_RECONCILIATION_GATE=PASS
+112/112 tests; PostgreSQL isolated; Stripe and Google simulators only.
+Production, public API, merchant/courier accounts and Store builds NOT MODIFIED.

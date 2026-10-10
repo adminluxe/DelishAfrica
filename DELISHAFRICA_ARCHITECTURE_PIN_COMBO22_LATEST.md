@@ -198,3 +198,15 @@ Protection par journal durable avant création ; pas d'accès financier LIVE.
 L'association public/secret au compte et PaymentSheet restent à prouver.
 Le checkout invité et les commandes Merchant/Courier restent non publiés.
 Référence : docs/guest-checkout/ROADBOOK_P5E_STRIPE_REAL_PROVIDER_PASS_20261009.md.
+
+## FRONTIÈRE P5-F 2026-10-10 — GUEST VRAI STRIPE TEST
+
+Client/Lab capability HMAC → quote canonique backend → dossier AES-GCM incluant lieu synthétique → Merchant Coverage + approbation Ops indépendante → réservation PG idempotente → Stripe REAL TEST CREATE non confirmé → PG bound + payment_pending → même client HMAC récupère le même Intent → CANCEL Stripe réel → GET canceled → Ops monitor constate une intention liée mais annulée et exige une action humaine.
+
+- Deux frontières démontrées : pk_test/sk_test même compte ; vrai service Guest x Stripe TEST real x PG isolé.
+- Zéro vrai moyen de paiement, zéro capture et zéro outbox ; preuve de non-dispatch.
+- Une annulation Stripe ne transforme PAS à elle seule une session pending en commande annulée durable : la console Ops doit traiter cancellation_binding_conflict.
+- Rejouer le test de fournisseur est interdit après un run enregistré même cancelled ; le gate en prévol ne crée rien.
+- Limites : capture/webhook PaymentSheet mobile, contrôle de révocation après secret, comptes et zones vrais, projection métier et RBAC non livrés.
+- Architecture détaillée : docs/guest-checkout/ARCHITECTURE_PIN_P5F_REAL_STRIPE_E2E_20261010.md.
+- La production de /opt/delishafrica/monorepo n'a pas été modifiée, aucune route Guest publique ouverte.

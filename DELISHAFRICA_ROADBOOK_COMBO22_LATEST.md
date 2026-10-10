@@ -242,3 +242,16 @@ Aucune carte, aucun paiement réel et aucune modification de production.
 Journal de reprise vérifié : unique état cancelled, permissions 0600.
 Étape distincte des 112/112 tests du module P5-E de laboratoire.
 Preuve : docs/guest-checkout/ROADBOOK_P5E_STRIPE_REAL_PROVIDER_PASS_20261009.md.
+
+## JALON 2026-10-10 — P5-F GUEST STRIPE TEST INTEGRATION RÉELLE
+
+- Paire existante de clés sk_test/pk_test du VPS CONFIRMÉE sur Stripe : lecture du même PaymentIntent précédemment annulé avec chacun des deux modes d'autorisation, client_secret en mémoire uniquement, aucune nouvelle création.
+- Nouvelle branche isolée feature/client-guest-p5f-real-stripe-lab-20261010, parent fbf2ee4, PostgreSQL TEST indépendant sur 127.0.0.1:55442.
+- Vrai service GuestStripeIntentReservation branché à GuestStripeHttpTestTransport : capability HMAC, quote 21,90 EUR, coffre AES, localisation de laboratoire, zone Merchant + approbation Ops synthétiques, key de réservation avant fournisseur, paiement Stripe TEST non confirmé, restauration idempotente, annulation GET Stripe confirmée canceled.
+- Moniteur Ops réel relecture Stripe : cancellation_binding_conflict traité en operator_action_required, zéro ligne finance P3, zéro outbox, zéro dispatch.
+- Provider readback distinct PASS (aucune carte, aucun latest_charge, 0 EUR encaissé).
+- Régression P1-P5-E relancée : 112/112 PASS ; TypeScript API + Client + Merchant + Courier PASS.
+- Journal provider de laboratoire 0700/0600 : un run unique cancelled ; launcher à SHA épinglé en prévol répétable, nouvelle exécution CREATE bloquée.
+- AUCUN merge au dépôt exécuté, migration production, build Store, OTA, mutation OrchidPay ou paiement LIVE.
+- Roadbook P5F : docs/guest-checkout/ROADBOOK_P5F_REAL_STRIPE_E2E_20261010.md.
+- P0 ouverts : webhooks signés + capture TEST, annulation post-client_secret, PaymentSheet réel iPhone/Android, vraies zones Ops, Orders Merchant/Courier, suivi Guest sans Keycloak.
