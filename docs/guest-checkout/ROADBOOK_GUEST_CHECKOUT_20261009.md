@@ -164,3 +164,6 @@ Voir ROADBOOK_P5E_STRIPE_REAL_PROVIDER_PASS_20261009.md.
 - Rerun intégral du gate P1-P5-E 112/112 PASS, les quatre vérifications TypeScript PASS ; relecture indépendante Stripe PASS ; aucun débit.
 - Script complet, preuves et architecture : ROADBOOK_P5F_REAL_STRIPE_E2E_20261010.md et ARCHITECTURE_PIN_P5F_REAL_STRIPE_E2E_20261010.md.
 - Pas d'activation du checkout invité en production avant paiement TEST confirmé/webhook P3, OPS RBAC, vraie restauration Client sans Keycloak et projection Orders.
+
+### 19. 2026-10-10 P5-G lab-only financial completion
+Stripe TEST synthetic capture 21.90 EUR succeeded and P3 persisted one receipt plus one outbox in separate PostgreSQL port 55443. Signed webhook test was generated locally, not delivered by Stripe. Double event safely ignored. No actual funds or dispatch. No public Guest checkout opened. See ROADBOOK_P5G_REAL_TEST_CAPTURE_20261010.md.

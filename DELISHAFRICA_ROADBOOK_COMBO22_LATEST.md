@@ -255,3 +255,6 @@ Preuve : docs/guest-checkout/ROADBOOK_P5E_STRIPE_REAL_PROVIDER_PASS_20261009.md.
 - AUCUN merge au dépôt exécuté, migration production, build Store, OTA, mutation OrchidPay ou paiement LIVE.
 - Roadbook P5F : docs/guest-checkout/ROADBOOK_P5F_REAL_STRIPE_E2E_20261010.md.
 - P0 ouverts : webhooks signés + capture TEST, annulation post-client_secret, PaymentSheet réel iPhone/Android, vraies zones Ops, Orders Merchant/Courier, suivi Guest sans Keycloak.
+
+### 2026-10-10 P5-G Stripe TEST P3
+Guest Checkout in isolated PG 55443 completed a Stripe TEST charge for 21.90 EUR using synthetic pm_card_visa. The signed event was LOCAL to the lab; P3 independently re-read the TEST Stripe intent, committed one verified payment and one financial outbox. Duplicate event did not double-write. No Merchant/Courier dispatch and no actual funds. One Node test PASS, live mode disabled. Repeat execution blocked. See docs/guest-checkout/ROADBOOK_P5G_REAL_TEST_CAPTURE_20261010.md. Public checkout remains OFF.

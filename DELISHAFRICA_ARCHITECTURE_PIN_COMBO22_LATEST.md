@@ -210,3 +210,6 @@ Client/Lab capability HMAC → quote canonique backend → dossier AES-GCM inclu
 - Limites : capture/webhook PaymentSheet mobile, contrôle de révocation après secret, comptes et zones vrais, projection métier et RBAC non livrés.
 - Architecture détaillée : docs/guest-checkout/ARCHITECTURE_PIN_P5F_REAL_STRIPE_E2E_20261010.md.
 - La production de /opt/delishafrica/monorepo n'a pas été modifiée, aucune route Guest publique ouverte.
+
+### 2026-10-10 P5-G financial integrity
+HMAC Guest -> AES vault -> independent Ops approval (synthetic) -> Stripe TEST intent -> synthetic Visa TEST capture -> locally signed webhook -> P3 re-read of Stripe charge -> atomic verified ledger plus financial outbox. Duplicate webhook idempotent. No Courier release. Postgres 55443 lab only. Real Stripe webhook delivery, mobile PaymentSheet and production are NOT verified. See docs/guest-checkout/ARCHITECTURE_PIN_P5G_REAL_TEST_CAPTURE_20261010.md.
