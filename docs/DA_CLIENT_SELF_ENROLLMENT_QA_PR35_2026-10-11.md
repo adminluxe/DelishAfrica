@@ -49,3 +49,28 @@ Liens : https://github.com/adminluxe/DelishAfrica/pull/35 ; https://github.com/a
 - Correctif PR #35 `apps/client/app.config.js` : uniquement si `EAS_BUILD_PROFILE=development`, ajoute le texte d'autorisation LAN et `NSBonjourServices: ['_expo._tcp']`. Aucun changement à la version Production. CI complète TypeScript/API/mobile, tests et contrôle natif DEV/PROD : **SUCCESS**. **Ce correctif n'affecte PAS l'IPA installée** ; une recompilation native serait requise si nécessaire, pas une simple re-signature.
 - Test décisif demandé sur le même iPhone : Safari → `http://192.168.1.5:8095/status`. Si `packager-status:running`, inspecter Réglages → Confidentialité et sécurité → Réseau local → DA Client DEV. Si Safari échoue, confirmer même réseau Wi-Fi, absence VPN/isolation et IPv4 du téléphone avant toute compilation.
 - Aucun changement au pare-feu, à Keycloak, au DNS, aux certificats, à Stripe, aux stores, ni paiement/build EAS. **RÉSOLUTION iPHONE EN ATTENTE**.
+
+## 12 octobre 2026 — UX premium Client : continuité de vérification et retour panier
+
+### Constat sur captures iPhone, QA 8095
+- L'écran Client d'activation apparaît réellement sur iPhone avec les deux contacts confirmés et le blocage explicite des comptes lorsque le backend ne permet pas l'enrôlement.
+- L'image à 22:45 indique 1/3, puis les images à 22:50 affichent 2 contacts confirmés ; elles ne prouvent pas à elles seules une perte de preuve sur un même profil. Le comparateur précédent utilisait toutefois une égalité textuelle stricte entre `destination` et les coordonnées, alors que les API normalisent téléphone et e-mail. Risque de faux négatif corrigé.
+- Le premier parcours utilisait des choix techniques superflus en état non connecté et laissait l'intention de checkout se perdre lors d'allers-retours dans la vérification.
+
+### Correctifs branchés en PR #35 (non fusionnés)
+- `apps/client/utils/daProofIdentity.ts` : canonisation alignée avec les API (`+32`/`0032`, espaces, points, tirets, parenthèses ; e-mail casse/espaces) ; preuve reconnue uniquement si token présent, même contact canonique et date d'expiration strictement future.
+- `apps/client/app/client-space.tsx` : preuve conservée en cas de modification *seulement cosmétique* du contact, effacée lors d'un véritable changement. Persistance SecureStore terminée avant mise à jour de son cache mémoire. Distinction nette `Profil enregistré` / `Compte activé`, suppression de formule dépréciative ; continuation de commande : si session OIDC absente, navigation vers activation avec `returnTo=checkout`, sans appeler Stripe.
+- `apps/client/app/activate-account.tsx` : même normalisation ; si enrôlement serveur OFF, pas de formulaire de mot de passe inutile ; états lisibles et panier conservé. Transmission de `returnTo=checkout` vers les contacts et la connexion.
+- `apps/client/app/secure-session.tsx` : aucun bouton `Me déconnecter` lorsque non connecté, retrait des actions techniques inutiles ; restauration présentée seulement en cas de panne d'authentification.
+- `apps/client/app/checkout-preflight.tsx`, `apps/client/utils/daOrdersApi.ts` : reconnaissance canonique des preuves dans le préflight et la liaison du profil invité, sans retirer la **revalidation des deux preuves signées côté API**, la vérification du principal OIDC serveur, ni le geste de paiement volontaire.
+- `apps/client/test/daProofIdentity.test.cjs` : tests de formats équivalents, d'identité différente, d'expiration, de token manquant et des barrières OIDC/attestation du checkout ; intégrés au workflow `.github/workflows/client-enrollment-gate.yml`.
+
+### Validation technique
+- GitHub Actions dernier head code `bdf128cc6adab9bd7bfe501673172474c0b2977e` : **SUCCESS** (TypeScript API et 3 apps, tests de preuves, Keycloak mock, sécurité et paramètres natifs DEV/PROD), job 114590009508.
+- Asus QA isolée `C:\Users\Valérie\Documents\DA_CLIENT_ENROLL_QA_20261011\workspace` actualisée (blob Git vérifié), `tsc --noEmit` **EXIT 0**, port Metro `8095` en service ; bundle iOS Hermes `HTTP 200` (11 363 146 octets) depuis Toshiba.
+- URLs : `http://192.168.1.5:8095` (DEV Client QA) et `http://192.168.1.5:8095/status` (connectivité LAN). Ports officiels `8081/8082/8083` non touchés. Aucun nouvel IPA ou paiement généré.
+- **Validation iPhone post-correctifs : NON ENCORE REÇUE.** Une compilation/CI réussie ne remplace pas un test de l'UX et du checkout avec l'utilisateur.
+
+### Verrous inchangés
+- Enrôlement réel toujours désactivé ; le compte de service Keycloak least-privilege, SMTP/récupération et la validation d'identité complète restent à livrer. L'application ne doit pas présenter de pseudo-inscription réussie.
+- Stripe LIVE interdit, aucune transaction de paiement déclenchée par la connexion ou l'enrôlement ; pas de Store push/merge, test Stripe TEST bout-en-bout supervisé ultérieurement.
