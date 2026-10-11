@@ -5,6 +5,7 @@ import * as http from 'node:http';
 import * as https from 'node:https';
 import * as path from 'node:path';
 import type { DaAuthTokenPayload } from './auth.types';
+import { validateClientTokenIsolation } from './client-token-isolation';
 import type {
   DaExternalTokenVerification,
   DaTrustedIdentityConfig,
@@ -143,6 +144,13 @@ export class ExternalJwksVerifierService
       }
       if (!this.hasClientRole(claims)) {
         return { ok: false, reason: 'client_role_missing' };
+      }
+      // Verify account-level isolation from the *signed* JWT claims, not
+      // merely the granted Client role. Reject cross-role tokens before
+      // creating any application principal.
+      const isolationFailure = validateClientTokenIsolation(claims, CLIENT_AUDIENCE);
+      if (isolationFailure) {
+        return { ok: false, reason: isolationFailure };
       }
     }
     if (externalRole === 'ops') {
