@@ -18,6 +18,7 @@ import * as SecureStore from 'expo-secure-store';
 import { router } from 'expo-router';
 import { daInspectProfileTrust, DaProfileTrustResult } from '../utils/daProfileTrust';
 import { daAccountScopeId, daAccountStorageKey } from '../utils/daOrdersApi';
+import { daCanonicalContact, daLocalProofFresh } from '../utils/daProofIdentity';
 import { daProbeTerritoryTruth, type DaTerritoryTruthResult } from '../utils/daTerritoryTruth';
 import {
   DaAddressSuggestion,
@@ -85,11 +86,12 @@ async function loadClientProfile(): Promise<ClientProfileLite | null> {
 async function saveClientProfile(profile: ClientProfileLite): Promise<void> {
   const scope = await daAccountScopeId();
   const scopedKey = await daAccountStorageKey(PROFILE_KEY);
-  clientProfileMemory.set(scope, profile);
-  bag()[scopedKey] = profile;
   await SecureStore.setItemAsync(scopedKey, JSON.stringify(profile), {
     keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
   });
+  // A profile is cached only when encrypted persistence has succeeded.
+  clientProfileMemory.set(scope, profile);
+  bag()[scopedKey] = profile;
 }
 
 const sessionToken = () => `da-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
@@ -174,10 +176,8 @@ export default function ClientSpaceScreen() {
   const [hydrating, setHydrating] = useState(true);
   const [lastSavedAt, setLastSavedAt] = useState(existing?.updatedAt || '');
 
-  const proofFresh = (proof: DaIdentityProof | null, destination: string) =>
-    Boolean(proof && proof.destination === destination && Date.parse(proof.expiresAt) > Date.now());
-  const phoneVerified = proofFresh(phoneProof, clean(phone));
-  const emailVerified = proofFresh(emailProof, clean(email).toLowerCase());
+  const phoneVerified = daLocalProofFresh('sms', phoneProof, phone);
+  const emailVerified = daLocalProofFresh('email', emailProof, email);
   const addressVerified = Boolean(addressTruth?.deliverable && addressTruth.formattedAddress === clean(address));
   const ownershipReady = phoneVerified && emailVerified;
 
@@ -198,8 +198,8 @@ export default function ClientSpaceScreen() {
       id: profileId || current?.id || `da_client_draft_${Date.now().toString(36)}`,
       firstName: clean(firstName),
       lastName: clean(lastName),
-      phone: clean(phone),
-      email: clean(email).toLowerCase(),
+      phone: daCanonicalContact('sms', phone),
+      email: daCanonicalContact('email', email),
       address: clean(address),
       city: clean(city),
       instructions: clean(instructions),
@@ -314,7 +314,9 @@ export default function ClientSpaceScreen() {
 
   const invalidateTrust = () => setTrust(null);
   const changePhone = (value: string) => {
+    const changed = daCanonicalContact('sms', phone) !== daCanonicalContact('sms', value);
     setPhone(value);
+    if (!changed) return; // A formatting-only edit must preserve its valid proof.
     setPhoneProof(null);
     setPhoneSent(false);
     setPhoneCode('');
@@ -326,7 +328,9 @@ export default function ClientSpaceScreen() {
     invalidateTrust();
   };
   const changeEmail = (value: string) => {
+    const changed = daCanonicalContact('email', email) !== daCanonicalContact('email', value);
     setEmail(value);
+    if (!changed) return; // Letter case and outer spaces do not change ownership.
     setEmailProof(null);
     setEmailSent(false);
     setEmailCode('');
@@ -400,7 +404,7 @@ export default function ClientSpaceScreen() {
 
   async function sendProof(channel: DaIdentityChannel, route: 'auto' | 'alternate' = 'auto') {
     if (proofFlightRef.current) return;
-    const destination = channel === 'sms' ? clean(phone) : clean(email).toLowerCase();
+    const destination = channel === 'sms' ? daCanonicalContact('sms', phone) : daCanonicalContact('email', email);
     if (!destination) {
       Alert.alert('Coordonnée manquante', channel === 'sms' ? 'Ajoutez votre téléphone.' : 'Ajoutez votre email.');
       return;
@@ -457,7 +461,7 @@ Utilisez uniquement le code le plus récent.`,
 
   async function verifyProof(channel: DaIdentityChannel) {
     if (proofFlightRef.current) return;
-    const destination = channel === 'sms' ? clean(phone) : clean(email).toLowerCase();
+    const destination = channel === 'sms' ? daCanonicalContact('sms', phone) : daCanonicalContact('email', email);
     const code = channel === 'sms' ? phoneCode : emailCode;
     const attemptToken = channel === 'sms' ? phoneAttemptToken : emailAttemptToken;
     const attemptExpiresAt = channel === 'sms' ? phoneAttemptExpiresAt : emailAttemptExpiresAt;
@@ -531,8 +535,8 @@ Utilisez uniquement le code le plus récent.`,
         return;
       }
       await persistActivationDraft({
-        phone: channel === 'sms' ? destination : clean(phone),
-        email: channel === 'email' ? destination : clean(email).toLowerCase(),
+        phone: channel === 'sms' ? destination : daCanonicalContact('sms', phone),
+        email: channel === 'email' ? destination : daCanonicalContact('email', email),
         proofs: {
           phone: channel === 'sms' ? proof : phoneProof || undefined,
           email: channel === 'email' ? proof : emailProof || undefined,
@@ -604,13 +608,13 @@ Utilisez uniquement le code le plus récent.`,
           daAttestIdentityProof({
             channel: 'sms',
             role: 'client',
-            destination: clean(phone),
+            destination: daCanonicalContact('sms', phone),
             proofToken: phoneProof!.token,
           }),
           daAttestIdentityProof({
             channel: 'email',
             role: 'client',
-            destination: clean(email).toLowerCase(),
+            destination: daCanonicalContact('email', email),
             proofToken: emailProof!.token,
           }),
         ]);
@@ -674,7 +678,7 @@ Utilisez uniquement le code le plus récent.`,
       setProfileId(profile.id);
       setLastSavedAt(profile.updatedAt);
       if (continueToCheckout) router.push('/checkout-preflight' as any);
-      else Alert.alert('Espace sécurisé', 'Mon Espace est enregistré et sera restauré à la prochaine ouverture.');
+      else Alert.alert('Profil enregistré', 'Vos informations sont conservées sur cet appareil. Pour commander, activez votre compte DelishAfrica puis connectez-vous.');
     } catch (error: any) {
       Alert.alert('Contrôle indisponible', error?.message || 'Réessayez dans un instant.');
     } finally {
@@ -696,7 +700,7 @@ Utilisez uniquement le code le plus récent.`,
         <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
           <Text style={styles.brand}>DELISHAFRICA®</Text>
           <Text style={styles.title}>Mon espace</Text>
-          <Text style={styles.subtitle}>Une adresse réelle. Deux contacts prouvés. Aucune commande gag.</Text>
+          <Text style={styles.subtitle}>Une adresse confirmée, des contacts protégés. Votre commande reste à portée de main.</Text>
 
           <View style={[styles.truthCard, truthCount === 3 && styles.truthCardReady]}>
             <Text style={styles.truthKicker}>VÉRITÉ D’IDENTITÉ</Text>
@@ -716,9 +720,9 @@ Utilisez uniquement le code le plus récent.`,
           <View style={styles.secureAccountCard}>
             <View style={styles.secureAccountCopy}>
               <Text style={styles.secureAccountKicker}>COMPTE DELISHAFRICA</Text>
-              <Text style={styles.secureAccountTitle}>Connexion sécurisée</Text>
+              <Text style={styles.secureAccountTitle}>Votre compte, sans complication</Text>
               <Text style={styles.secureAccountText}>
-                Votre compte DelishAfrica protège vos commandes. Vos contacts et votre adresse sont vérifiés séparément, au moment nécessaire.
+                Une activation, puis vos commandes en toute sécurité. Vos coordonnées déjà vérifiées restent conservées.
               </Text>
             </View>
             <Pressable
@@ -903,7 +907,7 @@ Utilisez uniquement le code le plus récent.`,
           </View>
 
           <Pressable disabled={checking} onPress={() => saveProfile(false)} style={[styles.primaryButton, checking && styles.disabled]} accessibilityRole="button">
-            {checking ? <ActivityIndicator color="#07130E" /> : <Text style={styles.primaryText}>Enregistrer les preuves</Text>}
+            {checking ? <ActivityIndicator color="#07130E" /> : <Text style={styles.primaryText}>Enregistrer mon espace</Text>}
           </Pressable>
           <Pressable disabled={checking || !ownershipReady || !addressVerified} onPress={() => saveProfile(true)} style={[styles.secondaryButton, (!ownershipReady || !addressVerified) && styles.disabled]} accessibilityRole="button">
             <Text style={styles.secondaryText}>Continuer vers la commande</Text>
