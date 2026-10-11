@@ -10,6 +10,7 @@ on:
       - 'services/api-nest/migrations/client-enrollment/**'
       - 'services/api-nest/test/client-enrollment.guard.test.cjs'
       - 'apps/client/**'
+      - 'ops/keycloak/themes/delishafrica/**'
       - '.github/workflows/client-enrollment-gate.yml'
   workflow_dispatch:
 
@@ -78,4 +79,22 @@ jobs:
           assert(migration.includes('UNIQUE') && !/\bTRUNCATE\b|\bDROP TABLE\b/i.test(migration));
           assert(!service.includes('createPaymentIntent') && !service.includes('presentPaymentSheet'));
           console.log('CLIENT_ENROLLMENT_STATIC_GATES_PASS');
+          NODE
+      - name: Review theme files without enabling a realm
+        run: |
+          node - <<'NODE'
+          const assert=require('node:assert/strict');
+          const fs=require('node:fs');
+          const path='ops/keycloak/themes/delishafrica/';
+          const login=fs.readFileSync(path+'login/theme.properties','utf8');
+          const css=fs.readFileSync(path+'login/resources/css/delishafrica.css','utf8');
+          assert(login.includes('parent=keycloak') && login.includes('locales=fr,en'));
+          assert(!/url\([\x22\x27]?https?:\/\//.test(css));
+          assert(!/@import\s+url\(/.test(css));
+          for(const locale of ['fr','en']) {
+            const m=fs.readFileSync(path+'login/messages/messages_'+locale+'.properties','utf8');
+            assert(m.includes('DelishAfrica') || m.includes('DELISHAFRICA'));
+          }
+          assert(!fs.existsSync(path+'login/login.ftl'), 'Do not override maintained login template');
+          console.log('BRANDED_LOGIN_THEME_STATIC_PASS');
           NODE
