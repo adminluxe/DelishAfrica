@@ -1,5 +1,22 @@
 # DELISHAFRICA — ROADBOOK / GATE CLIENT ENROLLMENT & REAL VERTICAL — 2026-10-11
 
+## ADDENDUM POST-RESET ET INSCRIPTION CLIENT — 11/10/2026 (prime sur les anciens statuts)
+
+**RESET OPÉRATIONNEL SERVEUR TERMINÉ, CONTRÔLÉ APRÈS REDÉMARRAGE.** Six commandes de test précédentes (quatre livrées, une prise en charge, une en attente), deux présences Courier, deux suivis GPS et une autorisation Stripe TEST ont été retirés des quatre magasins JSON. Les onze tables PostgreSQL ciblées affichent chacune zéro ligne, y compris après le passage du synchroniseur automatique. API principale et canary : 3010 et 3011 HTTP 200. Watchdog et synchroniseur réactivés. Les archives chiffrées de la base et des fichiers sont conservées sur VPS et Toshiba USB, avec hash vérifié. Le contenu historique chez Stripe n'a pas été supprimé. Aucune identité, restaurant ni catalogue réinitialisé. Les caches locaux des applications restent à vérifier sur iPhone.
+
+**AUDIT D'IDENTITÉ CONFIRMÉ DIRECTEMENT SUR KEYCLOAK 26.4.7 :** realm `afritaste`, 33 comptes existants, inscription OFF, `verify_email` OFF, réinitialisation mot de passe OFF, SMTP absent. Les trois applications OIDC sont actives, mais le rôle par défaut ne contient pas `client`. L'API réclame explicitement le rôle de royaume `client` ainsi que issuer/audience/azp. Ne jamais ouvrir l'inscription globale du realm partagé Client/Merchant/Courier.
+
+**PR #35 DRAFT EN COURS, BASE PR #32 :** https://github.com/adminluxe/DelishAfrica/pull/35 . Enrôlement Client dédié : preuves email et SMS signées vérifiées côté API, HMAC et réservation PostgreSQL non rejouable, création par compte Keycloak service dédié exclusivement client, compte initialement désactivé jusqu'à attribution/contrôle du rôle, UX native DelishAfrica, séparation stricte des profils invités/identités. CI GitHub TypeScript API + 3 apps, tests mocked de rôle : PASS. Migration et code PAS déployés et flag d'inscription OFF.
+
+**EAS / APPAREILS :** Compte Expo `delishafrica`, Apple Team AfriFood Global, deux appareils internes enregistrés (XR + un second iPhone). Dev Client iOS version 3.0.0 (19 septembre) encore disponible. L'IPA contient des symboles natifs `AIRMap`, pas `RNMapsAirModule`, cohérent avec la divergence JavaScript/native observée. Pas de nouveau build réalisé. L'iPhone tiers Purple Eco-Value ne doit être enregistré que lorsque l'identité et le binaire auront été validés ; une re-signature EAS de l'IPA existant pourra être évaluée.
+
+**QA CODE NON LIVE :** Asus serveur Client PR32 `http://192.168.1.5:8091` ; nouvelle QA PR35 `http://192.168.1.5:8095` (bundle iOS compilé HTTP200) ; Courier PR32 `8093`. Les ports historiques `8081/8082/8083` restent intacts. Aucun paiement n'a été lancé. La QA PR35 est en lecture/affichage : le bouton d'inscription est fermé tant que le backend sécurisé et le canal récupération n'ont pas été approuvés.
+
+**GATES IMPÉRATIFS :** permissions fines et secrets du compte de service Keycloak, récupération e-mail, thème de marque FR/EN, DB staging/migration, vraies inscriptions iPhone et `auth/client/me`, tests cross-role, test Stripe sandbox contrôlé Client → Merchant → Courier avec ID unique et positions GPS réelles, puis Android. Aucun Stripe LIVE, aucune fusion PR/Store push avant ces preuves.
+
+---
+
+
 **Status:** confirmed blockers, remediation planned, no destructive reset, no production deployment, Store release ON HOLD.
 **Source of evidence:** 25 iPhone screenshots (IMG_0989.PNG through IMG_1014.PNG), GitHub repository analysis and previously known runtime state. Screenshots are intentionally not committed because they show personal contact and location information.
 
