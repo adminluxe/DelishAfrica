@@ -80,6 +80,19 @@ export default function SecureSessionScreen() {
           </Pressable>
         )}
 
+        {auth.session.status !== 'authenticated' ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push({
+              pathname: '/activate-account',
+              params: { returnTo: returnToCheckout ? 'checkout' : 'space' },
+            } as any)}
+            style={styles.secondary}
+          >
+            <Text style={styles.secondaryText}>Pas encore de compte ? L’activer</Text>
+          </Pressable>
+        ) : null}
+
         <View style={styles.actions}>
           <Pressable disabled={auth.busy} onPress={auth.restore} style={styles.secondary}>
             <Text style={styles.secondaryText}>Vérifier ma connexion</Text>
