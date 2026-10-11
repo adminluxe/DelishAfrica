@@ -71,7 +71,7 @@ export default function ActivateClientAccountScreen() {
     if (flight.current || busy) return;
     if (!profile || !verified) {
       Alert.alert('Contacts à confirmer', 'Vérifiez votre téléphone et votre e-mail dans Mon espace.');
-      router.push('/client-space' as any);
+      router.push({ pathname: '/client-space', params: { returnTo: returnTo === 'checkout' ? 'checkout' : 'space' } } as any);
       return;
     }
     if (!ready) {
@@ -212,10 +212,10 @@ export default function ActivateClientAccountScreen() {
             <Text style={styles.primaryText}>Activer mon compte DelishAfrica</Text>
           )}
         </Pressable> : null}
-        <Pressable style={styles.secondary} onPress={() => router.replace('/client-space' as any)}>
+        <Pressable style={styles.secondary} onPress={() => router.replace({ pathname: '/client-space', params: { returnTo: returnTo === 'checkout' ? 'checkout' : 'space' } } as any)}>
           <Text style={styles.secondaryText}>Vérifier mes contacts</Text>
         </Pressable>
-        <Pressable style={styles.secondary} onPress={() => router.replace('/secure-session' as any)}>
+        <Pressable style={styles.secondary} onPress={() => router.replace({ pathname: '/secure-session', params: { returnTo: returnTo === 'checkout' ? 'checkout' : 'space' } } as any)}>
           <Text style={styles.secondaryText}>J’ai déjà un compte</Text>
         </Pressable>
         <Text style={styles.foot}>Le paiement reste volontaire. Il ne démarre jamais pendant l’inscription.</Text>
