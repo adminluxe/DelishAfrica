@@ -1,0 +1,81 @@
+name: Client Enrollment V1 — fail-closed gate
+on:
+  pull_request:
+    branches:
+      - main
+      - fix/client-native-maps-auth-ux-20261011
+    paths:
+      - 'services/api-nest/src/client-enrollment/**'
+      - 'services/api-nest/src/app.module.ts'
+      - 'services/api-nest/migrations/client-enrollment/**'
+      - 'services/api-nest/test/client-enrollment.guard.test.cjs'
+      - 'apps/client/**'
+      - '.github/workflows/client-enrollment-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  secure-client-enrollment:
+    name: TypeScript, guarded registration and Client-only roles
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pin pnpm 9.15.4
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+          pnpm --version
+      - name: Limit CI manifest to the mobile/API workspaces only
+        # Landing has an older unrelated lock importer; leave its tracked files untouched.
+        run: |
+          cat > pnpm-workspace.yaml <<'YAML'
+          packages:
+            - apps/client
+            - apps/merchant
+            - apps/courier
+            - services/api-nest
+            - packages/*
+          YAML
+      - name: Frozen dependencies with third-party install scripts disabled
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: API TypeScript
+        run: pnpm exec tsc --noEmit -p services/api-nest/tsconfig.json
+      - name: Client TypeScript
+        run: pnpm exec tsc --noEmit -p apps/client/tsconfig.json
+      - name: Client/Courier/Merchant compatibility
+        run: |
+          pnpm exec tsc --noEmit -p apps/merchant/tsconfig.json
+          pnpm exec tsc --noEmit -p apps/courier/tsconfig.json
+      - name: Client-only policy and mocked Keycloak provisioning tests
+        env:
+          TS_NODE_PROJECT: services/api-nest/tsconfig.json
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/client-enrollment.guard.test.cjs
+      - name: Mandatory guarded-by-default and no Store/publisher permissions
+        run: |
+          node - <<'NODE'
+          const assert=require('node:assert/strict');
+          const fs=require('node:fs');
+          const read=p=>fs.readFileSync(p,'utf8');
+          const service=read('services/api-nest/src/client-enrollment/client-enrollment.service.ts');
+          const policy=read('services/api-nest/src/client-enrollment/client-enrollment.policy.ts');
+          const keycloak=read('services/api-nest/src/client-enrollment/client-enrollment.keycloak.ts');
+          const migration=read('services/api-nest/migrations/client-enrollment/20261011_001_client_enrollment_guarded.sql');
+          assert(service.includes("role: 'client'"));
+          assert(service.includes("channel: 'sms'") && service.includes("channel: 'email'"));
+          assert(policy.includes("APPROVED_AFTER_REVIEW"));
+          assert(keycloak.includes("AUTHORIZED_INTERNAL_HOST = 'afritaste-keycloak'"));
+          assert(keycloak.includes("'/roles/' + CLIENT_ROLE"));
+          assert(migration.includes('UNIQUE') && !/\bTRUNCATE\b|\bDROP TABLE\b/i.test(migration));
+          assert(!service.includes('createPaymentIntent') && !service.includes('presentPaymentSheet'));
+          console.log('CLIENT_ENROLLMENT_STATIC_GATES_PASS');
+          NODE
