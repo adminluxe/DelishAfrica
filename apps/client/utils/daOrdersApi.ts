@@ -125,7 +125,9 @@ async function canonicalOidcPrincipal(forceRefresh = false): Promise<PrincipalSt
 async function requireCanonicalOidcPrincipal(forceRefresh = false): Promise<PrincipalState> {
   const principal = await canonicalOidcPrincipal(forceRefresh);
   if (principal) return principal;
-  throw new Error('Session Client Keycloak requise. Ouvrez Mon espace puis Connexion sécurisée.');
+  const error = new Error('Votre connexion DelishAfrica est nécessaire pour continuer votre commande.');
+  (error as Error & { code: string }).code = 'DA_CLIENT_AUTH_REQUIRED';
+  throw error;
 }
 
 async function ensurePrincipal(force = false): Promise<PrincipalState> {
