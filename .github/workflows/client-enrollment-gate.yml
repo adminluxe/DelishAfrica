@@ -57,6 +57,8 @@ jobs:
         run: |
           pnpm exec tsc --noEmit -p apps/merchant/tsconfig.json
           pnpm exec tsc --noEmit -p apps/courier/tsconfig.json
+      - name: Canonical Client contact proofs and checkout continuity
+        run: node --test apps/client/test/daProofIdentity.test.cjs
       - name: Client-only policy and mocked Keycloak provisioning tests
         env:
           TS_NODE_PROJECT: services/api-nest/tsconfig.json
