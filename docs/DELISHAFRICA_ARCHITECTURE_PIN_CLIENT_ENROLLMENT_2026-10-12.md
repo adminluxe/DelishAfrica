@@ -59,3 +59,11 @@ Client iOS/Android — panier invité conservé
 - [Roadbook maître](https://github.com/adminluxe/DelishAfrica/blob/main/docs/DA_CLIENT_ENROLLMENT_REAL_VERTICAL_GATE_2026-10-11.md)
 - [Roadbook technique PR #35](https://github.com/adminluxe/DelishAfrica/blob/feat/client-enrollment-secure-20261011/docs/DA_CLIENT_ENROLLMENT_ACTIVATION_GATE_2026-10-12.md)
 - [CI PR #35](https://github.com/adminluxe/DelishAfrica/actions/runs/38182888636/job/114599012043)
+
+
+## Addendum — Défense du Client OIDC et de l'origine réseau (12 octobre 2026)
+
+**Architecture candidate PR #35 uniquement, CI SUCCESS, non déployée.**
+- Flux anti-abus : `IdentityProofController` start/check/attest et `ClientEnrollmentController` register → helper partagé `trustedRequesterPeer(req)` → `req.socket.remoteAddress` canonisée → limiteur existant lié aussi au destinataire. Les en-têtes IP externes ne sont pas authentifiés par ces composants. Une couche de proxys de confiance explicitement configurée et validée sera nécessaire si l'IP réelle individuelle doit être utilisée sans possibilité d'usurpation.
+- Flux de login : JWT Keycloak → contrôle RS256/issuer/expiration/azp → `validateClientTokenIsolation` → autorisation `/auth/client/me` seulement pour des claims Client stricts. Refus des audiences concurrentes et des rôles de realm non Client ; les permissions `realm-management` en claims sont interdites. Vérification incluse dans [CI 38185238347](https://github.com/adminluxe/DelishAfrica/actions/runs/38185238347/job/114606029459).
+- Ces vérifications de jetons sont **distinctes** de l'audit réel FGAP du service de création d'utilisateurs, non encore démontré. La QA Client 3095 est toujours fermée, aucune création d'identité ni restauration complète de sauvegarde validée. La publication et les paiements réels restent interdits jusqu'au test iPhone → Stripe TEST → Merchant → Courier.
