@@ -17,9 +17,7 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import * as Location from "expo-location";
 import { useLiveMapEngine } from "../components/live/LiveMapEngine";
-import { LiveRouteEngine } from "../components/live/LiveRouteEngine";
 import { DestinationApproachMarker } from "../components/live/DestinationApproachMarker";
-import { LivingCourierMarker } from "../components/live/LivingCourierMarker";
 // DA_P4A6A_CLIENT_MAPS_PREMIUM_ROUTE_COURIER_RESTORE_V1
 import { useSmartCamera } from "../components/live/useSmartCamera";
 import { MotionMapEntrance } from "../components/motion/MotionMapEntrance";
@@ -309,6 +307,8 @@ type MapsModule = {
   default: React.ComponentType<any>;
   Marker: React.ComponentType<any>;
   Polyline: React.ComponentType<any>;
+  LiveRouteEngine: React.ComponentType<any>;
+  LivingCourierMarker: React.ComponentType<any>;
 };
 
 function detectNativeMaps(): boolean {
@@ -354,14 +354,20 @@ function loadMapsModule(): MapsModule | null {
       loaded?.Polyline ||
       loaded?.default?.Polyline;
 
-    if (!MapView || !Marker || !Polyline) {
-      return null;
-    }
+    if (!MapView || !Marker || !Polyline) return null;
+
+    // A missing native maps component must show the existing safe tracking
+    // fallback, not crash from top-level marker/route imports.
+    const { LiveRouteEngine } = require("../components/live/LiveRouteEngine");
+    const { LivingCourierMarker } = require("../components/live/LivingCourierMarker");
+    if (!LiveRouteEngine || !LivingCourierMarker) return null;
 
     return {
       default: MapView,
       Marker,
       Polyline,
+      LiveRouteEngine,
+      LivingCourierMarker,
     };
   } catch (error) {
     console.warn("[DA_P4A5J] react-native-maps load failed", error);
@@ -1203,6 +1209,8 @@ const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | n
 
   const MapView = mapsModule.default;
   const Marker = mapsModule.Marker;
+  const LiveRouteEngine = mapsModule.LiveRouteEngine;
+  const LivingCourierMarker = mapsModule.LivingCourierMarker;
   return (
     <View style={styles.screen}>
       <MapView
