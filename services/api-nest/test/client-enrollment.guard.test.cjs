@@ -37,6 +37,25 @@ test('server accepts only a fully specified, consenting Client request', () => {
   assert.equal(parseClientEnrollmentCommand({ ...valid, requestId: 'same-request' }), null);
 });
 
+test('even fully populated enrollment env fails closed without recovery or scoped authorization approval', () => {
+  const env = {
+    DATABASE_URL: 'postgres://unused',
+    DA_CLIENT_ENROLLMENT_ENABLED: 'true',
+    DA_CLIENT_ENROLLMENT_HMAC_SECRET: 'x'.repeat(48),
+    DA_CLIENT_ENROLLMENT_KC_BASE_URL: 'http://afritaste-keycloak:8080/',
+    DA_CLIENT_ENROLLMENT_KC_CLIENT_ID: 'delishafrica-client-enrollment',
+    DA_CLIENT_ENROLLMENT_KC_CLIENT_SECRET: 'test-only-service-credential',
+    DA_CLIENT_ENROLLMENT_SECURITY_GATE: 'APPROVED_AFTER_REVIEW',
+    DA_CLIENT_ENROLLMENT_RECOVERY_GATE: 'SMTP_RESET_TESTED',
+    DA_CLIENT_ENROLLMENT_AUTHZ_GATE: 'FGAP_NEGATIVE_TESTS_PASSED',
+  };
+  assert.equal(enrollmentReadyForProduction(env), true, 'all manually audited gates required');
+  for (const key of ['DA_CLIENT_ENROLLMENT_RECOVERY_GATE', 'DA_CLIENT_ENROLLMENT_AUTHZ_GATE']) {
+    assert.equal(enrollmentReadyForProduction({ ...env, [key]: undefined }), false, key + ' may not be missing');
+    assert.equal(enrollmentReadyForProduction({ ...env, [key]: 'false' }), false, key + ' must be exact');
+  }
+});
+
 test('identifiers use purpose-separated keyed HMAC and require a secure secret', () => {
   const key = 'x'.repeat(48);
   const a = enrollmentHmac(key, 'email', 'test@example.org');
@@ -224,6 +243,8 @@ async function withEnrollmentFlags(run) {
     DA_CLIENT_ENROLLMENT_KC_CLIENT_ID: 'delishafrica-client-enrollment',
     DA_CLIENT_ENROLLMENT_KC_CLIENT_SECRET: 'test-only-service-credential',
     DA_CLIENT_ENROLLMENT_SECURITY_GATE: 'APPROVED_AFTER_REVIEW',
+    DA_CLIENT_ENROLLMENT_RECOVERY_GATE: 'SMTP_RESET_TESTED',
+    DA_CLIENT_ENROLLMENT_AUTHZ_GATE: 'FGAP_NEGATIVE_TESTS_PASSED',
   };
   const old = Object.fromEntries(Object.keys(values).map((k) => [k, process.env[k]]));
   Object.assign(process.env, values);
