@@ -113,6 +113,24 @@ export class ClientEnrollmentKeycloak {
       !roles.some((value) => value.name === CLIENT_ROLE && value.clientRole === false) ||
       roles.some((value) => ['admin', 'merchant', 'courier', 'ops', 'realm-admin'].includes(value.name))
     ) throw new Error('enrollment_role_verification_failed');
+
+    // Direct mappings alone are not enough: realm defaults and composite
+    // roles can silently grant Courier, Merchant or realm-admin authority.
+    const compositeResponse = await this.request(
+      creds.base, '/admin/realms/' + REALM + '/users/' + subjectId + '/role-mappings/realm/composite',
+      token,
+    );
+    if (compositeResponse.status !== 200) throw new Error('enrollment_composite_roles_unavailable');
+    const effective = await compositeResponse.json() as Array<{ name: string; clientRole?: boolean }>;
+    const safeRealmRoles = new Set([
+      CLIENT_ROLE, 'default-roles-' + REALM, 'offline_access', 'uma_authorization',
+    ]);
+    if (
+      !Array.isArray(effective) ||
+      !effective.some((value) => value?.name === CLIENT_ROLE && value.clientRole === false) ||
+      effective.some((value) => typeof value?.name !== 'string' ||
+        value.clientRole !== false || !safeRealmRoles.has(value.name))
+    ) throw new Error('enrollment_effective_roles_unsafe');
   }
 
   private checkCreatedId(subjectId: string): void {
@@ -128,6 +146,21 @@ export class ClientEnrollmentKeycloak {
     const token = await this.getToken(creds);
     // Role permissions may have changed since provisioning; verify again.
     await this.verifyOnlyClientRole(creds, token, subjectId);
+    const before = await this.request(
+      creds.base, '/admin/realms/' + REALM + '/users/' + subjectId, token,
+    );
+    if (before.status !== 200) throw new Error('enrollment_identity_unavailable');
+    const user = await before.json() as {
+      enabled?: boolean; emailVerified?: boolean;
+      attributes?: { delishafrica_enrollment_version?: string[] };
+    };
+    if (
+      user.enabled !== false ||
+      user.emailVerified !== true ||
+      !Array.isArray(user.attributes?.delishafrica_enrollment_version) ||
+      !user.attributes.delishafrica_enrollment_version.includes('client-v1')
+    ) throw new Error('enrollment_identity_provenance_unsafe');
+
     const activate = await this.request(
       creds.base, '/admin/realms/' + REALM + '/users/' + subjectId,
       token, 'PUT', { enabled: true },
