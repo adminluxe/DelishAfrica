@@ -108,6 +108,7 @@ test('Keycloak provisioning creates ONLY a Client realm-role identity', async ()
     if (path.endsWith('/users') && options.method === 'POST') {
       const payload = JSON.parse(options.body);
       assert.equal(payload.emailVerified, true);
+      assert.equal(payload.enabled, false, 'new identities MUST start disabled');
       assert.deepEqual(payload.requiredActions, []);
       assert.deepEqual(payload.credentials.map((r) => r.type), ['password']);
       assert.deepEqual(payload.attributes.delishafrica_enrollment_version, ['client-v1']);
@@ -119,12 +120,17 @@ test('Keycloak provisioning creates ONLY a Client realm-role identity', async ()
       return response(204, null);
     }
     if (path.endsWith('/role-mappings/realm')) return response(200, [role]);
+    if (path.endsWith('/users/' + oid) && options.method === 'PUT') {
+      assert.equal(JSON.parse(options.body).enabled, true);
+      return response(204, null);
+    }
     throw new Error('unexpected_fetch_path');
   }, async () => {
     const id = await new ClientEnrollmentKeycloak().createClientIdentity(identity);
     assert.equal(id, oid);
   });
   assert.equal(captured.filter((call) => call.method === 'POST' && call.path.endsWith('/users')).length, 1);
+  assert.equal(captured.at(-1).method, 'PUT', 'activation MUST happen after role re-check');
 });
 
 test('mismatched role grants never produce a Client identity', async () => {
