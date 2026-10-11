@@ -15,6 +15,7 @@ import * as SecureStore from "expo-secure-store";
 import { cartItemSummary, clearCart, formatCartEuro, getCartSnapshot, waitForCartPersistence } from "../utils/daCart";
 import { deliveryZoneSummary, validateDeliveryZone } from "../utils/daDeliveryZones";
 import { daAttestIdentityProof, daResolveAddress, DaIdentityProof, DaResolvedAddress } from "../utils/daTrustNetwork";
+import { daCanonicalContact, daLocalProofFresh } from '../utils/daProofIdentity';
 declare const require: any;
 
 type ClientProfileLite = {
@@ -195,12 +196,6 @@ function isValidEmail(value?: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean(value));
 }
 
-function proofFresh(proof: DaIdentityProof | undefined, destination: string): boolean {
-  if (!proof?.token || proof.destination !== destination) return false;
-  const expiresAt = Date.parse(proof.expiresAt);
-  return Number.isFinite(expiresAt) && expiresAt > Date.now();
-}
-
 function missingFields(profile: ClientProfileLite | null): string[] {
   if (!profile) return ["vos informations client"];
   const missing: string[] = [];
@@ -210,8 +205,8 @@ function missingFields(profile: ClientProfileLite | null): string[] {
   if (!clean(profile.address)) missing.push("adresse");
   if (!clean(profile.city)) missing.push("ville");
   if (!profile.addressTruth?.deliverable || !profile.addressTruth?.placeId) missing.push("adresse réelle confirmée");
-  if (!proofFresh(profile.proofs?.phone, clean(profile.phone))) missing.push("téléphone vérifié");
-  if (!proofFresh(profile.proofs?.email, clean(profile.email).toLowerCase())) missing.push("email vérifié");
+  if (!daLocalProofFresh('sms', profile.proofs?.phone, profile.phone)) missing.push("téléphone vérifié");
+  if (!daLocalProofFresh('email', profile.proofs?.email, profile.email)) missing.push("email vérifié");
   if (!profile.consent) missing.push("consentement client");
   const hasFoodSafetySignal = Boolean(
     profile.allergenFlags?.length ||
@@ -673,13 +668,13 @@ export default function CheckoutPreflightScreen() {
         daAttestIdentityProof({
           channel: "sms",
           role: "client",
-          destination: checkoutProfile.phone,
+          destination: daCanonicalContact('sms', checkoutProfile.phone),
           proofToken: checkoutProfile.proofs!.phone!.token,
         }),
         daAttestIdentityProof({
           channel: "email",
           role: "client",
-          destination: checkoutProfile.email,
+          destination: daCanonicalContact('email', checkoutProfile.email),
           proofToken: checkoutProfile.proofs!.email!.token,
         }),
         daResolveAddress(checkoutProfile.addressTruth!.placeId),
