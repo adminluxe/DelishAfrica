@@ -98,7 +98,8 @@ export function useDaPkceAuth() {
         scopes: [...DA_OIDC_CONFIG.scopes],
         usePKCE: true,
         codeChallengeMethod: AuthSession.CodeChallengeMethod.S256,
-        prompt: (AuthSession as any).Prompt?.Login || 'login',
+        // No forced provider login: allow the system-browser SSO session to be
+        // reused when still valid. Authorization Code + PKCE + nonce stay required.
         extraParams: { nonce: attemptNonce },
       });
 
