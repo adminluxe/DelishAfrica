@@ -112,15 +112,21 @@ export class ClientEnrollmentService {
       });
     }
 
+    let subjectId: string | null = null;
     try {
-      const subjectId = await this.keycloak.createClientIdentity({
+      // Stage a disabled Keycloak identity and verify its sole realm role.
+      subjectId = await this.keycloak.createClientIdentity({
         email: parsed.email,
         phone: parsed.phone,
         firstName: parsed.firstName,
         lastName: parsed.lastName,
         password: parsed.password,
       });
+      // Commit the unique, non-PII audit ledger BEFORE the user can sign in.
+      // A crash before activation leaves a disabled account, never an
+      // enabled-but-untracked Client identity.
       await this.repository.complete(reserved, subjectId);
+      await this.keycloak.activateClientIdentity(subjectId);
       return {
         ok: true,
         status: 'account_created',
@@ -129,6 +135,11 @@ export class ClientEnrollmentService {
         paymentStarted: false,
       };
     } catch {
+      // If DB commit or Keycloak activation fails, fail closed. Never
+      // replay provisioning automatically for ambiguous partial outcomes.
+      if (subjectId) {
+        await this.keycloak.disableClientIdentity(subjectId).catch(() => undefined);
+      }
       await this.repository.flagForReview(reserved).catch(() => undefined);
       // No raw database/Keycloak exception, provider URL, email or password
       // must escape to the mobile app or into an application log.
