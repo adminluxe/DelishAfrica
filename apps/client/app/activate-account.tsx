@@ -7,6 +7,7 @@ import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { daAccountStorageKey } from '../utils/daOrdersApi';
+import { daCanonicalContact, daLocalProofFresh } from '../utils/daProofIdentity';
 import { daAttestIdentityProof, type DaIdentityProof } from '../utils/daTrustNetwork';
 
 type ClientEnrollmentProfile = {
@@ -24,11 +25,6 @@ const API_BASE = String(
     process.env.EXPO_PUBLIC_API_URL ||
     'https://api.delishafrica.me/api/v1',
 ).replace(/\/+$/, '').replace(/\/api\/v1$/, '') + '/api/v1';
-
-function current(proof: DaIdentityProof | undefined, recipient: string) {
-  return Boolean(proof?.token && proof.destination === recipient &&
-    Date.parse(proof.expiresAt) > Date.now());
-}
 
 export default function ActivateClientAccountScreen() {
   const router = useRouter();
@@ -63,12 +59,12 @@ export default function ActivateClientAccountScreen() {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
-  const email = String(profile?.email || '').trim().toLowerCase();
-  const phone = String(profile?.phone || '').trim().replace(/[\s()-]/g, '');
+  const email = daCanonicalContact('email', profile?.email);
+  const phone = daCanonicalContact('sms', profile?.phone);
   const verified = Boolean(
     profile?.consent === true &&
-    current(profile?.proofs?.email, email) &&
-    current(profile?.proofs?.phone, phone),
+    daLocalProofFresh('email', profile?.proofs?.email, email) &&
+    daLocalProofFresh('sms', profile?.proofs?.phone, phone),
   );
 
   const register = useCallback(async () => {
@@ -158,8 +154,8 @@ export default function ActivateClientAccountScreen() {
         <Text style={styles.brand}>DELISHAFRICA®</Text>
         <Text style={styles.title}>Votre compte, votre liberté.</Text>
         <Text style={styles.subtitle}>
-          Une identité protégée, vos saveurs préférées et un panier préservé.
-          Aucun mot de passe ne sera envoyé par SMS ou e-mail.
+          Deux contacts vérifiés, une seule activation. Vos prochaines commandes en toute simplicité.
+          Votre phrase secrète reste privée.
         </Text>
 
         <View style={styles.card}>
@@ -167,16 +163,17 @@ export default function ActivateClientAccountScreen() {
           {loading ? <ActivityIndicator color="#EAC775" /> : (
             <>
               <Text style={styles.value}>{profile?.firstName || 'Bienvenue'}</Text>
-              <Text style={styles.detail}>E-mail {current(profile?.proofs?.email, email) ? 'confirmé ✓' : 'à confirmer'}</Text>
-              <Text style={styles.detail}>Téléphone {current(profile?.proofs?.phone, phone) ? 'confirmé ✓' : 'à confirmer'}</Text>
+              <Text style={styles.detail}>E-mail {daLocalProofFresh('email', profile?.proofs?.email, email) ? 'confirmé ✓' : 'à confirmer'}</Text>
+              <Text style={styles.detail}>Téléphone {daLocalProofFresh('sms', profile?.proofs?.phone, phone) ? 'confirmé ✓' : 'à confirmer'}</Text>
               {ready === false ? (
-                <Text style={styles.warning}>L’inscription sécurisée n’est pas encore activée. Votre panier reste conservé.</Text>
+                <Text style={styles.warning}>Vos coordonnées sont conservées. L’activation des comptes arrive bientôt. Votre panier reste disponible.</Text>
               ) : null}
+              {!verified && ready ? <Text style={styles.warning}>Confirmez vos deux contacts une fois pour activer votre compte.</Text> : null}
             </>
           )}
         </View>
 
-        <View style={styles.card}>
+        {ready && verified ? <View style={styles.card}>
           <Text style={styles.kicker}>CHOISIR MA PHRASE SECRÈTE</Text>
           <Text style={styles.hint}>12 caractères minimum. Jamais enregistrée dans l’application.</Text>
           <TextInput
@@ -202,19 +199,19 @@ export default function ActivateClientAccountScreen() {
             placeholderTextColor="#82988D"
           />
           <Text style={styles.hint}>Ce compte ne peut donner accès qu’à l’espace Client.</Text>
-        </View>
+        </View> : null}
 
         {notice ? <Text style={styles.warning}>{notice}</Text> : null}
-        <Pressable
+        {ready && verified ? <Pressable
           accessibilityRole="button"
-          disabled={busy || loading || !ready || !verified}
+          disabled={busy || loading}
           onPress={() => { void register(); }}
-          style={[styles.primary, (busy || loading || !ready || !verified) && styles.disabled]}
+          style={[styles.primary, (busy || loading) && styles.disabled]}
         >
           {busy ? <ActivityIndicator color="#062016" /> : (
             <Text style={styles.primaryText}>Activer mon compte DelishAfrica</Text>
           )}
-        </Pressable>
+        </Pressable> : null}
         <Pressable style={styles.secondary} onPress={() => router.replace('/client-space' as any)}>
           <Text style={styles.secondaryText}>Vérifier mes contacts</Text>
         </Pressable>
