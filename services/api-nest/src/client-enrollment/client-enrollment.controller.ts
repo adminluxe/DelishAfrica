@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Post, Req } from '@nestjs/common';
 import { ClientEnrollmentService } from './client-enrollment.service';
+import { trustedRequesterPeer } from '../identity-proof/trusted-requester-peer';
 
 @Controller('client-enrollment')
 export class ClientEnrollmentController {
@@ -12,10 +13,8 @@ export class ClientEnrollmentController {
 
   @Post('register')
   register(@Body() body: Record<string, unknown>, @Req() req: any) {
-    // Do not trust arbitrary client-supplied X-Forwarded-For values.
-    const requester = String(
-      req?.ip || req?.socket?.remoteAddress || 'unknown',
-    ).slice(0, 120);
-    return this.enrollment.register(body || {}, requester);
+    // Match the proof service's trusted socket-peer origin. Never accept a
+    // requester identity supplied directly in CF-/X-Forwarded-* headers.
+    return this.enrollment.register(body || {}, trustedRequesterPeer(req));
   }
 }
