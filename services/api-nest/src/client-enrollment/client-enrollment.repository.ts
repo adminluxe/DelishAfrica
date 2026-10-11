@@ -99,7 +99,7 @@ export class ClientEnrollmentRepository implements OnModuleDestroy {
     await this.connection().query(
       'UPDATE public.da_client_enrollments ' +
       'SET status=\'needs_review\',updated_at=now() ' +
-      'WHERE enrollment_id=$1::uuid AND status=\'reserved\'',
+      'WHERE enrollment_id=$1::uuid AND status IN (\'reserved\',\'ready\')',
       [enrollmentId],
     );
   }
