@@ -9,29 +9,31 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useDaPkceAuth } from '../hooks/useDaPkceAuth';
-
-function formatExpiry(value?: number): string {
-  if (!value) return '—';
-  return new Date(value * 1000).toLocaleString();
-}
 
 export default function SecureSessionScreen() {
   const router = useRouter();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+  const returnToCheckout = returnTo === 'checkout';
   const auth = useDaPkceAuth();
 
   const status = useMemo(() => {
-    if (auth.session.status === 'authenticated') return 'Session Keycloak active';
-    if (auth.session.status === 'reauth_required') return 'Réauthentification requise';
-    if (auth.session.status === 'error') return 'Session à vérifier';
-    return 'Connexion sécurisée prête';
+    if (auth.session.status === 'authenticated') return 'Votre compte est connecté';
+    if (auth.session.status === 'reauth_required') return 'Reconnectez-vous pour continuer';
+    if (auth.session.status === 'error') return 'Connexion à vérifier';
+    return 'Connectez-vous en toute sécurité';
   }, [auth.session.status]);
 
   async function signIn() {
     const next = await auth.signIn();
+    if (next.status === 'authenticated' && returnToCheckout) {
+      // A successful login resumes the preflight, never the payment request.
+      router.replace('/checkout-preflight' as any);
+      return;
+    }
     if (next.status === 'error') {
-      Alert.alert('Connexion sécurisée', next.reason || 'Connexion interrompue.');
+      Alert.alert('Connexion DelishAfrica', 'La connexion n’a pas abouti. Réessayez dans un instant.');
     }
   }
 
@@ -41,37 +43,54 @@ export default function SecureSessionScreen() {
         <Text style={styles.brand}>DELISHAFRICA®</Text>
         <Text style={styles.title}>Connexion sécurisée</Text>
         <Text style={styles.subtitle}>
-          Votre compte Keycloak protège la session. Les preuves SMS, e-mail et adresse restent un contrôle distinct.
+          Retrouvez votre espace et vos commandes en toute sérénité. Votre panier sera conservé pendant la connexion.
         </Text>
 
         <View style={styles.statusCard}>
-          <Text style={styles.kicker}>SESSION CLIENT</Text>
+          <Text style={styles.kicker}>MON COMPTE DELISHAFRICA</Text>
           <Text style={styles.status}>{status}</Text>
-          <Text style={styles.detail}>Rôle : {auth.session.role}</Text>
-          <Text style={styles.detail}>Identité : {auth.session.displayName || auth.session.email || 'non connectée'}</Text>
-          <Text style={styles.detail}>Expiration : {formatExpiry(auth.session.expiresAt)}</Text>
-          {auth.lastError ? <Text style={styles.error}>Code sûr : {auth.lastError}</Text> : null}
+          {auth.session.status === 'authenticated' ? (
+            <Text style={styles.detail}>{auth.session.displayName || auth.session.email || 'Compte protégé'}</Text>
+          ) : (
+            <Text style={styles.detail}>Vos informations restent privées et votre panier est préservé.</Text>
+          )}
+          {auth.lastError ? (
+            <Text style={styles.error}>La connexion n’a pas abouti. Vous pouvez réessayer.</Text>
+          ) : null}
         </View>
 
-        <Pressable
-          disabled={auth.busy || !auth.requestReady}
-          onPress={signIn}
-          style={[styles.primary, (auth.busy || !auth.requestReady) && styles.disabled]}
-        >
-          {auth.busy ? <ActivityIndicator color="#07130E" /> : <Text style={styles.primaryText}>Se connecter avec Keycloak</Text>}
-        </Pressable>
+        {auth.session.status === 'authenticated' ? (
+          <Pressable
+            onPress={() => router.replace((returnToCheckout ? '/checkout-preflight' : '/client-space') as any)}
+            style={styles.primary}
+            accessibilityRole="button"
+          >
+            <Text style={styles.primaryText}>{returnToCheckout ? 'Reprendre ma commande' : 'Retour à mon espace'}</Text>
+          </Pressable>
+        ) : (
+          <Pressable
+            disabled={auth.busy || !auth.requestReady}
+            onPress={signIn}
+            style={[styles.primary, (auth.busy || !auth.requestReady) && styles.disabled]}
+            accessibilityRole="button"
+          >
+            {auth.busy ? <ActivityIndicator color="#07130E" /> : (
+              <Text style={styles.primaryText}>Continuer avec DelishAfrica</Text>
+            )}
+          </Pressable>
+        )}
 
         <View style={styles.actions}>
           <Pressable disabled={auth.busy} onPress={auth.restore} style={styles.secondary}>
-            <Text style={styles.secondaryText}>Relire la session</Text>
+            <Text style={styles.secondaryText}>Vérifier ma connexion</Text>
           </Pressable>
           <Pressable disabled={auth.busy} onPress={auth.refresh} style={styles.secondary}>
-            <Text style={styles.secondaryText}>Rafraîchir</Text>
+            <Text style={styles.secondaryText}>Actualiser</Text>
           </Pressable>
         </View>
 
         <Pressable disabled={auth.busy} onPress={auth.logout} style={styles.logout}>
-          <Text style={styles.logoutText}>Déconnexion sécurisée</Text>
+          <Text style={styles.logoutText}>Me déconnecter</Text>
         </Pressable>
 
         <Pressable onPress={() => router.replace('/client-space' as any)} style={styles.back}>
@@ -79,7 +98,7 @@ export default function SecureSessionScreen() {
         </Pressable>
 
         <Text style={styles.privacy}>
-          Aucun token, code, verifier ou nonce n’est affiché sur cet écran.
+          Votre compte protège vos commandes. Aucune information de paiement n’est demandée pendant la connexion.
         </Text>
       </ScrollView>
     </SafeAreaView>
