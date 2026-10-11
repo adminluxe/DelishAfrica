@@ -11,6 +11,7 @@ on:
       - 'services/api-nest/test/client-enrollment.guard.test.cjs'
       - 'apps/client/**'
       - 'ops/keycloak/themes/delishafrica/**'
+      - 'ops/client-enrollment/**'
       - '.github/workflows/client-enrollment-gate.yml'
   workflow_dispatch:
 
@@ -59,6 +60,18 @@ jobs:
           pnpm exec tsc --noEmit -p apps/courier/tsconfig.json
       - name: Canonical Client contact proofs and checkout continuity
         run: node --test apps/client/test/daProofIdentity.test.cjs
+      - name: Safe one-shot enrollment preflight syntax
+        run: |
+          bash -n ops/client-enrollment/DA_CLIENT_ENROLLMENT_SAFE_GATE_V1.sh
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const source = fs.readFileSync('ops/client-enrollment/DA_CLIENT_ENROLLMENT_SAFE_GATE_V1.sh','utf8');
+          assert(source.includes('mode=READ_ONLY'));
+          assert(source.includes('keycloak_global_registration=UNTOUCHED'));
+          assert(!/docker\s+(rm|stop|restart|run)\b|DROP TABLE|TRUNCATE TABLE|ALTER TABLE|CREATE TABLE|curl\s+(-X|-d|--data)/i.test(source));
+          console.log('SAFE_ENROLL_GATE_SCRIPT_OK');
+          NODE
       - name: Client-only policy and mocked Keycloak provisioning tests
         env:
           TS_NODE_PROJECT: services/api-nest/tsconfig.json
