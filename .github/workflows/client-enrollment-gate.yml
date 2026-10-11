@@ -98,3 +98,26 @@ jobs:
           assert(!fs.existsSync(path+'login/login.ftl'), 'Do not override maintained login template');
           console.log('BRANDED_LOGIN_THEME_STATIC_PASS');
           NODE
+      - name: iOS Dev LAN entitlement config guard
+        run: |
+          node - <<'NODE'
+          const assert=require('node:assert/strict');
+          const previous=process.env.EAS_BUILD_PROFILE;
+          try {
+            process.env.EAS_BUILD_PROFILE='development';
+            delete require.cache[require.resolve('./apps/client/app.config.js')];
+            const dev=require('./apps/client/app.config.js')({config:{ios:{infoPlist:{ITSAppUsesNonExemptEncryption:false}}}});
+            assert(dev.ios.infoPlist.NSLocalNetworkUsageDescription.includes('DelishAfrica'));
+            assert(dev.ios.infoPlist.NSBonjourServices.includes('_expo._tcp'));
+            process.env.EAS_BUILD_PROFILE='production';
+            delete require.cache[require.resolve('./apps/client/app.config.js')];
+            const prod=require('./apps/client/app.config.js')({config:{ios:{infoPlist:{ITSAppUsesNonExemptEncryption:false}}}});
+            assert(!Object.hasOwn(prod.ios.infoPlist,'NSLocalNetworkUsageDescription'));
+            assert(!Object.hasOwn(prod.ios.infoPlist,'NSBonjourServices'));
+            assert.equal(prod.ios.infoPlist.ITSAppUsesNonExemptEncryption,false);
+            console.log('IOS_DEV_LAN_ONLY_GUARD_PASS');
+          } finally {
+            if(previous===undefined)delete process.env.EAS_BUILD_PROFILE;
+            else process.env.EAS_BUILD_PROFILE=previous;
+          }
+          NODE
