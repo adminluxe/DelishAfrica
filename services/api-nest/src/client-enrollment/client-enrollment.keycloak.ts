@@ -121,7 +121,9 @@ export class ClientEnrollmentKeycloak {
           username: input.email,
           email: input.email,
           emailVerified: true, // SMS AND e-mail provider proofs were verified by our API.
-          enabled: true,
+          // Keep this account unable to authenticate until the Client realm
+          // role has been assigned and independently re-checked.
+          enabled: false,
           firstName: input.firstName,
           lastName: input.lastName,
           requiredActions: [],
@@ -157,6 +159,12 @@ export class ClientEnrollmentKeycloak {
         roles.some((value) => ['admin', 'merchant', 'courier', 'ops', 'realm-admin'].includes(value.name))
       ) throw new Error('enrollment_role_verification_failed');
 
+      // Activation is the LAST step, after the role is proven to be Client-only.
+      const activate = await this.request(
+        creds.base, '/admin/realms/' + REALM + '/users/' + createdId,
+        token, 'PUT', { enabled: true },
+      );
+      if (activate.status !== 204) throw new Error('enrollment_account_activation_failed');
       return createdId;
     } catch (error) {
       // Fail closed after partial remote creation. Require operator reconciliation.
