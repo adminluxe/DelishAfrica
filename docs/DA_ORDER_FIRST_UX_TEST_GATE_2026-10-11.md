@@ -1,6 +1,6 @@
 # DelishAfrica - Order-first UX candidate - 2026-10-11
 
-Status: **DRAFT CANDIDATE / DO NOT MERGE BEFORE ON-DEVICE CHECKS**
+Status: **MERGED AS SOURCE CODE ON 2026-10-11 / ON-DEVICE VALIDATION AND STORE RELEASE PENDING**
 
 ## Decision respected
 The identity provider (Keycloak/OIDC) remains a backend implementation detail. No new signup, password reset, forced account screen, or Keycloak-flow modification belongs to this candidate.
@@ -56,9 +56,18 @@ Source changes alone are not evidence of app distribution, and no Store-live cla
 - DEV servers actifs sur Asus, réseau local `192.168.1.5` (réseau privé) : Client port `8081`, Merchant `8082`, Courier `8083`. **Adresses de test temporaires : ne pas annoncer comme production.**
 - Les tentatives initiales avec `EXPO_NO_METRO_WORKSPACE_ROOT=1` étaient des faux échecs de résolution (module `expo-router/entry`) et ont été résolues par la configuration Metro monorepo Expo automatique. Aucun correctif UI/Auth n'a été appliqué pour contourner ce problème de test.
 
-### Reste impérativement à prouver avant MERGE
+### Reste à prouver avant publication mobile / release
 
 - **iPhone :** ouvrir les trois DEV clients, pointer vers les ports `192.168.1.5:8081/8082/8083` sur le même Wi-Fi et constater réellement l'ordre Client, le Radar optionnel, et les libellés Merchant/Courier. Captures ou retour explicite requis.
 - **Android 13 :** reproduction du point soulevé par Valérie (Samsung A22) encore à faire au gate appareil, ou justification explicite de l'exception avec Android gelé en release.
 - **Achat :** parcours restaurant → panier → identité/adresse → pré-paiement ; valider les refus sécurisés et les protections anti-doublons **uniquement avec fournisseur sandbox**. Ne pas encaisser une transaction réelle comme test.
-- **Jusqu'à validation :** PR #30 **DRAFT / NON FUSIONNÉE** ; aucun EAS build ni Store submit automatique, aucune modification du flux Keycloak/OIDC, aucun uplift IP attribué à ce patch non publié.
+- **Jusqu'à validation :** PR #30 **FUSIONNÉE DANS MAIN SUR APPROBATION DU PROPRIÉTAIRE** ; aucun EAS build ni Store submit automatique, aucune modification du flux Keycloak/OIDC, aucun uplift IP attribué à ce patch non publié.
+
+## Suivi de fusion du 11 octobre 2026
+
+- PR #30 fusionnée par squash dans `main` : commit `1beb07e04336303f7b836b51165f1da8d8639536`.
+- Le correctif de dépendances de la PR #31 avait déjà été fusionné : `fc802ead0f5a80cc433e678c7a6a908681f31474`.
+- Autorisation du propriétaire : intégrer la PR #30 dans le code, sans publier de build sur les Stores avant la vérification des DEV clients sur iPhone et la validation Android.
+- Contrôles effectués sur Asus : TypeScript 3/3 sans erreurs, manifests Expo iOS 3/3 HTTP 200, bundles Metro iOS 3/3 HTTP 200.
+- Contrôles restant à effectuer : inspection visuelle et parcours utilisateur sur appareils, authentification/rôles, paiement en sandbox seulement et portes de publication Stores. Aucun de ces points n'est présumé validé.
+- Aucun déploiement de paiement ni changement des règles Keycloak/OIDC réalisé dans cette PR.
