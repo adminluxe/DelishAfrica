@@ -14,7 +14,26 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import * as Location from "expo-location";
-import MapView, { Circle, Marker, Polyline, type LatLng } from "react-native-maps";
+import type { LatLng } from "react-native-maps";
+
+declare const require: (name: string) => any;
+
+// Safely handle older iOS Dev Clients without a native maps binary.
+const nativeMaps = (() => {
+  try {
+    const m = require("react-native-maps");
+    const MapView = m?.default || m?.MapView;
+    if (!MapView || !m?.Marker || !m?.Polyline || !m?.Circle) return null;
+    return {
+      MapView: MapView as React.ComponentType<any>,
+      Marker: m.Marker as React.ComponentType<any>,
+      Polyline: m.Polyline as React.ComponentType<any>,
+      Circle: m.Circle as React.ComponentType<any>,
+    };
+  } catch {
+    return null;
+  }
+})();
 
 type Order = Record<string, any>;
 
@@ -303,7 +322,7 @@ async function fetchOrders() {
 }
 
 export default function CourierIntegratedMapScreen() {
-  const mapRef = useRef<MapView | null>(null);
+  const mapRef = useRef<any>(null);
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
   const [mission, setMission] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -554,7 +573,8 @@ export default function CourierIntegratedMapScreen() {
         </View>
 
         <View style={styles.mapShell}>
-          <MapView
+          {nativeMaps ? (
+          <nativeMaps.MapView
             ref={mapRef}
             style={styles.map}
             initialRegion={INITIAL_REGION}
@@ -566,19 +586,19 @@ export default function CourierIntegratedMapScreen() {
             showsScale
             accessibilityLabel="Carte Courier avec mission et position au premier plan"
           >
-            <Marker
+            <nativeMaps.Marker
               coordinate={pickup}
               title={mission ? restaurantName(mission) : "Restaurant"}
               description="Point de retrait"
               pinColor="#2EBD73"
             />
-            <Marker
+            <nativeMaps.Marker
               coordinate={destination}
               title={mission ? customerName(mission) : "Destination"}
               description={mission ? deliveryAddress(mission) : "Point de livraison"}
               pinColor="#D9A928"
             />
-            <Polyline
+            <nativeMaps.Polyline
               coordinates={[pickup, destination]}
               strokeColor="rgba(142,240,179,0.52)"
               strokeWidth={5}
@@ -586,27 +606,37 @@ export default function CourierIntegratedMapScreen() {
             />
             {locationFix ? (
               <>
-                <Circle
+                <nativeMaps.Circle
                   center={locationFix.coordinate}
                   radius={Math.max(18, locationFix.accuracy || 18)}
                   fillColor="rgba(51,126,255,0.12)"
                   strokeColor="rgba(51,126,255,0.38)"
                   strokeWidth={2}
                 />
-                <Marker
+                <nativeMaps.Marker
                   coordinate={locationFix.coordinate}
                   title="Votre position"
                   description={`Précision ${formatAccuracy(locationFix.accuracy)}`}
                   pinColor="#337EFF"
                 />
-                <Polyline
+                <nativeMaps.Polyline
                   coordinates={[locationFix.coordinate, activeTarget]}
                   strokeColor={phase.accent}
                   strokeWidth={7}
                 />
               </>
             ) : null}
-          </MapView>
+          </nativeMaps.MapView>
+          ) : (
+            <View style={[styles.map, { alignItems: "center", justifyContent: "center", backgroundColor: "#102C1E", padding: 24 }]}>
+              <Text style={{ color: "#F7FFF9", fontSize: 18, fontWeight: "800", textAlign: "center" }}>
+                Carte indisponible sur cette version
+              </Text>
+              <Text style={{ color: "#B7D4C1", textAlign: "center", marginTop: 8 }}>
+                Votre mission et ses informations restent accessibles. Une mise à jour certifiée rétablira la carte.
+              </Text>
+            </View>
+          )}
 
           <View pointerEvents="none" style={styles.mapBadge}>
             <Text style={styles.mapBadgeText}>
