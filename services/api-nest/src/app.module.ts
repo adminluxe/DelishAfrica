@@ -11,6 +11,7 @@ import { RoutesPreviewModule } from './routes-preview/routes-preview.module';
 import { ProfileTrustModule } from './profile-trust/profile-trust.module';
 import { LocationTrustModule } from './location-trust/location-trust.module';
 import { IdentityProofModule } from './identity-proof/identity-proof.module';
+import { ClientEnrollmentModule } from './client-enrollment/client-enrollment.module';
 
 import { ProviderBridgeModule } from './provider-bridge/provider-bridge.module';
 import { CatalogFoundationModule } from './catalog-foundation/catalog-foundation.module';
@@ -34,6 +35,7 @@ import { LegalModule } from './legal/legal.module';
     ProfileTrustModule,
     LocationTrustModule,
     IdentityProofModule,
+    ClientEnrollmentModule,
     ProviderBridgeModule,
     CatalogFoundationModule,
     MerchantCatalogGateModule,
