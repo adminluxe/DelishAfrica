@@ -58,8 +58,12 @@ export function enrollmentReadyForProduction(env: NodeJS.ProcessEnv): boolean {
   return env.DA_CLIENT_ENROLLMENT_ENABLED === 'true' &&
     Boolean(env.DATABASE_URL) &&
     Boolean(env.DA_CLIENT_ENROLLMENT_HMAC_SECRET && Buffer.byteLength(env.DA_CLIENT_ENROLLMENT_HMAC_SECRET, 'utf8') >= 32) &&
-    Boolean(env.DA_CLIENT_ENROLLMENT_KC_BASE_URL && /^https?:\/\//.test(env.DA_CLIENT_ENROLLMENT_KC_BASE_URL)) &&
+    env.DA_CLIENT_ENROLLMENT_KC_BASE_URL === 'http://afritaste-keycloak:8080/' &&
     env.DA_CLIENT_ENROLLMENT_KC_CLIENT_ID === 'delishafrica-client-enrollment' &&
     Boolean(env.DA_CLIENT_ENROLLMENT_KC_CLIENT_SECRET) &&
-    env.DA_CLIENT_ENROLLMENT_SECURITY_GATE === 'APPROVED_AFTER_REVIEW';
+    env.DA_CLIENT_ENROLLMENT_SECURITY_GATE === 'APPROVED_AFTER_REVIEW' &&
+    // Independent human-reviewed gates: successful password recovery delivery
+    // and verified *negative* FGAP tests, not merely a healthy OIDC issuer.
+    env.DA_CLIENT_ENROLLMENT_RECOVERY_GATE === 'SMTP_RESET_TESTED' &&
+    env.DA_CLIENT_ENROLLMENT_AUTHZ_GATE === 'FGAP_NEGATIVE_TESTS_PASSED';
 }
