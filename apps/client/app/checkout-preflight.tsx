@@ -787,9 +787,25 @@ export default function CheckoutPreflightScreen() {
         setPendingCommit(paidCommit);
         setPhase(`Paiement protégé · ${message}`);
         Alert.alert("Commande à réconcilier", message);
+      } else if (error?.code === "DA_CLIENT_AUTH_REQUIRED") {
+        // Preserve the current cart; authentication is an explicit user action.
+        // Never restart a PaymentIntent or charge the customer on OAuth return.
+        const notice = "Votre panier est conservé. Connectez-vous à DelishAfrica pour reprendre votre commande.";
+        setPhase("Votre panier est prêt. Connectez-vous pour continuer.");
+        Alert.alert("Votre commande vous attend", notice, [
+          {
+            text: "Continuer",
+            onPress: () =>
+              router.push({
+                pathname: "/secure-session",
+                params: { returnTo: "checkout" },
+              } as any),
+          },
+          { text: "Plus tard", style: "cancel" },
+        ]);
       } else {
-        setPhase(`Checkout interrompu : ${message}`);
-        Alert.alert("Checkout interrompu", message, [
+        setPhase("Nous ne pouvons pas finaliser votre commande pour le moment.");
+        Alert.alert("Commande non finalisée", message, [
           { text: "Mon espace", onPress: () => router.push("/client-space" as any) },
           { text: "Fermer", style: "cancel" },
         ]);
