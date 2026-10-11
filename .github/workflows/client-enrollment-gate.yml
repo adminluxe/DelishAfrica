@@ -100,18 +100,19 @@ jobs:
           NODE
       - name: iOS Dev LAN entitlement config guard
         run: |
+          cd apps/client
           node - <<'NODE'
           const assert=require('node:assert/strict');
           const previous=process.env.EAS_BUILD_PROFILE;
           try {
             process.env.EAS_BUILD_PROFILE='development';
-            delete require.cache[require.resolve('./apps/client/app.config.js')];
-            const dev=require('./apps/client/app.config.js')({config:{ios:{infoPlist:{ITSAppUsesNonExemptEncryption:false}}}});
+            delete require.cache[require.resolve('./app.config.js')];
+            const dev=require('./app.config.js')({config:{ios:{infoPlist:{ITSAppUsesNonExemptEncryption:false}}}});
             assert(dev.ios.infoPlist.NSLocalNetworkUsageDescription.includes('DelishAfrica'));
             assert(dev.ios.infoPlist.NSBonjourServices.includes('_expo._tcp'));
             process.env.EAS_BUILD_PROFILE='production';
-            delete require.cache[require.resolve('./apps/client/app.config.js')];
-            const prod=require('./apps/client/app.config.js')({config:{ios:{infoPlist:{ITSAppUsesNonExemptEncryption:false}}}});
+            delete require.cache[require.resolve('./app.config.js')];
+            const prod=require('./app.config.js')({config:{ios:{infoPlist:{ITSAppUsesNonExemptEncryption:false}}}});
             assert(!Object.hasOwn(prod.ios.infoPlist,'NSLocalNetworkUsageDescription'));
             assert(!Object.hasOwn(prod.ios.infoPlist,'NSBonjourServices'));
             assert.equal(prod.ios.infoPlist.ITSAppUsesNonExemptEncryption,false);
