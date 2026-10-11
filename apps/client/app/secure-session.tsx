@@ -108,18 +108,17 @@ export default function SecureSessionScreen() {
           </Pressable>
         ) : null}
 
-        <View style={styles.actions}>
+        {auth.session.status === 'reauth_required' || auth.session.status === 'error' ? (
           <Pressable disabled={auth.busy} onPress={auth.restore} style={styles.secondary}>
-            <Text style={styles.secondaryText}>Vérifier ma connexion</Text>
+            <Text style={styles.secondaryText}>Retrouver ma connexion</Text>
           </Pressable>
-          <Pressable disabled={auth.busy} onPress={auth.refresh} style={styles.secondary}>
-            <Text style={styles.secondaryText}>Actualiser</Text>
-          </Pressable>
-        </View>
+        ) : null}
 
-        <Pressable disabled={auth.busy} onPress={auth.logout} style={styles.logout}>
-          <Text style={styles.logoutText}>Me déconnecter</Text>
-        </Pressable>
+        {auth.session.status === 'authenticated' ? (
+          <Pressable disabled={auth.busy} onPress={auth.logout} style={styles.logout}>
+            <Text style={styles.logoutText}>Me déconnecter</Text>
+          </Pressable>
+        ) : null}
 
         <Pressable onPress={() => router.replace('/client-space' as any)} style={styles.back}>
           <Text style={styles.backText}>Retour à Mon espace</Text>
