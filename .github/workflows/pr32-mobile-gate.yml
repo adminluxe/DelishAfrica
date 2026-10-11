@@ -32,8 +32,19 @@ jobs:
           corepack enable
           corepack prepare pnpm@9.15.4 --activate
           pnpm --version
+      - name: Keep CI workspace scoped to mobile apps
+        # Legacy apps/landing package.json has an unrelated stale lock importer.
+        # Do not mutate the committed lockfile or weaken frozen validation.
+        run: |
+          cat > pnpm-workspace.yaml <<'YAML'
+          packages:
+            - apps/client
+            - apps/merchant
+            - apps/courier
+            - packages/*
+          YAML
       - name: Offline-safe package scripts and frozen lock
-        run: pnpm --filter 'client...' --filter 'courier...' --filter 'merchant...' install --frozen-lockfile --ignore-scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Client types
         run: pnpm --filter client exec tsc --noEmit
       - name: Courier types
