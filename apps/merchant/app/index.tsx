@@ -42,9 +42,9 @@ type RouteCard = {
 
 const ROUTES: RouteCard[] = [
   { eyebrow: "COMMANDES", title: "Décider", body: "Accepter, préparer, marquer prête et suivre le service.", path: "/orders" },
-  { eyebrow: "CUISINE", title: "Kitchen Pulse", body: "Cadence, priorités et lecture opérationnelle du service.", path: "/kitchen-pulse" },
+  { eyebrow: "CUISINE", title: "Rythme en cuisine", body: "Cadence, priorités et lecture opérationnelle du service.", path: "/kitchen-pulse" },
   { eyebrow: "ÉTABLISSEMENT", title: "Mon espace", body: "Présence, confiance, territoire et disponibilité.", path: "/partner-space" },
-  { eyebrow: "PILOTAGE", title: "Ops Dashboard", body: "Vision synthétique des signaux utiles au restaurant.", path: "/ops-dashboard" },
+  { eyebrow: "PILOTAGE", title: "Tableau de bord", body: "Vision synthétique des signaux utiles au restaurant.", path: "/ops-dashboard" },
 ];
 
 function extractOrders(payload: any): any[] {
@@ -209,14 +209,14 @@ export default function MerchantSurfaceHome() {
         <View style={styles.topline}>
           <View style={styles.toplineCopy}>
             <Text style={styles.brand}>DELISHAFRICA®</Text>
-            <Text style={styles.role}>MERCHANT · KITCHEN TIDE · S10N</Text>
+            <Text style={styles.role}>RESTAURATEUR · CUISINE ET COMMANDES</Text>
           </View>
           <Pressable
             onPress={() => go("/partner-space")}
             style={styles.avatarButton}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Ouvrir Mon espace Merchant"
+            accessibilityLabel="Ouvrir mon espace restaurateur"
           >
             <Text style={styles.avatarText}>PRO</Text>
           </Pressable>
@@ -225,31 +225,31 @@ export default function MerchantSurfaceHome() {
         <View style={[styles.authority, ownership.ready ? styles.authorityReady : styles.authorityPending]}>
           <View style={[styles.authorityDot, ownership.ready && styles.authorityDotReady]} />
           <View style={styles.authorityCopy}>
-            <Text style={styles.authorityLabel}>BUSINESS AUTHORITY</Text>
+            <Text style={styles.authorityLabel}>ACCÈS À L’ÉTABLISSEMENT</Text>
             <Text style={styles.authorityText}>
               {loading
                 ? "Vérification de votre établissement…"
                 : ownership.ready
                   ? `${ownership.partner} · rôle ${ownership.role}`
-                  : "Identité Merchant reconnue · rattachement établissement à finaliser"}
+                  : "Compte reconnu · votre établissement doit encore être associé"}
             </Text>
           </View>
-          {loading ? <ActivityIndicator size="small" /> : <Text style={styles.authorityState}>{ownership.ready ? "LIÉ" : "GATE"}</Text>}
+          {loading ? <ActivityIndicator size="small" /> : <Text style={styles.authorityState}>{ownership.ready ? "LIÉ" : "À LIER"}</Text>}
         </View>
 
         <WaterIntelRail
           tone="merchant"
           mode="pulse"
-          label="PULSE · KITCHEN TIDE"
+          label="SERVICE · RYTHME DE CUISINE"
           title={stats.pending > 0 ? `${stats.pending} décision${stats.pending > 1 ? "s" : ""} remonte${stats.pending > 1 ? "nt" : ""} à la surface.` : "Le service respire."}
           body={`${stats.kitchen} en cuisine · ${stats.ready} prête${stats.ready > 1 ? "s" : ""} · la priorité reste lisible et la décision reste humaine.`}
-          status={loading ? "SYNC" : "LIVE"}
+          status={loading ? "SYNCHRO" : "SERVICE"}
           reduceMotion={reduceMotion}
           onPress={() => go("/operations-live")}
-          accessibilityLabel="Ouvrir Kitchen Tide et la vue opérationnelle temps réel"
+          accessibilityLabel="Ouvrir l'activité de la cuisine et les commandes"
         />
 
-        <Text style={styles.kicker}>CUISINE · SERVICE · REMISE · LIVE</Text>
+        <Text style={styles.kicker}>CUISINE · COMMANDES · SERVICE</Text>
         <Text style={styles.hero}>Une décision claire.{`\n`}Le service avance.</Text>
         <Text style={styles.subtitle}>
           Le cockpit rassemble commandes, cuisine, présence et pilotage dans une lecture immédiate,
@@ -271,7 +271,7 @@ export default function MerchantSurfaceHome() {
             <Text style={styles.primaryEyebrow}>{ownership.ready ? "SERVICE ACTIF" : "IDENTITÉ D’ABORD"}</Text>
             <Text style={styles.primaryTitle}>{ownership.ready ? "Ouvrir les commandes" : "Sécuriser mon accès"}</Text>
             <Text style={styles.primaryBody}>
-              {ownership.ready ? "Votre établissement est lié à cette identité Merchant." : "Reconnectez l’identité Merchant si nécessaire."}
+              {ownership.ready ? "Votre établissement est associé à ce compte." : "Connectez votre compte restaurateur pour accéder aux commandes."}
             </Text>
           </View>
           <Text style={styles.primaryArrow}>→</Text>

@@ -157,7 +157,7 @@ export default function ClientSurfaceHome() {
         <View style={styles.topline}>
           <View style={styles.toplineCopy}>
             <Text style={styles.brand}>DELISHAFRICA®</Text>
-            <Text style={styles.role}>CLIENT · DISCOVERY OCEAN · S10J</Text>
+            <Text style={styles.role}>CLIENT · CUISINES ET DÉCOUVERTES</Text>
           </View>
           <Pressable
             onPress={() => go("/client-space")}
@@ -170,37 +170,38 @@ export default function ClientSurfaceHome() {
           </Pressable>
         </View>
 
-        <WaterIntelRail
-          tone="client"
-          mode="radar"
-          label="RADAR · DISCOVERY OCEAN"
-          title="Le marché vient à vous."
-          body="Cuisines ouvertes, signaux culturels et parcours en cours remontent dans un même courant, sans noyer votre choix."
-          status="LIVE"
-          reduceMotion={reduceMotion}
-          onPress={() => go("/live-market")}
-          accessibilityLabel="Ouvrir DelishAfrica Radar et le marché vivant"
-        />
-
-        <Text style={styles.kicker}>AFRICA · LIVE · À PORTÉE DE GESTE</Text>
+        <Text style={styles.kicker}>CUISINES D’AFRIQUE · À VOTRE PORTÉE</Text>
         <Text style={styles.hero}>Choisissez une table.{`\n`}Le reste se met en mouvement.</Text>
         <Text style={styles.subtitle}>
-          Découvrez, commandez et suivez chaque étape depuis un parcours continu, pensé pour rester simple
-          même quand tout s’accélère.
+          Découvrez les restaurants sans compte. Au moment de commander,
+          renseignez vos coordonnées et vérifiez vos contacts et votre adresse avant le paiement.
         </Text>
 
         <Pressable
           onPress={() => go("/restaurants")}
           style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
           accessibilityRole="button"
+          accessibilityLabel="Commander maintenant, choisir un restaurant et préparer mon panier"
         >
           <View style={styles.primaryCopy}>
             <Text style={styles.primaryEyebrow}>POUR VOUS · MAINTENANT</Text>
             <Text style={styles.primaryTitle}>Commander maintenant</Text>
-            <Text style={styles.primaryBody}>Tables actives, menus, panier et paiement.</Text>
+            <Text style={styles.primaryBody}>Restaurants, menus, panier et commande en un parcours clair.</Text>
           </View>
           <Text style={styles.primaryArrow}>→</Text>
         </Pressable>
+
+        <WaterIntelRail
+          tone="client"
+          mode="radar"
+          label="DÉCOUVRIR · RADAR EN COMPLÉMENT"
+          title="Explorer avant de choisir."
+          body="Le Radar vous aide à repérer cuisines et restaurants. Pour commander, commencez par le bouton ci-dessus ; une adresse visible n'est pas forcément ouverte."
+          status="DÉCOUVERTE"
+          reduceMotion={reduceMotion}
+          onPress={() => go("/live-market")}
+          accessibilityLabel="Ouvrir le Radar, une exploration complémentaire aux commandes"
+        />
 
         <Text style={styles.sectionLabel}>VOTRE PARCOURS</Text>
         <View style={styles.grid}>
@@ -231,7 +232,7 @@ export default function ClientSurfaceHome() {
           accessibilityRole="button"
         >
           <View>
-            <Text style={styles.legacyEyebrow}>LIVE MARKET · SURFACE ÉTENDUE</Text>
+            <Text style={styles.legacyEyebrow}>EXPLORATION · VUE D’ENSEMBLE</Text>
             <Text style={styles.legacyTitle}>Ouvrir l’expérience marketplace complète</Text>
           </View>
           <Text style={styles.legacyArrow}>→</Text>

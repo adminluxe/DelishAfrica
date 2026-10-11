@@ -32,9 +32,9 @@ const API = RAW_API.replace(/\/$/, "").endsWith("/api/v1")
 type RouteCard = { eyebrow: string; title: string; body: string; path: string };
 
 const ROUTES: RouteCard[] = [
-  { eyebrow: "OFFRES", title: "Missions", body: "Voir les propositions qui appartiennent à votre identité Courier.", path: "/orders" },
-  { eyebrow: "INTELLIGENCE", title: "Route Oracle", body: "ETA, score terrain et acceptation authentifiée.", path: "/route-oracle" },
-  { eyebrow: "NAVIGATION", title: "Carte Live", body: "Retrait, itinéraire et progression de la mission.", path: "/courier-real-map" },
+  { eyebrow: "OFFRES", title: "Missions", body: "Voir les propositions de missions destinées à votre compte.", path: "/orders" },
+  { eyebrow: "INTELLIGENCE", title: "Assistant de trajet", body: "ETA, score terrain et acceptation authentifiée.", path: "/route-oracle" },
+  { eyebrow: "NAVIGATION", title: "Carte en temps réel", body: "Retrait, itinéraire et progression de la mission.", path: "/courier-real-map" },
   { eyebrow: "PRÉSENCE", title: "Mon espace", body: "Disponibilité, zone active, confiance et profil terrain.", path: "/courier-space" },
 ];
 
@@ -165,14 +165,14 @@ export default function CourierSurfaceHome() {
         <View style={styles.topline}>
           <View style={styles.toplineCopy}>
             <Text style={styles.brand}>DELISHAFRICA®</Text>
-            <Text style={styles.role}>COURIER · ROUTE CURRENT · S10N</Text>
+            <Text style={styles.role}>LIVREUR · MISSIONS ET ITINÉRAIRES</Text>
           </View>
           <Pressable
             onPress={() => go("/courier-space")}
             style={styles.avatarButton}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Ouvrir Mon espace Courier"
+            accessibilityLabel="Ouvrir mon espace livreur"
           >
             <Text style={styles.avatarText}>GO</Text>
           </Pressable>
@@ -181,34 +181,34 @@ export default function CourierSurfaceHome() {
         <View style={[styles.identity, authReady ? styles.identityReady : styles.identityPending]}>
           <View style={[styles.identityDot, authReady && styles.identityDotReady]} />
           <View style={styles.identityCopy}>
-            <Text style={styles.identityLabel}>COURIER AUTHORITY</Text>
+            <Text style={styles.identityLabel}>ACCÈS LIVREUR</Text>
             <Text style={styles.identityText}>
               {loading
                 ? "Synchronisation de votre identité terrain…"
                 : authReady
-                  ? "Identité Courier active · offres isolées par assignment"
-                  : "Connexion Courier requise pour charger les missions"}
+                  ? "Compte livreur connecté · missions réservées à votre compte"
+                  : "Connectez votre compte livreur pour consulter vos missions"}
             </Text>
           </View>
-          {loading ? <ActivityIndicator size="small" /> : <Text style={styles.identityState}>{authReady ? "LIVE" : "GATE"}</Text>}
+          {loading ? <ActivityIndicator size="small" /> : <Text style={styles.identityState}>{authReady ? "ACTIF" : "ACCÈS"}</Text>}
         </View>
 
         <WaterIntelRail
           tone="courier"
           mode="oracle"
-          label="ORACLE · ROUTE CURRENT"
+          label="ASSISTANCE · ITINÉRAIRE"
           title={authReady ? `${stats.proposed + stats.accepted} signal${stats.proposed + stats.accepted > 1 ? "s" : ""} terrain en lecture.` : "Le terrain attend votre identité."}
-          body="ETA, offres, présence et progression se lisent dans un même courant. Oracle recommande ; vous décidez."
-          status={loading ? "SYNC" : authReady ? "LIVE" : "GATE"}
+          body="Temps estimé, offres et progression de la mission : des repères pour décider librement."
+          status={loading ? "SYNCHRO" : authReady ? "ACTIF" : "ACCÈS"}
           reduceMotion={reduceMotion}
           onPress={() => go(authReady ? "/terrain-live" : "/auth-session")}
-          accessibilityLabel="Ouvrir Route Current et la lecture terrain"
+          accessibilityLabel="Ouvrir la lecture des missions et de la progression en temps réel"
         />
 
-        <Text style={styles.kicker}>MISSION · ETA · RETRAIT · LIVRAISON</Text>
+        <Text style={styles.kicker}>MISSION · TEMPS ESTIMÉ · RETRAIT · LIVRAISON</Text>
         <Text style={styles.hero}>Le terrain décide.{`\n`}Vous gardez le contrôle.</Text>
         <Text style={styles.subtitle}>
-          Les offres serveur, Route Oracle, la carte et votre présence avancent ensemble, sans confondre
+          Les propositions de missions, la carte et votre disponibilité avancent ensemble, sans confondre
           recommandation et décision.
         </Text>
 
@@ -224,8 +224,8 @@ export default function CourierSurfaceHome() {
           accessibilityRole="button"
         >
           <View style={styles.primaryCopy}>
-            <Text style={styles.primaryEyebrow}>{authReady ? "SERVER DISPATCH" : "IDENTITÉ D’ABORD"}</Text>
-            <Text style={styles.primaryTitle}>{authReady ? "Voir mes missions" : "Ouvrir la connexion Courier"}</Text>
+            <Text style={styles.primaryEyebrow}>{authReady ? "MISSIONS À CONSULTER" : "IDENTITÉ D’ABORD"}</Text>
+            <Text style={styles.primaryTitle}>{authReady ? "Voir mes missions" : "Se connecter comme livreur"}</Text>
             <Text style={styles.primaryBody}>
               {authReady ? "Seules les offres rattachées à votre sujet Courier sont visibles." : "Une session OIDC Courier est nécessaire."}
             </Text>
