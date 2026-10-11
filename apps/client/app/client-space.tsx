@@ -15,9 +15,9 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import * as SecureStore from 'expo-secure-store';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { daInspectProfileTrust, DaProfileTrustResult } from '../utils/daProfileTrust';
-import { daAccountScopeId, daAccountStorageKey } from '../utils/daOrdersApi';
+import { daAccountScopeId, daAccountStorageKey, daSessionRehydrationStatus } from '../utils/daOrdersApi';
 import { daCanonicalContact, daLocalProofFresh } from '../utils/daProofIdentity';
 import { daProbeTerritoryTruth, type DaTerritoryTruthResult } from '../utils/daTerritoryTruth';
 import {
@@ -130,6 +130,8 @@ function toggleListValue(current: string[], value: string): string[] {
 }
 
 export default function ClientSpaceScreen() {
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+  const returnToCheckout = returnTo === 'checkout';
   const existing: ClientProfileLite | null = null;
   const [firstName, setFirstName] = useState(existing?.firstName || '');
   const [lastName, setLastName] = useState(existing?.lastName || '');
@@ -677,7 +679,16 @@ Utilisez uniquement le code le plus récent.`,
       await saveClientProfile(profile);
       setProfileId(profile.id);
       setLastSavedAt(profile.updatedAt);
-      if (continueToCheckout) router.push('/checkout-preflight' as any);
+      if (continueToCheckout) {
+        const session = await daSessionRehydrationStatus().catch(() => ({ ok: false }));
+        if (session.ok === true) {
+          router.push('/checkout-preflight' as any);
+        } else {
+          // The saved profile and cart stay intact. An unauthenticated Client
+          // is directed to account activation, not a second payment attempt.
+          router.push({ pathname: '/activate-account', params: { returnTo: 'checkout' } } as any);
+        }
+      }
       else Alert.alert('Profil enregistré', 'Vos informations sont conservées sur cet appareil. Pour commander, activez votre compte DelishAfrica puis connectez-vous.');
     } catch (error: any) {
       Alert.alert('Contrôle indisponible', error?.message || 'Réessayez dans un instant.');
@@ -727,14 +738,14 @@ Utilisez uniquement le code le plus récent.`,
             </View>
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push('/activate-account' as any)}
+              onPress={() => router.push({ pathname: '/activate-account', params: { returnTo: returnToCheckout ? 'checkout' : 'space' } } as any)}
               style={styles.secureAccountButton}
             >
               <Text style={styles.secureAccountButtonText}>Activer mon compte DelishAfrica</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push('/secure-session' as any)}
+              onPress={() => router.push({ pathname: '/secure-session', params: { returnTo: returnToCheckout ? 'checkout' : 'space' } } as any)}
               style={[styles.secureAccountButton, { backgroundColor: '#143C2C', marginTop: 10 }]}
             >
               <Text style={[styles.secureAccountButtonText, { color: '#FFE5A4' }]}>J’ai déjà un compte · Me connecter</Text>
@@ -910,7 +921,7 @@ Utilisez uniquement le code le plus récent.`,
             {checking ? <ActivityIndicator color="#07130E" /> : <Text style={styles.primaryText}>Enregistrer mon espace</Text>}
           </Pressable>
           <Pressable disabled={checking || !ownershipReady || !addressVerified} onPress={() => saveProfile(true)} style={[styles.secondaryButton, (!ownershipReady || !addressVerified) && styles.disabled]} accessibilityRole="button">
-            <Text style={styles.secondaryText}>Continuer vers la commande</Text>
+            <Text style={styles.secondaryText}>{returnToCheckout ? 'Reprendre ma commande' : 'Continuer vers la commande'}</Text>
           </Pressable>
           <Pressable onPress={() => router.replace('/' as any)} style={styles.backButton}><Text style={styles.backText}>Retour à l’accueil</Text></Pressable>
 
