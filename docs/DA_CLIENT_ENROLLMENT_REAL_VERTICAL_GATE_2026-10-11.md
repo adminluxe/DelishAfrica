@@ -118,3 +118,11 @@ Last updated 2026-10-11.
 - La socket serveur voit actuellement le **proxy immédiat** : c'est volontairement préférable à faire confiance à des en-têtes falsifiables, mais la véritable chaîne de proxies de confiance doit être auditée, avec tests en LAN et via Cloudflare/Nginx. Le rate-limit reste notamment ciblé par destinataire ; vérifier la scalabilité multi-instance avant lancement public.
 - La validation JWT **ne prouve pas** les permissions réelles du compte technique de provisionnement (FGAP Keycloak) ; vérifier la séparation des privilèges avec des tests interdits en sandbox indépendante.
 - Keycloak QA autonome, restauration complète PostgreSQL, SMTP de récupération et test d'un véritable nouveau Client : toujours **non validés**. La QA `127.0.0.1:3095` reste `enabled:false`; aucune création de compte réelle sur l'iPhone et aucun paiement Stripe déclenché. Poursuivre avec l'infrastructure autorisée, sans utiliser le realm partagé comme terrain d'expérimentation.
+
+
+### RISK — LIMITATION DE DÉBIT DERNIER PROXY (PR #35, encore NO-GO)
+
+- Le helper `trustedRequesterPeer` ignore les en-têtes IP falsifiables et transmet uniquement l'adresse de la socket serveur : bon comportement anti-spoofing en l'absence de configuration vérifiée des proxies.
+- Toutefois, `ClientEnrollmentRepository.reserve` limite à **5 réservations/heure par `requester_hmac`**, lequel provient actuellement de cette origine réseau. Si toutes les connexions arrivent par la même IP interne de Nginx/Cloudflare, **plusieurs nouveaux clients distincts pourraient partager le même quota**.
+- **Obligatoire avant lancement :** observer la topologie ingress réelle, configurer explicitement les proxys de confiance et l'épuration des en-têtes, puis tester par deux véritables appareils/adresses ainsi qu'une simulation d'en-tête usurpé. Concevoir deux protections complémentaires, par destinataire/identité et par adresse IP réelle validée à l'edge, avec anti-rejeu HMAC et limites fournisseurs conservés.
+- Ne **PAS** désactiver la limitation et ne pas prendre une adresse HTTP client non certifiée comme solution ; ne pas déclarer la sécurité anti-bots validée sur un test GitHub isolé.
