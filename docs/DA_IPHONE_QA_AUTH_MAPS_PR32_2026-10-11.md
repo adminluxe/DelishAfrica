@@ -40,3 +40,25 @@ Statut : **CANDIDAT UNIQUEMENT** ; branche `fix/client-native-maps-auth-ux-20261
 - **INTERDIT :** publication store, Stripe réel, fusion PR, modification des ports canoniques, publication sociale avant validation explicite et preuves sur appareils.
 
 — Passation DelishAfrica®, 2026-10-11
+
+
+## Résultats supplémentaires — Asus QA isolée, 11 octobre 2026
+
+**CI GitHub mobile `typescript-and-dependency-integrity` : SUCCESS** (PNPM 9.15.4, lockfile frozen, TS Client/Merchant/Courier, gardes statiques sur libellés et Maps). La configuration temporaire de la CI restreint les workspaces installés à Client, Merchant, Courier et packages ; la Landing et son ancien manifest/lock mismatch ne sont pas modifiés.
+
+**Installation réellement vérifiée sur Asus**, copie source privée :
+`C:\Users\Valérie\Documents\DA_PR32_SAFE_QA_20261011\fresh`
+- `pnpm install --frozen-lockfile --ignore-scripts` : EXIT 0, 1044 packages, scripts tiers non exécutés.
+- `apps/client/node_modules/react-native-maps/package.json` : **1.20.1**.
+- `apps/courier/node_modules/react-native-maps/package.json` : **1.20.1**.
+- TS 5.9 : **Client 0 erreur, Merchant 0 erreur, Courier 0 erreur**.
+- **Serveur QA Client** `http://192.168.1.5:8091` : Metro prêt, manifeste iOS identité `DelishAfrica Client`, `delishafricaclient`, bundle Hermes `HTTP 200`, **11 257 265 octets / 1708 modules**. Inspection du bundle : aucun des anciens messages visibles `Session Client Keycloak requise`, `Se connecter avec Keycloak`, `La session Keycloak est distincte` ; nouveaux messages de panier conservé et `DA_CLIENT_AUTH_REQUIRED` présents.
+- **Serveur QA Courier** `http://192.168.1.5:8093` : manifeste iOS identité `DelishAfrica Courier`, `delishafricacourier`, bundle Hermes `HTTP 200`, **7 381 011 octets / 1222 modules**.
+- **Merchant inchangé** : port LAN existant `192.168.1.5:8082`.
+- **Tous les serveurs officiels sont préservés** : Client `8081`, Merchant `8082`, Courier `8083`. Les nouveaux `8091/8093` sont temporaires, non destinés à la production ou à l'architecture VPS.
+- Le bundling iOS et le manifeste **ne prouvent PAS** que le binaire Dev Client installé sur le téléphone contient les modules natifs requis. Test tactile Client + Courier, avant validation définitive.
+- **Paiement interdit pendant cette QA** : le bundle candidate peut toujours viser l'API métier habituelle. Contrôler seulement navigation, conservation du panier, ouverture de la connexion, retour au préflight, et fallback carte, sans valider Stripe.
+
+**Caveat identité important :** dans le navigateur système, la page login OIDC réelle affiche toujours `Sign in to afritaste`; ce branding hébergé nécessite un changement de thème/réglage realm distinct et validé. Les textes des écrans React Native seuls ne rendent pas l'expérience totalement DelishAfrica.
+
+**No-go persistant :** pas de merge, de build EAS/store, de paiement réel, ni de modification backend/Auth/Cloudflare avant QA iPhone/Android, tests d’identité croisée et contrôle du thème.
