@@ -6,6 +6,8 @@ on:
       - fix/client-native-maps-auth-ux-20261011
     paths:
       - 'services/api-nest/src/client-enrollment/**'
+      - 'services/api-nest/src/identity-proof/**'
+      - 'services/api-nest/test/client-enrollment-requester-origin.test.cjs'
       - 'services/api-nest/src/app.module.ts'
       - 'services/api-nest/migrations/client-enrollment/**'
       - 'services/api-nest/test/client-enrollment.guard.test.cjs'
@@ -72,6 +74,10 @@ jobs:
           assert(!/docker\s+(rm|stop|restart|run)\b|DROP TABLE|TRUNCATE TABLE|ALTER TABLE|CREATE TABLE|curl\s+(-X|-d|--data)/i.test(source));
           console.log('SAFE_ENROLL_GATE_SCRIPT_OK');
           NODE
+      - name: Trusted requester origin and anti-spoofed-header tests
+        env:
+          TS_NODE_PROJECT: services/api-nest/tsconfig.json
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/client-enrollment-requester-origin.test.cjs
       - name: Client-only policy and mocked Keycloak provisioning tests
         env:
           TS_NODE_PROJECT: services/api-nest/tsconfig.json
