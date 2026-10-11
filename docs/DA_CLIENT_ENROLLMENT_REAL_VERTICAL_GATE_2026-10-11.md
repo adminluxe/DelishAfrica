@@ -67,3 +67,18 @@ Last updated 2026-10-11.
 - UX : phrases secrètes masquées si inscription non autorisée, suppression des actions de session absurdes à l'état déconnecté, distinction profil sauvegardé / compte activé, conservation de l'intention de retourner au checkout sans paiement automatique.
 - Dernier head code `bdf128cc6adab9bd7bfe501673172474c0b2977e` : CI SUCCESS (API, 3 apps, nouveaux tests d'identité, Keycloak mock). QA Asus isolée sur `http://192.168.1.5:8095` : TypeScript PASS, bundle iOS Hermes HTTP 200 depuis Toshiba ; ports 8081/8082/8083 préservés.
 - Reste : essai iPhone des nouvelles interactions, Keycloak permissions et récupération SMTP, enrôlement Client end-to-end puis paiement Stripe TEST surveillé, livraison complète. **AUCUN** paiement réel, build EAS, déploiement API ou store push.
+
+
+## 12 OCTOBRE 2026 — ÉTAT RÉEL DU VERROU D'ACTIVATION CLIENT
+
+**Capture iPhone reçue vers 00:24 :** `Votre compte, votre liberté`, deux contacts vérifiés, profil et panier conservés. Le message `L’activation des comptes arrive bientôt` est **exact** ; cette capture ne constitue pas une inscription Keycloak réussie.
+
+**Audit VPS live en lecture seule** via `ops/client-enrollment/DA_CLIENT_ENROLLMENT_SAFE_GATE_V1.sh` vérifié SHA Git : 3010/3011 HEALTH HTTP200, `/client-enrollment/readiness` HTTP404 sur les deux API, table `da_client_enrollments` absente, service account `delishafrica-client-enrollment` absent, SMTP Keycloak absent, trois options du realm `registration_allowed`, `reset_password_allowed`, `verify_email` à false ; rôle `client` existant, API ↔ Keycloak privé HTTP200. API Postmark/identity-proof fonctionnent pour les codes, pas pour la récupération Keycloak.
+
+**Sécurité PR #35 corrigée :** la première version candidate activait un compte Keycloak avant la confirmation durable du registre PostgreSQL. Séquence modifiée : compte initialement disabled + rôle client vérifié → commit du registre anti-rejeu → activation avec second contrôle ; désactivation compensatoire et `needs_review` en cas d'échec. Tests de panne simulée PostgreSQL/Keycloak, TypeScript API + 3 apps, audit script et thèmes : **SUCCESS** [GitHub Actions](https://github.com/adminluxe/DelishAfrica/actions/runs/38181325581/job/114594318612). Pas d'activation automatique.
+
+**RISQUE DE DÉPLOIEMENT IMPORTANT :** VPS `/opt/delishafrica/monorepo` contient des changements non committés liés à une autre branche. Aucun reset/merge/checkout forcé ; la branche PR #35 ne doit être promue qu'à partir d'une copie isolée, avec sauvegarde et rollback contrôlés. Les ports officiels Expo `8081/8082/8083` et APIs `3010/3011` ne sont pas modifiés.
+
+**TOUJOURS NO-GO** : déploiement candidat d'inscription, permissions fines du compte de service Keycloak, SMTP+test de récupération, migration de base avec backup, vraie création/connexion sur iPhone, paiement Stripe TEST et verticale Merchant/Courier ; aucun LIVE, Store push, nouveau build ou changement de realm réalisé.
+
+**Prochaine procédure détaillée :** [Roadbook et audit d'activation Client du 12 octobre](https://github.com/adminluxe/DelishAfrica/blob/feat/client-enrollment-secure-20261011/docs/DA_CLIENT_ENROLLMENT_ACTIVATION_GATE_2026-10-12.md) et [PR #35 DRAFT](https://github.com/adminluxe/DelishAfrica/pull/35).
