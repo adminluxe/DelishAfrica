@@ -2,6 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 import { loadOidcSession, refreshOidcSession } from '../auth/daOidcSession';
 import { daAttestIdentityProof } from './daTrustNetwork';
 import type { DaOidcSession } from '../auth/daOidcTypes';
+import { daCanonicalContact, daLocalProofFresh } from './daProofIdentity';
 
 const ROLE = 'client' as const;
 const PROFILE_BASE = '__DELISHAFRICA_CLIENT_PROFILE_LITE_V1__';
@@ -248,21 +249,19 @@ export async function daLinkVerifiedClientProfileAfterLogin(
   let profile: Record<string, any>;
   try { profile = JSON.parse(snapshot); } catch { return false; }
   if (!profile || typeof profile !== 'object' || !profile.id) return false;
-  const email = String(profile.email || '').trim().toLowerCase();
-  const phone = String(profile.phone || '').replace(/[\s()-]/g, '');
-  const expectedEmail = String(session.email || '').trim().toLowerCase();
+  const email = daCanonicalContact('email', profile.email);
+  const phone = daCanonicalContact('sms', profile.phone);
+  const expectedEmail = daCanonicalContact('email', session.email);
   const emailProof = profile.proofs?.email;
   const phoneProof = profile.proofs?.phone;
   if (!email || email !== expectedEmail ||
-      emailProof?.destination !== email || phoneProof?.destination !== phone ||
-      !emailProof?.token || !phoneProof?.token ||
-      Date.parse(emailProof.expiresAt) <= Date.now() ||
-      Date.parse(phoneProof.expiresAt) <= Date.now()) return false;
+      !daLocalProofFresh('email', emailProof, email) ||
+      !daLocalProofFresh('sms', phoneProof, phone)) return false;
 
   // Re-read server identity. No bearer, no migration.
   const principal = await canonicalOidcPrincipal(false);
   if (!principal || principal.subject !== session.subject ||
-      String(principal.user.email || '').toLowerCase() !== email) return false;
+      daCanonicalContact('email', principal.user.email) !== email) return false;
   const apiUrl = String(
     process.env.EXPO_PUBLIC_API_BASE_URL ||
       process.env.EXPO_PUBLIC_API_URL ||
@@ -278,7 +277,7 @@ export async function daLinkVerifiedClientProfileAfterLogin(
   } catch { return false; }
   if (!identity?.authenticated || identity?.role !== ROLE ||
       String(identity?.principal?.subject || '') !== session.subject ||
-      String(identity?.user?.email || '').trim().toLowerCase() !== email) return false;
+      daCanonicalContact('email', identity?.user?.email) !== email) return false;
 
   const proofs = await Promise.all([
     daAttestIdentityProof({
@@ -296,7 +295,7 @@ export async function daLinkVerifiedClientProfileAfterLogin(
   if (existing) {
     try {
       const previous = JSON.parse(existing) as Record<string, unknown>;
-      if (String(previous.email || '').toLowerCase() !== email) return false;
+      if (daCanonicalContact('email', previous.email) !== email) return false;
     } catch { return false; }
   } else {
     // Write before changing the active identity marker; failure leaves the
