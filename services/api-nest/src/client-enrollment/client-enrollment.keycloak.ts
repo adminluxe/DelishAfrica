@@ -98,6 +98,63 @@ export class ClientEnrollmentKeycloak {
     return data.access_token;
   }
 
+  private async verifyOnlyClientRole(
+    creds: AdminCredentials,
+    token: string,
+    subjectId: string,
+  ): Promise<void> {
+    const recheck = await this.request(
+      creds.base, '/admin/realms/' + REALM + '/users/' + subjectId + '/role-mappings/realm', token,
+    );
+    if (recheck.status !== 200) throw new Error('enrollment_role_recheck_failed');
+    const roles = await recheck.json() as Array<{ name: string; clientRole?: boolean }>;
+    if (
+      !Array.isArray(roles) ||
+      !roles.some((value) => value.name === CLIENT_ROLE && value.clientRole === false) ||
+      roles.some((value) => ['admin', 'merchant', 'courier', 'ops', 'realm-admin'].includes(value.name))
+    ) throw new Error('enrollment_role_verification_failed');
+  }
+
+  private checkCreatedId(subjectId: string): void {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(subjectId)) {
+      throw new Error('enrollment_user_id_invalid');
+    }
+  }
+
+  /** Called only AFTER ClientEnrollmentRepository.complete has committed. */
+  async activateClientIdentity(subjectId: string): Promise<void> {
+    this.checkCreatedId(subjectId);
+    const creds = this.credentials();
+    const token = await this.getToken(creds);
+    // Role permissions may have changed since provisioning; verify again.
+    await this.verifyOnlyClientRole(creds, token, subjectId);
+    const activate = await this.request(
+      creds.base, '/admin/realms/' + REALM + '/users/' + subjectId,
+      token, 'PUT', { enabled: true },
+    );
+    if (activate.status !== 204) throw new Error('enrollment_account_activation_failed');
+    const confirm = await this.request(
+      creds.base, '/admin/realms/' + REALM + '/users/' + subjectId, token,
+    );
+    if (confirm.status !== 200) throw new Error('enrollment_activation_recheck_failed');
+    const account = await confirm.json() as { enabled?: boolean; emailVerified?: boolean };
+    if (account.enabled !== true || account.emailVerified !== true) {
+      throw new Error('enrollment_activation_not_confirmed');
+    }
+  }
+
+  /** Best-effort compensation if the ledger or activation fails. */
+  async disableClientIdentity(subjectId: string): Promise<void> {
+    this.checkCreatedId(subjectId);
+    const creds = this.credentials();
+    const token = await this.getToken(creds);
+    const response = await this.request(
+      creds.base, '/admin/realms/' + REALM + '/users/' + subjectId,
+      token, 'PUT', { enabled: false },
+    );
+    if (response.status !== 204) throw new Error('enrollment_compensation_failed');
+  }
+
   async createClientIdentity(input: ClientIdentityInput): Promise<string> {
     const creds = this.credentials();
     const token = await this.getToken(creds);
@@ -148,23 +205,11 @@ export class ClientEnrollmentKeycloak {
       );
       if (mapped.status !== 204) throw new Error('enrollment_realm_role_mapping_failed');
 
-      const recheck = await this.request(
-        creds.base, '/admin/realms/' + REALM + '/users/' + createdId + '/role-mappings/realm', token,
-      );
-      if (recheck.status !== 200) throw new Error('enrollment_role_recheck_failed');
-      const roles = await recheck.json() as Array<{ name: string; clientRole?: boolean }>;
-      if (
-        !Array.isArray(roles) ||
-        !roles.some((value) => value.name === CLIENT_ROLE && value.clientRole === false) ||
-        roles.some((value) => ['admin', 'merchant', 'courier', 'ops', 'realm-admin'].includes(value.name))
-      ) throw new Error('enrollment_role_verification_failed');
+      await this.verifyOnlyClientRole(creds, token, createdId);
 
-      // Activation is the LAST step, after the role is proven to be Client-only.
-      const activate = await this.request(
-        creds.base, '/admin/realms/' + REALM + '/users/' + createdId,
-        token, 'PUT', { enabled: true },
-      );
-      if (activate.status !== 204) throw new Error('enrollment_account_activation_failed');
+      // Two-phase enrollment: provisioning returns a DISABLED identity.
+      // The enrollment ledger must be durably committed BEFORE the account
+      // becomes able to authenticate. A crash now leaves a disabled account.
       return createdId;
     } catch (error) {
       // Fail closed after partial remote creation. Require operator reconciliation.
