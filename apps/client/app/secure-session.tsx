@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useDaPkceAuth } from '../hooks/useDaPkceAuth';
+import { daCaptureClientProfileBeforeLogin, daLinkVerifiedClientProfileAfterLogin } from '../utils/daOrdersApi';
 
 export default function SecureSessionScreen() {
   const router = useRouter();
@@ -26,10 +27,24 @@ export default function SecureSessionScreen() {
   }, [auth.session.status]);
 
   async function signIn() {
+    // Snapshot pre-login guest data; the OIDC subject is unknown until PKCE
+    // succeeds. Never reuse an old profile without an exact identity match.
+    const snapshot = await daCaptureClientProfileBeforeLogin().catch(() => null);
     const next = await auth.signIn();
-    if (next.status === 'authenticated' && returnToCheckout) {
-      // A successful login resumes the preflight, never the payment request.
-      router.replace('/checkout-preflight' as any);
+    if (next.status === 'authenticated') {
+      const linked = await daLinkVerifiedClientProfileAfterLogin(next, snapshot).catch(() => false);
+      if (returnToCheckout) {
+        if (linked) {
+          // Only navigate to preflight, NEVER automatically present Stripe.
+          router.replace('/checkout-preflight' as any);
+        } else {
+          Alert.alert(
+            'Votre compte est connecté',
+            'Pour protéger votre commande, reconfirmez les contacts associés à ce compte.',
+            [{ text: 'Mon espace', onPress: () => router.replace('/client-space' as any) }],
+          );
+        }
+      }
       return;
     }
     if (next.status === 'error') {
