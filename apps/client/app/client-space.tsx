@@ -718,7 +718,7 @@ Utilisez uniquement le code le plus récent.`,
               <Text style={styles.secureAccountKicker}>COMPTE DELISHAFRICA</Text>
               <Text style={styles.secureAccountTitle}>Connexion sécurisée</Text>
               <Text style={styles.secureAccountText}>
-                La session Keycloak est distincte des preuves locales SMS, e-mail et adresse.
+                Votre compte DelishAfrica protège vos commandes. Vos contacts et votre adresse sont vérifiés séparément, au moment nécessaire.
               </Text>
             </View>
             <Pressable
@@ -726,7 +726,7 @@ Utilisez uniquement le code le plus récent.`,
               onPress={() => router.push('/secure-session' as any)}
               style={styles.secureAccountButton}
             >
-              <Text style={styles.secureAccountButtonText}>Ouvrir ma session</Text>
+              <Text style={styles.secureAccountButtonText}>Gérer ma connexion</Text>
             </Pressable>
           </View>
 
