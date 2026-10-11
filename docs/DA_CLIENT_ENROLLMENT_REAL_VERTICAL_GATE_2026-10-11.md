@@ -54,3 +54,9 @@ A separate offline kit was prepared 2026-10-11: DA_SAFE_DEMO_ORDERS_RESET_V1.py,
 **Hard facts to preserve in subsequent chats:** official VPS repository is /opt/delishafrica/monorepo (contains uncommitted API, orders and financial state changes that MUST NOT be reset); canonical VPS ports 3010 / 8081 / 8082 / 8083 according to pinned roadbook, while Asus iOS QA on 192.168.1.5 used original ports 8081/8082/8083 and temporary PR32 QA ports 8091/8093. Do not conflate server locations or assign new canonical ports.
 
 Last updated 2026-10-11.
+## 11/10/2026 — Blocage LAN iPhone DEV sur QA 8095
+- Image iPhone : « No development servers found » et « Failed to connect to http://192.168.1.5:8095 » ; ne pas classer cela comme défaillance du serveur tant que l'accès Safari/iPhone n'est pas connu.
+- Asus Wi-Fi 192.168.1.5/24 (privé), Node 8095 écoute ; Windows Firewall Node.js déjà ouvert sur le réseau privé ; Toshiba 192.168.1.33/24 ouvre `8095/status` en HTTP 200 ; manifeste iOS HTTP 200. Metro 8095 redémarré seul en mode interactif, autres ports conservés.
+- IPA DEV du 19/09 : NSAllowsLocalNetworking=true, mais NSLocalNetworkUsageDescription et NSBonjourServices absents. PR #35 ajoute les deux clés **uniquement aux builds EAS development** ; test DEV/PROD GitHub CI SUCCESS. Un nouveau binaire sera nécessaire pour appliquer ces clés si les vérifications iPhone le justifient ; `eas build:resign` ne modifie pas l'Info.plist natif.
+- Test à faire depuis Safari iPhone : `http://192.168.1.5:8095/status` ; attendu `packager-status:running`. Si OK, vérifier autorisation Réseau local de DA Client DEV. Sinon, vérifier SSID/VPN/isolation et adresse IP iPhone. Diagnostic non clôturé sans preuve de l'iPhone.
+- ZÉRO changement du VPS live / Keycloak / Stripe / Stores ; aucun EAS build ni dépense.
