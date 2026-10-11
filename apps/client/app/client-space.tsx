@@ -723,10 +723,17 @@ Utilisez uniquement le code le plus récent.`,
             </View>
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push('/secure-session' as any)}
+              onPress={() => router.push('/activate-account' as any)}
               style={styles.secureAccountButton}
             >
-              <Text style={styles.secureAccountButtonText}>Gérer ma connexion</Text>
+              <Text style={styles.secureAccountButtonText}>Activer mon compte DelishAfrica</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/secure-session' as any)}
+              style={[styles.secureAccountButton, { backgroundColor: '#143C2C', marginTop: 10 }]}
+            >
+              <Text style={[styles.secureAccountButtonText, { color: '#FFE5A4' }]}>J’ai déjà un compte · Me connecter</Text>
             </Pressable>
           </View>
 
