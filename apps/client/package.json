@@ -86,7 +86,7 @@
     "metro-config": "^0.83.3",
     "metro-resolver": "^0.83.3",
     "metro-runtime": "^0.83.3",
-    "react-native-maps": "^1.20.1",
+    "react-native-maps": "1.20.1",
     "socket.io-client": "^4.8.1",
     "typescript": "~5.9.3"
   },
