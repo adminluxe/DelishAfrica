@@ -9,6 +9,9 @@ const {
 const {
   ClientEnrollmentKeycloak,
 } = require('../src/client-enrollment/client-enrollment.keycloak');
+const {
+  ClientEnrollmentService,
+} = require('../src/client-enrollment/client-enrollment.service');
 
 const valid = {
   email: '  TEST@Example.Org ',
@@ -96,7 +99,7 @@ const identity = {
   password: 'UnePhraseTresLongue#4',
 };
 
-test('Keycloak provisioning creates ONLY a Client realm-role identity', async () => {
+test('Keycloak provisioning stages only a DISABLED Client realm-role identity', async () => {
   const captured = [];
   await withKeycloakMock(async (url, options = {}) => {
     const path = new URL(url).pathname;
@@ -121,8 +124,7 @@ test('Keycloak provisioning creates ONLY a Client realm-role identity', async ()
     }
     if (path.endsWith('/role-mappings/realm')) return response(200, [role]);
     if (path.endsWith('/users/' + oid) && options.method === 'PUT') {
-      assert.equal(JSON.parse(options.body).enabled, true);
-      return response(204, null);
+      throw new Error('NO_ENABLE_DURING_PROVISIONING');
     }
     throw new Error('unexpected_fetch_path');
   }, async () => {
@@ -130,7 +132,8 @@ test('Keycloak provisioning creates ONLY a Client realm-role identity', async ()
     assert.equal(id, oid);
   });
   assert.equal(captured.filter((call) => call.method === 'POST' && call.path.endsWith('/users')).length, 1);
-  assert.equal(captured.at(-1).method, 'PUT', 'activation MUST happen after role re-check');
+  assert.equal(captured.some((call) => call.method === 'PUT'), false,
+    'a newly staged identity MUST remain disabled until the DB ledger commits');
 });
 
 test('mismatched role grants never produce a Client identity', async () => {
@@ -183,5 +186,114 @@ test('non-private Admin API host is rejected before any token request', async ()
       /enrollment_keycloak_endpoint_not_private/,
     );
     assert.equal(calls, 0);
+  });
+});
+
+
+test('Keycloak activation revalidates the Client role AND enabled state', async () => {
+  const calls = [];
+  await withKeycloakMock(async (url, options = {}) => {
+    const path = new URL(url).pathname;
+    const method = options.method || 'GET';
+    calls.push(method + ' ' + path);
+    if (path.endsWith('/protocol/openid-connect/token')) return response(200, { access_token: 'a'.repeat(40) });
+    if (path.endsWith('/role-mappings/realm')) return response(200, [role]);
+    if (path.endsWith('/users/' + oid) && method === 'PUT') {
+      assert.deepEqual(JSON.parse(options.body), { enabled: true });
+      return response(204, null);
+    }
+    if (path.endsWith('/users/' + oid) && method === 'GET') {
+      return response(200, { enabled: true, emailVerified: true });
+    }
+    throw new Error('unexpected_fetch');
+  }, async () => {
+    await new ClientEnrollmentKeycloak().activateClientIdentity(oid);
+  });
+  const idxRoles = calls.findIndex((x) => x.includes('/role-mappings/realm'));
+  const idxEnable = calls.findIndex((x) => x.startsWith('PUT ') && x.endsWith('/users/' + oid));
+  const idxConfirm = calls.findIndex((x) => x.startsWith('GET ') && x.endsWith('/users/' + oid));
+  assert(idxRoles >= 0 && idxEnable > idxRoles && idxConfirm > idxEnable);
+});
+
+async function withEnrollmentFlags(run) {
+  const values = {
+    DATABASE_URL: 'postgres://unused-test-only',
+    DA_CLIENT_ENROLLMENT_ENABLED: 'true',
+    DA_CLIENT_ENROLLMENT_HMAC_SECRET: 'h'.repeat(48),
+    DA_CLIENT_ENROLLMENT_KC_BASE_URL: 'http://afritaste-keycloak:8080/',
+    DA_CLIENT_ENROLLMENT_KC_CLIENT_ID: 'delishafrica-client-enrollment',
+    DA_CLIENT_ENROLLMENT_KC_CLIENT_SECRET: 'test-only-service-credential',
+    DA_CLIENT_ENROLLMENT_SECURITY_GATE: 'APPROVED_AFTER_REVIEW',
+  };
+  const old = Object.fromEntries(Object.keys(values).map((k) => [k, process.env[k]]));
+  Object.assign(process.env, values);
+  try { await run(); }
+  finally {
+    for (const [k,v] of Object.entries(old)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+}
+
+test('one Client registration durably commits BEFORE activating the new identity', async () => {
+  await withEnrollmentFlags(async () => {
+    const order = [];
+    const proof = { attest: () => ({ valid: true }) };
+    const repo = {
+      reserve: async () => { order.push('reserved'); return oid; },
+      complete: async () => { order.push('ledger_ready'); },
+      flagForReview: async () => { order.push('review'); },
+    };
+    const kc = {
+      createClientIdentity: async () => { order.push('staged_disabled'); return oid; },
+      activateClientIdentity: async () => { order.push('activated'); },
+      disableClientIdentity: async () => { order.push('disabled'); },
+    };
+    const output = await new ClientEnrollmentService(proof, repo, kc).register(valid, 'test-client');
+    assert.equal(output.status, 'account_created');
+    assert.equal(output.paymentStarted, false);
+    assert.deepEqual(order, ['reserved','staged_disabled','ledger_ready','activated']);
+  });
+});
+
+test('when DB commit fails, the Keycloak user NEVER activates and is disabled', async () => {
+  await withEnrollmentFlags(async () => {
+    const order = [];
+    const proof = { attest: () => ({ valid: true }) };
+    const repo = {
+      reserve: async () => { order.push('reserved'); return oid; },
+      complete: async () => { order.push('db_error'); throw new Error('simulated_db_commit_failure'); },
+      flagForReview: async () => { order.push('review'); },
+    };
+    const kc = {
+      createClientIdentity: async () => { order.push('staged_disabled'); return oid; },
+      activateClientIdentity: async () => { order.push('BUG_ACTIVATED'); },
+      disableClientIdentity: async () => { order.push('disabled'); },
+    };
+    await assert.rejects(
+      new ClientEnrollmentService(proof, repo, kc).register(valid, 'test-client'),
+      /Service Unavailable|ServiceUnavailableException|503|client_enrollment_pending_review/,
+    );
+    assert.deepEqual(order, ['reserved','staged_disabled','db_error','disabled','review']);
+  });
+});
+
+test('failed activation compensates and quarantines even after a successful DB commit', async () => {
+  await withEnrollmentFlags(async () => {
+    const order = [];
+    const proof = { attest: () => ({ valid: true }) };
+    const repo = {
+      reserve: async () => { order.push('reserved'); return oid; },
+      complete: async () => { order.push('ledger_ready'); },
+      flagForReview: async () => { order.push('review'); },
+    };
+    const kc = {
+      createClientIdentity: async () => { order.push('staged_disabled'); return oid; },
+      activateClientIdentity: async () => { order.push('activation_error'); throw new Error('simulated_keycloak_outage'); },
+      disableClientIdentity: async () => { order.push('disabled'); },
+    };
+    await assert.rejects(new ClientEnrollmentService(proof, repo, kc).register(valid,'test-client'));
+    assert.deepEqual(order,['reserved','staged_disabled','ledger_ready','activation_error','disabled','review']);
   });
 });
