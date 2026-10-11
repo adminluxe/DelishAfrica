@@ -141,6 +141,7 @@ test('Keycloak provisioning stages only a DISABLED Client realm-role identity', 
       assert.deepEqual(JSON.parse(options.body).map((r) => r.name), ['client']);
       return response(204, null);
     }
+    if (path.endsWith('/role-mappings/realm/composite')) return response(200, [role]);
     if (path.endsWith('/role-mappings/realm')) return response(200, [role]);
     if (path.endsWith('/users/' + oid) && options.method === 'PUT') {
       throw new Error('NO_ENABLE_DURING_PROVISIONING');
@@ -209,20 +210,27 @@ test('non-private Admin API host is rejected before any token request', async ()
 });
 
 
-test('Keycloak activation revalidates the Client role AND enabled state', async () => {
+test('Keycloak activation revalidates effective Client-only roles, provenance and enabled state', async () => {
   const calls = [];
+  let userEnabled = false;
   await withKeycloakMock(async (url, options = {}) => {
     const path = new URL(url).pathname;
     const method = options.method || 'GET';
     calls.push(method + ' ' + path);
     if (path.endsWith('/protocol/openid-connect/token')) return response(200, { access_token: 'a'.repeat(40) });
+    if (path.endsWith('/role-mappings/realm/composite')) return response(200, [role]);
     if (path.endsWith('/role-mappings/realm')) return response(200, [role]);
     if (path.endsWith('/users/' + oid) && method === 'PUT') {
       assert.deepEqual(JSON.parse(options.body), { enabled: true });
+      userEnabled = true;
       return response(204, null);
     }
     if (path.endsWith('/users/' + oid) && method === 'GET') {
-      return response(200, { enabled: true, emailVerified: true });
+      return response(200, {
+        enabled: userEnabled,
+        emailVerified: true,
+        attributes: { delishafrica_enrollment_version: ['client-v1'] },
+      });
     }
     throw new Error('unexpected_fetch');
   }, async () => {
@@ -230,8 +238,51 @@ test('Keycloak activation revalidates the Client role AND enabled state', async 
   });
   const idxRoles = calls.findIndex((x) => x.includes('/role-mappings/realm'));
   const idxEnable = calls.findIndex((x) => x.startsWith('PUT ') && x.endsWith('/users/' + oid));
-  const idxConfirm = calls.findIndex((x) => x.startsWith('GET ') && x.endsWith('/users/' + oid));
-  assert(idxRoles >= 0 && idxEnable > idxRoles && idxConfirm > idxEnable);
+  const idxIdentityBefore = calls.findIndex((x) => x.startsWith('GET ') && x.endsWith('/users/' + oid));
+  const idxConfirm = calls.findLastIndex((x) => x.startsWith('GET ') && x.endsWith('/users/' + oid));
+  assert(idxRoles >= 0 && idxIdentityBefore > idxRoles && idxEnable > idxIdentityBefore && idxConfirm > idxEnable);
+});
+
+
+test('composite Merchant privilege is rejected even when direct role claims say Client', async () => {
+  let activated = false;
+  await withKeycloakMock(async (url, options = {}) => {
+    const route = new URL(url).pathname;
+    const method = options.method || 'GET';
+    if (route.endsWith('/protocol/openid-connect/token')) return response(200, { access_token: 'a'.repeat(40) });
+    if (route.endsWith('/role-mappings/realm/composite')) {
+      return response(200, [role, { name: 'merchant', clientRole: false }]);
+    }
+    if (route.endsWith('/role-mappings/realm')) return response(200, [role]);
+    if (method === 'PUT') activated = true;
+    throw new Error('not_expected');
+  }, async () => {
+    await assert.rejects(
+      new ClientEnrollmentKeycloak().activateClientIdentity(oid),
+      /enrollment_effective_roles_unsafe/,
+    );
+  });
+  assert.equal(activated, false, 'composite Merchant authority blocks activation');
+});
+
+test('identity without Client onboarding provenance cannot be enabled', async () => {
+  let activated = false;
+  await withKeycloakMock(async (url, options = {}) => {
+    const route = new URL(url).pathname;
+    const method = options.method || 'GET';
+    if (route.endsWith('/protocol/openid-connect/token')) return response(200, { access_token: 'a'.repeat(40) });
+    if (route.endsWith('/role-mappings/realm/composite')) return response(200, [role]);
+    if (route.endsWith('/role-mappings/realm')) return response(200, [role]);
+    if (route.endsWith('/users/' + oid) && method === 'GET') return response(200, {
+      enabled: false, emailVerified: true, attributes: { delishafrica_enrollment_version: ['unknown'] },
+    });
+    if (method === 'PUT') activated = true;
+    throw new Error('not_expected');
+  }, async () => {
+    await assert.rejects(new ClientEnrollmentKeycloak().activateClientIdentity(oid),
+      /enrollment_identity_provenance_unsafe/);
+  });
+  assert.equal(activated, false);
 });
 
 async function withEnrollmentFlags(run) {
