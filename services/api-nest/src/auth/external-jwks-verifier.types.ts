@@ -55,6 +55,9 @@ export type DaExternalTokenVerification =
         | 'issued_in_future'
         | 'subject_missing'
         | 'client_role_missing'
+        | 'client_role_ambiguous'
+        | 'client_audience_ambiguous'
+        | 'client_client_privilege_detected'
         | 'merchant_role_missing'
         | 'courier_role_missing'
         | 'ops_role_missing';
