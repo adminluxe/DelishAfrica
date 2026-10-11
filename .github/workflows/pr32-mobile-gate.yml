@@ -33,7 +33,7 @@ jobs:
           corepack prepare pnpm@9.15.4 --activate
           pnpm --version
       - name: Offline-safe package scripts and frozen lock
-        run: pnpm install --frozen-lockfile --ignore-scripts
+        run: pnpm --filter 'client...' --filter 'courier...' --filter 'merchant...' install --frozen-lockfile --ignore-scripts
       - name: Client types
         run: pnpm --filter client exec tsc --noEmit
       - name: Courier types
