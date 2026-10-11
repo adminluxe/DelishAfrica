@@ -15,7 +15,9 @@ type PoolLike = {
 type PoolConstructor = new (options: Record<string, unknown>) => PoolLike;
 
 const PG_MODULE = path.resolve(__dirname, '../../.runtime-vendor/pg-runtime/node_modules/pg');
-const { Pool } = require(PG_MODULE) as { Pool: PoolConstructor };
+// Resolve pg only if the gated enrollment feature actually opens a DB
+// connection. Main API and CI must boot with enrollment disabled even when
+// the optional private runtime vendor directory is unavailable.
 
 export type ClientEnrollmentReservation = {
   emailHash: string;
@@ -34,6 +36,12 @@ export class ClientEnrollmentRepository implements OnModuleDestroy {
     if (this.pool) return this.pool;
     const connectionString = String(process.env.DATABASE_URL || '');
     if (!connectionString) throw new Error('client_enrollment_database_not_configured');
+    let Pool: PoolConstructor;
+    try {
+      ({ Pool } = require(PG_MODULE) as { Pool: PoolConstructor });
+    } catch {
+      throw new Error('client_enrollment_pg_runtime_missing');
+    }
     this.pool = new Pool({
       connectionString,
       max: 3,
