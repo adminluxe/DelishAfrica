@@ -10,7 +10,22 @@ import {
   View,
 } from "react-native";
 import { router } from "expo-router";
-import MapView, { Marker, Polyline } from "react-native-maps";
+declare const require: (name: string) => any;
+
+const nativeMaps = (() => {
+  try {
+    const m = require("react-native-maps");
+    const MapView = m?.default || m?.MapView;
+    if (!MapView || !m?.Marker || !m?.Polyline) return null;
+    return {
+      MapView: MapView as React.ComponentType<any>,
+      Marker: m.Marker as React.ComponentType<any>,
+      Polyline: m.Polyline as React.ComponentType<any>,
+    };
+  } catch {
+    return null;
+  }
+})();
 
 const THIEYP = {
   latitude: 50.8359,
@@ -44,7 +59,8 @@ export default function CourierNativeMapSmokeScreen() {
         </View>
 
         <View style={styles.mapShell}>
-          <MapView
+          {nativeMaps ? (
+          <nativeMaps.MapView
             style={styles.map}
             initialRegion={INITIAL_REGION}
             mapType="standard"
@@ -55,15 +71,25 @@ export default function CourierNativeMapSmokeScreen() {
             showsScale
             accessibilityLabel="Carte native Courier entre Thieyp et une destination de test"
           >
-            <Marker coordinate={THIEYP} title="Thieyp" description="Rue Longue Vie 46 · Ixelles" />
-            <Marker coordinate={CLIENT_DEMO} title="Destination test" description="Point de validation R9A2A" />
-            <Polyline
+            <nativeMaps.Marker coordinate={THIEYP} title="Thieyp" description="Rue Longue Vie 46 · Ixelles" />
+            <nativeMaps.Marker coordinate={CLIENT_DEMO} title="Destination test" description="Point de validation R9A2A" />
+            <nativeMaps.Polyline
               coordinates={[THIEYP, CLIENT_DEMO]}
               strokeColor="#D9A928"
               strokeWidth={5}
               lineDashPattern={[10, 8]}
             />
-          </MapView>
+          </nativeMaps.MapView>
+          ) : (
+            <View style={[styles.map, { alignItems: "center", justifyContent: "center", padding: 22 }]}>
+              <Text style={{ color: "#F7FFF9", fontSize: 18, fontWeight: "800", textAlign: "center" }}>
+                Carte native non disponible
+              </Text>
+              <Text style={{ color: "#B7D4C1", textAlign: "center", marginTop: 10 }}>
+                Ce Dev Client ne charge pas le module Maps. Aucun appel métier n’a été effectué.
+              </Text>
+            </View>
+          )}
 
           <View pointerEvents="none" style={styles.mapBadge}>
             <Text style={styles.mapBadgeText}>APPLE MAPS · NATIF IOS</Text>
@@ -74,7 +100,9 @@ export default function CourierNativeMapSmokeScreen() {
           <Text style={styles.truthKicker}>VÉRITÉ DU PALIER</Text>
           <Text style={styles.truthTitle}>Deux repères. Une ligne. Zéro logique métier.</Text>
           <Text style={styles.truthText}>
-            Si cette carte s’affiche et se déplace sans écran rouge, le module natif Maps du nouveau Dev Client Courier est validé.
+            {nativeMaps
+              ? "Si cette carte se déplace sans erreur, la compatibilité du module natif Maps peut être contrôlée."
+              : "Le test cartographique est négatif pour ce binaire. Le reste de la mission demeure disponible."}
           </Text>
         </View>
 

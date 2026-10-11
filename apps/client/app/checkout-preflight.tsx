@@ -1,4 +1,4 @@
-import { daOrdersFetch, daAccountStorageKey, daAccountScopeId } from "../utils/daOrdersApi";
+import { daOrdersFetch, daAccountStorageKey, daAccountScopeId, daSessionRehydrationStatus } from "../utils/daOrdersApi";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -659,6 +659,15 @@ export default function CheckoutPreflightScreen() {
         return;
       }
 
+      // Require an authenticated customer BEFORE proof attestation and
+      // Stripe setup. Guest browsing/cart never require an account.
+      const authStatus = await daSessionRehydrationStatus();
+      if (authStatus.ok !== true) {
+        const authError = new Error("Connectez-vous pour continuer votre commande.");
+        (authError as Error & { code: string }).code = "DA_CLIENT_AUTH_REQUIRED";
+        throw authError;
+      }
+
       setPhase("Vérification de l’adresse et des contacts...");
       const [phoneAttestation, emailAttestation, addressRecheck] = await Promise.all([
         daAttestIdentityProof({
@@ -785,11 +794,47 @@ export default function CheckoutPreflightScreen() {
       const paidCommit = await restorePendingPaymentCommit();
       if (paidCommit) {
         setPendingCommit(paidCommit);
-        setPhase(`Paiement protégé · ${message}`);
-        Alert.alert("Commande à réconcilier", message);
+        if (error?.code === "DA_CLIENT_AUTH_REQUIRED") {
+          // Paid orders can ONLY be reconciled; never start another charge.
+          setPhase("Paiement protégé. Connectez-vous pour retrouver votre commande.");
+          Alert.alert(
+            "Votre paiement reste protégé",
+            "Reconnectez-vous pour retrouver votre commande. Aucun nouveau paiement ne sera lancé.",
+            [
+              {
+                text: "Me connecter",
+                onPress: () =>
+                  router.push({
+                    pathname: "/secure-session",
+                    params: { returnTo: "checkout" },
+                  } as any),
+              },
+              { text: "Plus tard", style: "cancel" },
+            ],
+          );
+        } else {
+          setPhase(`Paiement protégé · ${message}`);
+          Alert.alert("Commande à réconcilier", message);
+        }
+      } else if (error?.code === "DA_CLIENT_AUTH_REQUIRED") {
+        // Preserve the current cart; authentication is an explicit user action.
+        // Never restart a PaymentIntent or charge the customer on OAuth return.
+        const notice = "Votre panier est conservé. Connectez-vous à DelishAfrica pour reprendre votre commande.";
+        setPhase("Votre panier est prêt. Connectez-vous pour continuer.");
+        Alert.alert("Votre commande vous attend", notice, [
+          {
+            text: "Continuer",
+            onPress: () =>
+              router.push({
+                pathname: "/secure-session",
+                params: { returnTo: "checkout" },
+              } as any),
+          },
+          { text: "Plus tard", style: "cancel" },
+        ]);
       } else {
-        setPhase(`Checkout interrompu : ${message}`);
-        Alert.alert("Checkout interrompu", message, [
+        setPhase("Nous ne pouvons pas finaliser votre commande pour le moment.");
+        Alert.alert("Commande non finalisée", message, [
           { text: "Mon espace", onPress: () => router.push("/client-space" as any) },
           { text: "Fermer", style: "cancel" },
         ]);

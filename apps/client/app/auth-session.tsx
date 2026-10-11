@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { useDaPkceAuth } from '../hooks/useDaPkceAuth';
 
-const APP_LABEL = 'l’expérience Client';
 const ROLE_LABEL = 'CLIENT';
 const ACCENT = '#4BA3FF';
 
@@ -24,16 +23,16 @@ export default function AuthSessionScreen() {
   const oidc = useDaPkceAuth();
 
   const statusLabel = useMemo(() => {
-    if (oidc.session.status === 'authenticated') return 'Session Keycloak active';
-    if (oidc.session.status === 'reauth_required') return 'Réauthentification requise';
-    if (oidc.session.status === 'error') return 'Session à vérifier';
-    return 'Connexion sécurisée prête';
+    if (oidc.session.status === 'authenticated') return 'Compte DelishAfrica connecté';
+    if (oidc.session.status === 'reauth_required') return 'Reconnectez-vous pour continuer';
+    if (oidc.session.status === 'error') return 'Connexion à vérifier';
+    return 'Connexion DelishAfrica prête';
   }, [oidc.session.status]);
 
   async function login() {
     const next = await oidc.signIn();
     if (next.status === 'error') {
-      Alert.alert('Connexion sécurisée', next.reason || 'Connexion interrompue.');
+      Alert.alert('Connexion DelishAfrica', 'Nous ne pouvons pas vous connecter pour le moment. Réessayez.');
     }
   }
 
@@ -44,7 +43,7 @@ export default function AuthSessionScreen() {
           <Text style={[styles.kicker, { color: ACCENT }]}>DELISHAFRICA® · {ROLE_LABEL}</Text>
           <Text style={styles.title}>Connexion sécurisée</Text>
           <Text style={styles.subtitle}>
-            Authorization Code + PKCE S256 pour {APP_LABEL}, sans secret embarqué.
+            Connectez-vous en toute confiance pour retrouver vos commandes et votre espace DelishAfrica.
           </Text>
           <View style={[styles.pill, { borderColor: ACCENT }]}>
             <Text style={[styles.pillText, { color: ACCENT }]}>{statusLabel}</Text>
@@ -53,14 +52,14 @@ export default function AuthSessionScreen() {
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Session Client</Text>
-          <Text style={styles.row}>Discovery : {oidc.discoveryReady ? 'prête' : 'chargement'}</Text>
-          <Text style={styles.row}>Requête PKCE : {oidc.requestReady ? 'prête' : 'préparation'}</Text>
-          <Text style={styles.row}>Rôle attendu : {oidc.session.role}</Text>
+          <Text style={styles.row}>Connexion : {oidc.discoveryReady ? 'prête' : 'chargement'}</Text>
+          <Text style={styles.row}>Protection : {oidc.requestReady ? 'prête' : 'préparation'}</Text>
+          <Text style={styles.row}>Accès : Client</Text>
           <Text style={styles.row}>
             Identité : {oidc.session.displayName || oidc.session.email || 'non connectée'}
           </Text>
-          <Text style={styles.row}>Expiration : {formatExpiry(oidc.session.expiresAt)}</Text>
-          {oidc.lastError ? <Text style={styles.error}>Code sûr : {oidc.lastError}</Text> : null}
+          <Text style={styles.row}>Connexion valable jusqu’au : {formatExpiry(oidc.session.expiresAt)}</Text>
+          {oidc.lastError ? <Text style={styles.error}>La connexion n’a pas abouti. Réessayez dans un instant.</Text> : null}
         </View>
 
         <Pressable
@@ -75,28 +74,28 @@ export default function AuthSessionScreen() {
           {oidc.busy ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.primaryText}>Se connecter avec Keycloak</Text>
+            <Text style={styles.primaryText}>Continuer avec DelishAfrica</Text>
           )}
         </Pressable>
 
         <View style={styles.actionsRow}>
           <Pressable disabled={oidc.busy} style={styles.secondary} onPress={oidc.restore}>
-            <Text style={styles.secondaryText}>Relire la session</Text>
+            <Text style={styles.secondaryText}>Vérifier ma connexion</Text>
           </Pressable>
           <Pressable disabled={oidc.busy} style={styles.secondary} onPress={oidc.refresh}>
-            <Text style={styles.secondaryText}>Rafraîchir</Text>
+            <Text style={styles.secondaryText}>Actualiser</Text>
           </Pressable>
         </View>
 
         <Pressable disabled={oidc.busy} style={styles.logout} onPress={oidc.logout}>
-          <Text style={styles.logoutText}>Déconnexion sécurisée</Text>
+          <Text style={styles.logoutText}>Me déconnecter</Text>
         </Pressable>
 
         <View style={styles.trustCard}>
           <Text style={styles.trustKicker}>CONFIANCE DELISHAFRICA®</Text>
-          <Text style={styles.trustTitle}>Keycloak · PKCE · SecureStore</Text>
+          <Text style={styles.trustTitle}>Votre sécurité, notre priorité</Text>
           <Text style={styles.trustBody}>
-            Aucun mot de passe, token, code, verifier ou nonce n’est affiché dans cette interface.
+            Nous protégeons vos informations personnelles sans les exposer sur cet écran.
           </Text>
         </View>
       </ScrollView>

@@ -1,0 +1,79 @@
+name: PR32 mobile auth and native maps gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/client/**'
+      - 'apps/courier/**'
+      - 'apps/merchant/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/pr32-mobile-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  typescript-and-dependency-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - name: Checkout immutable PR contents
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pin pnpm 9.15.4
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+          pnpm --version
+      - name: Keep CI workspace scoped to mobile apps
+        # Legacy apps/landing package.json has an unrelated stale lock importer.
+        # Do not mutate the committed lockfile or weaken frozen validation.
+        run: |
+          cat > pnpm-workspace.yaml <<'YAML'
+          packages:
+            - apps/client
+            - apps/merchant
+            - apps/courier
+            - packages/*
+          YAML
+      - name: Offline-safe package scripts and frozen lock
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Client types
+        run: pnpm --filter client exec tsc --noEmit
+      - name: Courier types
+        run: pnpm --filter courier exec tsc --noEmit
+      - name: Merchant types
+        run: pnpm --filter merchant exec tsc --noEmit
+      - name: Authentication and maps regression gates
+        run: |
+          node <<'NODE'
+          const assert = require('node:assert/strict');
+          const fs = require('node:fs');
+          const read = path => fs.readFileSync(path, 'utf8');
+          for (const app of ['client', 'courier']) {
+            const pkg = JSON.parse(read(`apps/${app}/package.json`));
+            assert.equal(pkg.devDependencies?.['react-native-maps'] ??
+              pkg.dependencies?.['react-native-maps'], '1.20.1');
+          }
+          const lock = read('pnpm-lock.yaml');
+          assert(!lock.includes('react-native-maps@1.26.19'));
+          assert.equal((lock.match(/react-native-maps@1.20.1/g) || []).length, 2);
+          for (const path of ['apps/client/app/client-space.tsx',
+             'apps/client/app/secure-session.tsx',
+             'apps/client/app/auth-session.tsx']) {
+            assert(!read(path).includes('Keycloak'), `Customer-facing provider leak: ${path}`);
+          }
+          assert(read('apps/client/app/checkout-preflight.tsx').includes('DA_CLIENT_AUTH_REQUIRED'));
+          assert(read('apps/client/app/checkout-preflight.tsx').includes('daSessionRehydrationStatus'));
+          assert(!read('apps/client/hooks/useDaPkceAuth.ts').includes('prompt: (AuthSession'));
+          assert(read('apps/client/app/maps-live-lab.tsx').includes('loadMapsModule()'));
+          assert(read('apps/courier/app/courier-integrated-map.tsx').includes('nativeMaps ? ('));
+          console.log('PR32_STATIC_GATES_PASS');
+          NODE
