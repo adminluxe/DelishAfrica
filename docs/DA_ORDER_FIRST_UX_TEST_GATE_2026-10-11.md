@@ -40,3 +40,25 @@ The existing customer journey already collects and verifies contact/address in C
 
 ## Provenance note
 Source changes alone are not evidence of app distribution, and no Store-live claim is made.
+
+## QA complémentaire Asus — 11 octobre 2026, contrôle de la PR #30
+
+**Source UX testée :** commit `f6a4f3e08d6460bee2afb8913e79adb8f5c79671` (trois écrans UI inchangés).
+**Dépendances :** la PR séparée [#31](https://github.com/adminluxe/DelishAfrica/pull/31) a corrigé trois imports d'icônes manquants chez Merchant/Courier ; fusionnée sur `main` (`fc802ead0f5a80cc433e678c7a6a908681f31474`) après CI verte. Elle ne touche pas au paiement ni à l'identité.
+
+### Preuves automatiques exécutées hors Toshiba
+
+- Windows Asus (Desktop Commander) : reconstruction d'une archive Git ciblée des apps `client`, `merchant`, `courier` et packages. Le checkout complet Windows échoue sur un ancien chemin racine contenant un caractère `:` interdit Windows ; **aucune suppression ou reconfiguration du dépôt canonique**.
+- PNPM `9.15.4` : `install --frozen-lockfile --ignore-scripts` **PASS** après PR #31 ; scripts tiers non exécutés.
+- TypeScript `tsc --noEmit` : **CLIENT PASS (0)** ; **MERCHANT PASS (0)** ; **COURIER PASS (0)**.
+- Expo SDK 54 / Metro : en mode **workspace automatique** (ne pas définir `EXPO_NO_METRO_WORKSPACE_ROOT=1` pour cette copie Windows), trois manifestes iOS **HTTP 200**.
+- Bundles iOS réels via les URLs `launchAsset.url` des manifestes, non via `/index.bundle` générique : **Client HTTP 200 (11 298 680 octets ; 1 721 modules)** ; **Merchant HTTP 200 (7 205 838 octets)** ; **Courier HTTP 200 (7 428 144 octets)**.
+- DEV servers actifs sur Asus, réseau local `192.168.1.5` (réseau privé) : Client port `8081`, Merchant `8082`, Courier `8083`. **Adresses de test temporaires : ne pas annoncer comme production.**
+- Les tentatives initiales avec `EXPO_NO_METRO_WORKSPACE_ROOT=1` étaient des faux échecs de résolution (module `expo-router/entry`) et ont été résolues par la configuration Metro monorepo Expo automatique. Aucun correctif UI/Auth n'a été appliqué pour contourner ce problème de test.
+
+### Reste impérativement à prouver avant MERGE
+
+- **iPhone :** ouvrir les trois DEV clients, pointer vers les ports `192.168.1.5:8081/8082/8083` sur le même Wi-Fi et constater réellement l'ordre Client, le Radar optionnel, et les libellés Merchant/Courier. Captures ou retour explicite requis.
+- **Android 13 :** reproduction du point soulevé par Valérie (Samsung A22) encore à faire au gate appareil, ou justification explicite de l'exception avec Android gelé en release.
+- **Achat :** parcours restaurant → panier → identité/adresse → pré-paiement ; valider les refus sécurisés et les protections anti-doublons **uniquement avec fournisseur sandbox**. Ne pas encaisser une transaction réelle comme test.
+- **Jusqu'à validation :** PR #30 **DRAFT / NON FUSIONNÉE** ; aucun EAS build ni Store submit automatique, aucune modification du flux Keycloak/OIDC, aucun uplift IP attribué à ce patch non publié.
