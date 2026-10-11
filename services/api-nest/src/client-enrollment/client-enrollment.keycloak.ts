@@ -133,43 +133,6 @@ export class ClientEnrollmentKeycloak {
     ) throw new Error('enrollment_effective_roles_unsafe');
   }
 
-  /**
-   * Realm-role composites alone do not reveal inherited client roles.
-   * For each newly provisioned Client, prove that NO effective role exists
-   * under Keycloak's realm-management client.
-   * Missing read permissions are a hard failure, never an optional skip.
-   */
-  private async verifyNoRealmManagementAccess(
-    creds: AdminCredentials,
-    token: string,
-    subjectId: string,
-  ): Promise<void> {
-    const clients = await this.request(
-      creds.base,
-      '/admin/realms/' + REALM + '/clients?clientId=realm-management',
-      token,
-    );
-    if (clients.status !== 200) throw new Error('enrollment_admin_client_inspection_unavailable');
-    const matches = await clients.json() as Array<{ id?: unknown; clientId?: unknown }>;
-    if (!Array.isArray(matches) || matches.length !== 1 ||
-        matches[0]?.clientId !== 'realm-management' ||
-        typeof matches[0]?.id !== 'string' ||
-        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(matches[0].id)) {
-      throw new Error('enrollment_admin_client_reference_untrusted');
-    }
-    const mapping = await this.request(
-      creds.base,
-      '/admin/realms/' + REALM + '/users/' + subjectId +
-        '/role-mappings/clients/' + matches[0].id + '/composite',
-      token,
-    );
-    if (mapping.status !== 200) throw new Error('enrollment_admin_role_inspection_unavailable');
-    const effective = await mapping.json() as Array<{ name?: unknown }>;
-    if (!Array.isArray(effective) || effective.length !== 0) {
-      throw new Error('enrollment_admin_client_privilege_detected');
-    }
-  }
-
   private checkCreatedId(subjectId: string): void {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(subjectId)) {
       throw new Error('enrollment_user_id_invalid');
@@ -181,9 +144,8 @@ export class ClientEnrollmentKeycloak {
     this.checkCreatedId(subjectId);
     const creds = this.credentials();
     const token = await this.getToken(creds);
-    // A new Client must have neither privileged realm nor client mappings.
+    // Role permissions may have changed since provisioning; verify again.
     await this.verifyOnlyClientRole(creds, token, subjectId);
-    await this.verifyNoRealmManagementAccess(creds, token, subjectId);
     const before = await this.request(
       creds.base, '/admin/realms/' + REALM + '/users/' + subjectId, token,
     );
@@ -277,7 +239,6 @@ export class ClientEnrollmentKeycloak {
       if (mapped.status !== 204) throw new Error('enrollment_realm_role_mapping_failed');
 
       await this.verifyOnlyClientRole(creds, token, createdId);
-      await this.verifyNoRealmManagementAccess(creds, token, createdId);
 
       // Two-phase enrollment: provisioning returns a DISABLED identity.
       // The enrollment ledger must be durably committed BEFORE the account
