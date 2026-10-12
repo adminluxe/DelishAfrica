@@ -8,6 +8,11 @@ const net = require('node:net');
 const crypto = require('node:crypto');
 const http = require('node:http');
 const { Client: PgClient } = require('pg');
+require('reflect-metadata');
+const { Test } = require('@nestjs/testing');
+const { Controller, Get, UseGuards } = require('@nestjs/common');
+const { NativeClientNestCommerceGuard, NATIVE_CLIENT_COMMERCE_DEPS } =
+  require('/qa-built/native-client-nest-commerce.guard.js');
 const { startQaHttpsProxy } = require('./synthetic-keycloak-tls-proxy.qa.cjs');
 const { verifyNativeClientJwt } = require('/qa-built/native-client-jwt-verifier.js');
 const { nativeClientEmailBindingHmac, evaluateNativeClientCommerce } =
@@ -135,6 +140,7 @@ async function run() {
   const proxy = await startQaHttpsProxy();
   const sink=smtpSink();
   let pg = null;
+  let nestApp = null;
   let commerceServer = null;
   let smsServer = null;
   await new Promise((resolve,reject)=>sink.server.once('error',reject)
@@ -467,6 +473,81 @@ async function run() {
     });
     await new Promise((resolve,reject)=>
       commerceServer.once('error',reject).listen(19601,'127.0.0.1',resolve));
+    // Second, completely separate HTTP admission path using the ACTUAL NestJS
+    // guard implementation with the SAME real Keycloak access token and SAME
+    // committed PostgreSQL record. No Nest production route is imported.
+    let mockJwksDown=false, mockDbDown=false;
+    class QaNestController {
+      check() { return { admitted:true, scenario:'synthetic-only' }; }
+    }
+    Controller('qa/native')(QaNestController);
+    const nestDescriptor=Object.getOwnPropertyDescriptor(
+      QaNestController.prototype,'check');
+    Get('commerce')(QaNestController.prototype,'check',nestDescriptor);
+    UseGuards(NativeClientNestCommerceGuard)(
+      QaNestController.prototype,'check',nestDescriptor);
+    const nestedDeps={
+      issuer,clientId:CLIENT_ID,audience:CLIENT_ID,
+      emailHmacSecret:emailSecret,maxTokenLifetimeSeconds:3600,
+      async loadTrustedJwks(){
+        if(mockJwksDown)throw Error('qa_forced_jwks_outage');
+        const discoveryResp=await fetch(
+          issuer+'/.well-known/openid-configuration',
+          {signal:AbortSignal.timeout(9000)});
+        if(discoveryResp.status!==200)throw Error('qa_oidc_discovery_down');
+        const discoveryBody=await discoveryResp.json();
+        const uri=issuer+'/protocol/openid-connect/certs';
+        if(discoveryBody.issuer!==issuer||discoveryBody.jwks_uri!==uri)
+          throw Error('qa_pinned_discovery_mismatch');
+        const keysResp=await fetch(uri,{signal:AbortSignal.timeout(9000)});
+        if(keysResp.status!==200)throw Error('qa_issuer_jwks_down');
+        const remoteKeys=await keysResp.json();
+        if(!Array.isArray(remoteKeys.keys))throw Error('qa_jwks_malformed');
+        return {issuer,provenanceVerified:true,keys:remoteKeys.keys};
+      },
+      async readCommittedAdmission(readIssuer,subjectId){
+        if(mockDbDown)throw Error('qa_forced_pg_outage');
+        if(readIssuer!==issuer)throw Error('qa_cross_realm_query_blocked');
+        const result=await pg.query(
+          'SELECT * FROM public.da_native_client_admissions '+
+          'WHERE issuer=$1 AND subject_id=$2 LIMIT 1',
+          [readIssuer,subjectId]);
+        const row=result.rows[0];
+        if(!row)return null;
+        return {
+          schemaVersion:row.version,status:row.status,subjectId:row.subject_id,
+          emailBindingHmac:row.email_binding_hmac.trim(),
+          smsRecipientHmac:row.sms_recipient_hmac?.trim()||'',
+          smsVerifiedSubjectId:row.sms_provider_verified?row.subject_id:'',
+          emailVerifiedSubjectId:row.email_server_verified?row.subject_id:'',
+          providerSmsProofAccepted:row.sms_provider_verified===true,
+          providerEmailProofAccepted:row.email_server_verified===true,
+          transactionCommittedAtSeconds:row.committed_at?
+            Math.floor(new Date(row.committed_at).getTime()/1000):0,
+          revokedAtSeconds:row.revoked_at?
+            Math.floor(new Date(row.revoked_at).getTime()/1000):null,
+        };
+      },
+    };
+    const nestModule=await Test.createTestingModule({
+      controllers:[QaNestController],
+      providers:[NativeClientNestCommerceGuard,
+        {provide:NATIVE_CLIENT_COMMERCE_DEPS,useValue:nestedDeps}],
+    }).compile();
+    nestApp=nestModule.createNestApplication({logger:false});
+    await nestApp.listen(19603,'127.0.0.1');
+    const checkNest=async(token,status,label)=>{
+      const res=await fetch('http://127.0.0.1:19603/qa/native/commerce',{
+        signal:AbortSignal.timeout(18000),
+        headers:token?{authorization:'Bearer '+token}:{},
+      });
+      check(res.status===status,label+'_http_'+status);
+      await res.arrayBuffer();
+    };
+    await checkNest('',401,'nestjs_keycloak_missing_bearer_denied');
+    await checkNest(realJwt+'tamper',401,'nestjs_actual_keycloak_jwt_tamper_denied');
+    await checkNest(realJwt,403,'nestjs_actual_keycloak_jwt_pending_sms_denied');
+
     const checkCommerce=async(token,expectedStatus,label)=>{
       const res=await fetch('http://127.0.0.1:19601/qa/commerce/check',{
         method:'GET',signal:AbortSignal.timeout(18000),
@@ -542,6 +623,8 @@ async function run() {
     );
     await checkCommerce(realJwt,200,
       'commerce_approved_only_after_verified_real_oidc_and_real_pg_commit');
+    await checkNest(realJwt,200,
+      'nestjs_real_keycloak_jwt_real_pg_after_mock_sms_admitted');
     const other=crypto.randomUUID();
     const duplicate=await pg.query(
       'INSERT INTO public.da_native_client_admissions '+
@@ -568,6 +651,15 @@ async function run() {
       'WHERE issuer=$2 AND subject_id=$3',
       ['revoked',issuer,customer.id]);
     await checkCommerce(realJwt,403,'commerce_revoked_subject_http_403');
+    await checkNest(realJwt,403,'nestjs_real_keycloak_jwt_revoked_pg_denied');
+    mockDbDown=true;
+    await checkNest(realJwt,503,'nestjs_pg_unavailable_fail_closed');
+    mockDbDown=false;
+    mockJwksDown=true;
+    await checkNest(realJwt,503,'nestjs_jwks_unavailable_fail_closed');
+    mockJwksDown=false;
+    say('NATIVE_NEST_KEYCLOAK_PG_QA',
+      'PASS_REAL_KEYCLOAK_SIGNED_JWT_REAL_NEST_GUARD_REAL_PG_MOCK_SMS');
     let unRevokeRejected=false;
     try{
       await pg.query('UPDATE public.da_native_client_admissions '+
@@ -599,6 +691,7 @@ async function run() {
       smsServer.closeAllConnections();
       await new Promise(resolve=>smsServer.close(resolve));
     }
+    if(nestApp)await nestApp.close();
     if(pg)await pg.end();
     await proxy.close();
   }
