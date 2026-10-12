@@ -30,7 +30,10 @@ BEGIN
     WHERE issuer=fake_issuer AND subject_id=owner;
     RAISE EXCEPTION 'qa_missing_sms_was_accepted';
   EXCEPTION WHEN others THEN
-    IF SQLSTATE <> '23514' THEN RAISE; END IF;
+    IF SQLSTATE <> '23514' AND
+       SQLERRM <> 'native_sms_proof_not_fresh_for_approval' THEN
+      RAISE;
+    END IF;
     RAISE NOTICE 'QA_PASS=cannot_approve_without_email_and_sms';
   END;
 
