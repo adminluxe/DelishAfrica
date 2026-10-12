@@ -16,6 +16,7 @@ on:
       - 'services/api-nest/test/client-order-snapshot.qa.test.cjs'
       - 'services/api-nest/test/merchant-courier-fulfillment-http.qa.test.cjs'
       - 'services/api-nest/test/merchant-courier-wallet-http.qa.test.cjs'
+      - 'services/api-nest/test/merchant-courier-wallet-release-isolation.qa.test.cjs'
       - 'services/api-nest/test/native-client-checkout-http.qa.test.cjs'
       - 'services/api-nest/test/client-order-receipt.qa.test.cjs'
       - 'services/api-nest/test/stripe-test-official-preflight.qa.test.cjs'
@@ -136,6 +137,10 @@ jobs:
           TS_NODE_PROJECT: services/api-nest/tsconfig.json
           QA_SYNTHETIC_ONLY: 'YES'
         run: node -r ts-node/register/transpile-only --test services/api-nest/test/merchant-courier-wallet-http.qa.test.cjs
+      - name: Wallet release isolation - absolutely no payout or public AppModule registration
+        env:
+          QA_SYNTHETIC_ONLY: 'YES'
+        run: node --test services/api-nest/test/merchant-courier-wallet-release-isolation.qa.test.cjs
       - name: QA-only Nest HTTP checkout with real Client RSA guard and server-repriced catalog
         env:
           TS_NODE_PROJECT: services/api-nest/tsconfig.json
