@@ -499,7 +499,13 @@ async function run() {
       emailHmacSecret:emailSecret,maxTokenLifetimeSeconds:3600,
       async loadTrustedJwks(){
         if(mockJwksDown)throw Error('qa_forced_jwks_outage');
-        return trustedResolver.loadTrustedJwks();
+        try { return await trustedResolver.loadTrustedJwks(); }
+        catch (error) {
+          // QA only: report fixed resolver error code, never URL/token/JWK body.
+          say('TRUSTED_JWKS_REJECT_REASON',
+            String(error?.message||'unknown').replace(/[^A-Za-z0-9_-]/g,'_').slice(0,90));
+          throw error;
+        }
       },
       async readCommittedAdmission(readIssuer,subjectId){
         if(mockDbDown)throw Error('qa_forced_pg_outage');
@@ -537,6 +543,7 @@ async function run() {
         signal:AbortSignal.timeout(18000),
         headers:token?{authorization:'Bearer '+token}:{},
       });
+      if(res.status!==status)say('NEST_EXPECTED_ACTUAL_HTTP',label+'_'+status+'_'+res.status);
       check(res.status===status,label+'_http_'+status);
       await res.arrayBuffer();
     };
