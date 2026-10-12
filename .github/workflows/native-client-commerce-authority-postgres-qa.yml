@@ -5,6 +5,8 @@ on:
       - '.github/workflows/native-client-commerce-authority-postgres-qa.yml'
       - 'services/api-nest/migrations/client-commerce/20261012_001_client_commerce_authority_qa_only.sql'
       - 'services/api-nest/test/native-client-commerce-authority.qa.sql'
+      - 'services/api-nest/src/client-commerce/client-commerce.pg-qa.adapter.ts'
+      - 'services/api-nest/test/client-commerce.pg-qa.integration.cjs'
   workflow_dispatch:
 
 permissions:
@@ -39,16 +41,66 @@ jobs:
           assert(!/\b(email_plaintext|phone_plaintext|sms_code|access_token|refresh_token|password)\b/i
             .test(ddl),'no raw client PII or secrets in schema');
           assert(proof.includes('ROLLBACK;')&&proof.includes('\\set ON_ERROR_STOP on'));
+          const adapter=fs.readFileSync('services/api-nest/src/client-commerce/client-commerce.pg-qa.adapter.ts','utf8');
+          const test=fs.readFileSync('services/api-nest/test/client-commerce.pg-qa.integration.cjs','utf8');
+          assert(adapter.includes('class QaClientCommercePgAdapter'));
+          assert(adapter.includes('da_qa_reserve_client_order'));
+          assert(test.includes('QA_ADAPTER_8_WAY_TWO_POOLS=ONE_ORDER'));
+          assert(!/api\.stripe\.com|sk_live_|pk_live_/.test(adapter+test));
           console.log('QA_COMMERCE_STATIC=PASS');
           NODE
+      - name: Prepare QA-only TypeScript adapter and isolated Node dependencies
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          umask 077
+          QA_DIR="$RUNNER_TEMP/da-client-commerce-$GITHUB_RUN_ID"
+          mkdir -p "$QA_DIR/deps" "$QA_DIR/built"
+          npm --prefix "$QA_DIR/deps" install --no-audit --no-fund \
+            --ignore-scripts --no-save pg@8.16.3 typescript@5.9.3 > /dev/null
+          NODE_PATH="$QA_DIR/deps/node_modules" node - "$QA_DIR/built" <<'NODE'
+          const fs=require('node:fs'),ts=require('typescript'),path=require('node:path');
+          const name='client-commerce.pg-qa.adapter';
+          const file='services/api-nest/src/client-commerce/'+name+'.ts';
+          const source=fs.readFileSync(file,'utf8');
+          const out=ts.transpileModule(source,{
+            compilerOptions:{module:ts.ModuleKind.CommonJS,
+              target:ts.ScriptTarget.ES2022,esModuleInterop:true,strict:true},
+            fileName:file,reportDiagnostics:true,
+          });
+          if(out.diagnostics?.some(x=>x.category===ts.DiagnosticCategory.Error))
+            throw Error('qa_adapter_transpile_failed');
+          fs.writeFileSync(path.join(process.argv[2],name+'.js'),
+            out.outputText,{mode:0o600});
+          NODE
+          node - "$QA_DIR/test.env" <<'NODE'
+          const fs=require('node:fs'),crypto=require('node:crypto');
+          const secret=crypto.randomBytes(32).toString('hex');
+          fs.writeFileSync(process.argv[2],[
+            'GITHUB_ACTIONS=true','QA_SYNTHETIC_ONLY=YES',
+            'QA_COMMERCE_DB_HOST=127.0.0.1',
+            'QA_COMMERCE_DB_NAME=postgres',
+            'QA_COMMERCE_DB_USER=postgres',
+            'QA_COMMERCE_HMAC_KEY='+secret,'',
+          ].join('\n'),{mode:0o600});
+          console.log('QA_COMMERCE_EPHEMERAL_HMAC=GENERATED_NOT_LOGGED');
+          NODE
+          chmod 755 "$QA_DIR" "$QA_DIR/deps" "$QA_DIR/built"
+          chmod -R a+rX "$QA_DIR/deps" "$QA_DIR/built"
+          chmod 600 "$QA_DIR/test.env"
+          node --check services/api-nest/test/client-commerce.pg-qa.integration.cjs
+          echo "QA_COMMERCE_ADAPTER_BUILD=EPHEMERAL_ONLY"
+
       - name: Run PostgreSQL 17 under disconnected ephemeral container
         shell: bash
         run: |
           set -Eeuo pipefail
           NAME="da-commerce-pg-qa-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          QA_DIR="$RUNNER_TEMP/da-client-commerce-$GITHUB_RUN_ID"
           IMAGE="postgres:17-alpine"
           cleanup() {
             docker rm -f "$NAME" >/dev/null 2>&1 || true
+            rm -rf "$QA_DIR"
             echo "QA_OWN_EPHEMERAL_CONTAINER_CLEANUP=COMPLETE"
           }
           trap cleanup EXIT
@@ -113,6 +165,23 @@ jobs:
           fi
           rm -f "$RESULT"
           echo "QA_COMMERCE_MUTATED_REPLAY=REJECTED"
+
+          # Test the actual TypeScript adapter, compiled as JS in ephemeral
+          # workspace, against the same PostgreSQL 17 instance. Two PgPools
+          # exercise connection and transaction concurrency. No Stripe.
+          docker pull node:22-alpine >/dev/null
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$NAME" \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --read-only --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+            --env-file "$QA_DIR/test.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node --test \
+              /qa-tests/client-commerce.pg-qa.integration.cjs
+          echo "QA_COMMERCE_NEST_ADAPTER_PG_REAL=PASS_SYNTHETIC_ONLY"
           echo "QA_COMMERCE_PG=PASS_REAL_PG_AND_8_WAY_CONCURRENCY"
           echo "STRIPE_PROVIDER_CALLS=ZERO"
           echo "PRODUCTION_IMPACT=NONE"
