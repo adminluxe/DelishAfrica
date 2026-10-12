@@ -12,6 +12,7 @@ on:
       - 'services/api-nest/src/client-commerce/**'
       - 'services/api-nest/src/payments/payments.service.ts'
       - 'services/api-nest/test/payments-stripe-financial-finality.qa.test.cjs'
+      - 'services/api-nest/test/client-commerce-canonical-quote.qa.test.cjs'
       - 'services/api-nest/src/identity-proof/**'
       - 'services/api-nest/src/auth/client-token-isolation.ts'
       - 'services/api-nest/src/auth/native-client-commerce.policy.ts'
@@ -106,6 +107,11 @@ jobs:
           TS_NODE_PROJECT: services/api-nest/tsconfig.json
           QA_SYNTHETIC_ONLY: 'YES'
         run: node -r ts-node/register/transpile-only --test services/api-nest/test/payments-stripe-financial-finality.qa.test.cjs
+      - name: Client checkout canonical pricing from actual published CatalogOrderPolicyService
+        env:
+          TS_NODE_PROJECT: services/api-nest/tsconfig.json
+          QA_SYNTHETIC_ONLY: 'YES'
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/client-commerce-canonical-quote.qa.test.cjs
       - name: Native Client TLS issuer-bound JWKS discovery and outage denial matrix
         env:
           TS_NODE_PROJECT: services/api-nest/tsconfig.json
