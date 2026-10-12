@@ -105,6 +105,7 @@ const quoter=new QaCanonicalClientQuoteAdapter(
 const pi='pi_QATESTCHECKOUT0001';
 let pricedCalls=0,reserveCalls=0,providerCalls=0;
 let observedPrincipal=null,observedQuote=null,failStripe=false,failReserve=false;
+let financialStatus='awaiting_payment',statusReads=0;
 const reservations=new Map();
 const ports={
   async quoteFromServerCatalog(body){
@@ -137,6 +138,23 @@ const ports={
     });
     reservations.set(key,order);
     return order;
+  },
+  async readOwnedOrderStatus(principal,orderId,mutation){
+    statusReads++;
+    const entry=reservations.get(
+      [principal.issuer,principal.subject.toLowerCase(),mutation].join(':'));
+    if(!entry || entry.orderId.toLowerCase()!==orderId.toLowerCase()){
+      throw Error('QA_FOREIGN_ORDER_MUST_NOT_LEAK');
+    }
+    return Object.freeze({
+      orderId:entry.orderId,clientMutationId:mutation,
+      paymentIntentId:financialStatus==='awaiting_payment'?null:pi,
+      financialStatus,
+      dispatchEligible:financialStatus==='paid',
+      canonicalQuoteFingerprint:entry.quoteFingerprint,
+      canonicalCartFingerprint:entry.cartFingerprint,
+      merchantSlug:entry.merchantSlug,amount:entry.totalMinor,currency:'eur',
+    });
   },
   async createOrResumeStripeTest(principal,quote,mutation){
     providerCalls++;
@@ -177,7 +195,7 @@ test('real Nest HTTP two-phase Client order and Stripe TEST remain isolated',asy
     await app.listen(0,'127.0.0.1');
     const base='http://127.0.0.1:'+app.getHttpServer().address().port+
       '/qa-isolated/client-commerce/';
-    const paths={order:'orders/create',intent:'payments/create-intent'};
+    const paths={order:'orders/create',intent:'payments/create-intent',status:'orders/status'};
     async function send(path,jwt,body=cart,mutation='qa-client-mutation-012345'){
       const response=await fetch(base+paths[path],{
         method:'POST',signal:AbortSignal.timeout(10000),
@@ -190,7 +208,7 @@ test('real Nest HTTP two-phase Client order and Stripe TEST remain isolated',asy
       });
       return {status:response.status,data:await response.json()};
     }
-    const noEffect=()=>{assert.equal(reserveCalls,0);assert.equal(providerCalls,0);};
+    const noEffect=()=>{assert.equal(reserveCalls,0);assert.equal(providerCalls,0);assert.equal(statusReads,0);};
     process.env.DA_QA_ISOLATED_CLIENT_COMMERCE_ENABLED='';
     assert.equal((await send('order',sign())).status,403); // pending admission
     noEffect();
@@ -205,7 +223,7 @@ test('real Nest HTTP two-phase Client order and Stripe TEST remain isolated',asy
     }
     noEffect();
     process.env.DA_QA_ISOLATED_CLIENT_COMMERCE_ENABLED='YES';
-    for(const path of Object.keys(paths)){
+    for(const path of ['order','intent']){
       assert.equal((await send(path,null)).status,401);
       assert.equal((await send(path,sign()+'altered')).status,401);
       assert.equal((await send(path,sign({iss:'https://other.example.invalid/realms/other'}))).status,401);
@@ -213,6 +231,13 @@ test('real Nest HTTP two-phase Client order and Stripe TEST remain isolated',asy
       assert.equal((await send(path,sign(),{...cart,clientMutationId:'different-mutation'})).status,409);
       assert.equal((await send(path,sign(),cart,'spaces not allowed')).status,400);
     }
+    noEffect();
+    // Owned-order status must not call its DB port without the same
+    // crypto JWT + durable admission used by order and intent routes.
+    assert.equal((await send('status',null)).status,401);
+    assert.equal((await send('status',sign()+'altered')).status,401);
+    assert.equal((await send('status',sign({iss:'https://other.example.invalid/realms/other'}))).status,401);
+    assert.equal((await send('status',sign({realm_access:{roles:['client','merchant']}}))).status,403);
     noEffect();
     pgFails=true;assert.equal((await send('order',sign())).status,503);pgFails=false;
     jwksFails=true;assert.equal((await send('order',sign())).status,503);jwksFails=false;
@@ -273,6 +298,39 @@ test('real Nest HTTP two-phase Client order and Stripe TEST remain isolated',asy
     assert.equal(providerCalls,beforeProvider+1);
     console.log('QA_HTTP_PAYMENT_SERVER_RESERVED_ORDER_AND_CATALOG_AMOUNT=PASS');
 
+    // Owner-scoped financial-read endpoint never calls the PSP and never
+    // trusts paid=true supplied by the smartphone body.
+    const beforeReadProvider=providerCalls;
+    const statusBody={orderId:order.data.orderId,
+      clientMutationId:cart.clientMutationId,paid:true,providerVerified:true};
+    const pending=await send('status',sign(),statusBody);
+    assert.equal(pending.status,200,JSON.stringify(pending.data));
+    assert.equal(pending.data.financialStatus,'awaiting_payment');
+    assert.equal(pending.data.dispatchEligible,false);
+    assert.equal(pending.data.paymentIntentId,null);
+    assert.equal(providerCalls,beforeReadProvider);
+    assert.equal(statusReads,1);
+    assert.equal((await send('status',null,statusBody)).status,401);
+    assert.equal((await send('status',sign(),{...statusBody,orderId:crypto.randomUUID()})).status,503);
+    assert.equal((await send('status',sign(),{...statusBody,clientMutationId:'foreign-mutation-001'})).status,503);
+    assert.equal((await send('status',sign(),{...statusBody,orderId:'DA-CLIENT-LOCAL'})).status,400);
+    assert.equal(providerCalls,beforeReadProvider);
+    financialStatus='paid';
+    const paid=await send('status',sign(),statusBody);
+    assert.equal(paid.status,200);
+    assert.equal(paid.data.financialStatus,'paid');
+    assert.equal(paid.data.paymentIntentId,pi);
+    assert.equal(paid.data.dispatchEligible,true);
+    financialStatus='financial_hold';
+    const held=await send('status',sign(),statusBody);
+    assert.equal(held.status,200);
+    assert.equal(held.data.financialStatus,'financial_hold');
+    assert.equal(held.data.dispatchEligible,false);
+    financialStatus='awaiting_payment';
+    assert.equal(providerCalls,beforeReadProvider);
+    assert.equal(statusReads,5); // pending, two foreign lookups, paid, hold
+    console.log('QA_HTTP_OWNED_ORDER_READ_AWAITING_PAID_REFUND_HOLD=NO_PROVIDER_WRITES');
+
     const providerBefore=providerCalls;
     failStripe=true;
     const failed=await send('intent',sign(),forPayment);
@@ -288,10 +346,12 @@ test('real Nest HTTP two-phase Client order and Stripe TEST remain isolated',asy
     console.log('QA_HTTP_PAYMENT_PG_PROVIDER_FAILURES=NEVER_LEAK_DETAILS');
 
     ledger={...ledger,status:'revoked',revokedAtSeconds:now-1};
+    assert.equal((await send('status',sign(),statusBody)).status,403);
     assert.equal((await send('order',sign())).status,403);
     assert.equal((await send('intent',sign(),forPayment)).status,403);
     process.env.NODE_ENV='production';
     ledger={...ledger,status:'approved',revokedAtSeconds:null};
+    assert.equal((await send('status',sign(),statusBody)).status,503);
     assert.equal((await send('order',sign())).status,503);
     assert.equal((await send('intent',sign(),forPayment)).status,503);
     console.log('QA_HTTP_PAYMENT_REVOKED_AND_PRODUCTION=BLOCKED');

@@ -39,6 +39,8 @@ import type {
 } from './client-commerce.pg-qa.adapter';
 import type { QaStripeTestCheckoutIntent } from
   './stripe-test-intent-create.pg-qa.adapter';
+import type { QaOwnedOrderReceipt } from
+  './client-order-receipt.pg-qa.adapter';
 
 export const QA_NATIVE_CLIENT_CHECKOUT_PORTS =
   Symbol('QA_NATIVE_CLIENT_CHECKOUT_PORTS');
@@ -50,6 +52,11 @@ export type QaNativeClientCheckoutPorts = Readonly<{
     quote: QaServerQuote,
     mutationId: string,
   ) => Promise<QaOrderReservation>;
+  readOwnedOrderStatus: (
+    principal: NativeClientAdmissionPrincipal,
+    orderId: string,
+    mutationId: string,
+  ) => Promise<QaOwnedOrderReceipt>;
   createOrResumeStripeTest: (
     principal: NativeClientAdmissionPrincipal,
     quote: QaServerQuote,
@@ -198,6 +205,67 @@ export class QaIsolatedClientCommerceController {
       canonicalCartFingerprint:quote.cartFingerprint,
       merchantSlug:quote.merchantSlug,
       // No clientSecret, provider intent, paid flag, dispatch or Stripe call.
+    };
+  }
+
+  @Post('orders/status')
+  @HttpCode(200)
+  @UseGuards(NativeClientNestCommerceGuard)
+  async readOwnedOrderStatus(
+    @Req() request: NativeClientAdmittedHttpRequest,
+    @Body() untrustedBody: unknown,
+  ) {
+    const principal = this.principal(request);
+    if (!untrustedBody || typeof untrustedBody !== 'object' ||
+        Array.isArray(untrustedBody)) {
+      throw new BadRequestException({
+        ok:false,code:'qa_checkout_status_order_required',
+      });
+    }
+    const body=untrustedBody as CartObject;
+    if (typeof body.orderId!=='string' || !UUID.test(body.orderId) ||
+        typeof body.clientMutationId!=='string' ||
+        !MUTATION.test(body.clientMutationId)) {
+      throw new BadRequestException({
+        ok:false,code:'qa_checkout_status_server_order_required',
+      });
+    }
+    let row:QaOwnedOrderReceipt;
+    try {
+      row=await this.ports.readOwnedOrderStatus(
+        principal,body.orderId,body.clientMutationId);
+    } catch {
+      // Do not disclose whether a foreign Client owns this order.
+      throw new ServiceUnavailableException({
+        ok:false,code:'qa_checkout_status_unavailable_or_not_owned',
+      });
+    }
+    if(!row ||row.orderId.toLowerCase()!==body.orderId.toLowerCase()||
+       row.clientMutationId!==body.clientMutationId ||
+       !SHA256.test(row.canonicalQuoteFingerprint) ||
+       !SHA256.test(row.canonicalCartFingerprint) ||
+       row.currency!=='eur' ||
+       !Number.isSafeInteger(row.amount) || row.amount<1 ||
+       !['awaiting_payment','paid','financial_hold','needs_review'].includes(
+          row.financialStatus) ||
+       typeof row.dispatchEligible!=='boolean' ||
+       (row.financialStatus==='paid')!==row.dispatchEligible ||
+       (row.paymentIntentId!==null &&
+        !/^pi_[A-Za-z0-9_]{6,120}$/.test(row.paymentIntentId))) {
+      throw new ServiceUnavailableException({
+        ok:false,code:'qa_checkout_status_untrusted_database_result',
+      });
+    }
+    return {
+      ok:true,mode:'test' as const,orderId:row.orderId,
+      clientMutationId:row.clientMutationId,
+      financialStatus:row.financialStatus,
+      paymentIntentId:row.paymentIntentId,
+      dispatchEligible:row.dispatchEligible,
+      amount:row.amount,currency:row.currency,
+      canonicalQuoteFingerprint:row.canonicalQuoteFingerprint,
+      canonicalCartFingerprint:row.canonicalCartFingerprint,
+      merchantSlug:row.merchantSlug,
     };
   }
 

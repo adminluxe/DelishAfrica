@@ -11,6 +11,9 @@ on:
       - 'services/api-nest/src/client-commerce/stripe-test-webhook-inbox.pg-qa.adapter.ts'
       - 'services/api-nest/test/stripe-test-webhook-inbox.pg-qa.integration.cjs'
       - 'services/api-nest/migrations/client-commerce/20261012_004_stripe_test_financial_reconciliation_qa_only.sql'
+      - 'services/api-nest/migrations/client-commerce/20261012_005_client_order_receipt_read_qa_only.sql'
+      - 'services/api-nest/src/client-commerce/client-order-receipt.pg-qa.adapter.ts'
+      - 'services/api-nest/test/native-client-order-receipt.pg-qa.sql'
       - 'services/api-nest/src/client-commerce/stripe-test-financial-reconcile.pg-qa.adapter.ts'
       - 'services/api-nest/test/stripe-test-financial-reconciliation.pg-qa.integration.cjs'
       - 'services/api-nest/src/client-commerce/stripe-test-intent-create.pg-qa.adapter.ts'
@@ -182,6 +185,10 @@ jobs:
           docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
             -h 127.0.0.1 -U postgres -d postgres \
             < services/api-nest/migrations/client-commerce/20261012_004_stripe_test_financial_reconciliation_qa_only.sql
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/migrations/client-commerce/20261012_005_client_order_receipt_read_qa_only.sql
+          echo "QA_CLIENT_OWNED_ORDER_RECEIPT_SCHEMA=CREATED_ONLY_EPHEMERAL"
           echo "QA_STRIPE_TEST_FINANCIAL_SCHEMA=CREATED_ONLY_EPHEMERAL"
           echo "QA_STRIPE_TEST_WEBHOOK_INBOX=CREATED_ONLY_EPHEMERAL"
           echo "QA_COMMERCE_LEAST_PRIVILEGE_ROLES=CREATED_EPHEMERAL_ONLY"
@@ -189,6 +196,10 @@ jobs:
           docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres \
             < services/api-nest/test/native-client-commerce-authority.qa.sql
           echo "QA_COMMERCE_SEQUENTIAL=PASS_SYNTHETIC_ONLY"
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/test/native-client-order-receipt.pg-qa.sql
+          echo "QA_CLIENT_ORDER_RECEIPT_FINANCIAL_HOLD_AND_OWNERSHIP=PASS"
           # Eight simultaneous sessions must return one and the same order_id.
           SQL="SELECT order_id FROM public.da_qa_reserve_client_order('https://qa.example.invalid/realms/da-client','a63f867f-9f42-4573-9268-dc65a164d2c1'::uuid,'mutation-qa-concurrent',repeat('a',64)::char(64),repeat('b',64)::char(64),'qa-merchant',1200::bigint,'EUR'::char(3));"
           RESULT="$RUNNER_TEMP/da-commerce-concurrent-$GITHUB_RUN_ID.txt"

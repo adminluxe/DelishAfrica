@@ -34,7 +34,8 @@ export type DaQaCommerceResponse=Readonly<{
 export interface DaQaAuthenticatedCommerceTransport {
   post(
     path:'/qa-isolated/client-commerce/orders/create' |
-         '/qa-isolated/client-commerce/payments/create-intent',
+         '/qa-isolated/client-commerce/payments/create-intent' |
+         '/qa-isolated/client-commerce/orders/status',
     payload:Record<string,unknown>,
     headers:Readonly<{ 'Idempotency-Key':string }>,
   ):Promise<DaQaCommerceResponse>;
@@ -207,6 +208,76 @@ export class DaQaCanonicalCheckoutSequence {
       await this.fence.markIntent(order.orderId,intent.paymentIntentId);
       return intent;
     }finally {
+      this.busy=false;
+    }
+  }
+
+  /**
+   * Only a server-side finance proof can release an uncertain PaymentSheet
+   * attempt. This is NEVER called automatically as a consequence of a
+   * PaymentSheet callback. It is read-only except for clearing SecureStore
+   * after a signed Client-owned paid receipt matches the original PI exactly.
+   */
+  async reconcileVerifiedPayment():Promise<{
+    financialStatus:'paid'|'awaiting_payment'|'financial_hold'|'needs_review'|'not_ready';
+    cleared:boolean;
+  }>{
+    if(process.env.NODE_ENV==='production' ||
+       process.env.EXPO_PUBLIC_DA_CANONICAL_CHECKOUT_QA!=='YES'){
+      throw Error('DA_QA_CANONICAL_CHECKOUT_DISABLED');
+    }
+    if(this.busy)throw Error('DA_QA_CANONICAL_CHECKOUT_ALREADY_IN_PROGRESS');
+    this.busy=true;
+    try{
+      const snapshot=await this.fence.inspect();
+      if(!snapshot || !UUID.test(snapshot.orderId) ||
+         !snapshot.paymentIntentId ||
+         !['sheet_open','reported_success'].includes(snapshot.phase)){
+        return {financialStatus:'not_ready',cleared:false};
+      }
+      const response=await this.transport.post(
+        '/qa-isolated/client-commerce/orders/status',
+        {
+          orderId:snapshot.orderId,
+          clientMutationId:snapshot.clientMutationId,
+        },
+        Object.freeze({'Idempotency-Key':snapshot.clientMutationId}),
+      );
+      if(response?.status!==200){
+        throw Error('DA_QA_CANONICAL_FINANCE_HTTP_UNAVAILABLE');
+      }
+      const row=obj(response.data);
+      const status=row?.financialStatus;
+      if(!row||row.ok!==true||row.mode!=='test'||
+         row.orderId!==snapshot.orderId||
+         row.clientMutationId!==snapshot.clientMutationId||
+         !['paid','awaiting_payment','financial_hold','needs_review'].includes(
+           String(status))||
+         row.dispatchEligible!==(status==='paid') ||
+         (row.paymentIntentId!==null &&
+          !validString(row.paymentIntentId,/^pi_[A-Za-z0-9_]{6,120}$/)) ||
+         !validString(row.canonicalQuoteFingerprint,HASH) ||
+         !validString(row.canonicalCartFingerprint,HASH) ||
+         !Number.isSafeInteger(row.amount) ||
+         Number(row.amount)<1 ||
+         row.currency!=='eur'){
+        throw Error('DA_QA_CANONICAL_FINANCE_RECEIPT_INVALID');
+      }
+      if(status==='paid'){
+        if(row.paymentIntentId!==snapshot.paymentIntentId){
+          throw Error('DA_QA_CANONICAL_FINANCE_PI_MISMATCH');
+        }
+        await this.fence.clearAfterVerifiedOrder(
+          snapshot.orderId,snapshot.paymentIntentId);
+        return {financialStatus:'paid',cleared:true};
+      }
+      // A refund/dispute hold, pending provider or review state must
+      // preserve the lock. There is no automatic retry with a new PI.
+      return {
+        financialStatus:status as 'awaiting_payment'|'financial_hold'|'needs_review',
+        cleared:false,
+      };
+    }finally{
       this.busy=false;
     }
   }

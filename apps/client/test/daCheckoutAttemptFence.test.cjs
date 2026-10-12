@@ -361,3 +361,89 @@ test('QA disabled production or secure storage outage never reaches backend',asy
     else process.env.NODE_ENV=savedMode;
   }
 });
+test('QA finance status never unlocks an ambiguous payment under hold, mismatch or HTTP outage',async()=>{
+  await withQaEnv(async()=>{
+    const state=inMemory(),f=fence(state);
+    await f.begin({...sample,orderId:SERVER_ORDER,
+      clientMutationId:QA_INPUT.clientMutationId});
+    await f.markIntent(SERVER_ORDER,SERVER_PI);
+    await f.markSheetOpened(SERVER_ORDER);
+    let status='financial_hold',intent=SERVER_PI,up=true;
+    const transport={async post(route,body,headers){
+      assert.equal(route,'/qa-isolated/client-commerce/orders/status');
+      assert.equal(body.orderId,SERVER_ORDER);
+      assert.equal(body.clientMutationId,QA_INPUT.clientMutationId);
+      assert.equal(headers['Idempotency-Key'],QA_INPUT.clientMutationId);
+      if(!up)return {status:503,data:{ok:false}};
+      return {status:200,data:{
+        ok:true,mode:'test',orderId:SERVER_ORDER,
+        clientMutationId:QA_INPUT.clientMutationId,
+        financialStatus:status,dispatchEligible:status==='paid',
+        paymentIntentId:intent,amount:2690,currency:'eur',
+        canonicalQuoteFingerprint:SHA_Q,
+        canonicalCartFingerprint:SHA_CART,
+      }};
+    }};
+    const sequence=new DaQaCanonicalCheckoutSequence(transport,f);
+    let result=await sequence.reconcileVerifiedPayment();
+    assert.deepEqual(result,{financialStatus:'financial_hold',cleared:false});
+    assert.ok(state.raw());
+    status='awaiting_payment';
+    result=await sequence.reconcileVerifiedPayment();
+    assert.deepEqual(result,{financialStatus:'awaiting_payment',cleared:false});
+    assert.ok(state.raw());
+    status='paid';intent='pi_QANOTTHEORIGINAL00001';
+    await assert.rejects(()=>sequence.reconcileVerifiedPayment(),
+      /DA_QA_CANONICAL_FINANCE_PI_MISMATCH/);
+    assert.ok(state.raw());
+    intent=SERVER_PI;up=false;
+    await assert.rejects(()=>sequence.reconcileVerifiedPayment(),
+      /DA_QA_CANONICAL_FINANCE_HTTP_UNAVAILABLE/);
+    assert.ok(state.raw());
+    console.log('QA_CLIENT_FINANCIAL_HOLD_FOREIGN_PI_AND_OUTAGE=LOCK_PRESERVED');
+  });
+});
+test('QA only finance paid read for same order PI unlocks SecureStore after PaymentSheet',async()=>{
+  await withQaEnv(async()=>{
+    const state=inMemory(),f=fence(state);
+    await f.begin({...sample,orderId:SERVER_ORDER,
+      clientMutationId:QA_INPUT.clientMutationId});
+    await f.markIntent(SERVER_ORDER,SERVER_PI);
+    await f.markSheetOpened(SERVER_ORDER);
+    let calls=0;
+    const transport={async post(route,body){
+      calls++;
+      assert.equal(route,'/qa-isolated/client-commerce/orders/status');
+      assert.equal(body.orderId,SERVER_ORDER);
+      return {status:200,data:{
+        ok:true,mode:'test',orderId:SERVER_ORDER,
+        clientMutationId:QA_INPUT.clientMutationId,
+        financialStatus:'paid',dispatchEligible:true,
+        paymentIntentId:SERVER_PI,amount:2690,currency:'eur',
+        canonicalQuoteFingerprint:SHA_Q,canonicalCartFingerprint:SHA_CART,
+      }};
+    }};
+    const sequence=new DaQaCanonicalCheckoutSequence(transport,f);
+    const result=await sequence.reconcileVerifiedPayment();
+    assert.deepEqual(result,{financialStatus:'paid',cleared:true});
+    assert.equal(state.raw(),null);
+    assert.equal(calls,1);
+    console.log('QA_CLIENT_FINANCE_AUTHORITATIVE_PAID_READ=ONLY_UNLOCK_PATH');
+  });
+});
+test('QA financial receipt cannot unlock before bank sheet opens',async()=>{
+  await withQaEnv(async()=>{
+    const state=inMemory(),f=fence(state);
+    await f.begin({...sample,orderId:SERVER_ORDER,
+      clientMutationId:QA_INPUT.clientMutationId});
+    await f.markIntent(SERVER_ORDER,SERVER_PI);
+    let calls=0;
+    const transport={async post(){calls++;throw Error('NETWORK_NEVER_EXPECTED')}};
+    const result=await new DaQaCanonicalCheckoutSequence(
+      transport,f).reconcileVerifiedPayment();
+    assert.deepEqual(result,{financialStatus:'not_ready',cleared:false});
+    assert.equal(calls,0);
+    assert.equal((await f.inspect()).phase,'intent_created');
+    console.log('QA_CLIENT_PRE_SHEET_FINANCE_READ=NO_UNLOCK');
+  });
+});
