@@ -37,3 +37,19 @@ Le module `evaluateNativeClientCommerce` est une fonction pure, conçue pour êt
 - PR DelishAfrica #35 et POG #35 **DRAFT**, pas de fusion, pas de déploiement.
 
 **Preuves connexes** : [Rapport POG FGAP V2](https://github.com/adminluxe/purple-orchid-group/blob/audit/security-global-baseline-20261012/docs/security/POG_KEYCLOAK_FGAP_V2_REAL_HTTP_LAB_2026-10-12.md) · [rapport POG Keycloak native](https://github.com/adminluxe/purple-orchid-group/blob/audit/security-global-baseline-20261012/docs/security/POG_KEYCLOAK_NATIVE_CLIENT_QA_2026-10-12.md).
+
+## Addendum — six jalons QA isolés, dernier contrôle cryptographique
+
+**Keycloak natif réel — laboratoire synthétique :**
+- [CI inscription + SMTP local #38249546756](https://github.com/adminluxe/purple-orchid-group/actions/runs/38249546756) : SUCCESS.
+- [CI action-token e-mail #38249816999](https://github.com/adminluxe/purple-orchid-group/actions/runs/38249816999) : SUCCESS, `emailVerified:true` prouvé.
+- [CI OIDC PKCE/JWKS #38250282773](https://github.com/adminluxe/purple-orchid-group/actions/runs/38250282773) : SUCCESS, échanges OAuth HTTP200, RSA/JWKS ID/access tokens réellement validés, nonce, audience, `azp`, rôle Client exclusif et code rejoué HTTP400.
+
+**DelishAfrica branche PR #35 DRAFT :**
+- [CI d'admission pure et compilations #38251302272](https://github.com/adminluxe/DelishAfrica/actions/runs/38251302272) : SUCCESS sur candidat non intégré aux routes.
+- [PostgreSQL 17 QA isolé #38252079967](https://github.com/adminluxe/DelishAfrica/actions/runs/38252079967) : SUCCESS, 11 messages `QA_PASS` sur vraies contraintes/transactions Postgres ; aucun port hôte, réseau Docker `none`, conteneur détruit. Migration candidate `20261012_002_native_client_admission_qa_only.sql` : **NON APPLIQUÉE sur VPS**. Preuves : impossible d'approuver sans e-mail/SMS, empreinte SMS non rejouable sur autre sujet, `sub`/e-mail immuables, refus SMS ancien, révocation irréversible.
+- [CI vérificateur Client distinct RSA/JWKS et registre #38252895810](https://github.com/adminluxe/DelishAfrica/actions/runs/38252895810) : SUCCESS sur SHA `a868f4dabf6ed2bc27bbb514e411806819c718a3`. Fichiers candidats `services/api-nest/src/auth/native-client-jwt-verifier.ts` et `test/native-client-jwt-verifier.test.cjs`. Test réel de signatures RSA éphémères ; mauvais issuer, JWKS d'autre realm, rôles/audiences prohibés et JWT trafiqués refusés. Le vérificateur ne fetch PAS les JWKS lui-même : **le résolveur HTTPS issuer-pinné est à créer puis à tester en QA**.
+
+**IMPORTANT — aucune fausse certification :** le JWT RSA de cette dernière CI est fabriqué par le test, distinct du token effectivement généré par Keycloak dans l'autre laboratoire ; les deux composants ne sont pas encore reliés à la même API QA. Le résultat de la pure admission teste une **attestation SMS simulée**, et celui de PostgreSQL des preuves structurées synthétiques : le service réel doit lui-même confirmer les attestations du fournisseur, les lier au sujet OIDC et valider la transaction DB avant toute route sensible.
+
+Le worktree d'exploitation `/opt/delishafrica/monorepo` avec 21 entrées locales préservées reste **inchangé** ; API 3010/3011 non modifiées, 3095 `enabled:false`, enrollment public HTTP404. Pas de LIVE, EAS, build ou Stores. Prochaine preuve bloquante : **intégration HTTP QA vérifiant un JWT issu de Keycloak isolé + registre PostgreSQL isolé + fausse attestation SMS, avec 401/403 sur toutes requêtes non approuvées, sans lien au VPS live**.
