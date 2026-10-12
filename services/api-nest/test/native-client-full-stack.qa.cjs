@@ -7,12 +7,15 @@ const assert = require('node:assert/strict');
 const net = require('node:net');
 const crypto = require('node:crypto');
 const http = require('node:http');
-const { Client: PgClient } = require('pg');
+const { Client: PgClient, Pool: PgPool } = require('pg');
 require('reflect-metadata');
 const { Test } = require('@nestjs/testing');
-const { Controller, Get, UseGuards } = require('@nestjs/common');
-const { NativeClientNestCommerceGuard, NATIVE_CLIENT_COMMERCE_DEPS } =
+const { Controller, Get, Post, Req, Body, UseGuards } = require('@nestjs/common');
+const { NativeClientNestCommerceGuard, NATIVE_CLIENT_COMMERCE_DEPS,
+  NATIVE_CLIENT_ADMISSION_CONTEXT } =
   require('/qa-built/native-client-nest-commerce.guard.js');
+const { QaClientCommercePgAdapter } =
+  require('/qa-built/client-commerce.pg-qa.adapter.js');
 const { NativeClientTrustedJwksResolver } =
   require('/qa-built/native-client-trusted-jwks.resolver.js');
 const { startQaHttpsProxy } = require('./synthetic-keycloak-tls-proxy.qa.cjs');
@@ -38,7 +41,8 @@ if (process.env.GITHUB_ACTIONS !== 'true' ||
     !ADMIN_PASSWORD ||
     process.env.QA_HTTPS_ORIGIN !== ROOT ||
     process.env.NODE_EXTRA_CA_CERTS !== '/qa-tls/qa.crt' ||
-    process.env.QA_PG_HOST !== '127.0.0.1') {
+    process.env.QA_PG_HOST !== '127.0.0.1' ||
+    !/^[a-f0-9]{64}$/.test(process.env.QA_COMMERCE_HMAC_KEY||'')) {
   console.error('QA_FAIL=DISPOSABLE_LOCAL_CI_GUARD_REQUIRED');
   process.exit(2);
 }
@@ -142,6 +146,7 @@ async function run() {
   const proxy = await startQaHttpsProxy();
   const sink=smtpSink();
   let pg = null;
+  let commercePool = null;
   let nestApp = null;
   let commerceServer = null;
   let smsServer = null;
@@ -420,6 +425,19 @@ async function run() {
     await pg.connect();
     check((await pg.query('SELECT 1 AS ok')).rows[0].ok===1,
       'same_network_ephemeral_postgresql_connection');
+    commercePool=new PgPool({host:'127.0.0.1',port:5432,user:'postgres',
+      database:'postgres',max:8,connectionTimeoutMillis:10000,
+      statement_timeout:12000,query_timeout:12000});
+    const clientCommerceAdapter=new QaClientCommercePgAdapter(
+      commercePool,process.env.QA_COMMERCE_HMAC_KEY);
+    // The canonical quote below is generated server-side in QA; body.quote,
+    // price, role, subject or issuer can never override these values.
+    const qaCanonicalQuote=Object.freeze({
+      source:'server-canonical-catalog',
+      quoteFingerprint:'a'.repeat(64),
+      cartFingerprint:'b'.repeat(64),
+      merchantSlug:'qa-merchant',totalMinor:1200,currency:'EUR',
+    });
     const emailSecret=process.env.QA_EMAIL_HMAC_SECRET;
     check(typeof emailSecret==='string' && emailSecret.length>=64,
       'ephemeral_hmac_secret_present');
@@ -486,7 +504,19 @@ async function run() {
     catch{invalidIssuerBlocked=true}
     check(invalidIssuerBlocked,'jwks_client_http_downgrade_rejected');
     class QaNestController {
-      check() { return { admitted:true, scenario:'synthetic-only' }; }
+      check() { return {admitted:true,scenario:'synthetic-only'}; }
+      async reserve(request,body={}) {
+        const approved=request[NATIVE_CLIENT_ADMISSION_CONTEXT];
+        if(!approved)throw Error('qa_guard_identity_context_missing');
+        const order=await clientCommerceAdapter.reserveOrder(
+          approved,qaCanonicalQuote,body.clientMutationId);
+        const payment=await clientCommerceAdapter.reserveTestPayment(
+          approved,order.orderId);
+        return {ok:true,orderId:order.orderId,totalMinor:order.totalMinor,
+          issuer:order.issuer,clientSubject:order.clientSubject,
+          stripeIdempotencyKey:payment.stripeIdempotencyKey,
+          stripeMode:payment.stripeMode,paymentState:payment.state};
+      }
     }
     Controller('qa/native')(QaNestController);
     const nestDescriptor=Object.getOwnPropertyDescriptor(
@@ -494,6 +524,13 @@ async function run() {
     Get('commerce')(QaNestController.prototype,'check',nestDescriptor);
     UseGuards(NativeClientNestCommerceGuard)(
       QaNestController.prototype,'check',nestDescriptor);
+    const reserveDescriptor=Object.getOwnPropertyDescriptor(
+      QaNestController.prototype,'reserve');
+    Post('reserve')(QaNestController.prototype,'reserve',reserveDescriptor);
+    Req()(QaNestController.prototype,'reserve',0);
+    Body()(QaNestController.prototype,'reserve',1);
+    UseGuards(NativeClientNestCommerceGuard)(
+      QaNestController.prototype,'reserve',reserveDescriptor);
     const nestedDeps={
       issuer,clientId:CLIENT_ID,audience:CLIENT_ID,
       emailHmacSecret:emailSecret,maxTokenLifetimeSeconds:3600,
@@ -550,6 +587,37 @@ async function run() {
     await checkNest('',401,'nestjs_keycloak_missing_bearer_denied');
     await checkNest(realJwt+'tamper',401,'nestjs_actual_keycloak_jwt_tamper_denied');
     await checkNest(realJwt,403,'nestjs_actual_keycloak_jwt_pending_sms_denied');
+    const qaMutation='native-full-stack-qa-mutation-001';
+    const hostileClientBody={
+      clientMutationId:qaMutation,issuer:'https://attacker.example.invalid/realms/other',
+      subject:crypto.randomUUID(),role:'ops',
+      totalMinor:1,currency:'USD',
+      quote:{source:'mobile-body',totalMinor:1,quoteFingerprint:'c'.repeat(64)},
+    };
+    const reserveNest=async(token,body,expectedStatus,label)=>{
+      const res=await fetch('http://127.0.0.1:19603/qa/native/reserve',{
+        method:'POST',signal:AbortSignal.timeout(18000),
+        headers:{'content-type':'application/json',
+          ...(token?{authorization:'Bearer '+token}:{})},
+        body:JSON.stringify(body),
+      });
+      if(res.status!==expectedStatus)
+        say('NEST_RESERVATION_STATUS_DIAGNOSTIC',
+          label+'_'+expectedStatus+'_'+res.status);
+      check(res.status===expectedStatus,label+'_http_'+expectedStatus);
+      const payload=res.status===201?await res.json():null;
+      if(!payload)await res.arrayBuffer();
+      return payload;
+    };
+    await reserveNest('',hostileClientBody,401,
+      'nestjs_pg_commerce_no_token_no_order');
+    await reserveNest(realJwt+'tamper',hostileClientBody,401,
+      'nestjs_pg_commerce_tampered_token_no_order');
+    await reserveNest(realJwt,hostileClientBody,403,
+      'nestjs_pg_commerce_unapproved_sms_no_order');
+    check((await pg.query('SELECT count(*)::int AS n FROM '+
+      'public.da_client_commerce_orders_qa')).rows[0].n===0,
+      'nestjs_pg_commerce_denied_requests_zero_db_orders');
 
     const checkCommerce=async(token,expectedStatus,label)=>{
       const res=await fetch('http://127.0.0.1:19601/qa/commerce/check',{
@@ -628,6 +696,34 @@ async function run() {
       'commerce_approved_only_after_verified_real_oidc_and_real_pg_commit');
     await checkNest(realJwt,200,
       'nestjs_real_keycloak_jwt_real_pg_after_mock_sms_admitted');
+    const firstCommerce=await reserveNest(realJwt,hostileClientBody,201,
+      'nestjs_real_keycloak_guard_actual_pg_order_payment_reserved');
+    const replayCommerce=await reserveNest(realJwt,hostileClientBody,201,
+      'nestjs_real_keycloak_guard_replayed_same_commerce_operation');
+    check(firstCommerce.orderId===replayCommerce.orderId &&
+      firstCommerce.stripeIdempotencyKey===replayCommerce.stripeIdempotencyKey,
+      'actual_keycloak_verified_identity_sql_commerce_idempotency_same_provider_key');
+    check(firstCommerce.totalMinor===1200 &&
+      firstCommerce.clientSubject===customer.id &&
+      firstCommerce.issuer===issuer &&
+      firstCommerce.stripeMode==='test' &&
+      firstCommerce.paymentState==='reserved',
+      'request_body_cannot_spoof_signed_identity_price_or_stripe_mode');
+    const financialRecord=await pg.query(
+      'SELECT o.total_minor,o.client_subject,o.issuer, '+
+      'COUNT(p.authority_id)::int AS payments FROM '+
+      'public.da_client_commerce_orders_qa o '+
+      'INNER JOIN public.da_client_commerce_payment_authority_qa p '+
+      'ON p.order_id=o.order_id WHERE o.order_id=$1 '+
+      'GROUP BY o.total_minor,o.client_subject,o.issuer',
+      [firstCommerce.orderId]);
+    check(financialRecord.rows.length===1 &&
+      String(financialRecord.rows[0].total_minor)==='1200' &&
+      financialRecord.rows[0].client_subject===customer.id &&
+      financialRecord.rows[0].payments===1,
+      'same_real_keycloak_subject_exactly_one_postgresql_order_and_payment_authority');
+    say('NATIVE_KEYCLOAK_NEST_PG_COMMERCE',
+      'PASS_SIGNED_CLIENT_JWT_GUARD_SYMBOL_SQL_ORDER_AND_ONE_STRIPE_TEST_RESERVATION');
     const resolverSnapshot=await trustedResolver.loadTrustedJwks();
     check(resolverSnapshot.provenanceVerified===true &&
       resolverSnapshot.issuer===issuer &&
@@ -660,6 +756,11 @@ async function run() {
       ['revoked',issuer,customer.id]);
     await checkCommerce(realJwt,403,'commerce_revoked_subject_http_403');
     await checkNest(realJwt,403,'nestjs_real_keycloak_jwt_revoked_pg_denied');
+    await reserveNest(realJwt,{clientMutationId:'qa-after-revocation-002'},
+      403,'nestjs_commerce_revoked_client_no_new_order_or_payment');
+    check((await pg.query('SELECT count(*)::int AS n FROM '+
+      'public.da_client_commerce_orders_qa')).rows[0].n===1,
+      'nestjs_revoked_client_does_not_create_any_new_orders');
     mockDbDown=true;
     await checkNest(realJwt,503,'nestjs_pg_unavailable_fail_closed');
     mockDbDown=false;
@@ -700,6 +801,7 @@ async function run() {
       await new Promise(resolve=>smsServer.close(resolve));
     }
     if(nestApp)await nestApp.close();
+    if(commercePool)await commercePool.end();
     if(pg)await pg.end();
     await proxy.close();
   }
