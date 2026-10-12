@@ -49,7 +49,7 @@ const quote={
   merchantSlug:'qa-restaurant',totalMinor:2190,currency:'EUR',
 };
 const mutationId='recon-qa-mutation-20261012';
-const fakeStripeKey=sk_+test_+[QA,SYNTHETIC,NOTREAL,20261012].join(_);
+const fakeStripeKey=['sk','test','QA_SYNTHETIC_NONNETWORK_ONLY_20261012'].join('_');
 let order,authority;
 let fakePi,fetchCalls=0,injectFailure=false;
 const fakeFetch=async(url,opts)=>{
