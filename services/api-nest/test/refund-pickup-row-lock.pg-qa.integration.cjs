@@ -4,6 +4,7 @@
  * Fully synthetic invoices. Only Docker --network none CI namespace.
  */
 const assert=require('node:assert/strict');
+const {createHash}=require('node:crypto');
 const {test}=require('node:test');
 const {setTimeout:delay}=require('node:timers/promises');
 const {Pool}=require('pg');
@@ -113,7 +114,8 @@ test('QA 008: finance refunds serialize with Courier transitions',async()=>{
     // First linearization: refund transaction locks the order before pickup.
     const first=await capturedAndAssigned(
       'qa-008-refund-first-0001','pi_QA008REFUNDFIRST0001',
-      'ch_QA008CHARGEFIRST0001','c'.repeat(64));
+      'ch_QA008CHARGEFIRST0001',
+      createHash('sha256').update('qa-008-refund-first-receipt').digest('hex'));
     refundTx=await financePool.connect();
     await refundTx.query('BEGIN');
     await refundTx.query(holdSql,[
@@ -138,7 +140,8 @@ test('QA 008: finance refunds serialize with Courier transitions',async()=>{
     // Second linearization: pickup locks the order before refund.
     const second=await capturedAndAssigned(
       'qa-008-pickup-first-0002','pi_QA008PICKUPFIRST0002',
-      'ch_QA008CHARGESECOND0002','d'.repeat(64));
+      'ch_QA008CHARGESECOND0002',
+      createHash('sha256').update('qa-008-pickup-first-receipt').digest('hex'));
     pickupTx=await courierPool.connect();
     await pickupTx.query('BEGIN');
     const pickup=await pickupTx.query(courierSql,[
