@@ -5,8 +5,8 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 require('reflect-metadata');
 const { Test } = require('@nestjs/testing');
-const { Controller, Get, UseGuards } = require('@nestjs/common');
-const { NativeClientNestCommerceGuard, NATIVE_CLIENT_COMMERCE_DEPS } =
+const { Controller, Get, UseGuards, Req } = require('@nestjs/common');
+const { NativeClientNestCommerceGuard, NATIVE_CLIENT_COMMERCE_DEPS, NATIVE_CLIENT_ADMISSION_CONTEXT } =
   require('../src/auth/native-client-nest-commerce.guard');
 const { nativeClientEmailBindingHmac } =
   require('../src/auth/native-client-commerce.policy');
@@ -49,10 +49,11 @@ test('Nest HTTP admission blocks missing, invalid, pending, revoked and unavaila
       return ledger;
     },
   };
-  class QaController { check() { return {admitted:true}; } }
+  class QaController { check(req) { const p=req[NATIVE_CLIENT_ADMISSION_CONTEXT]; return {admitted:!!p,role:p?.role,subject:p?.subject}; } }
   Controller('qa/native')(QaController);
   const descriptor = Object.getOwnPropertyDescriptor(QaController.prototype,'check');
   Get('commerce')(QaController.prototype,'check',descriptor);
+  Req()(QaController.prototype,'check',0);
   UseGuards(NativeClientNestCommerceGuard)(QaController.prototype,'check',descriptor);
   const moduleRef = await Test.createTestingModule({
     controllers:[QaController],
@@ -85,6 +86,8 @@ test('Nest HTTP admission blocks missing, invalid, pending, revoked and unavaila
       providerSmsProofAccepted:true,smsRecipientHmac:'a'.repeat(64),
       transactionCommittedAtSeconds:now-1};
     assert.equal(await status(jwt),200);
+    const info=await fetch(url,{headers:{authorization:'Bearer '+jwt}});
+    assert.deepEqual(await info.json(),{admitted:true,role:'client',subject});
     ledger = {...ledger,status:'revoked',revokedAtSeconds:now-1};
     assert.equal(await status(jwt),403);
     dbOutage=true;
