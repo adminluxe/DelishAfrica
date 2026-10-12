@@ -92,13 +92,26 @@ function checkKeys(untrusted: unknown): readonly NativeClientRsaJwk[] {
   const trusted:NativeClientRsaJwk[]=[];
   for(const candidate of arr) {
     const k=obj(candidate);
-    if(!k || k.kty!=='RSA' || (k.use!==undefined && k.use!=='sig') ||
-       (k.alg!==undefined && k.alg!=='RS256') ||
-       typeof k.kid!=='string' || !/^[a-z0-9_.-]{1,128}$/i.test(k.kid) ||
+    if(!k ||
+      // Private key material and external key selectors must NEVER appear
+      // in any OIDC JWKS response, including alternate/ignored algorithms.
+      ['d','p','q','dp','dq','qi','oth','jku','x5u'].some(key=>k[key]!==undefined)) {
+      throw Error('native_client_jwks_key_invalid_or_duplicate');
+    }
+
+    // A real Keycloak realm may advertise encryption and alternative-alg
+    // keys in the SAME JWKS. Those keys are NOT authentication candidates.
+    // Our verification policy accepts ONLY RSA/RS256 signing keys. Never
+    // reject an otherwise valid realm merely for publishing an enc key.
+    const eligible=k.kty==='RSA' &&
+      (k.use===undefined || k.use==='sig') &&
+      (k.alg===undefined || k.alg==='RS256');
+    if(!eligible)continue;
+
+    if(typeof k.kid!=='string' || !/^[a-z0-9_.-]{1,128}$/i.test(k.kid) ||
        ids.has(k.kid) || typeof k.n!=='string' ||
        !/^[A-Za-z0-9_-]{250,1200}$/.test(k.n) ||
-       typeof k.e!=='string' || !/^[A-Za-z0-9_-]{2,12}$/.test(k.e) ||
-       ['d','p','q','dp','dq','qi','oth','jku','x5u'].some(key=>k[key]!==undefined)) {
+       typeof k.e!=='string' || !/^[A-Za-z0-9_-]{2,12}$/.test(k.e)) {
       throw Error('native_client_jwks_key_invalid_or_duplicate');
     }
     ids.add(k.kid);
@@ -106,6 +119,7 @@ function checkKeys(untrusted: unknown): readonly NativeClientRsaJwk[] {
       kty:'RSA',kid:k.kid,alg:'RS256',use:'sig',n:k.n,e:k.e,
     }));
   }
+  if(trusted.length===0)throw Error('native_client_jwks_no_accepted_rs256_key');
   return Object.freeze(trusted);
 }
 
