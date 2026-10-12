@@ -4,6 +4,9 @@ on:
     branches:
       - main
       - fix/client-native-maps-auth-ux-20261011
+      # Stacked PR #36: validate the QA-only finance adapters against
+      # the actual API and all three mobile TypeScript projects.
+      - feat/client-enrollment-secure-20261011
     paths:
       - 'services/api-nest/src/client-enrollment/**'
       - 'services/api-nest/src/client-commerce/**'
