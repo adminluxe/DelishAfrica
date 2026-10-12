@@ -4,6 +4,7 @@ on:
     paths:
       - '.github/workflows/native-client-commerce-authority-postgres-qa.yml'
       - 'services/api-nest/migrations/client-commerce/20261012_001_client_commerce_authority_qa_only.sql'
+      - 'services/api-nest/migrations/client-commerce/20261012_002_client_commerce_least_privilege_qa_only.sql'
       - 'services/api-nest/test/native-client-commerce-authority.qa.sql'
       - 'services/api-nest/src/client-commerce/client-commerce.pg-qa.adapter.ts'
       - 'services/api-nest/test/client-commerce.pg-qa.integration.cjs'
@@ -44,7 +45,13 @@ jobs:
           const adapter=fs.readFileSync('services/api-nest/src/client-commerce/client-commerce.pg-qa.adapter.ts','utf8');
           const test=fs.readFileSync('services/api-nest/test/client-commerce.pg-qa.integration.cjs','utf8');
           assert(adapter.includes('class QaClientCommercePgAdapter'));
-          assert(adapter.includes('da_qa_reserve_client_order'));
+          assert(adapter.includes('da_qa_service_reserve_order'));
+          assert(adapter.includes('da_qa_service_reserve_test_payment'));
+          const acl=fs.readFileSync('services/api-nest/migrations/client-commerce/20261012_002_client_commerce_least_privilege_qa_only.sql','utf8');
+          assert(acl.includes('SECURITY DEFINER'));
+          assert(acl.includes('SET search_path=pg_catalog,public'));
+          assert(acl.includes('REVOKE ALL ON TABLE'));
+          assert(!/sk_live_|api\.stripe\.com/.test(acl));
           assert(test.includes('QA_ADAPTER_8_WAY_TWO_POOLS=ONE_ORDER'));
           assert(!/api\.stripe\.com|sk_live_|pk_live_/.test(adapter+test));
           console.log('QA_COMMERCE_STATIC=PASS');
@@ -131,6 +138,10 @@ jobs:
           echo "QA_HOST_PORTS_PUBLISHED=NONE"
           docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres \
             < services/api-nest/migrations/client-commerce/20261012_001_client_commerce_authority_qa_only.sql
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/migrations/client-commerce/20261012_002_client_commerce_least_privilege_qa_only.sql
+          echo "QA_COMMERCE_LEAST_PRIVILEGE_ROLES=CREATED_EPHEMERAL_ONLY"
           echo "QA_COMMERCE_SCHEMA_CANDIDATE=CREATED_EPHEMERAL_ONLY"
           docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres \
             < services/api-nest/test/native-client-commerce-authority.qa.sql
