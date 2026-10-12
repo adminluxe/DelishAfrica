@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import * as SecureStore from "expo-secure-store";
+import { DaCheckoutAttemptFence } from "../utils/daCheckoutAttemptFence";
 import { cartItemSummary, clearCart, formatCartEuro, getCartSnapshot, waitForCartPersistence } from "../utils/daCart";
 import { deliveryZoneSummary, validateDeliveryZone } from "../utils/daDeliveryZones";
 import { daAttestIdentityProof, daResolveAddress, DaIdentityProof, DaResolvedAddress } from "../utils/daTrustNetwork";
@@ -90,6 +91,11 @@ type StripeNativeModule = {
 
 const PROFILE_KEY = "__DELISHAFRICA_CLIENT_PROFILE_LITE_V1__";
 const PENDING_PAYMENT_COMMIT_KEY = "__DELISHAFRICA_PENDING_PAYMENT_COMMIT_V1__";
+const CHECKOUT_ATTEMPT_FENCE_KEY = "__DELISHAFRICA_CHECKOUT_ATTEMPT_FENCE_QA_V1__";
+// Isolated QA branch only. Do not turn on in published builds before E2E.
+const CHECKOUT_ATTEMPT_FENCE_QA_ENABLED =
+  process.env.EXPO_PUBLIC_DA_CHECKOUT_FENCE_QA === "YES" &&
+  process.env.NODE_ENV !== "production";
 // DA_SPRINT31_PAYMENT_COMMIT_TRUTH_V1
 
 const RAW_API =
@@ -172,6 +178,26 @@ async function clearPendingPaymentCommit(): Promise<void> {
   delete globalBag()[`${PENDING_PAYMENT_COMMIT_KEY}.${scope}`];
   const scopedKey = await daAccountStorageKey(PENDING_PAYMENT_COMMIT_KEY);
   await SecureStore.deleteItemAsync(scopedKey);
+}
+
+function checkoutAttemptFence(): DaCheckoutAttemptFence {
+  return new DaCheckoutAttemptFence({
+    async read() {
+      return SecureStore.getItemAsync(await daAccountStorageKey(CHECKOUT_ATTEMPT_FENCE_KEY));
+    },
+    async write(serialized: string) {
+      await SecureStore.setItemAsync(
+        await daAccountStorageKey(CHECKOUT_ATTEMPT_FENCE_KEY),
+        serialized,
+        { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY },
+      );
+    },
+    async clear() {
+      await SecureStore.deleteItemAsync(
+        await daAccountStorageKey(CHECKOUT_ATTEMPT_FENCE_KEY),
+      );
+    },
+  });
 }
 
 function cartFingerprint(cart: CartSnapshot): string {
@@ -563,7 +589,20 @@ export default function CheckoutPreflightScreen() {
     return `Payer ${formatCartEuro(cartSnapshot.total)}`;
   }
 
-  async function publishConfirmedOrder(orderId: string, restaurant: string) {
+  async function publishConfirmedOrder(
+    orderId: string,
+    restaurant: string,
+    verifiedPaymentIntentId: string | null,
+  ) {
+    if (CHECKOUT_ATTEMPT_FENCE_QA_ENABLED) {
+      const fence = checkoutAttemptFence();
+      if (await fence.inspect()) {
+        if (!verifiedPaymentIntentId) {
+          throw new Error("DA_CHECKOUT_FENCE_VERIFIED_PAYMENT_INTENT_REQUIRED");
+        }
+        await fence.clearAfterVerifiedOrder(orderId, verifiedPaymentIntentId);
+      }
+    }
     await clearPendingPaymentCommit();
     setPendingCommit(null);
     clearCart();
@@ -596,7 +635,7 @@ export default function CheckoutPreflightScreen() {
         "Le paiement est confirmé, mais la commande n’est pas encore relue. Aucun nouveau débit ne sera lancé : touchez Réconcilier la commande.",
       );
     }
-    await publishConfirmedOrder(commit.orderId, commit.cart.restaurantName || "votre restaurant");
+    await publishConfirmedOrder(commit.orderId, commit.cart.restaurantName || "votre restaurant", commit.paymentIntentId);
   }
 
   async function payAndCreateOrder() {
@@ -708,8 +747,23 @@ export default function CheckoutPreflightScreen() {
         throw new Error(stripe.error || "Le module de paiement sécurisé est indisponible.");
       }
 
-      const orderId = `DA-${Date.now().toString(36).slice(-6).toUpperCase()}`;
-      const clientMutationId = `client:${checkoutProfile.id}:${orderId}:${Date.now()}`;
+      const proposedOrderId = `DA-${Date.now().toString(36).slice(-6).toUpperCase()}`;
+      const proposedMutationId =
+        `client:${checkoutProfile.id}:${proposedOrderId}:${Date.now()}`;
+      // QA-only: persist the ORIGINAL attempt before the first provider call.
+      // After a crash, the original order/mutation is recovered; after the
+      // PaymentSheet opened, an ambiguous result is NEVER retried blindly.
+      const fencedAttempt = CHECKOUT_ATTEMPT_FENCE_QA_ENABLED
+        ? await checkoutAttemptFence().begin({
+            ownerScope: await daAccountScopeId(),
+            cartFingerprint: activeFingerprint,
+            orderId: proposedOrderId,
+            clientMutationId: proposedMutationId,
+          })
+        : null;
+      const orderId = fencedAttempt?.orderId || proposedOrderId;
+      const clientMutationId =
+        fencedAttempt?.clientMutationId || proposedMutationId;
       setLastOrderId(orderId);
       setLastPaymentIntentId(null);
 
@@ -721,6 +775,9 @@ export default function CheckoutPreflightScreen() {
         clientMutationId,
         cartFingerprint: activeFingerprint,
       });
+      if (CHECKOUT_ATTEMPT_FENCE_QA_ENABLED) {
+        await checkoutAttemptFence().markIntent(orderId, String(intent.paymentIntentId || ""));
+      }
       setLastPaymentIntentId(intent.paymentIntentId || null);
 
       setPhase("Préparation de la validation bancaire...");
@@ -748,6 +805,10 @@ export default function CheckoutPreflightScreen() {
       }
 
       setPhase("Validation bancaire en cours...");
+      if (CHECKOUT_ATTEMPT_FENCE_QA_ENABLED) {
+        // Record uncertainty BEFORE PaymentSheet takes over the screen.
+        await checkoutAttemptFence().markSheetOpened(orderId);
+      }
       const result = await stripe.module.presentPaymentSheet?.();
       if (result?.error) {
         setPhase(`Paiement non finalisé : ${result.error.message || result.error.code || "annulé"}`);
@@ -755,6 +816,9 @@ export default function CheckoutPreflightScreen() {
         return;
       }
 
+      if (CHECKOUT_ATTEMPT_FENCE_QA_ENABLED) {
+        await checkoutAttemptFence().markPaymentReported(orderId);
+      }
       const commit: PendingPaymentCommit = {
         version: 1,
         orderId,
@@ -783,7 +847,7 @@ export default function CheckoutPreflightScreen() {
           "Paiement confirmé, mais confirmation de commande incomplète. Aucun nouveau débit ne sera lancé.",
         );
       }
-      await publishConfirmedOrder(orderId, activeCart.restaurantName || "votre restaurant");
+      await publishConfirmedOrder(orderId, activeCart.restaurantName || "votre restaurant", commit.paymentIntentId);
     } catch (error: any) {
       const message = error?.message || String(error);
       const paidCommit = await restorePendingPaymentCommit();
@@ -811,6 +875,15 @@ export default function CheckoutPreflightScreen() {
           setPhase(`Paiement protégé · ${message}`);
           Alert.alert("Commande à réconcilier", message);
         }
+      } else if (/^DA_CHECKOUT_(?:ATTEMPT_|FENCE_|PREVIOUS_)/.test(message)) {
+        // A previous provider attempt may have succeeded despite an app crash.
+        // Never start another PaymentIntent until the same order is verified.
+        setPhase("Paiement en attente de réconciliation — aucun nouveau débit.");
+        Alert.alert(
+          "Vérification du paiement",
+          "Une tentative de paiement précédente doit être vérifiée avant tout nouvel essai. Aucun second débit ne sera lancé. Contactez l’assistance si nécessaire.",
+          [{ text: "Compris" }],
+        );
       } else if (error?.code === "DA_CLIENT_AUTH_REQUIRED") {
         // Preserve the current cart; authentication is an explicit user action.
         // Never restart a PaymentIntent or charge the customer on OAuth return.

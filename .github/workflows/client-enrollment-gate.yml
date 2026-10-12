@@ -85,6 +85,8 @@ jobs:
           pnpm exec tsc --noEmit -p apps/courier/tsconfig.json
       - name: Canonical Client contact proofs and checkout continuity
         run: node --test apps/client/test/daProofIdentity.test.cjs
+      - name: Client pre-Stripe checkout mutation persistence and crash recovery (synthetic only)
+        run: node --test apps/client/test/daCheckoutAttemptFence.test.cjs
       - name: Safe one-shot enrollment preflight syntax
         run: |
           bash -n ops/client-enrollment/DA_CLIENT_ENROLLMENT_SAFE_GATE_V1.sh
