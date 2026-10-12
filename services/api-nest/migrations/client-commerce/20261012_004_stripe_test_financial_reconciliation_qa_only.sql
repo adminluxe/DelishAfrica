@@ -116,6 +116,31 @@ RETURNS TABLE(
     AND a.state IN ('intent_created','succeeded');
 $$;
 
+-- A creator may read only the exact issuer/subject-bound, reserved TEST
+-- authority needed for PaymentIntent creation. No arbitrary money/price input
+-- is returned from HTTP; all amounts originate in immutable PostgreSQL.
+CREATE FUNCTION public.da_qa_provider_read_reserved_test_intent(
+  p_authority uuid,p_issuer text,p_subject uuid
+) RETURNS TABLE(
+  authority_id uuid,order_id uuid,issuer text,client_subject uuid,
+  client_mutation_id varchar,quote_fingerprint char(64),
+  cart_fingerprint char(64),merchant_slug varchar,
+  total_minor bigint,currency char(3),stripe_idempotency_key varchar,
+  stripe_payment_intent_id text,payment_state text,created_at timestamptz
+)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path=pg_catalog,public AS $$
+  SELECT a.authority_id,o.order_id,o.issuer,o.client_subject,
+    o.client_mutation_id,o.quote_fingerprint,o.cart_fingerprint,
+    o.merchant_slug,o.total_minor,o.currency,a.stripe_idempotency_key,
+    a.stripe_payment_intent_id,a.state,a.created_at
+  FROM public.da_client_commerce_payment_authority_qa a
+  JOIN public.da_client_commerce_orders_qa o ON o.order_id=a.order_id
+  WHERE a.authority_id=p_authority AND o.issuer=p_issuer
+    AND o.client_subject=p_subject AND o.state='pending_payment'
+    AND a.state IN ('reserved','intent_created') AND a.stripe_mode='test';
+$$;
+
 -- Crash-recovery enumeration of existing intents; may include already paid
 -- orders so post-capture refunds/disputes can be checked again by the verifier.
 CREATE FUNCTION public.da_qa_finance_scan(p_limit integer)
@@ -275,6 +300,7 @@ REVOKE ALL ON TABLE public.da_stripe_test_financial_receipts_qa,
        da_qa_stripe_finance_reconciler;
 REVOKE ALL ON FUNCTION public.da_qa_provider_bind_test_intent(
   uuid,text,bigint,character) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.da_qa_provider_read_reserved_test_intent(uuid,text,uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.da_qa_finance_read_authority(uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.da_qa_finance_scan(integer) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.da_qa_finance_commit_captured_test(
@@ -284,6 +310,8 @@ REVOKE ALL ON FUNCTION public.da_qa_commerce_order_dispatch_eligible(uuid) FROM 
 
 GRANT EXECUTE ON FUNCTION public.da_qa_provider_bind_test_intent(
   uuid,text,bigint,character) TO da_qa_stripe_intent_creator;
+GRANT EXECUTE ON FUNCTION public.da_qa_provider_read_reserved_test_intent(uuid,text,uuid)
+  TO da_qa_stripe_intent_creator;
 GRANT EXECUTE ON FUNCTION public.da_qa_finance_read_authority(uuid),
   public.da_qa_finance_scan(integer),
   public.da_qa_finance_commit_captured_test(

@@ -11,6 +11,8 @@ on:
       - 'services/api-nest/migrations/client-commerce/20261012_004_stripe_test_financial_reconciliation_qa_only.sql'
       - 'services/api-nest/src/client-commerce/stripe-test-financial-reconcile.pg-qa.adapter.ts'
       - 'services/api-nest/test/stripe-test-financial-reconciliation.pg-qa.integration.cjs'
+      - 'services/api-nest/src/client-commerce/stripe-test-intent-create.pg-qa.adapter.ts'
+      - 'services/api-nest/test/stripe-test-intent-create.pg-qa.integration.cjs'
       - 'services/api-nest/test/native-client-commerce-authority.qa.sql'
       - 'services/api-nest/src/client-commerce/client-commerce.pg-qa.adapter.ts'
       - 'services/api-nest/test/client-commerce.pg-qa.integration.cjs'
@@ -90,7 +92,8 @@ jobs:
           for(const name of [
             'client-commerce.pg-qa.adapter',
             'stripe-test-webhook-inbox.pg-qa.adapter',
-            'stripe-test-financial-reconcile.pg-qa.adapter'
+            'stripe-test-financial-reconcile.pg-qa.adapter',
+            'stripe-test-intent-create.pg-qa.adapter'
           ]){
             const file='services/api-nest/src/client-commerce/'+name+'.ts';
             const source=fs.readFileSync(file,'utf8');
@@ -125,6 +128,7 @@ jobs:
           node --check services/api-nest/test/client-commerce.pg-qa.integration.cjs
           node --check services/api-nest/test/stripe-test-webhook-inbox.pg-qa.integration.cjs
           node --check services/api-nest/test/stripe-test-financial-reconciliation.pg-qa.integration.cjs
+          node --check services/api-nest/test/stripe-test-intent-create.pg-qa.integration.cjs
           echo "QA_COMMERCE_ADAPTER_BUILD=EPHEMERAL_ONLY"
 
       - name: Run PostgreSQL 17 under disconnected ephemeral container
@@ -254,6 +258,18 @@ jobs:
             node:22-alpine node --test \
               /qa-tests/stripe-test-financial-reconciliation.pg-qa.integration.cjs
           echo "QA_STRIPE_TEST_FINANCE_PG_REAL=PASS_SYNTHETIC_NO_STRIPE"
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$NAME" \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --read-only --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+            --env-file "$QA_DIR/test.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node --test \
+              /qa-tests/stripe-test-intent-create.pg-qa.integration.cjs
+          echo "QA_STRIPE_TEST_INTENT_CREATE_PG_REAL=PASS_SYNTHETIC_NO_STRIPE"
           echo "QA_COMMERCE_PG=PASS_REAL_PG_AND_8_WAY_CONCURRENCY"
           echo "STRIPE_PROVIDER_CALLS=ZERO"
           echo "PRODUCTION_IMPACT=NONE"
