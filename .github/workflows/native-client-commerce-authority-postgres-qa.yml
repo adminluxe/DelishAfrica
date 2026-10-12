@@ -297,6 +297,21 @@ jobs:
             -h 127.0.0.1 -U postgres -d postgres \
             < services/api-nest/test/native-client-order-snapshot.pg-qa.sql
           echo "QA_CANONICAL_MERCHANT_SNAPSHOT_AND_DISPATCH_GATE=PASS_PG17_ONLY"
+          # Real Node adapter, two low-privilege connection pools and actual
+          # PG17 transactions in the SAME network-none namespace as the SQL gate.
+          # No Stripe, external service, host published port or production write.
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$NAME" \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --read-only --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+            --env-file "$QA_DIR/test.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node --test \
+              /qa-tests/client-order-snapshot.pg-qa.integration.cjs
+          echo "QA_REAL_PG17_NODE_SNAPSHOT_8_WAY_AND_ROLLBACK=PASS"
           echo "QA_COMMERCE_PG=PASS_REAL_PG_AND_8_WAY_CONCURRENCY"
           echo "STRIPE_PROVIDER_CALLS=ZERO"
           echo "PRODUCTION_IMPACT=NONE"
