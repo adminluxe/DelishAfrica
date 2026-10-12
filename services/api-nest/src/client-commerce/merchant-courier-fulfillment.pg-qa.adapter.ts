@@ -121,6 +121,21 @@ function lines(v:unknown):QaMerchantOrder['items']{
     });
   }));
 }
+// Reuse one canonical guard for the disconnected wallet read adapters too.
+export function qaRequireMerchantMembership(
+  principal:DaAuthPrincipal,
+  record:MerchantMembershipContext,
+  needWrite=false,
+):string {
+  return membership(principal,record,needWrite);
+}
+export function qaRequireCourierRoster(
+  principal:DaAuthPrincipal,
+  record:QaRosterEvidence,
+):void {
+  courier(principal,record);
+}
+
 export class QaMerchantCourierFulfillmentPgAdapter {
   constructor(
     private readonly merchantPool:QaPgPool,

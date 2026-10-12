@@ -15,6 +15,9 @@ on:
       - 'services/api-nest/migrations/client-commerce/20261013_006_canonical_order_snapshot_qa_only.sql'
       - 'services/api-nest/migrations/client-commerce/20261013_007_merchant_courier_fulfillment_qa_only.sql'
       - 'services/api-nest/migrations/client-commerce/20261013_008_refund_dispatch_row_lock_qa_only.sql'
+      - 'services/api-nest/migrations/client-commerce/20261013_009_merchant_courier_wallet_qa_only.sql'
+      - 'services/api-nest/test/merchant-courier-wallet.pg-qa.integration.cjs'
+      - 'services/api-nest/src/client-commerce/merchant-courier-wallet.pg-qa.adapter.ts'
       - 'services/api-nest/test/refund-pickup-row-lock.pg-qa.integration.cjs'
       - 'services/api-nest/test/native-merchant-courier-fulfillment.pg-qa.sql'
       - 'services/api-nest/test/merchant-courier-fulfillment.pg-qa.integration.cjs'
@@ -107,6 +110,7 @@ jobs:
             'client-commerce.pg-qa.adapter',
             'client-order-snapshot.pg-qa.adapter',
             'merchant-courier-fulfillment.pg-qa.adapter',
+            'merchant-courier-wallet.pg-qa.adapter',
             'stripe-test-webhook-inbox.pg-qa.adapter',
             'stripe-test-financial-reconcile.pg-qa.adapter',
             'stripe-test-intent-create.pg-qa.adapter'
@@ -363,6 +367,25 @@ jobs:
             node:22-alpine node --test \
               /qa-tests/refund-pickup-row-lock.pg-qa.integration.cjs
           echo "QA_008_PG17_FINANCE_HOLD_PICKUP_INTERLEAVING=PASS"
+          # Fake-policy, zero-sum PostgreSQL wallet journal, and
+          # read-only beneficiary projections: no Stripe/cashout APIs.
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/migrations/client-commerce/20261013_009_merchant_courier_wallet_qa_only.sql
+          echo "QA_009_WALLET_JOURNAL_SCHEMA=CREATED_DISCONNECTED_ONLY"
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$NAME" \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --read-only --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+            --env-file "$QA_DIR/test.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node --test \
+              /qa-tests/merchant-courier-wallet.pg-qa.integration.cjs
+          echo "QA_009_WALLET_MERCHANT_COURIER_REAL_PG17=PASS"
+          echo "QA_009_REAL_PAYOUTS=ZERO"
           echo "QA_COMMERCE_PG=PASS_REAL_PG_AND_8_WAY_CONCURRENCY"
           echo "STRIPE_PROVIDER_CALLS=ZERO"
           echo "PRODUCTION_IMPACT=NONE"
