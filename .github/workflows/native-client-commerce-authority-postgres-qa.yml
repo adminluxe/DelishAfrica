@@ -12,6 +12,9 @@ on:
       - 'services/api-nest/test/stripe-test-webhook-inbox.pg-qa.integration.cjs'
       - 'services/api-nest/migrations/client-commerce/20261012_004_stripe_test_financial_reconciliation_qa_only.sql'
       - 'services/api-nest/migrations/client-commerce/20261012_005_client_order_receipt_read_qa_only.sql'
+      - 'services/api-nest/migrations/client-commerce/20261013_006_canonical_order_snapshot_qa_only.sql'
+      - 'services/api-nest/test/native-client-order-snapshot.pg-qa.sql'
+      - 'services/api-nest/src/client-commerce/client-order-snapshot.pg-qa.adapter.ts'
       - 'services/api-nest/src/client-commerce/client-order-receipt.pg-qa.adapter.ts'
       - 'services/api-nest/test/native-client-order-receipt.pg-qa.sql'
       - 'services/api-nest/src/client-commerce/stripe-test-financial-reconcile.pg-qa.adapter.ts'
@@ -96,6 +99,7 @@ jobs:
           const fs=require('node:fs'),ts=require('typescript'),path=require('node:path');
           for(const name of [
             'client-commerce.pg-qa.adapter',
+            'client-order-snapshot.pg-qa.adapter',
             'stripe-test-webhook-inbox.pg-qa.adapter',
             'stripe-test-financial-reconcile.pg-qa.adapter',
             'stripe-test-intent-create.pg-qa.adapter'
@@ -283,6 +287,16 @@ jobs:
             node:22-alpine node --test \
               /qa-tests/stripe-test-intent-create.pg-qa.integration.cjs
           echo "QA_STRIPE_TEST_INTENT_CREATE_PG_REAL=PASS_SYNTHETIC_NO_STRIPE"
+          # Migrate 006 only AFTER all existing 001..005 SQL/Node tests.
+          # From this point, payment reservation REQUIRES an immutable basket.
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/migrations/client-commerce/20261013_006_canonical_order_snapshot_qa_only.sql
+          echo "QA_POSTGRES_ORDER_SNAPSHOT_006=CREATED_EPHEMERAL_ONLY"
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/test/native-client-order-snapshot.pg-qa.sql
+          echo "QA_CANONICAL_MERCHANT_SNAPSHOT_AND_DISPATCH_GATE=PASS_PG17_ONLY"
           echo "QA_COMMERCE_PG=PASS_REAL_PG_AND_8_WAY_CONCURRENCY"
           echo "STRIPE_PROVIDER_CALLS=ZERO"
           echo "PRODUCTION_IMPACT=NONE"

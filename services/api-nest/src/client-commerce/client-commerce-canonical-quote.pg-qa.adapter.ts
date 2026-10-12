@@ -115,6 +115,18 @@ export class QaCanonicalClientQuoteAdapter {
       merchantSlug:partnerSlug,
       totalMinor:quote.total,
       currency:'EUR',
+      fulfillment:Object.freeze({
+        subtotalMinor:quote.subtotal,
+        deliveryFeeMinor:quote.deliveryFee,
+        lines:Object.freeze(quote.items.map(item=>Object.freeze({
+          sku:item.sku,
+          name:item.name,
+          category:item.category,
+          quantity:item.quantity,
+          unitAmountMinor:item.unitAmount,
+          lineAmountMinor:item.lineAmount,
+        }))),
+      }),
     });
   }
 }

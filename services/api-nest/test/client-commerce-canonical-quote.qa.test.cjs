@@ -64,6 +64,13 @@ test('server catalog decides amount, quote, ownership and cart fingerprint',asyn
   assert.equal(quote.currency,'EUR');
   assert.equal(quote.merchantSlug,'qa-restaurant');
   assert.equal(quote.source,'server-canonical-catalog');
+  assert.deepEqual(quote.fulfillment.lines.map(x=>[
+    x.sku,x.quantity,x.unitAmountMinor,x.lineAmountMinor,
+  ]),[['rice',1,1500,1500],['juice',2,400,800]]);
+  assert.equal(quote.fulfillment.subtotalMinor,2300);
+  assert.equal(quote.fulfillment.deliveryFeeMinor,390);
+  assert.equal(Object.isFrozen(quote.fulfillment),true);
+  assert.equal(Object.isFrozen(quote.fulfillment.lines),true);
   assert.match(quote.quoteFingerprint,/^[a-f0-9]{64}$/);
   assert.match(quote.cartFingerprint,/^[a-f0-9]{64}$/);
   assert.notEqual(quote.quoteFingerprint,cart.quoteFingerprint);
