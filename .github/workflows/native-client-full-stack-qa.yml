@@ -13,6 +13,7 @@ on:
       - 'services/api-nest/src/auth/native-client-nest-commerce.guard.ts'
       - 'services/api-nest/src/client-commerce/client-commerce.pg-qa.adapter.ts'
       - 'services/api-nest/migrations/client-commerce/20261012_001_client_commerce_authority_qa_only.sql'
+      - 'services/api-nest/migrations/client-commerce/20261012_002_client_commerce_least_privilege_qa_only.sql'
       - 'services/api-nest/src/auth/native-client-trusted-jwks.resolver.ts'
       - 'services/api-nest/migrations/client-enrollment/20261012_002_native_client_admission_qa_only.sql'
   workflow_dispatch:
@@ -213,7 +214,11 @@ jobs:
           docker exec -i "$PG_ID" psql -U postgres -d postgres \
             -v ON_ERROR_STOP=1 -h 127.0.0.1 \
             < services/api-nest/migrations/client-commerce/20261012_001_client_commerce_authority_qa_only.sql
+          docker exec -i "$PG_ID" psql -U postgres -d postgres \
+            -v ON_ERROR_STOP=1 -h 127.0.0.1 \
+            < services/api-nest/migrations/client-commerce/20261012_002_client_commerce_least_privilege_qa_only.sql
           echo "QA_REAL_PG_SCHEMA_CREATED_EPHEMERAL=YES"
+          echo "QA_PG_COMMERCE_APP_ACL=NO_DIRECT_DML"
           echo "QA_COMMERCE_PG_SCHEMA_CREATED_EPHEMERAL=YES"
           tester node -e '
             (async()=>{for(let i=0;i<100;i++){try{
