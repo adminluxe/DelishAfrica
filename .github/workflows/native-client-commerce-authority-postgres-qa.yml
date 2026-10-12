@@ -110,7 +110,7 @@ jobs:
             'QA_COMMERCE_DB_NAME=postgres',
             'QA_COMMERCE_DB_USER=postgres',
             'QA_COMMERCE_HMAC_KEY='+secret,
-            'QA_WEBHOOK_TEST_SECRET=whsec_'+crypto.randomBytes(32).toString('hex'),' ',
+            'QA_WEBHOOK_TEST_SECRET=whsec_'+crypto.randomBytes(32).toString('hex'),'',
           ].join('\n'),{mode:0o600});
           console.log('QA_COMMERCE_EPHEMERAL_HMAC=GENERATED_NOT_LOGGED');
           NODE
