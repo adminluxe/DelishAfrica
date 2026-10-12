@@ -11,6 +11,8 @@ on:
       - 'services/api-nest/src/auth/native-client-jwt-verifier.ts'
       - 'services/api-nest/src/auth/native-client-commerce.policy.ts'
       - 'services/api-nest/src/auth/native-client-nest-commerce.guard.ts'
+      - 'services/api-nest/src/client-commerce/client-commerce.pg-qa.adapter.ts'
+      - 'services/api-nest/migrations/client-commerce/20261012_001_client_commerce_authority_qa_only.sql'
       - 'services/api-nest/src/auth/native-client-trusted-jwks.resolver.ts'
       - 'services/api-nest/migrations/client-enrollment/20261012_002_native_client_admission_qa_only.sql'
   workflow_dispatch:
@@ -46,6 +48,8 @@ jobs:
           assert(s.includes("commerce_revoked_subject_http_403"));
           assert(s.includes("nestjs_real_keycloak_jwt_real_pg_after_mock_sms_admitted"));
           assert(s.includes("nestjs_pg_unavailable_fail_closed"));
+          assert(s.includes("NATIVE_KEYCLOAK_NEST_PG_COMMERCE"));
+          assert(s.includes("nestjs_revoked_client_does_not_create_any_new_orders"));
           assert(s.includes("production_candidate_jwks_resolver_real_https_verified_and_cached"));
           assert(tls.includes("http.request("));
           for(const value of [s,tls]){
@@ -89,7 +93,18 @@ jobs:
               throw Error('candidate policy transpilation failed');
             fs.writeFileSync(path.join(out,name+'.js'),converted.outputText,{mode:0o600});
           }
+          const commerce='services/api-nest/src/client-commerce/client-commerce.pg-qa.adapter.ts';
+          const transpiled=ts.transpileModule(fs.readFileSync(commerce,'utf8'),{
+            compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,
+              esModuleInterop:true,strict:true},
+            fileName:commerce,reportDiagnostics:true,
+          });
+          if(transpiled.diagnostics?.some(x=>x.category===ts.DiagnosticCategory.Error))
+            throw Error('qa_commerce_pg_adapter_compilation_failed');
+          fs.writeFileSync(path.join(out,'client-commerce.pg-qa.adapter.js'),
+            transpiled.outputText,{mode:0o600});
           console.log('QA_CLIENT_POLICY_COMPILED=YES');
+          console.log('QA_CLIENT_COMMERCE_ADAPTER_COMPILED=YES');
           NODE
           node - "$QA_DIR/test.env" <<'NODE'
           const fs=require('node:fs'),crypto=require('node:crypto');
@@ -99,6 +114,7 @@ jobs:
             'KC_BOOTSTRAP_ADMIN_PASSWORD='+random(),
             'QA_BOOTSTRAP_ADMIN_PASSWORD=PLACEHOLDER',
             'QA_EMAIL_HMAC_SECRET='+random(),
+            'QA_COMMERCE_HMAC_KEY='+random(),
             'GITHUB_ACTIONS=true',
             'QA_SYNTHETIC_ONLY=YES',
             'QA_KEYCLOAK_ORIGIN=https://127.0.0.1',
@@ -194,7 +210,11 @@ jobs:
           docker exec -i "$PG_ID" psql -U postgres -d postgres \
             -v ON_ERROR_STOP=1 -h 127.0.0.1 \
             < services/api-nest/migrations/client-enrollment/20261012_002_native_client_admission_qa_only.sql
+          docker exec -i "$PG_ID" psql -U postgres -d postgres \
+            -v ON_ERROR_STOP=1 -h 127.0.0.1 \
+            < services/api-nest/migrations/client-commerce/20261012_001_client_commerce_authority_qa_only.sql
           echo "QA_REAL_PG_SCHEMA_CREATED_EPHEMERAL=YES"
+          echo "QA_COMMERCE_PG_SCHEMA_CREATED_EPHEMERAL=YES"
           tester node -e '
             (async()=>{for(let i=0;i<100;i++){try{
               const r=await fetch("http://127.0.0.1:18195/realms/master/.well-known/openid-configuration",
