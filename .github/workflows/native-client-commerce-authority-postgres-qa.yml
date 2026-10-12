@@ -1,0 +1,118 @@
+name: Native Client Commerce Authority — isolated PostgreSQL and concurrency
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/native-client-commerce-authority-postgres-qa.yml'
+      - 'services/api-nest/migrations/client-commerce/20261012_001_client_commerce_authority_qa_only.sql'
+      - 'services/api-nest/test/native-client-commerce-authority.qa.sql'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-client-ledger-isolated-db:
+    name: Stripe TEST order/payment authority + 8-way concurrency (no VPS)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - name: Checkout without reusable GitHub credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Static defensive gate
+        run: |
+          set -Eeuo pipefail
+          node - <<'NODE'
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          const migration=fs.readFileSync(
+            'services/api-nest/migrations/client-commerce/20261012_001_client_commerce_authority_qa_only.sql','utf8');
+          const proof=fs.readFileSync(
+            'services/api-nest/test/native-client-commerce-authority.qa.sql','utf8');
+          const ddl=migration.split(/\r?\n/).filter(s=>!s.trimStart().startsWith('--')).join('\n');
+          assert(ddl.includes('CREATE TABLE public.da_client_commerce_orders_qa'));
+          assert(ddl.includes('CREATE TABLE public.da_client_commerce_payment_authority_qa'));
+          assert(ddl.includes('CREATE FUNCTION public.da_qa_reserve_client_order'));
+          assert(ddl.includes('UNIQUE (issuer,client_subject,client_mutation_id)'));
+          assert(!/\b(DROP|TRUNCATE|DELETE FROM|ALTER ROLE|CREATE USER)\b/i.test(ddl),
+            'disallow destructive SQL');
+          assert(!/\b(email_plaintext|phone_plaintext|sms_code|access_token|refresh_token|password)\b/i
+            .test(ddl),'no raw client PII or secrets in schema');
+          assert(proof.includes('ROLLBACK;')&&proof.includes('\\set ON_ERROR_STOP on'));
+          console.log('QA_COMMERCE_STATIC=PASS');
+          NODE
+      - name: Run PostgreSQL 17 under disconnected ephemeral container
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          NAME="da-commerce-pg-qa-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          IMAGE="postgres:17-alpine"
+          cleanup() {
+            docker rm -f "$NAME" >/dev/null 2>&1 || true
+            echo "QA_OWN_EPHEMERAL_CONTAINER_CLEANUP=COMPLETE"
+          }
+          trap cleanup EXIT
+          docker pull "$IMAGE" >/dev/null
+          docker run -d --rm --name "$NAME" --pull never \
+            --network none --user 70:70 --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 150 --memory 768m \
+            --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev,size=320m,uid=70,gid=70,mode=0700 \
+            --tmpfs /var/run/postgresql:rw,nosuid,nodev,size=16m,uid=70,gid=70,mode=0770 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=64m,uid=70,gid=70,mode=1777 \
+            -e POSTGRES_HOST_AUTH_METHOD=trust \
+            "$IMAGE" -c listen_addresses=127.0.0.1 >/dev/null
+          ready=false
+          for attempt in $(seq 1 90); do
+            if docker exec "$NAME" pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != "true" ]]; then
+            echo "QA_POSTGRES=NOT_READY"
+            docker logs "$NAME" 2>&1 | tail -n 24
+            exit 1
+          fi
+          echo "QA_COMMERCE_POSTGRES=READY_LOOPBACK_TCP_ONLY"
+          echo "QA_NETWORK=NONE"
+          echo "QA_HOST_PORTS_PUBLISHED=NONE"
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/migrations/client-commerce/20261012_001_client_commerce_authority_qa_only.sql
+          echo "QA_COMMERCE_SCHEMA_CANDIDATE=CREATED_EPHEMERAL_ONLY"
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/test/native-client-commerce-authority.qa.sql
+          echo "QA_COMMERCE_SEQUENTIAL=PASS_SYNTHETIC_ONLY"
+          # Eight simultaneous sessions must return one and the same order_id.
+          SQL="SELECT order_id FROM public.da_qa_reserve_client_order('https://qa.example.invalid/realms/da-client','a63f867f-9f42-4573-9268-dc65a164d2c1'::uuid,'mutation-qa-concurrent',repeat('a',64)::char(64),repeat('b',64)::char(64),'qa-merchant',1200::bigint,'EUR'::char(3));"
+          RESULT="$RUNNER_TEMP/da-commerce-concurrent-$GITHUB_RUN_ID.txt"
+          : > "$RESULT"
+          pids=""
+          for i in $(seq 1 8); do
+            docker exec "$NAME" psql -v ON_ERROR_STOP=1 -At \
+              -h 127.0.0.1 -U postgres -d postgres -c "$SQL" >> "$RESULT" &
+            pids="$pids $!"
+          done
+          for pid in $pids; do wait "$pid"; done
+          count="$(wc -l < "$RESULT" | tr -d '[:space:]')"
+          uniques="$(sort -u "$RESULT" | wc -l | tr -d '[:space:]')"
+          if [[ "$count" != 8 || "$uniques" != 1 ]]; then
+            echo "QA_COMMERCE_CONCURRENCY=FAILED"; exit 1
+          fi
+          db_count="$(docker exec "$NAME" psql -v ON_ERROR_STOP=1 -At \
+            -h 127.0.0.1 -U postgres -d postgres \
+            -c "SELECT count(*) FROM public.da_client_commerce_orders_qa WHERE client_mutation_id='mutation-qa-concurrent';")"
+          if [[ "$db_count" != 1 ]]; then
+            echo "QA_COMMERCE_CONCURRENCY_DB=FAILED"; exit 1
+          fi
+          echo "QA_COMMERCE_8_CONCURRENT_RETRIES=ONE_ORDER"
+          BAD_SQL="SELECT order_id FROM public.da_qa_reserve_client_order('https://qa.example.invalid/realms/da-client','a63f867f-9f42-4573-9268-dc65a164d2c1'::uuid,'mutation-qa-concurrent',repeat('a',64)::char(64),repeat('b',64)::char(64),'qa-merchant',9999::bigint,'EUR'::char(3));"
+          if docker exec "$NAME" psql -v ON_ERROR_STOP=1 -At \
+            -h 127.0.0.1 -U postgres -d postgres -c "$BAD_SQL" > /dev/null 2>&1; then
+            echo "QA_COMMERCE_MUTATED_REPLAY=ACCEPTED"; exit 1
+          fi
+          rm -f "$RESULT"
+          echo "QA_COMMERCE_MUTATED_REPLAY=REJECTED"
+          echo "QA_COMMERCE_PG=PASS_REAL_PG_AND_8_WAY_CONCURRENCY"
+          echo "STRIPE_PROVIDER_CALLS=ZERO"
+          echo "PRODUCTION_IMPACT=NONE"
