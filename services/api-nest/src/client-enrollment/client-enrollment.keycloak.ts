@@ -49,6 +49,51 @@ export class ClientEnrollmentKeycloak {
     };
   }
 
+  private rejectBroadAdminClaims(token: string, expectedClientId: string): void {
+    // Only parse to REJECT dangerous grants. This is not JWT signature
+    // validation and cannot replace runtime Keycloak FGAP negative tests.
+    const parts = token.split('.');
+    if (parts.length !== 3 || parts[1].length > 8192) {
+      throw new Error('enrollment_service_token_claims_invalid');
+    }
+    let payload: Record<string, unknown>;
+    try {
+      const raw = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')) as unknown;
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+        throw new Error('invalid');
+      }
+      payload = raw as Record<string, unknown>;
+    } catch {
+      throw new Error('enrollment_service_token_claims_invalid');
+    }
+    if (payload.azp !== expectedClientId) {
+      throw new Error('enrollment_service_token_party_mismatch');
+    }
+    const realmAccess = payload.realm_access as { roles?: unknown } | undefined;
+    const realmRoles = realmAccess?.roles;
+    if (realmRoles !== undefined &&
+        (!Array.isArray(realmRoles) || !realmRoles.every((r) => typeof r === 'string'))) {
+      throw new Error('enrollment_service_token_claims_invalid');
+    }
+    if (Array.isArray(realmRoles) &&
+        realmRoles.some((r: string) => ['admin', 'realm-admin'].includes(r))) {
+      throw new Error('enrollment_broad_keycloak_admin_token_forbidden');
+    }
+    const access = payload.resource_access as Record<string, unknown> | undefined;
+    const management = access?.['realm-management'] as { roles?: unknown } | undefined;
+    if (management && (typeof management !== 'object' || Array.isArray(management))) {
+      throw new Error('enrollment_service_token_claims_invalid');
+    }
+    if (management?.roles !== undefined &&
+        (!Array.isArray(management.roles) ||
+         !management.roles.every((r) => typeof r === 'string'))) {
+      throw new Error('enrollment_service_token_claims_invalid');
+    }
+    if (Array.isArray(management?.roles) && management.roles.length > 0) {
+      throw new Error('enrollment_broad_keycloak_admin_token_forbidden');
+    }
+  }
+
   private async request(
     base: string,
     route: string,
@@ -95,6 +140,11 @@ export class ClientEnrollmentKeycloak {
     if (typeof data.access_token !== 'string' || data.access_token.length < 24) {
       throw new Error('enrollment_keycloak_token_invalid');
     }
+    // Defensive DENY gate on the service token, not an FGAP authorization proof.
+    // The token was obtained from the strictly pinned private Keycloak endpoint.
+    // Broad built-in realm-management roles can bypass fine-grained permissions.
+    // Never accidentally permit provisioning under manage-users/realm-admin.
+    this.rejectBroadAdminClaims(data.access_token, creds.clientId);
     return data.access_token;
   }
 
