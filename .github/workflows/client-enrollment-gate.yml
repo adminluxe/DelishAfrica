@@ -10,6 +10,7 @@ on:
       - 'services/api-nest/src/auth/client-token-isolation.ts'
       - 'services/api-nest/src/auth/native-client-commerce.policy.ts'
       - 'services/api-nest/src/auth/native-client-jwt-verifier.ts'
+      - 'services/api-nest/src/auth/native-client-nest-commerce.guard.ts'
       - 'services/api-nest/test/native-client-jwt-verifier.test.cjs'
       - 'services/api-nest/test/native-client-commerce.policy.test.cjs'
       - 'services/api-nest/src/auth/external-jwks-verifier.service.ts'
