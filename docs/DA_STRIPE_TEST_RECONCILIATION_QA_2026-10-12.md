@@ -129,6 +129,28 @@ Commande exécutée sans réseau : `bash ops/stripe/DA_STRIPE_TEST_OFFICIAL_PREF
 
 **NO-GO G0–G7 / Stripe officiel / production / Store / PR merge** jusqu'à l'intégration, la revue du compte TEST, la certification métier Merchant–Courier et la validation du propriétaire.
 
+## Palier 13 octobre 2026 — lecture financière Client : DOUBLE CI SUCCESS
+
+**Certifié sur le code a0dbcc6bb1224db192fc9d918f38af946d2cad8b**, après rétablissement de la liaison Toshiba, sans reset, sans migration VPS ni activation de route publique.
+
+**Preuves du même commit :**
+- [CI API + Client / Merchant / Courier #38317389130](https://github.com/adminluxe/DelishAfrica/actions/runs/38317389130) : **SUCCESS** — TypeScript des trois apps et de l'API, 15/15 tests Client de réservation/reprise, 4/4 tests du lecteur financier SQL, vrai contrôleur HTTP NestJS avec garde Client RSA/JWT, ports PostgreSQL et Stripe factices en HTTP.
+- [CI PostgreSQL 17 financier #38317389082](https://github.com/adminluxe/DelishAfrica/actions/runs/38317389082) : **SUCCESS** dans un conteneur jetable sans réseau — migrations QA 001–005, test SQL de lecture liée à l'identité, ordre en attente avant capture, paiement seulement après reçu vérifié, refus d'un autre Client ou issuer, retenue après remboursement, anti-replay et concurrence.
+
+### Contrats QA nouvellement vérifiés
+
+1. Migration PostgreSQL 005, fichier services/api-nest/migrations/client-commerce/20261012_005_client_order_receipt_read_qa_only.sql : fonction de lecture seule **da_qa_client_read_owned_order(uuid,text,uuid)**. La commande est recherchée avec UUID, issuer et subject. Statut **awaiting_payment** avant preuve financière, **paid** uniquement si capture, reçu append-only, état de paiement vérifié, devise/montant exacts et aucune retenue, **financial_hold** après remboursement/litige, sinon **needs_review**. Un hold interdit la livraison.
+2. Adaptateur services/api-nest/src/client-commerce/client-order-receipt.pg-qa.adapter.ts : requête SQL paramétrée, identité provenant du Client vérifié, validation stricte de la réponse et des montants. **Aucun UPDATE/INSERT/DELETE ni accès à Stripe** ; erreur générique en cas d'ordre étranger ou de statut incohérent.
+3. Contrôleur NestJS isolé : **POST /qa-isolated/client-commerce/orders/status**, sous le même garde RSA/JWT Client + admission durable SMS/email que les deux routes de réservation/intention. Les erreurs 401/403/400/503 ne divulguent pas les données d'un autre Client ; réponse en lecture seule. Contrôleur **non chargé dans AppModule**, jamais rendu public.
+4. Candidat apps/client/utils/daCanonicalCheckout.qa.ts : lecture du statut uniquement après ouverture de PaymentSheet dans le parcours QA, validation de l'UUID, mutation et PaymentIntent conservés. Un paiement non prouvé, une retenue, un PI différent ou une erreur réseau **gardent le verrou anti-double-paiement**. Un reçu **paid** du serveur correspondant au même PI permet uniquement de libérer le verrou local ; le Client ne marque jamais l'ordre comme payé.
+5. Résultats des tests : **15/15 Client**, **4/4 reader**, tests Nest HTTP et SQL PG17. Tous sur valeurs synthétiques ; **aucun appel à Stripe TEST officiel, Stripe LIVE, à un vrai PSP ni à la base VPS**.
+
+### Limites bloquantes et sécurité
+
+La fonction SQL reçoit issuer/subject du **serveur authentifiant**. Elle ne valide pas un JWT cryptographiquement dans PostgreSQL : un compte de base applicatif compromis pourrait présenter une autre identité. Les fonctions SECURITY DEFINER QA ont un propriétaire de base de laboratoire, **pas le propriétaire NOLOGIN durci exigé en production**. Une revue des rôles, du contexte d'identité, des droits et de la gestion des secrets demeure indispensable. Un statut paid lu à un instant donné ne constitue jamais une autorisation permanente de livraison : Merchant/Courier devront revérifier les retenues au moment du dispatch.
+
+**NO-GO maintenu** : aucune route réelle orders/create, payments/create-intent ou stripe/webhook migrée, aucune intégration Client PaymentSheet public, aucune application Merchant/Courier branchée sur le nouveau reçu, aucun Stripe TEST officiel autorisé, aucune migration PostgreSQL du VPS, aucun G0–G7, aucune fusion de PR ni soumission Store. Les PR #35 et #36 restent DRAFT.
+
 ## Ordre de certification restant
 - **F0 / CI** : suite SQL vraie sur PG17 isolé, huit concurrents, garde des privilèges, TypeScript, erreurs et jeux de preuves exportés sans secret. Un échec = NO-GO.
 - **F1 / Création TEST officielle isolée** : vault/secret local dans un environnement de QA autorisé, clé `sk_test_` et compte épinglé, Idempotency-Key dérivée de la réservation SQL, montant serveur, confirmation manuelle. Prouver timeout fournisseur et reprise sans double PI.

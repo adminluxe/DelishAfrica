@@ -113,6 +113,51 @@ GitHub PR #35 / #36                    DRAFT / NO MERGE
 
 **Attention à l'idempotence multi-appareils :** le verrou SecureStore est local à un terminal. Le serveur doit aussi empêcher des commandes réellement doublées à partir de mutations différentes ou de sessions parallèles dans un contrat produit explicitement défini avant toute activation publique. Le stock et les lignes d'ordre doivent être persistés pour un vrai fulfill Merchant ; les tables de réserve actuelles lient montants/empreintes mais ne sont pas encore le modèle complet commercial.
 
+## Architecture épinglée — preuve financière Client après PaymentSheet (13/10/2026)
+
+**Jalon code a0dbcc6bb1224db192fc9d918f38af946d2cad8b ; doubles CI SUCCESS :**
+[API + 3 apps #38317389130](https://github.com/adminluxe/DelishAfrica/actions/runs/38317389130) · [PostgreSQL17 #38317389082](https://github.com/adminluxe/DelishAfrica/actions/runs/38317389082).
+
+~~~text
+Client QA (aucun écran Expo n'importe cette séquence)
+    |
+    | SecureStore: ordre UUID + mutation + PaymentIntent du test
+    | Token RSA/JWT réel Client avec admission durable e-mail/SMS
+    v
+POST /qa-isolated/client-commerce/orders/status [HTTP NEST QA UNIQUEMENT]
+    |
+    | Contrôle rôle, issuer, subject, ordre UUID et mutation
+    v
+QaClientOwnedOrderReceiptReader [PORT PG QA EN LECTURE SEULE]
+    |
+    v
+da_qa_client_read_owned_order(order, issuer, subject)
+    |
+    +-- pending / pas de reçu --> awaiting_payment, dispatch=false
+    |
+    +-- capture vérifiée + reçu immuable + aucun hold
+    |                           --> paid, dispatch=true
+    |
+    +-- remboursement ou litige --> financial_hold, dispatch=false
+    |
+    +-- divergence d'état financier --> needs_review, dispatch=false
+    |
+    v
+Client QA : SEUL 'paid' + même PI permet de vider le verrou local
+    |
+    +-- Status en attente/hold/erreur --> verrou intact, aucune nouvelle PI
+    |
+    v
+Merchant et Courier doivent revérifier l'éligibilité au dispatch
+    [NON RACCORDÉS, NON DÉPLOYÉS]
+~~~
+
+**Séparation des responsabilités :** l'API Client lit l'autorité financière durable, elle ne la crée pas. Le webhook Stripe signé entre en inbox et le reconciler serveur indépendant vérifie Stripe TEST via la charge réellement capturée, avant tout commit financier SQL. Le Client et ses événements PaymentSheet ne peuvent jamais imposer paid. La migration 005 n'est accessible qu'au rôle QA de lecture fonctionnelle, sans SELECT/DML direct sur les tables. Les tests Nest réels utilisent des ports PostgreSQL/Stripe simulés ; seule la CI PostgreSQL est exécutée contre une vraie base **déconnectée**.
+
+**Frontière de confiance encore incomplète :** les arguments issuer et subject de la fonction SQL ne constituent pas une preuve d'identité autonome au niveau de PostgreSQL. Ils doivent être fournis exclusivement par l'admission vérifiée du serveur ; une compromission du compte DB applicatif imposerait une protection complémentaire avant production. Renforcer SECURITY DEFINER (propriétaire NOLOGIN non-superuser), les rôles, la propagation des claims signés et la révocation des permissions dangereuses avant tout rapprochement production.
+
+**GEL :** pas de modification des routes de production ; pas d'intégration dans les binaires Client/Merchant/Courier ; pas de Stripe réel TEST ni LIVE ; pas de migration VPS ni de changement Keycloak ; pas de G0–G7, fusion ou Store sans certification et feu vert du propriétaire.
+
 ## Interventions interdites avant signature d'un passport G0–G7
 
 ```
