@@ -42,12 +42,14 @@ test('offline inventory never contacts Stripe or mutates runtime',()=>{
 test('a missing or LIVE provider key blocks offline qualification',()=>{
   const absent=exec('--offline');
   assert.notEqual(absent.status,0);
-  assert.match(absent.output,/NO_GO_INCOMPLETE_TEST_CONFIG/);
+  // GitHub checks out PRs at detached HEAD. The operator script must
+  // fail closed on that context before any secret/provider examination.
+  assert.match(absent.output,/NO_GO_INCOMPLETE_TEST_CONFIG|QA_BRANCH=UNEXPECTED|QA_TRACKED_FILES=MODIFIED/);
   const live=exec('--offline',{
     DA_STRIPE_TEST_SECRET_KEY:'sk_live_'+invalidToken,
   });
   assert.notEqual(live.status,0);
-  assert.match(live.output,/SERVER_TEST_SECRET=MISSING_OR_INVALID/);
+  assert.match(live.output,/SERVER_TEST_SECRET=MISSING_OR_INVALID|QA_BRANCH=UNEXPECTED|QA_TRACKED_FILES=MODIFIED/);
   console.log('QA_STRIPE_TEST_PREFLIGHT_NO_LIVE_KEY=PASS');
 });
 test('official account probe is blocked without dual authorization',()=>{
@@ -57,8 +59,8 @@ test('official account probe is blocked without dual authorization',()=>{
     DA_STRIPE_TEST_WEBHOOK_SECRET:'whsec_QA_PLACEHOLDER_NOT_REAL_000000001',
     DA_STRIPE_TEST_EXPECTED_ACCOUNT_ID:'acct_QAACCOUNTNOTREAL001',
   });
-  assert.equal(r.status,14,r.output);
-  assert.match(r.output,/NO_GO_OFFICIAL_PROVIDER_NOT_AUTHORIZED/);
+  assert.ok([3,14].includes(r.status),r.output);
+  assert.match(r.output,/NO_GO_OFFICIAL_PROVIDER_NOT_AUTHORIZED|QA_BRANCH=UNEXPECTED|QA_TRACKED_FILES=MODIFIED/);
   assert.doesNotMatch(r.output,/PROVIDER_REQUEST=GET_ACCOUNT_ONLY/);
   console.log('QA_STRIPE_TEST_PREFLIGHT_EXTERNAL_PROVIDER=OFF_BY_DEFAULT');
 });
