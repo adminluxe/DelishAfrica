@@ -161,11 +161,11 @@ test('disconnected real Postgres 17 financial reconciliation + roles + 8-way',as
     fakePi.latest_charge.payment_intent='pi_FOREIGNCHARGE0001';
     await deny(()=>verifierA.reconcileAuthority(authority.authorityId),
       /charge_not_fully_captured_or_foreign/);
-    fakePi=original;
+    fakePi=structuredClone(original);
     fakePi.livemode=true;
     await deny(()=>verifierA.reconcileAuthority(authority.authorityId),
       /intent_binding_mismatch/);
-    fakePi=original;
+    fakePi=structuredClone(original);
     fakePi.latest_charge.amount_refunded=30;
     fakePi.latest_charge.refunded=true;
     const premature=await verifierA.reconcileAuthority(authority.authorityId);
@@ -173,7 +173,7 @@ test('disconnected real Postgres 17 financial reconciliation + roles + 8-way',as
     assert.equal((await row(
       'SELECT state FROM public.da_client_commerce_orders_qa WHERE order_id=$1',
       [order.orderId])).state,'pending_payment');
-    fakePi=original;
+    fakePi=structuredClone(original);
     console.log('QA_FINANCE_FOREIGN_ACCOUNT_CHARGE_MODE_REFUND=REJECTED');
 
     // A provider success followed by a lost SQL response MUST be repaired
