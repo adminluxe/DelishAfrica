@@ -505,6 +505,22 @@ export class PaymentsService {
       });
     }
 
+    // Payment verification must never silently cross Stripe TEST/LIVE
+    // boundaries, or accept a provider response for a different intent.
+    // The credential and object mode are both server-side trusted fields;
+    // neither the mobile request nor its JSON metadata chooses them.
+    const expectedLiveMode = this.stripeSecret().startsWith('sk_live_');
+    if (
+      String(json.id) !== paymentIntentId ||
+      typeof json.livemode !== 'boolean' ||
+      json.livemode !== expectedLiveMode
+    ) {
+      throw new ConflictException({
+        ok: false,
+        code: 'payment_provider_identity_or_mode_mismatch',
+      });
+    }
+
     const metadata = json.metadata && typeof json.metadata === 'object' ? json.metadata : {};
     const orderId = orderIdFrom(input);
     const mutationId = clientMutationIdFrom(input);
@@ -586,6 +602,23 @@ export class PaymentsService {
         },
         402,
       );
+    }
+
+    // A retrieved PaymentIntent does not authorize treating an unrelated
+    // expanded Charge as proof of capture. Compare both sides explicitly.
+    const chargePaymentIntent = typeof charge?.payment_intent === 'string'
+      ? charge.payment_intent
+      : charge?.payment_intent && typeof charge.payment_intent === 'object'
+        ? String(charge.payment_intent.id || '')
+        : '';
+    if (
+      chargePaymentIntent !== paymentIntentId ||
+      (charge?.livemode !== undefined && charge.livemode !== json.livemode)
+    ) {
+      throw new ConflictException({
+        ok: false,
+        code: 'payment_charge_intent_or_mode_mismatch',
+      });
     }
 
     if (!chargePaid || chargeStatus !== 'succeeded') {
