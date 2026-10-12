@@ -94,7 +94,9 @@ const commerce=new QaClientCommercePgAdapter(app,process.env.QA_COMMERCE_HMAC_KE
 const create=(creatorPool=creator,extra={})=>new QaStripeTestIntentCreator(
   commerce,creatorPool,{...baseConfig,...extra});
 const qs=()=>providerCalls.filter(x=>x.method==='POST').map(x=>x.providerKey);
-const count=async (table)=>(await admin.query('SELECT count(*)::int as n FROM '+table)).rows[0].n;
+const countOwnReceipts=async()=> (await admin.query(
+  'SELECT count(*)::int as n FROM public.da_stripe_test_financial_receipts_qa '+
+    'WHERE stripe_payment_intent_id=$1',[paymentIntentId])).rows[0].n;
 test('Stripe TEST intent creation: PostgreSQL-first and invariant Idempotency-Key across crash and retries',
 async()=>{
   try{
@@ -138,7 +140,7 @@ async()=>{
       /QA_DB_LOST_AFTER_STRIPE_SUCCESS/);
     assert.equal(qs().length,1);
     assert.equal(fakeProviderStore.size,1);
-    assert.equal(await count('public.da_stripe_test_financial_receipts_qa'),0);
+    assert.equal(await countOwnReceipts(),0);
     const authorityRows=await admin.query(
       'SELECT state,stripe_payment_intent_id FROM public.da_client_commerce_payment_authority_qa '+
       'WHERE client_subject=$1',[bindingUser.subject]);
@@ -154,7 +156,7 @@ async()=>{
     assert.equal(qs().length,2);
     assert.equal(qs()[0],qs()[1]);
     assert.equal(fakeProviderStore.size,1);
-    assert.equal(await count('public.da_stripe_test_financial_receipts_qa'),0);
+    assert.equal(await countOwnReceipts(),0);
     const replay=await create().createOrResume(bindingUser,quote,mutation);
     assert.equal(replay.paymentIntentId,paymentIntentId);
     assert.equal(qs().length,2);
@@ -200,7 +202,7 @@ async()=>{
       ()=>create().createOrResume(bindingUser,quote,wrongMutation),
       /qa_checkout_provider_intent_binding_mismatch/);
     corruptResponse=null;
-    assert.equal(await count('public.da_stripe_test_financial_receipts_qa'),0);
+    assert.equal(await countOwnReceipts(),0);
     console.log('QA_STRIPE_INTENT_PROVIDER_MISMATCH=NO_PAID_OR_BIND');
 
     // Never enable official Stripe automatically, even with a TEST-shaped key.
