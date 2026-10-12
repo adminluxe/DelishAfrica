@@ -96,6 +96,39 @@ Depuis le Toshiba, connexion `ssh purplecrm-vps` rétablie vers l'hôte `srv1037
 
 **Décision sécurité :** l'accès SSH permet un nouvel audit non destructif, pas de promotion automatique. Base VPS et anciens flux commerciaux restent gelés. Le laboratoire PG17 GitHub reste l'unique autorité des certifications récentes.
 
+## Palier 12 octobre, fin de session — UUID serveur et parcours Client deux phases certifiés en CI
+
+**Le constat de départ :** le checkout Client utilisait encore les références mobiles `DA-...` et un `cartFingerprint` différent de l'empreinte catalogue PostgreSQL. La création d'une intention sur une commande mobile non réservée ne pouvait pas être considérée comme sûre. Le présent correctif définit un contrat QA en deux phases, tout en laissant les vraies routes commerciales **totalement inchangées**.
+
+### Étape A — serveur HTTP NestJS réellement exécuté en test
+
+**Commit de code :** `4d3135d516889e3087b45a63d77ba02dd6d674c0`.
+
+- `services/api-nest/src/client-commerce/native-client-checkout.qa.controller.ts` expose désormais **deux routes strictement isolées** : `POST /qa-isolated/client-commerce/orders/create` (201) et `POST /qa-isolated/client-commerce/payments/create-intent` (200).
+- Chaque route requiert le **vrai garde RSA/JWT Client** avec vérification de l'issuer, du rôle et du ledger d'admission SMS/e-mail durable. Le garde coupe les requêtes 401/403/503 avant devis ou réservation.
+- Première phase : seul le partenaire et les SKU/quantités alimentent le devis issu du catalogue publié serveur. Le Client ne choisit ni prix, ni statut, ni identifiant `orderId`. L'adaptateur de réservation PostgreSQL retourne un **UUID immuable** ; le contrôleur valide l'identité Client, la mutation et les montants/fingerprints de la réservation.
+- Deuxième phase : le Client doit renvoyer **le même UUID** et les **deux empreintes canoniques** du devis, accompagnés de la même `Idempotency-Key` ; un faux UUID local `DA-...`, une mutation différente, un autre total/catalogue ou une empreinte forgée entraînent un refus **avant tout port Stripe**. Le port SQL est de nouveau interrogé par réservation idempotente avant la requête fournisseur.
+- Les tests `services/api-nest/test/native-client-checkout-http.qa.test.cjs` démarrent un vrai serveur NestJS éphémère et vérifient les refus, replays, quantité/prix serveur, révocations, le mode production interdit et l'absence de secrets dans les erreurs. Le **port PostgreSQL et Stripe de ces tests HTTP est simulé** ; la vraie logique PG17 et les adaptateurs Stripe sont couverts par la suite CI indépendante, pas par un seul test bout-en-bout connecté.
+- Preuves même SHA : [Client/API + TypeScript 3 apps #38307731556](https://github.com/adminluxe/DelishAfrica/actions/runs/38307731556) **SUCCESS** ; [PostgreSQL17/disconnected provider #38307731643](https://github.com/adminluxe/DelishAfrica/actions/runs/38307731643) **SUCCESS**.
+
+### Étape B — préparation côté application Client, jamais importée en production
+
+**Commit de code :** `9dfefa35c751e252d636c988641ed570221120d1`.
+
+- `apps/client/utils/daCanonicalCheckout.qa.ts` : séquence candidate `orders/create → payments/create-intent`, transport HTTP authentifié injecté et routage exclusivement vers les URL QA isolées. Le JSON de l'app ne contient **jamais** un prix, `paid`, une devise imposée ou un PaymentIntent choisi par le téléphone.
+- Avant le premier appel réseau, `DaCheckoutAttemptFence.begin()` persiste dans le stockage sécurisé une réservation locale `reserve:<nonce>` + la mutation stable. Le serveur retourne un UUID ; `bindServerOrderId()` ne peut remplacer la référence locale **qu'une fois, avant l'intention**, jamais après le passage à `intent_created`. Les replays HTTP utilisent la mutation initiale même si l'interface produit une nouvelle valeur après un redémarrage.
+- La séquence refuse le mode production, exige `EXPO_PUBLIC_DA_CANONICAL_CHECKOUT_QA=YES` dans un environnement QA, valide les réponses et le montant/fingerprint sur les deux étapes, puis mémorise le PI dans le verrou **avant PaymentSheet**. Elle ne présente pas PaymentSheet, ne confirme rien, ne met pas `paid` et ne libère jamais le verrou toute seule. **Aucun écran n'importe ce module aujourd'hui**.
+- `apps/client/test/daCheckoutAttemptFence.test.cjs` : **12/12 PASS** sur Toshiba et en CI. Scénarios supplémentaires : liaison UUID unique, valeur Stripe par serveur, crash entre les deux POST, replay de mutation, montant/merchant contradictoire, interruption SecureStore, interdiction production.
+- Preuves même SHA : [API/Client/Merchant/Courier #38308314438](https://github.com/adminluxe/DelishAfrica/actions/runs/38308314438) **SUCCESS** ; [PostgreSQL 17 #38308314349](https://github.com/adminluxe/DelishAfrica/actions/runs/38308314349) **SUCCESS**.
+
+### Stripe TEST officiel : inventaire local du laboratoire
+
+Commande exécutée sans réseau : `bash ops/stripe/DA_STRIPE_TEST_OFFICIAL_PREFLIGHT_V1.sh --inventory`. Branche QA correcte, Git propre, Node/git prêts, mais les quatre variables propres au **processus local** (`DA_STRIPE_TEST_SECRET_KEY`, `DA_STRIPE_TEST_PUBLISHABLE_KEY`, `DA_STRIPE_TEST_WEBHOOK_SECRET`, `DA_STRIPE_TEST_EXPECTED_ACCOUNT_ID`) sont **absentes ou non valides**. Le programme conclut `PROVIDER_NETWORK=NEVER_USED`, `PROVIDER_CHECK=NOT_PERFORMED`. Des anciens identifiants test existent ailleurs, mais ne sont pas importés/copiés ou utilisés dans ce chantier.
+
+**Freins restant en place :** aucun chargement de ces contrôleurs dans `AppModule`, aucun transport API connecté à l'app officielle, aucun module Prisma/PG de production, aucune autorisation réelle de Stripe TEST, aucune preuve de reçu financier accessible sur le Client, aucun panier ni ligne de commande complet persistant pour Merchant, aucune livraison. Les deux postes de commande `/orders/create` et `/payments/create-intent` publics continuent d'utiliser la logique legacy. Le verrou local ne garantit pas à lui seul l'absence de deux mutations concurrentes sur appareils différents : une politique d'idempotence **serveur globale** et le parcours de reprise doivent encore être certifiés.
+
+**NO-GO G0–G7 / Stripe officiel / production / Store / PR merge** jusqu'à l'intégration, la revue du compte TEST, la certification métier Merchant–Courier et la validation du propriétaire.
+
 ## Ordre de certification restant
 - **F0 / CI** : suite SQL vraie sur PG17 isolé, huit concurrents, garde des privilèges, TypeScript, erreurs et jeux de preuves exportés sans secret. Un échec = NO-GO.
 - **F1 / Création TEST officielle isolée** : vault/secret local dans un environnement de QA autorisé, clé `sk_test_` et compte épinglé, Idempotency-Key dérivée de la réservation SQL, montant serveur, confirmation manuelle. Prouver timeout fournisseur et reprise sans double PI.

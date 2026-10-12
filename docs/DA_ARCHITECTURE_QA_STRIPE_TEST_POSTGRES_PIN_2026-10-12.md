@@ -60,6 +60,59 @@ Ce graphe est la **cible fonctionnelle**, pas une assertion que la chaîne HTTPS
 - CI commune API + Client/Merchant/Courier et preuve HTTP sur le même SHA `a2783bdcd569ee577a1aac424f74286057a9498d` : [#38296555360](https://github.com/adminluxe/DelishAfrica/actions/runs/38296555360) SUCCESS ; SQL PG17 [#38296555438](https://github.com/adminluxe/DelishAfrica/actions/runs/38296555438) SUCCESS.
 - Point d'entrée réel **NON raccordé** : `services/api-nest/src/app.module.ts` et routes existantes `orders/create`, `payments/create-intent`, `stripe/webhook`. La séparation est intentionnelle tant que le parcours natif E2E et Stripe TEST officiel n'ont pas été certifiés.
 
+## Chaînage du contrat commercial Client QA — deux POST, zéro route de production
+
+**Certifié dans le laboratoire le 12 octobre 2026**, code SHA `4d3135d516889e3087b45a63d77ba02dd6d674c0` (NestJS HTTP + PG17 CI **SUCCESS**) puis code SHA `9dfefa35c751e252d636c988641ed570221120d1` (12 tests Client + les trois applications + PG17, deux CI **SUCCESS**).
+
+```text
+Client QA / session OIDC authentifiée
+    |
+    | SecureStore: reserve:<nonce> + mutation stable + panier local
+    v
+POST /qa-isolated/client-commerce/orders/create
+    |
+    | NativeClientNestCommerceGuard JWT RSA + admission e-mail/SMS
+    | catalogue publié -> devis serveur
+    | da_qa_service_reserve_order() -> UUID PostgreSQL immuable
+    v
+orderId:UUID + canonicalQuoteFingerprint + canonicalCartFingerprint
+    |
+    | SecureStore bindServerOrderId() une seule fois
+    v
+POST /qa-isolated/client-commerce/payments/create-intent
+    |
+    | MÊME Client / mutation / UUID / devis / panier serveur
+    | nouvelle lecture de réservation PostgreSQL avant provider
+    | créateur TEST SQL-first, HMAC de la clé d'idempotence
+    v
+PaymentIntent TEST + clientSecret
+    |
+    | SecureStore markIntent() AVANT PaymentSheet
+    | confirmation volontaire seulement si future UI QA validée
+    v
+Webhook HMAC -> Inbox PG -> Finance GET Stripe + charge -> paid
+    |
+    | UNQUEMENT après preuve bancaire durable, pas sur callback UI
+    v
+Merchant -> Courier (NON encore raccordé)
+```
+
+Le contrôleur `services/api-nest/src/client-commerce/native-client-checkout.qa.controller.ts` expose les deux POST **uniquement dans un module Nest éphémère de test** ; aucune route QA n'est enregistrée dans `services/api-nest/src/app.module.ts`. Port de catalogue réel `QaCanonicalClientQuoteAdapter`, réservation SQL stricte `QaClientCommercePgAdapter`, créateur TEST `QaStripeTestIntentCreator` ; en test HTTP, les ports PostgreSQL/Stripe sont simulés, tandis que les adaptateurs SQL/Stripe passent leur suite distincte sur PG17 déconnecté.
+
+La classe Client `apps/client/utils/daCanonicalCheckout.qa.ts` est **non importée dans les écrans Expo** : elle n'est pas un correctif déployé. Le verrou `apps/client/utils/daCheckoutAttemptFence.ts` sait désormais remplacer une fois la référence locale par le UUID **avant** PI, puis interdit les rebind et les doubles tentatives incertaines. Les écrans runtime continuent d'appeler les anciens endpoints ; ni PaymentSheet réelle, ni réception `paid`, ni remise au marchand ne sont raccordées.
+
+```text
+APP_MODULE PUBLIC ROUTES               UNCHANGED
+QA HTTP module                         isolated tests ONLY
+Test account / real Stripe access      NOT_CONFIGURED locally
+Test PG17                              ephemeral network-none Docker
+Merchant/Courier paid gate             NOT_WIRED
+G0–G7                                  NO-GO
+GitHub PR #35 / #36                    DRAFT / NO MERGE
+```
+
+**Attention à l'idempotence multi-appareils :** le verrou SecureStore est local à un terminal. Le serveur doit aussi empêcher des commandes réellement doublées à partir de mutations différentes ou de sessions parallèles dans un contrat produit explicitement défini avant toute activation publique. Le stock et les lignes d'ordre doivent être persistés pour un vrai fulfill Merchant ; les tables de réserve actuelles lient montants/empreintes mais ne sont pas encore le modèle complet commercial.
+
 ## Interventions interdites avant signature d'un passport G0–G7
 
 ```
