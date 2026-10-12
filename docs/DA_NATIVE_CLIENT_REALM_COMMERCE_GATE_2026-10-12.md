@@ -53,3 +53,30 @@ Le module `evaluateNativeClientCommerce` est une fonction pure, conçue pour êt
 **IMPORTANT — aucune fausse certification :** le JWT RSA de cette dernière CI est fabriqué par le test, distinct du token effectivement généré par Keycloak dans l'autre laboratoire ; les deux composants ne sont pas encore reliés à la même API QA. Le résultat de la pure admission teste une **attestation SMS simulée**, et celui de PostgreSQL des preuves structurées synthétiques : le service réel doit lui-même confirmer les attestations du fournisseur, les lier au sujet OIDC et valider la transaction DB avant toute route sensible.
 
 Le worktree d'exploitation `/opt/delishafrica/monorepo` avec 21 entrées locales préservées reste **inchangé** ; API 3010/3011 non modifiées, 3095 `enabled:false`, enrollment public HTTP404. Pas de LIVE, EAS, build ou Stores. Prochaine preuve bloquante : **intégration HTTP QA vérifiant un JWT issu de Keycloak isolé + registre PostgreSQL isolé + fausse attestation SMS, avec 401/403 sur toutes requêtes non approuvées, sans lien au VPS live**.
+
+## Jalon réel de raccordement HTTP isolé : Keycloak → RSA/JWKS → SMS mock → PostgreSQL
+
+**12/10/2026 — CI [#38267452006](https://github.com/adminluxe/DelishAfrica/actions/runs/38267452006) **SUCCESS**, SHA `a431fe56efbb4a6d07a7b894ea913a263d280b62`. Cette fois, les composants ne sont plus testés exclusivement de façon séparée : la QA a exécuté **un seul scénario HTTP multi-services réellement connecté**, avec véritables conteneurs **Keycloak 26.4.7** et **PostgreSQL 17** partageant un espace réseau Docker `--network none`, aucun port hôte publié. Toute ressource est jetable et supprimée au terme de la CI.
+
+Fichiers de référence complets, PR DelishAfrica #35 DRAFT :
+- `.github/workflows/native-client-full-stack-qa.yml`
+- `services/api-nest/test/native-client-full-stack.qa.cjs`
+- `services/api-nest/test/synthetic-keycloak-tls-proxy.qa.cjs`
+- les composants réels candidats `src/auth/native-client-jwt-verifier.ts`, `native-client-commerce.policy.ts` compilés en CommonJS temporaire sans altérer le projet
+- migration candidate `migrations/client-enrollment/20261012_002_native_client_admission_qa_only.sql` appliquée **uniquement** à la base PostgreSQL éphémère.
+
+**TLS sans rabais sécuritaire :** certificat X.509 IP `127.0.0.1` et autorité racine éphémères pour une terminaison HTTPS locale port 443 ; Node valide le certificat via `NODE_EXTRA_CA_CERTS` et le vérificateur Client impose toujours l'issuer HTTPS strict `https://127.0.0.1/realms/da-native-client-qa`, sans port arbitraire, sans désactivation TLS. Le serveur Keycloak écoute uniquement la boucle locale de la même enclave réseau.
+
+**Preuves positives et négatives réellement observées dans un seul job :**
+- Inscription native Client fictive, tentative d'injection `merchant` sans effet, faux SMTP local recevant le courriel ; action-token validé, `emailVerified:true`.
+- Authorization Code PKCE S256, `state`, `nonce`, vérification de la signature RSA des tokens réellement émis par Keycloak. Code OAuth rejoué : HTTP400.
+- **Le véritable access token Keycloak**, jamais imprimé dans les journaux, est vérifié par **le fichier candidat DelishAfrica** `native-client-jwt-verifier.ts` : issuer HTTPS exact, découverte OIDC et URI JWKS concordants, signatures RS256, audience ajoutée explicitement à ce Client, `azp`, `sub`, `email_verified:true` et e-mail du compte identiques.
+- Création de la ligne **pending** dans la vraie base PostgreSQL QA ; service HTTP de commerce en boucle locale **401** sans Bearer JWT, **401** avec JWT falsifié, **403** avec admission en attente / sans preuve SMS.
+- Fournisseur SMS **simulé exclusivement dans l'enclave** : mauvais OTP, autre sujet et mauvais destinataire refusés ; challenge valide émet une empreinte fournisseur non rejouable, deuxième utilisation refusée **409**. Aucun SMS réel envoyé.
+- Transaction PostgreSQL d'approbation avec e-mail issu de Keycloak, sujet identique et preuve SMS factice, persistée dans PostgreSQL : **HTTP 200** observé sur la route de test `/qa/commerce/check`.
+- La même preuve SMS factice ne peut pas approuver un autre sujet (violation unicité PostgreSQL), la révocation du compte retourne immédiatement **HTTP403**, et la réactivation manuelle échoue via trigger.
+- En fin de run : `QA_NATIVE_FULL_STACK_QA=PASS_REAL_KEYCLOAK_JWT_TLS_REAL_POSTGRES_FAKE_SMS_HTTP`, `QA_NATIVE_CLIENT_FULL_STACK=PASS_SYNTHETIC_ONLY`, `PRODUCTION_IMPACT=NONE`, `QA_EPHEMERAL_RESOURCES_DESTROYED=YES`.
+
+**VERDICT : PASS pour le chemin d'intégration QA HTTP à services réels, avec SMS et SMTP fictifs. NO-GO pour le produit réel.** Le serveur HTTP testé est **un harnais Node QA**, non un véritable contrôleur Nest branché aux routes `orders`/`checkout`/`payments`. Les assertions et JWT sont construits et validés dans ce harnais ; aucun endpoint de production n'a été modifié ni validé par cette seule CI. Un token HTTPS local n'est pas un issuer de production. Il reste à intégrer et tester le **résolveur HTTPS JWKS avec pinning**, le vrai contrôleur Nest et ses refus 401/403, l'interface fournisseur SMS en mode sandbox avec attestations indépendantes, la persistance PostgreSQL cible multi-instance et la séparation de realm de l'app iPhone/Android. Ensuite : **Stripe TEST** et E2E Client → Merchant → Courier → livré, revue sécurité binaire G0–G7 avant tout push Stores.
+
+**Confinement toujours strict** : realm historique `afritaste`, VPS `/opt/delishafrica/monorepo` (21 entrées locales préservées), clés live, terminaux SSH, bases live, domaines et stores **intacts**. Toute QA d'inscription publique réelle reste désactivée.
