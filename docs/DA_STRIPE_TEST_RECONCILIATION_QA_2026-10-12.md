@@ -84,6 +84,18 @@ Suite `apps/client/test/daCheckoutAttemptFence.test.cjs` : sept tests locaux ré
 
 **Limitations :** ce verrou sur appareil ne remplace PAS l'unicité et la transaction PostgreSQL, la vraie route de réconciliation Client ni la preuve Stripe officielle. Le Client utilise toujours les anciennes routes `/payments/create-intent` et `/orders/demo/create` ; aucun client en production n'est migré. Après annulation bancaire ambiguë, seule une réconciliation autoritative peut libérer le verrou, pas un clic « réessayer ». Les cas où aucune intention PI ne peut être relue nécessitent un état serveur `needs_review` et une voie d'assistance.
 
+## Audit lecture seule du VPS — connexion SSH rétablie (12 octobre 2026)
+
+Depuis le Toshiba, connexion `ssh purplecrm-vps` rétablie vers l'hôte `srv1037391`, compte `afripayadmin`. **Aucune écriture et aucun redémarrage** :
+- GET `http://127.0.0.1:3010/api/v1/health` → HTTP 200 ; canary `3011` → HTTP 200 ; API publique `https://api.delishafrica.me/api/v1/health` → HTTP 200.
+- Conteneurs `delish-api`, `delish-api-routes-canary`, `afritaste-keycloak`, `afritaste-keycloak-postgres` : actifs ; PostgreSQL écoute localement et `pg_isready` accepte la connexion.
+- Source de runtime `/opt/delishafrica/monorepo` : branche `innovation/confluence-trust-current-20261001`, HEAD `e504c04` et **15 fichiers suivis modifiés localement** ; aucune synchronisation, reset ou déploiement autorisé tant qu'ils n'ont pas été sauvegardés/réconciliés.
+- Disque `/` : 193 Go, 168 Go utilisés, **25 Go libres / 88 %**. Aucun nettoyage destructif réalisé.
+- Inspection des seuls **états booléens/préfixes** des variables dans `delish-api` : secret Stripe TEST existant dans l'ancien runtime, secret webhook présent, `DATABASE_URL` présent ; inscription Client non activée, nouveau checkout QA non activé, fournisseur QA officiel non activé ; variables spécifiques `DA_STRIPE_TEST_SECRET_KEY` et `DA_STRIPE_TEST_EXPECTED_ACCOUNT_ID` absentes de l'environnement inspecté. **Aucune valeur/clé/token n'a été affichée, recopiée ou exploitée.**
+- Ces identifiants TEST hérités du conteneur runtime ne sont **pas** un coffre ni une permission d'exécuter une transaction depuis le laboratoire. Ne pas exporter, recopier, réutiliser ni redémarrer le conteneur pour ce chantier sans revue dédiée.
+
+**Décision sécurité :** l'accès SSH permet un nouvel audit non destructif, pas de promotion automatique. Base VPS et anciens flux commerciaux restent gelés. Le laboratoire PG17 GitHub reste l'unique autorité des certifications récentes.
+
 ## Ordre de certification restant
 - **F0 / CI** : suite SQL vraie sur PG17 isolé, huit concurrents, garde des privilèges, TypeScript, erreurs et jeux de preuves exportés sans secret. Un échec = NO-GO.
 - **F1 / Création TEST officielle isolée** : vault/secret local dans un environnement de QA autorisé, clé `sk_test_` et compte épinglé, Idempotency-Key dérivée de la réservation SQL, montant serveur, confirmation manuelle. Prouver timeout fournisseur et reprise sans double PI.
