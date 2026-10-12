@@ -109,6 +109,13 @@ jobs:
             'QA_BOOTSTRAP_ADMIN_PASSWORD='+pass),{mode:0o600});
           console.log('QA_EPHEMERAL_SECRETS_GENERATED=YES');
           NODE
+          # Docker's isolated tester may use a remapped UID. Permit read-only
+          # mounts of disposable public CA, test key and temporary JS modules.
+          # Keep the bootstrap envfile private on the host.
+          chmod 755 "$QA_DIR" "$QA_DIR/tls" "$QA_DIR/deps" "$QA_DIR/built"
+          chmod -R a+rX "$QA_DIR/tls" "$QA_DIR/deps" "$QA_DIR/built"
+          chmod 600 "$QA_DIR/test.env"
+          echo "QA_DISPOSABLE_MOUNTS_READABLE=YES"
           echo "QA_TLS_LOCAL_ONLY=YES"
 
       - name: Execute disconnected Keycloak + PostgreSQL + mock SMS HTTP
