@@ -108,6 +108,19 @@ async function withKeycloakMock(stub, run) {
   }
 }
 
+function syntheticServiceToken(roles = []) {
+  const encode = (object) => Buffer.from(JSON.stringify(object)).toString('base64url');
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const claims = {
+    azp: 'delishafrica-client-enrollment',
+    resource_access: roles.length ? { 'realm-management': { roles } } : {},
+    realm_access: { roles: [] },
+  };
+  // JWT-shaped fixture only; no real signature, external identity or secret.
+  return encode(header) + '.' + encode(claims) + '.synthetic';
+}
+const safeServiceToken = syntheticServiceToken();
+
 const oid = '1a8884fa-b68d-4b2f-88f3-a56d8e4aa21d';
 const role = { id: '5c526e44-0223-4db0-a1b5-f18051f4f1b8', name: 'client', clientRole: false };
 const identity = {
@@ -118,13 +131,34 @@ const identity = {
   password: 'UnePhraseTresLongue#4',
 };
 
+
+test('service rejects broad manage-users and realm-admin grants before ANY provisioning API call', async () => {
+  for (const dangerous of ['manage-users', 'realm-admin', 'manage-realm']) {
+    let adminRequests = 0;
+    await withKeycloakMock(async (url) => {
+      const path = new URL(url).pathname;
+      if (path.endsWith('/protocol/openid-connect/token')) {
+        return response(200, { access_token: syntheticServiceToken([dangerous]) });
+      }
+      adminRequests += 1;
+      throw new Error('UNEXPECTED_ADMIN_API_CALL');
+    }, async () => {
+      await assert.rejects(
+        new ClientEnrollmentKeycloak().createClientIdentity(identity),
+        /enrollment_broad_keycloak_admin_token_forbidden/,
+      );
+    });
+    assert.equal(adminRequests, 0, dangerous + ' must be refused before accessing the Keycloak Admin API');
+  }
+});
+
 test('Keycloak provisioning stages only a DISABLED Client realm-role identity', async () => {
   const captured = [];
   await withKeycloakMock(async (url, options = {}) => {
     const path = new URL(url).pathname;
     captured.push({ path, method: options.method || 'GET', body: options.body });
     if (path.endsWith('/protocol/openid-connect/token')) {
-      return response(200, { access_token: 'a'.repeat(40) });
+      return response(200, { access_token: safeServiceToken });
     }
     if (path.endsWith('/roles/client')) return response(200, role);
     if (path.endsWith('/users') && options.method === 'POST') {
@@ -161,7 +195,7 @@ test('mismatched role grants never produce a Client identity', async () => {
   await withKeycloakMock(async (url, options = {}) => {
     const path = new URL(url).pathname;
     created.push(path);
-    if (path.endsWith('/protocol/openid-connect/token')) return response(200, { access_token: 'a'.repeat(40) });
+    if (path.endsWith('/protocol/openid-connect/token')) return response(200, { access_token: safeServiceToken });
     if (path.endsWith('/roles/client')) return response(200, { ...role, clientRole: true });
     throw new Error('unreachable');
   }, async () => {
@@ -177,7 +211,7 @@ test('mapping failures fail closed and disable the newly created account', async
   let disabled = false;
   await withKeycloakMock(async (url, options = {}) => {
     const path = new URL(url).pathname;
-    if (path.endsWith('/protocol/openid-connect/token')) return response(200, { access_token: 'a'.repeat(40) });
+    if (path.endsWith('/protocol/openid-connect/token')) return response(200, { access_token: safeServiceToken });
     if (path.endsWith('/roles/client')) return response(200, role);
     if (path.endsWith('/users') && options.method === 'POST') {
       return response(201, null, 'http://afritaste-keycloak:8080/admin/realms/afritaste/users/' + oid);
@@ -217,7 +251,7 @@ test('Keycloak activation revalidates effective Client-only roles, provenance an
     const path = new URL(url).pathname;
     const method = options.method || 'GET';
     calls.push(method + ' ' + path);
-    if (path.endsWith('/protocol/openid-connect/token')) return response(200, { access_token: 'a'.repeat(40) });
+    if (path.endsWith('/protocol/openid-connect/token')) return response(200, { access_token: safeServiceToken });
     if (path.endsWith('/role-mappings/realm/composite')) return response(200, [role]);
     if (path.endsWith('/role-mappings/realm')) return response(200, [role]);
     if (path.endsWith('/users/' + oid) && method === 'PUT') {
@@ -249,7 +283,7 @@ test('composite Merchant privilege is rejected even when direct role claims say 
   await withKeycloakMock(async (url, options = {}) => {
     const route = new URL(url).pathname;
     const method = options.method || 'GET';
-    if (route.endsWith('/protocol/openid-connect/token')) return response(200, { access_token: 'a'.repeat(40) });
+    if (route.endsWith('/protocol/openid-connect/token')) return response(200, { access_token: safeServiceToken });
     if (route.endsWith('/role-mappings/realm/composite')) {
       return response(200, [role, { name: 'merchant', clientRole: false }]);
     }
@@ -270,7 +304,7 @@ test('identity without Client onboarding provenance cannot be enabled', async ()
   await withKeycloakMock(async (url, options = {}) => {
     const route = new URL(url).pathname;
     const method = options.method || 'GET';
-    if (route.endsWith('/protocol/openid-connect/token')) return response(200, { access_token: 'a'.repeat(40) });
+    if (route.endsWith('/protocol/openid-connect/token')) return response(200, { access_token: safeServiceToken });
     if (route.endsWith('/role-mappings/realm/composite')) return response(200, [role]);
     if (route.endsWith('/role-mappings/realm')) return response(200, [role]);
     if (route.endsWith('/users/' + oid) && method === 'GET') return response(200, {
