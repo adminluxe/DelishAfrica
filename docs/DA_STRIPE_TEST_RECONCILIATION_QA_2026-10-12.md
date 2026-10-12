@@ -34,12 +34,25 @@ Un reçu `Stripe-Signature` HMAC sur rawBody permet seulement d'attester la réc
 
 ## Interdictions et limites — NO-GO confirmé
 - **Pas de Stripe TEST officiel réellement contacté par ce code à ce stade.** Le test automatique ne contacte jamais le compte Stripe et ne justifie pas l'activation de paiements réels.
-- **Le créateur d'intention côté API et les routes commerciales réelles ne sont PAS raccordés à cette nouvelle migration.** Les anciennes routes `orders/create`, `payments/create-intent` et `/stripe/webhook` restent sur leur ancien chemin. Ne pas présenter le nouvel adaptateur comme actif.
+- **L'adaptateur de création Stripe TEST est implémenté en QA, mais aucune route commerciale publique ne le charge.** Les anciennes routes `orders/create`, `payments/create-intent` et `/stripe/webhook` restent sur leur ancien chemin ; ne pas présenter les nouveaux adaptateurs comme actifs.
 - Le code ne prouve pas encore les réponses réelles aux events refund/dispute, les transferts vers comptes Connect, les frais, soldes/payouts/settlement, ni les parcours iOS/Android.
 - Les identifiants de retenue `re_` / `dp_` du laboratoire sont des **marqueurs HMAC locaux**, pas des identifiants de refund/dispute attestés du fournisseur ; la migration finale devra modéliser explicitement les objets Stripe officiels.
-- La persistance d'une intention créée chez Stripe mais non enregistrée en DB exige un parcours de récupération spécifique : relecture Stripe sous **même clé d'idempotence**, et blocage/revue manuelle après expiration de sa fenêtre. **Ne jamais inventer une nouvelle clé pour réparer.** Non implémenté dans ce jalon.
+- La persistance d'une intention créée chez Stripe mais non enregistrée en DB exige un parcours de récupération spécifique : reprise Stripe avec **la même clé d'idempotence**, implémentée en QA ; arrêt fail-closed dès 18 h en cas d'absence de PI durable et revue humaine. L'outillage de revue opérateur n'est pas implémenté. **Ne jamais inventer une nouvelle clé pour réparer.**
 - Le rôle PostgreSQL qui peut marquer `paid` constitue une autorité critique : aucune identité mobile, aucun header, aucun body JSON et aucun récepteur webhook simple ne peuvent y accéder.
 - Aucun déploiement VPS, aucune migration live, aucun impact Keycloak, Apple, Google, EAS ou Store ; PR DRAFT non fusionnée, aucun Stripe LIVE.
+
+## Palier complémentaire après certification finance — création TEST idempotente
+
+- **Finances :** [GitHub Actions 38293599945](https://github.com/adminluxe/DelishAfrica/actions/runs/38293599945) **SUCCESS** pour le SHA `18832719a91929349d7d0b24e8c629fe25732d8a` (PG17 réel, huit concurrents, refund hold, receiver HMAC).
+- **Création Stripe TEST simulée :** [GitHub Actions 38294528567](https://github.com/adminluxe/DelishAfrica/actions/runs/38294528567) **SUCCESS** pour le SHA `21e2e18eee24926dfdc22a3100d46d3fa3ed8b6d` (PG17 réel, Stripe HTTP stub uniquement).
+- Nouvel adaptateur `services/api-nest/src/client-commerce/stripe-test-intent-create.pg-qa.adapter.ts` : `reserveOrder` puis `reserveTestPayment` transactionnels, vérification `acct_` de Stripe TEST, création PI sous la clé `da-qa-test-v1-<hmac>` déjà réservée, liaison DB. Aucun paiement effectué; aucune clé réelle.
+- Panne SQL après succès fournisseur : même réservation + même clé + même PI ; aucun nouveau `paymentIntentId` et aucun `paid` avant réconciliation finance.
+- Fail-closed après 18 h sans PI persisté (la rétention Stripe des idempotency keys peut être purgée après au moins 24 h), compte erroné, devis altéré, sujet différent, mode LIVE, réponse fournisseur divergente.
+- Nouvelle fonction PostgreSQL `da_qa_provider_read_reserved_test_intent` utilisable uniquement par le créateur TEST QA ; jamais accessible à un rôle Client mobile.
+- **AppModule et routes commerciales inchangées**. Les contrats HTTP certifiés pour vrais clients attendent le chaînage avec le guard Client/JWKS/admission et avec le devis catalogue serveur.
+- Architecture épinglable candidat : `docs/DA_ARCHITECTURE_QA_STRIPE_TEST_POSTGRES_PIN_2026-10-12.md`.
+
+**Statut : socle QA création et réconciliation contrôlé en CI, mais aucun accès officiel à Stripe TEST et aucun G0–G7. Il ne faut jamais qualifier le fournisseur réel de certifié.**
 
 ## Ordre de certification restant
 - **F0 / CI** : suite SQL vraie sur PG17 isolé, huit concurrents, garde des privilèges, TypeScript, erreurs et jeux de preuves exportés sans secret. Un échec = NO-GO.
@@ -50,4 +63,4 @@ Un reçu `Stripe-Signature` HMAC sur rawBody permet seulement d'attester la réc
 - **F5 / Trois apps et G0–G7** : binaire exact QA iOS/Android, compte réel de QA, menu → panier → paiement TEST volontaire → Merchant → Courier → ETA/livraison → suivi, échecs et retour arrière ; validation utilisateur avant promotion.
 - **F6 / Gouvernance** : revue IAM/Keycloak, coffre secrets, Stripe Connect et conformité ; une unique architecture/roadbook de production une fois certifiée.
 
-**État documentaire de cette version : CANDIDAT QA À TESTER.** Les résultats CI ne doivent être annoncés comme PASS qu'après leur exécution sur le SHA exact. G0–G7 et Stripe externe : NO-GO.
+**État documentaire de cette version : QA PG17/Stripe simulé CERTIFIÉ sur les SHAs de code testés, cf. exécutions CI ci-dessus.** Aucun raccordement fournisseur TEST réel, aucune route publique, aucun test G0–G7 : **NO-GO**. Toute évolution ultérieure exige une nouvelle CI sur son SHA exact.

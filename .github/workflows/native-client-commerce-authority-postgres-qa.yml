@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - '.github/workflows/native-client-commerce-authority-postgres-qa.yml'
+      - 'docs/DA_STRIPE_TEST_RECONCILIATION_QA_2026-10-12.md'
+      - 'docs/DA_ARCHITECTURE_QA_STRIPE_TEST_POSTGRES_PIN_2026-10-12.md'
       - 'services/api-nest/migrations/client-commerce/20261012_001_client_commerce_authority_qa_only.sql'
       - 'services/api-nest/migrations/client-commerce/20261012_002_client_commerce_least_privilege_qa_only.sql'
       - 'services/api-nest/migrations/client-commerce/20261012_003_stripe_test_webhook_inbox_qa_only.sql'
