@@ -11,6 +11,7 @@ on:
       - 'services/api-nest/src/auth/native-client-jwt-verifier.ts'
       - 'services/api-nest/src/auth/native-client-commerce.policy.ts'
       - 'services/api-nest/src/auth/native-client-nest-commerce.guard.ts'
+      - 'services/api-nest/src/auth/native-client-trusted-jwks.resolver.ts'
       - 'services/api-nest/migrations/client-enrollment/20261012_002_native_client_admission_qa_only.sql'
   workflow_dispatch:
 
@@ -45,6 +46,7 @@ jobs:
           assert(s.includes("commerce_revoked_subject_http_403"));
           assert(s.includes("nestjs_real_keycloak_jwt_real_pg_after_mock_sms_admitted"));
           assert(s.includes("nestjs_pg_unavailable_fail_closed"));
+          assert(s.includes("production_candidate_jwks_resolver_real_https_verified_and_cached"));
           assert(tls.includes("http.request("));
           for(const value of [s,tls]){
             assert(!/https?:\/\/(?:api\.delishafrica\.me|keycloak\.afritaste\.delishafrica\.me|194\.164\.72\.250)/i.test(value));
@@ -76,7 +78,7 @@ jobs:
           NODE_PATH="$QA_DIR/deps/node_modules" node - "$QA_DIR/built" <<'NODE'
           const fs=require('node:fs'),path=require('node:path'),ts=require('typescript');
           const out=process.argv[2], root='services/api-nest/src/auth/';
-          for (const name of ['native-client-commerce.policy','native-client-jwt-verifier','native-client-nest-commerce.guard']) {
+          for (const name of ['native-client-commerce.policy','native-client-jwt-verifier','native-client-nest-commerce.guard','native-client-trusted-jwks.resolver']) {
             const content=fs.readFileSync(root+name+'.ts','utf8');
             const converted=ts.transpileModule(content,{
               compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,
