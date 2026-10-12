@@ -8,6 +8,8 @@ on:
       - 'services/api-nest/src/client-enrollment/**'
       - 'services/api-nest/src/identity-proof/**'
       - 'services/api-nest/src/auth/client-token-isolation.ts'
+      - 'services/api-nest/src/auth/native-client-commerce.policy.ts'
+      - 'services/api-nest/test/native-client-commerce.policy.test.cjs'
       - 'services/api-nest/src/auth/external-jwks-verifier.service.ts'
       - 'services/api-nest/src/auth/external-jwks-verifier.types.ts'
       - 'services/api-nest/test/client-oidc-isolation.test.cjs'
@@ -86,6 +88,10 @@ jobs:
         env:
           TS_NODE_PROJECT: services/api-nest/tsconfig.json
         run: node -r ts-node/register/transpile-only --test services/api-nest/test/client-oidc-isolation.test.cjs
+      - name: Native Client realm commerce requires signed JWT and durable SMS/email ledger
+        env:
+          TS_NODE_PROJECT: services/api-nest/tsconfig.json
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/native-client-commerce.policy.test.cjs
       - name: Client-only policy and mocked Keycloak provisioning tests
         env:
           TS_NODE_PROJECT: services/api-nest/tsconfig.json
