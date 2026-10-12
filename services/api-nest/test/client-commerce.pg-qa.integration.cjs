@@ -127,7 +127,7 @@ test('real PgPool + repository: 8 concurrent Nest-compatible reservations and st
     for (const [who,rolePool] of [
       ['commerce_app',pool],['psp_receiver_without_verification',pspPool]]) {
       for(const statement of [
-        'SELECT * FROM public.da_client_commerce_payment_authority_qa LIMIT 1',
+        'SELECT * FROM public.da_client_commerce_payment_authority_qa WHERE order_id=$1::uuid LIMIT 1',
         'UPDATE public.da_client_commerce_payment_authority_qa '+
           'SET provider_verified=true WHERE order_id=$1::uuid',
         'UPDATE public.da_client_commerce_orders_qa '+
