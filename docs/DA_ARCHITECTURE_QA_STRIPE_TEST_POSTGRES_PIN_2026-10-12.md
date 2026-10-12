@@ -158,6 +158,46 @@ Merchant et Courier doivent revérifier l'éligibilité au dispatch
 
 **GEL :** pas de modification des routes de production ; pas d'intégration dans les binaires Client/Merchant/Courier ; pas de Stripe réel TEST ni LIVE ; pas de migration VPS ni de changement Keycloak ; pas de G0–G7, fusion ou Store sans certification et feu vert du propriétaire.
 
+## Architecture QA F4 — panier marchand immuable avant paiement (13/10/2026)
+
+**Source du code :** commit `e40b0ecb49d29f64c6abe4db68507de741b7427c`. [CI SQL PostgreSQL17 #38319913618](https://github.com/adminluxe/DelishAfrica/actions/runs/38319913618) et [CI API + 3 apps #38319916985](https://github.com/adminluxe/DelishAfrica/actions/runs/38319916985) : **SUCCESS sur le même SHA**.
+
+```text
+Client JWT Client admis (source de vérité de l'identité)
+      |
+      | Seuls merchantSlug + SKU + quantité sont fournis par le mobile
+      v
+CatalogOrderPolicyService (catalogue publié SERVEUR)
+      |
+      | Nom, catégorie, quantité, prix unitaire, montant ligne,
+      | sous-total, livraison, devis/fingerprint canoniques
+      v
+QaCanonicalOrderSnapshotPgAdapter (QA seulement)
+      | TRANSACTION PostgreSQL BEGIN
+      |    da_qa_service_reserve_order() : UUID canonique
+      |    da_qa_service_store_order_snapshot() : panier immutable
+      | COMMIT ou ROLLBACK intégral en cas d'échec
+      v
+da_client_commerce_order_snapshot_qa (migration 006 déconnectée)
+      | App ne détient que EXECUTE sur fonction snapshot
+      | AUCUN SELECT/UPDATE direct ; panier en lecture immuable
+      v
+BEFORE INSERT payment authority : refuse snapshot manquant
+      |
+      | Stripe TEST synthétique : vraie capture/reçu financier PG17
+      v
+da_qa_commerce_order_dispatch_eligible()
+      | Exige panier + reçu capturé + paid vérifié + pas de refund/hold
+      v
+Merchant/Courier : aucune route publique raccordée à ce jour
+```
+
+**Propriété majeure :** un paiement ne doit jamais pouvoir être créé pour un UUID sans panier conservé. Le trigger 006 coupe les réservations historiques dépourvues de snapshot dès que cette migration est appliquée ; c'est voulu dans le laboratoire, mais **interdit de la promouvoir telle quelle sur les bases VPS existantes** sans stratégie de compatibilité et migration contrôlée. Le seul nouvel adaptateur transactionnel est encore expérimental et non injecté dans AppModule.
+
+**Limites de confiance :** le snapshot SQL valide arithmétique, valeurs et concordance avec le devis de l'ordre, mais **ne vérifie pas à lui seul que les noms/prix proviennent du catalogue publié** : ce rôle appartient à `CatalogOrderPolicyService` et au contexte serveur approuvé. Les `SECURITY DEFINER` et arguments issuer/subject exigent un propriétaire dédié non-superuser, une séparation IAM et une identité liée aux claims vérifiés avant une production. Toute émission de mission Merchant/Courier requiert une nouvelle vérification transactionnelle juste avant dispatch/accept/pickup, pour empêcher la livraison après un hold tardif.
+
+**Test Node connecté à PostgreSQL :** la CI actuelle certifie le SQL 006 avec psql réel et l'adaptateur transactionnel avec des ports simulés séparément. Le test combiné avec PgPool, concurrence et panne avant COMMIT est une **preuve complémentaire NON ENCORE CERTIFIÉE**. Le canal Remote Desktop Commander est instable ; ne pas re-pousser d'écriture distante encore en attente. **Stripe officiel TEST non connecté, routes publiques non migrées, G0–G7 NO-GO, PR #35/#36 DRAFT, LIVE gelé.**
+
 ## Interventions interdites avant signature d'un passport G0–G7
 
 ```
