@@ -31,6 +31,22 @@ const stripeEffectsFile = path.join(tmp,'stripe-effects.json');
 process.env.DA_DEMO_ORDERS_STORE_FILE = orderStoreFile;
 process.env.DA_PAYMENT_AUTHORITY_STORE_FILE = path.join(tmp,'payments.json');
 
+// The existing catalog repository imports a deployment-specific absolute PG
+// vendor path at module-load time. This test mounts the ACTUAL controllers but
+// does not initialize that repository. Intercept ONLY that exact missing
+// deployment vendor module, and throw if anything tries to instantiate it.
+// Never create a DB connection or place a fake pool in a production module.
+const Module=require('node:module');
+const originalLoad=Module._load;
+Module._load=function(request,parent,isMain){
+  if(typeof request==='string' &&
+     request.replaceAll('\\','/').endsWith('/.runtime-vendor/pg-runtime/node_modules/pg')){
+    return {Pool:class ForbiddenQaPgPool {
+      constructor(){throw Error('QA_UNEXPECTED_LEGACY_PG_CONNECTION');}
+    }};
+  }
+  return originalLoad.apply(this,arguments);
+};
 const {Test} = require('@nestjs/testing');
 const {GUARDS_METADATA} = require('@nestjs/common/constants');
 const {OrdersController} = require('../src/orders/orders.controller');
