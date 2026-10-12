@@ -32,13 +32,23 @@ const quote=Object.freeze({
   currency:'EUR',
 });
 const pool=new Pool({
-  host:'127.0.0.1',user:'postgres',database:'postgres',
+  host:'127.0.0.1',user:'da_qa_client_commerce_app',database:'postgres',
   port:5432,max:14,connectionTimeoutMillis:10000,
   statement_timeout:12000,query_timeout:12000,
 });
 const anotherPool=new Pool({
-  host:'127.0.0.1',user:'postgres',database:'postgres',
+  host:'127.0.0.1',user:'da_qa_client_commerce_app',database:'postgres',
   port:5432,max:5,connectionTimeoutMillis:10000,
+  statement_timeout:12000,query_timeout:12000,
+});
+const auditPool=new Pool({
+  host:'127.0.0.1',user:'postgres',database:'postgres',
+  port:5432,max:2,connectionTimeoutMillis:10000,
+  statement_timeout:12000,query_timeout:12000,
+});
+const pspPool=new Pool({
+  host:'127.0.0.1',user:'da_qa_psp_verified_receiver',database:'postgres',
+  port:5432,max:2,connectionTimeoutMillis:10000,
   statement_timeout:12000,query_timeout:12000,
 });
 const primary=new QaClientCommercePgAdapter(
@@ -46,7 +56,7 @@ const primary=new QaClientCommercePgAdapter(
 const another=new QaClientCommercePgAdapter(
   anotherPool,process.env.QA_COMMERCE_HMAC_KEY);
 const scalar=async(sql,values=[])=>{
-  const row=(await pool.query(sql,values)).rows[0];
+  const row=(await auditPool.query(sql,values)).rows[0];
   return row?Object.values(row)[0]:null;
 };
 const mustReject=async(op,re,label)=>{
@@ -106,14 +116,41 @@ test('real PgPool + repository: 8 concurrent Nest-compatible reservations and st
     // SQL is the ultimate authority: an internal caller must not rebind
     // the generated payment to another amount or another client.
     await mustReject(
-      ()=>pool.query('UPDATE public.da_client_commerce_payment_authority_qa '+
+      ()=>auditPool.query('UPDATE public.da_client_commerce_payment_authority_qa '+
         'SET total_minor=9999 WHERE order_id=$1',[order.orderId]),
       /qa_payment_binding_immutable/);
     await mustReject(
-      ()=>pool.query('UPDATE public.da_client_commerce_orders_qa '+
+      ()=>auditPool.query('UPDATE public.da_client_commerce_orders_qa '+
         'SET total_minor=9999 WHERE order_id=$1',[order.orderId]),
       /qa_order_financial_binding_immutable/);
     console.log('QA_ADAPTER_DB_FINANCIAL_BINDINGS=IMMUTABLE');
+    for (const [who,rolePool] of [
+      ['commerce_app',pool],['psp_receiver_without_verification',pspPool]]) {
+      for(const statement of [
+        'SELECT * FROM public.da_client_commerce_payment_authority_qa LIMIT 1',
+        'UPDATE public.da_client_commerce_payment_authority_qa '+
+          'SET provider_verified=true WHERE order_id=$1::uuid',
+        'UPDATE public.da_client_commerce_orders_qa '+
+          "SET state='paid' WHERE order_id=$1::uuid",
+      ]){
+        await mustReject(
+          ()=>rolePool.query(statement,[order.orderId]),
+          /permission denied/,
+          who+' may not directly see or change payment state');
+      }
+    }
+    console.log('QA_ADAPTER_APP_AND_UNVERIFIED_PSP=DB_DIRECT_DML_DENIED');
+    await mustReject(
+      ()=>pspPool.query('SELECT * FROM public.da_qa_service_reserve_test_payment('+
+        '$1::uuid,$2::text,$3::uuid,$4::varchar)',
+        [order.orderId,issuer,alice.subject,
+          'da-qa-test-v1-'+'0'.repeat(64)]),
+      /permission denied/,
+      'unverified PSP role cannot reserve or mutate payments');
+    console.log('QA_ADAPTER_UNVERIFIED_PSP_HAS_NO_EXECUTE_AUTHORITY=PASS');
+    const appIdentity=(await pool.query('SELECT current_user AS current_user')).rows[0].current_user;
+    assert.equal(appIdentity,'da_qa_client_commerce_app');
+    console.log('QA_ADAPTER_PG_RUNTIME_USER=UNPRIVILEGED_CLIENT_APP');
 
     // Admission and quote provenance are trusted inputs from the Nest guard
     // and server catalog in production; this candidate validates their
@@ -143,6 +180,6 @@ test('real PgPool + repository: 8 concurrent Nest-compatible reservations and st
     console.log('QA_ADAPTER_STRIPE_CALLS=ZERO');
     console.log('QA_ADAPTER_PRODUCTION_ROUTES=NOT_WIRED');
   } finally{
-    await Promise.allSettled([pool.end(),anotherPool.end()]);
+    await Promise.allSettled([pool.end(),anotherPool.end(),auditPool.end(),pspPool.end()]);
   }
 });
