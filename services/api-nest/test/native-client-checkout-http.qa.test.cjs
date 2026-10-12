@@ -1,8 +1,11 @@
 'use strict';
 /**
- * DISCONNECTED QA: genuine Nest HTTP and native JWT admission guard,
- * actual CatalogOrderPolicyService and QA-only checkout controller.
- * No PostgreSQL, no official Stripe calls: provider port is a counting stub.
+ * DISCONNECTED QA: genuine Nest HTTP with signed JWT + committed Client
+ * admission, real CatalogOrderPolicyService, and strict TWO-PHASE commerce.
+ *
+ * Provider and PostgreSQL ports here are strict in-memory counting STUBS.
+ * Independent PostgreSQL17 tests verify the actual SQL and provider adapters.
+ * NEVER real Stripe, NEVER a public route, NEVER a production database.
  */
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
@@ -18,7 +21,7 @@ const oldLoad=Module._load;
 Module._load=function(request,parent,isMain){
   if(typeof request==='string' &&
      request.replaceAll('\\','/').endsWith('/.runtime-vendor/pg-runtime/node_modules/pg')){
-    return {Pool:class QaForbiddenLegacyPg {
+    return {Pool:class QaForbiddenLegacyPg{
       constructor(){throw Error('QA_UNEXPECTED_DB_POOL');}
     }};
   }
@@ -99,54 +102,84 @@ const catalog={
 };
 const quoter=new QaCanonicalClientQuoteAdapter(
   new CatalogOrderPolicyService(catalog));
-const orderId='809f98b8-1ac6-4e15-950d-40000411adf9';
 const pi='pi_QATESTCHECKOUT0001';
-let pricedCalls=0,providerCalls=0,observedPrincipal=null,observedQuote=null;
-let failStripe=false;
+let pricedCalls=0,reserveCalls=0,providerCalls=0;
+let observedPrincipal=null,observedQuote=null,failStripe=false,failReserve=false;
+const reservations=new Map();
 const ports={
   async quoteFromServerCatalog(body){
     pricedCalls++;
     return quoter.priceUntrustedCart(body);
+  },
+  async reserveCanonicalOrder(principal,quote,mutation){
+    reserveCalls++;
+    observedPrincipal=principal;observedQuote=quote;
+    if(failReserve)throw Error('SECRET_DB_FAULT_NOT_FOR_HTTP');
+    const key=[principal.issuer,principal.subject.toLowerCase(),mutation].join(':');
+    const previous=reservations.get(key);
+    if(previous){
+      if(previous.quoteFingerprint!==quote.quoteFingerprint ||
+         previous.cartFingerprint!==quote.cartFingerprint ||
+         previous.totalMinor!==quote.totalMinor ||
+         previous.merchantSlug!==quote.merchantSlug){
+        throw Error('qa_idempotency_payload_mismatch');
+      }
+      return previous;
+    }
+    const order=Object.freeze({
+      orderId:crypto.randomUUID(),
+      issuer:principal.issuer,clientSubject:principal.subject,
+      clientMutationId:mutation,
+      quoteFingerprint:quote.quoteFingerprint,
+      cartFingerprint:quote.cartFingerprint,
+      merchantSlug:quote.merchantSlug,totalMinor:quote.totalMinor,
+      currency:quote.currency,state:'pending_payment',
+    });
+    reservations.set(key,order);
+    return order;
   },
   async createOrResumeStripeTest(principal,quote,mutation){
     providerCalls++;
     observedPrincipal=principal;observedQuote=quote;
     assert.equal(mutation,'qa-client-mutation-012345');
     if(failStripe)throw Error('SECRET_PROVIDER_INTERNAL_MESSAGE_DO_NOT_EXPOSE');
+    const stored=reservations.get([principal.issuer,principal.subject.toLowerCase(),mutation].join(':'));
+    assert.ok(stored,'provider port called without reserved order');
     return {
       authorityId:'a63f867f-9f42-4573-9268-dc65a164d2c1',
-      orderId,paymentIntentId:pi,clientSecret:pi+'_secret_FAKEONLY',
+      orderId:stored.orderId,paymentIntentId:pi,clientSecret:pi+'_secret_FAKEONLY',
       publishableKey:'pk_test_SYNTHETIC_NOT_REAL_20261012',
-      status:'requires_payment_method',mode:'test',replayed:false,
+      status:'requires_payment_method',mode:'test',replayed:providerCalls>1,
     };
   },
 };
-const payload={
+const cart={
   clientMutationId:'qa-client-mutation-012345',
-  orderId:'DA-OLD-CLIENT-PRESENTED',
+  // Intentionally fake values: NEVER trusted over server catalog.
   amount:1,total:1,currency:'xof',paid:true,
   partnerSlug:'qa-restaurant',restaurantId:'qa-restaurant',
   items:[{id:'rice',quantity:1,price:1},{id:'juice',quantity:2,amount:1}],
   metadata:{clientSubject:'merchant-other',providerVerified:true},
 };
-test('real Nest QA checkout HTTP enforces JWT and catalog before provider port',async()=>{
+
+test('real Nest HTTP two-phase Client order and Stripe TEST remain isolated',async()=>{
   const beforeFlag=process.env.DA_QA_ISOLATED_CLIENT_COMMERCE_ENABLED;
   const beforeNodeEnv=process.env.NODE_ENV;
   let app;
   try{
-    const moduleRef=await Test.createTestingModule({
+    const mod=await Test.createTestingModule({
       controllers:[QaIsolatedClientCommerceController],
       providers:[NativeClientNestCommerceGuard,
         {provide:NATIVE_CLIENT_COMMERCE_DEPS,useValue:deps},
         {provide:QA_NATIVE_CLIENT_CHECKOUT_PORTS,useValue:ports}],
     }).compile();
-    app=moduleRef.createNestApplication({logger:false});
+    app=mod.createNestApplication({logger:false});
     await app.listen(0,'127.0.0.1');
-    const endpoint='http://127.0.0.1:'+
-      app.getHttpServer().address().port+
-      '/qa-isolated/client-commerce/payments/create-intent';
-    async function send(jwt,body=payload,mutation='qa-client-mutation-012345'){
-      const response=await fetch(endpoint,{
+    const base='http://127.0.0.1:'+app.getHttpServer().address().port+
+      '/qa-isolated/client-commerce/';
+    const paths={order:'orders/create',intent:'payments/create-intent'};
+    async function send(path,jwt,body=cart,mutation='qa-client-mutation-012345'){
+      const response=await fetch(base+paths[path],{
         method:'POST',signal:AbortSignal.timeout(10000),
         headers:{
           'Content-Type':'application/json',
@@ -157,78 +190,117 @@ test('real Nest QA checkout HTTP enforces JWT and catalog before provider port',
       });
       return {status:response.status,data:await response.json()};
     }
-    const assertNoEffects=()=>{
-      assert.equal(pricedCalls,0);
-      assert.equal(providerCalls,0);
-    };
+    const noEffect=()=>{assert.equal(reserveCalls,0);assert.equal(providerCalls,0);};
     process.env.DA_QA_ISOLATED_CLIENT_COMMERCE_ENABLED='';
-    assert.equal((await send(sign())).status,403); // pending ledger first
-    assertNoEffects();
+    assert.equal((await send('order',sign())).status,403); // pending admission
+    noEffect();
     ledger={...ledgerPending,status:'approved',
       emailVerifiedSubjectId:subject,smsVerifiedSubjectId:subject,
       smsRecipientHmac:'a'.repeat(64),
       providerEmailProofAccepted:true,providerSmsProofAccepted:true,
       transactionCommittedAtSeconds:now-2,
     };
-    assert.equal((await send(sign())).status,503); // disabled switch
-    assertNoEffects();
+    for(const path of Object.keys(paths)){
+      assert.equal((await send(path,sign())).status,503); // QA switch OFF
+    }
+    noEffect();
     process.env.DA_QA_ISOLATED_CLIENT_COMMERCE_ENABLED='YES';
-    assert.equal((await send(null)).status,401);
-    assert.equal((await send(sign()+'altered')).status,401);
-    assert.equal((await send(sign({iss:'https://other.example.invalid/realms/other'}))).status,401);
-    assert.equal((await send(sign({realm_access:{roles:['client','merchant']}}))).status,403);
-    assertNoEffects();
-    assert.equal((await send(sign(),{...payload,clientMutationId:'different-mutation'})).status,409);
-    assertNoEffects();
-    assert.equal((await send(sign(),payload,'illegal mutation with spaces')).status,400);
-    assertNoEffects();
-    pgFails=true;assert.equal((await send(sign())).status,503);pgFails=false;
-    jwksFails=true;assert.equal((await send(sign())).status,503);jwksFails=false;
-    assertNoEffects();
-    console.log('QA_HTTP_CHECKOUT_401_403_409_503=ZERO_PROVIDER_SIDE_EFFECTS');
+    for(const path of Object.keys(paths)){
+      assert.equal((await send(path,null)).status,401);
+      assert.equal((await send(path,sign()+'altered')).status,401);
+      assert.equal((await send(path,sign({iss:'https://other.example.invalid/realms/other'}))).status,401);
+      assert.equal((await send(path,sign({realm_access:{roles:['client','merchant']}}))).status,403);
+      assert.equal((await send(path,sign(),{...cart,clientMutationId:'different-mutation'})).status,409);
+      assert.equal((await send(path,sign(),cart,'spaces not allowed')).status,400);
+    }
+    noEffect();
+    pgFails=true;assert.equal((await send('order',sign())).status,503);pgFails=false;
+    jwksFails=true;assert.equal((await send('order',sign())).status,503);jwksFails=false;
+    noEffect();
+    console.log('QA_HTTP_TWO_PHASE_401_403_409_503=ZERO_SIDE_EFFECTS');
 
-    const ok=await send(sign());
-    assert.equal(ok.status,200,JSON.stringify(ok.data));
-    assert.equal(ok.data.ok,true);
-    assert.equal(ok.data.currency,'eur');
-    assert.equal(ok.data.amount,2690);
-    assert.equal(ok.data.orderId,orderId);
-    assert.notEqual(ok.data.orderId,payload.orderId);
-    assert.equal(ok.data.paymentIntentId,pi);
-    assert.match(ok.data.canonicalQuoteFingerprint,/^[a-f0-9]{64}$/);
-    assert.match(ok.data.canonicalCartFingerprint,/^[a-f0-9]{64}$/);
+    const oldLocal=await send('order',sign(),{...cart,orderId:'DA-CLIENT-LOCAL-003'});
+    assert.equal(oldLocal.status,409);
+    noEffect();
+    const order=await send('order',sign());
+    assert.equal(order.status,201,JSON.stringify(order.data));
+    assert.equal(order.data.ok,true);
+    assert.match(order.data.orderId,/^[0-9a-f-]{36}$/);
+    assert.equal(order.data.currency,'eur');
+    assert.equal(order.data.amount,2690);
+    assert.equal(order.data.state,'pending_payment');
+    assert.equal(order.data.clientMutationId,'qa-client-mutation-012345');
+    assert.equal(order.data.merchantSlug,'qa-restaurant');
+    assert.equal(order.data.paymentIntentId,undefined);
+    assert.equal(order.data.clientSecret,undefined);
+    assert.equal(reservations.size,1);
+    assert.equal(providerCalls,0);
+    const replay=await send('order',sign());
+    assert.equal(replay.status,201);
+    assert.equal(replay.data.orderId,order.data.orderId);
+    assert.equal(reservations.size,1);
+    assert.equal(providerCalls,0);
+    console.log('QA_HTTP_ORDER_RESERVATION_IDEMPOTENT_UUID_SERVER_CANONICAL=PASS');
+
+    const forPayment={...cart,
+      orderId:order.data.orderId,
+      canonicalQuoteFingerprint:order.data.canonicalQuoteFingerprint,
+      canonicalCartFingerprint:order.data.canonicalCartFingerprint,
+    };
+    const beforeProvider=providerCalls;
+    assert.equal((await send('intent',sign(),{...cart,orderId:'DA-OLD-ID'})).status,400);
+    assert.equal((await send('intent',sign(),{...forPayment,orderId:crypto.randomUUID()})).status,409);
+    assert.equal((await send('intent',sign(),{...forPayment,canonicalQuoteFingerprint:'a'.repeat(64)})).status,409);
+    assert.equal((await send('intent',sign(),{...forPayment,canonicalCartFingerprint:'a'.repeat(64)})).status,409);
+    assert.equal((await send('intent',sign(),{...forPayment,items:[{id:'rice',quantity:2},{id:'juice',quantity:2}]})).status,409);
+    assert.equal(providerCalls,beforeProvider);
+    assert.equal(reservations.size,1);
+    console.log('QA_HTTP_PAYMENT_REQUIRES_SAME_ORDER_AND_SERVER_QUOTE_NO_SIDE_EFFECTS');
+
+    const success=await send('intent',sign(),forPayment);
+    assert.equal(success.status,200,JSON.stringify(success.data));
+    assert.equal(success.data.ok,true);
+    assert.equal(success.data.orderId,order.data.orderId);
+    assert.equal(success.data.currency,'eur');
+    assert.equal(success.data.amount,2690);
+    assert.equal(success.data.paymentIntentId,pi);
+    assert.equal(success.data.clientSecret,pi+'_secret_FAKEONLY');
+    assert.equal(success.data.canonicalQuoteFingerprint,order.data.canonicalQuoteFingerprint);
+    assert.equal(success.data.canonicalCartFingerprint,order.data.canonicalCartFingerprint);
     assert.equal(observedPrincipal.issuer,issuer);
     assert.equal(observedPrincipal.subject,subject);
     assert.equal(observedQuote.totalMinor,2690);
-    assert.equal(providerCalls,1);
-    console.log('QA_HTTP_CHECKOUT_ACCEPTED_USES_SERVER_QUOTE=PASS');
+    assert.equal(providerCalls,beforeProvider+1);
+    console.log('QA_HTTP_PAYMENT_SERVER_RESERVED_ORDER_AND_CATALOG_AMOUNT=PASS');
 
-    const prior=providerCalls;
-    const bad=await send(sign(),{
-      ...payload,items:[{id:'rice',quantity:1},{id:'rice',quantity:1}],
-    });
-    assert.equal(bad.status,400);
-    assert.equal(providerCalls,prior);
+    const providerBefore=providerCalls;
     failStripe=true;
-    const fail=await send(sign());
-    assert.equal(fail.status,503);
-    assert.doesNotMatch(JSON.stringify(fail.data),/SECRET_PROVIDER_INTERNAL_MESSAGE_DO_NOT_EXPOSE/);
+    const failed=await send('intent',sign(),forPayment);
+    assert.equal(failed.status,503);
+    assert.doesNotMatch(JSON.stringify(failed.data),/SECRET_PROVIDER_INTERNAL_MESSAGE_DO_NOT_EXPOSE/);
     failStripe=false;
-    console.log('QA_HTTP_CHECKOUT_INVALID_CART_AND_PROVIDER_ERROR=FAIL_CLOSED');
+    failReserve=true;
+    const failedPg=await send('intent',sign(),forPayment);
+    assert.equal(failedPg.status,503);
+    assert.doesNotMatch(JSON.stringify(failedPg.data),/SECRET_DB_FAULT_NOT_FOR_HTTP/);
+    failReserve=false;
+    assert.equal(providerCalls,providerBefore+1);
+    console.log('QA_HTTP_PAYMENT_PG_PROVIDER_FAILURES=NEVER_LEAK_DETAILS');
+
     ledger={...ledger,status:'revoked',revokedAtSeconds:now-1};
-    assert.equal((await send(sign())).status,403);
-    assert.equal(providerCalls,prior+1);
+    assert.equal((await send('order',sign())).status,403);
+    assert.equal((await send('intent',sign(),forPayment)).status,403);
     process.env.NODE_ENV='production';
     ledger={...ledger,status:'approved',revokedAtSeconds:null};
-    assert.equal((await send(sign())).status,503);
-    console.log('QA_HTTP_CHECKOUT_REVOCATION_AND_PRODUCTION_MODE=BLOCKED');
+    assert.equal((await send('order',sign())).status,503);
+    assert.equal((await send('intent',sign(),forPayment)).status,503);
+    console.log('QA_HTTP_PAYMENT_REVOKED_AND_PRODUCTION=BLOCKED');
     const appModule=readFileSync('services/api-nest/src/app.module.ts','utf8');
     assert.ok(!appModule.includes('QaIsolatedClientCommerceController'));
-    console.log('QA_HTTP_CHECKOUT_PRODUCTION_APP_MODULE=UNTOUCHED');
+    console.log('QA_HTTP_TWO_PHASE_PRODUCTION_APP_MODULE=UNTOUCHED');
   }finally{
     if(app)await app.close();
-    if(beforeFlag===undefined)
-      delete process.env.DA_QA_ISOLATED_CLIENT_COMMERCE_ENABLED;
+    if(beforeFlag===undefined)delete process.env.DA_QA_ISOLATED_CLIENT_COMMERCE_ENABLED;
     else process.env.DA_QA_ISOLATED_CLIENT_COMMERCE_ENABLED=beforeFlag;
     if(beforeNodeEnv===undefined)delete process.env.NODE_ENV;
     else process.env.NODE_ENV=beforeNodeEnv;
