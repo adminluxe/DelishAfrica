@@ -369,3 +369,69 @@ test('failed activation compensates and quarantines even after a successful DB c
     assert.deepEqual(order,['reserved','staged_disabled','ledger_ready','activation_error','disabled','review']);
   });
 });
+
+
+test('six concurrent distinct Client reservations share one trusted-origin quota', async () => {
+  const { ClientEnrollmentRepository } = require('../src/client-enrollment/client-enrollment.repository');
+  const lockTails = new Map();
+  const committed = [];
+  let sequence = 0;
+  const repo = new ClientEnrollmentRepository();
+  // Isolated transaction-aware PG fake: each advisory lock is held until COMMIT/ROLLBACK.
+  // No database, Keycloak, payment service or live endpoint is contacted.
+  repo.connection = () => ({
+    connect: async () => {
+      const tx = { pending: null, releases: [] };
+      return {
+        query: async (sql, params = []) => {
+          if (sql === 'BEGIN') return { rows: [], rowCount: 0 };
+          if (sql.startsWith('SELECT pg_advisory_xact_lock')) {
+            const key = params[0];
+            const previous = lockTails.get(key) || Promise.resolve();
+            let release;
+            const held = new Promise((resolve) => { release = resolve; });
+            lockTails.set(key, previous.then(() => held));
+            await previous;
+            tx.releases.push(release);
+            return { rows: [], rowCount: 1 };
+          }
+          if (sql.includes('SELECT count(*)::text')) {
+            return {
+              rows: [{ total: String(committed.filter((x) => x.origin === params[0]).length) }],
+              rowCount: 1,
+            };
+          }
+          if (sql.startsWith('INSERT INTO')) {
+            tx.pending = { origin: params[2] };
+            return { rows: [{ enrollment_id: 'qa-' + (++sequence) }], rowCount: 1 };
+          }
+          if (sql === 'COMMIT' || sql === 'ROLLBACK') {
+            if (sql === 'COMMIT' && tx.pending) committed.push(tx.pending);
+            tx.pending = null;
+            for (const release of tx.releases.splice(0)) release();
+            return { rows: [], rowCount: 0 };
+          }
+          throw new Error('unexpected_mock_sql');
+        },
+        release: () => undefined,
+      };
+    },
+  });
+  const requesterHash = 'r'.repeat(64);
+  const requests = Array.from({ length: 6 }, (_, i) => {
+    const unique = String(i).padStart(64, '0');
+    return {
+      requesterHash,
+      emailHash: unique,
+      phoneHash: unique,
+      requestHash: unique,
+      emailProofHash: unique,
+      smsProofHash: unique,
+    };
+  });
+  const results = await Promise.allSettled(requests.map((request) => repo.reserve(request)));
+  assert.equal(results.filter((r) => r.status === 'fulfilled').length, 5);
+  assert.equal(results.filter((r) => r.status === 'rejected' &&
+    r.reason?.message === 'client_enrollment_rate_limit').length, 1);
+  assert.equal(committed.length, 5);
+});

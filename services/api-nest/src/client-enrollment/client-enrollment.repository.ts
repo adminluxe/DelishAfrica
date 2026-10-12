@@ -57,9 +57,16 @@ export class ClientEnrollmentRepository implements OnModuleDestroy {
     const client = await this.connection().connect();
     try {
       await client.query('BEGIN');
+      // Acquire the origin lock before checking the rolling quota. Email-only
+      // locking allows concurrent requests for different emails to bypass it.
+      // All reserve callers use the same order: origin, then email.
       await client.query(
         'SELECT pg_advisory_xact_lock(hashtext($1))',
-        ['da-client-enrollment:' + input.emailHash],
+        ['da-client-enrollment-origin:' + input.requesterHash],
+      );
+      await client.query(
+        'SELECT pg_advisory_xact_lock(hashtext($1))',
+        ['da-client-enrollment-email:' + input.emailHash],
       );
       const attempts = await client.query<{ total: string }>(
         'SELECT count(*)::text AS total FROM public.da_client_enrollments WHERE requester_hmac=$1 AND created_at >= now() - interval \'1 hour\'',

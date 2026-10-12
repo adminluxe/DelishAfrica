@@ -73,3 +73,10 @@
 - Créer et évaluer dans une infrastructure QA autorisée le service account avec *least privilege* et les échecs des opérations hors rôle Client. Si FGAP ne permet pas cette restriction, reconsidérer l'isolation du realm Client, **jamais accorder aveuglément `manage-users` sur tous les comptes**.
 - Prouver une vraie récupération e-mail Keycloak puis seulement envisager l'inscription QA réelle sur iPhone, la transition du panier, Stripe TEST et la livraison surveillée.
 - Déploiement public et paiements LIVE : **INTERDITS**. Pas de build EAS/Store, pas de changement dans les paramètres du realm partagé.
+
+## 12 OCT 2026 — Correctif concurrentiel du quota d'inscription (PR #35 DRAFT)
+
+- Analyse du code : le quota PostgreSQL de 5 réservations/heure par origine comptait les transactions après un verrou **par e-mail** ; plusieurs e-mails concurrents partageant la même origine pouvaient contourner ce contrôle.
+- Correction candidate : verrou transactionnel de l'origine HMAC **avant** la lecture du compteur, puis verrou e-mail, dans un ordre déterministe. Le test de régression lance six réservations concurrentes avec un même requester et six e-mails distincts, avec base fictive et verrous simulés ; cinq admissions et un refus sont attendus.
+- Ce test isolé ne démontre ni la protection contre les abus à l'edge/proxy réel ni les permissions Keycloak ; exige une QA PostgreSQL réelle ainsi qu'un test ingress Cloudflare avant tout passage en production.
+- Aucune donnée live, inscription, Keycloak, Stripe ou store modifié par ce commit. L'inscription reste **OFF / NO-GO**.
