@@ -153,6 +153,41 @@ export class DaCheckoutAttemptFence {
     return fresh;
   }
 
+  /**
+   * QA two-step checkout only: replace a local "reserve:<nonce>" placeholder
+   * once with the UUID returned by the POST /orders/create authority.
+   *
+   * The mutation and cart lock were already durably stored before HTTP.
+   * This NEVER changes a post-intent/order binding; it is not a general
+   * "change order ID" operation.
+   */
+  async bindServerOrderId(previousOrderId: string, serverOrderId: string):
+    Promise<DaCheckoutAttemptSnapshot> {
+    const existing = await this.load();
+    const UUID =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const PLACEHOLDER = /^reserve:[A-Za-z0-9_-]{10,65}$/;
+    if (!existing || existing.phase !== 'reserved' ||
+        existing.orderId !== previousOrderId || !UUID.test(serverOrderId)) {
+      throw Error('DA_CHECKOUT_FENCE_SERVER_ORDER_BIND_FORBIDDEN');
+    }
+    if (existing.orderId.toLowerCase() === serverOrderId.toLowerCase()) {
+      // Replayed response for the SAME server order can safely be accepted.
+      return existing;
+    }
+    if (!PLACEHOLDER.test(existing.orderId)) {
+      throw Error('DA_CHECKOUT_FENCE_SERVER_ORDER_BIND_FORBIDDEN');
+    }
+    const updated: DaCheckoutAttemptSnapshot = Object.freeze({
+      ...existing,
+      orderId: serverOrderId.toLowerCase(),
+      updatedAt: this.now(),
+    });
+    // A failed write must prevent any subsequent call to Stripe.
+    await this.persist(updated);
+    return updated;
+  }
+
   async markIntent(orderId: string, paymentIntentId: string):
     Promise<DaCheckoutAttemptSnapshot> {
     const existing = await this.load();

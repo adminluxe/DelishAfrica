@@ -153,3 +153,211 @@ test('user cancelling or app restarting cannot clear a sheet-open lock',async()=
   assert.equal((await fence(state).inspect()).phase,'sheet_open');
   console.log('QA_CHECKOUT_ATTEMPT_PAYMENT_SHEET_CANCEL=MANUAL_RECONCILIATION_FIRST');
 });
+
+/** Separate QA-only two-stage Client API contract; NOT imported by app UI. */
+const sequenceSource=fs.readFileSync(
+  path.resolve(__dirname,'../utils/daCanonicalCheckout.qa.ts'),'utf8');
+const sequenceCompiled=ts.transpileModule(sequenceSource,{
+  compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022},
+  reportDiagnostics:true,
+});
+assert.equal((sequenceCompiled.diagnostics||[])
+  .filter(d=>d.category===ts.DiagnosticCategory.Error).length,0);
+const sequenceModule={exports:{}};
+(new Function('exports','module','require',sequenceCompiled.outputText))(
+  sequenceModule.exports,sequenceModule,(name)=>{
+    if(name==='./daCheckoutAttemptFence')return m.exports;
+    throw Error('QA_CANONICAL_UNEXPECTED_REQUIRE_'+name);
+  });
+const {DaQaCanonicalCheckoutSequence}=sequenceModule.exports;
+const SERVER_ORDER='7b48962f-83b8-4b35-a223-9234d1e652ce';
+const SERVER_PI='pi_QACANONICALINTENT00001';
+const QA_INPUT={
+  ownerScope:'qa-verified-client-owner-001',
+  cartFingerprint:'qa-v2-basket|restaurant|rice:1|juice:2',
+  reservationDraftId:'reserve:STARTMUTATION001',
+  clientMutationId:'qa-native-checkout-mutation-001',
+  partnerSlug:'qa-restaurant',
+  items:[{id:'rice',quantity:1},{id:'juice',quantity:2}],
+};
+const SHA_Q='a'.repeat(64),SHA_CART='b'.repeat(64);
+const serverOrderResponse={
+  ok:true,mode:'test',state:'pending_payment',
+  orderId:SERVER_ORDER,clientMutationId:QA_INPUT.clientMutationId,
+  merchantSlug:'qa-restaurant',amount:2690,currency:'eur',
+  canonicalQuoteFingerprint:SHA_Q,canonicalCartFingerprint:SHA_CART,
+};
+const serverIntentResponse={
+  ok:true,provider:'stripe',mode:'test',status:'requires_payment_method',
+  orderId:SERVER_ORDER,paymentIntentId:SERVER_PI,
+  clientSecret:SERVER_PI+'_secret_QASYNTHETIC_ONLY',
+  publishableKey:'pk_test_SYNTHETIC_NOT_REAL_20261012',
+  amount:2690,currency:'eur',
+  canonicalQuoteFingerprint:SHA_Q,canonicalCartFingerprint:SHA_CART,
+};
+
+async function withQaEnv(fn){
+  const beforeFlag=process.env.EXPO_PUBLIC_DA_CANONICAL_CHECKOUT_QA;
+  const beforeNodeEnv=process.env.NODE_ENV;
+  process.env.EXPO_PUBLIC_DA_CANONICAL_CHECKOUT_QA='YES';
+  process.env.NODE_ENV='test';
+  try{return await fn();}
+  finally{
+    if(beforeFlag===undefined)delete process.env.EXPO_PUBLIC_DA_CANONICAL_CHECKOUT_QA;
+    else process.env.EXPO_PUBLIC_DA_CANONICAL_CHECKOUT_QA=beforeFlag;
+    if(beforeNodeEnv===undefined)delete process.env.NODE_ENV;
+    else process.env.NODE_ENV=beforeNodeEnv;
+  }
+}
+test('QA reserve placeholder can bind one PostgreSQL UUID only before Stripe intent',async()=>{
+  const state=inMemory(),f=fence(state);
+  await f.begin({...sample,orderId:QA_INPUT.reservationDraftId});
+  const linked=await f.bindServerOrderId(QA_INPUT.reservationDraftId,SERVER_ORDER);
+  assert.equal(linked.orderId,SERVER_ORDER);
+  assert.equal(linked.clientMutationId,sample.clientMutationId);
+  assert.equal((await f.bindServerOrderId(SERVER_ORDER,SERVER_ORDER)).orderId,SERVER_ORDER);
+  await assert.rejects(()=>f.bindServerOrderId(SERVER_ORDER,
+    '7b48962f-83b8-4b35-a223-9234d1e652ff'),
+    /DA_CHECKOUT_FENCE_SERVER_ORDER_BIND_FORBIDDEN/);
+  await f.markIntent(SERVER_ORDER,SERVER_PI);
+  await assert.rejects(()=>f.bindServerOrderId(SERVER_ORDER,SERVER_ORDER),
+    /DA_CHECKOUT_FENCE_SERVER_ORDER_BIND_FORBIDDEN/);
+  assert.equal((await f.inspect()).phase,'intent_created');
+  console.log('QA_CLIENT_SERVER_ORDER_BIND=IMMUTABLE_UUID_PRE_STRIPE_ONLY');
+});
+test('QA two-stage Client requests only SKU/quantity and reuses DB-provided UUID/hash',async()=>{
+  await withQaEnv(async()=>{
+    const state=inMemory(),calls=[];
+    const transport={
+      async post(route,payload,headers){
+        calls.push({route,payload,headers,snapshot:JSON.parse(state.raw()||'null')});
+        if(route.endsWith('/orders/create'))return {status:201,data:serverOrderResponse};
+        if(route.endsWith('/payments/create-intent'))
+          return {status:200,data:serverIntentResponse};
+        throw Error('QA_UNEXPECTED_ROUTE');
+      },
+    };
+    const result=await new DaQaCanonicalCheckoutSequence(
+      transport,fence(state)).reserveAndPrepare(QA_INPUT);
+    assert.equal(calls.length,2);
+    assert.equal(calls[0].snapshot.phase,'reserved');
+    assert.equal(calls[0].snapshot.orderId,QA_INPUT.reservationDraftId);
+    assert.equal(calls[1].snapshot.orderId,SERVER_ORDER);
+    assert.equal(calls[1].snapshot.phase,'reserved');
+    assert.equal(calls[0].payload.orderId,undefined);
+    assert.equal(calls[0].payload.amount,undefined);
+    assert.equal(calls[0].payload.paid,undefined);
+    assert.equal(calls[0].payload.currency,undefined);
+    assert.deepEqual(calls[0].payload.items,QA_INPUT.items);
+    assert.equal(calls[1].payload.orderId,SERVER_ORDER);
+    assert.equal(calls[1].payload.canonicalQuoteFingerprint,SHA_Q);
+    assert.equal(calls[1].payload.canonicalCartFingerprint,SHA_CART);
+    assert.equal(calls[1].payload.amount,undefined);
+    assert.equal(calls[0].headers['Idempotency-Key'],QA_INPUT.clientMutationId);
+    assert.equal(calls[1].headers['Idempotency-Key'],QA_INPUT.clientMutationId);
+    assert.equal(result.orderId,SERVER_ORDER);
+    assert.equal(result.amount,2690);
+    assert.equal(result.clientSecret,SERVER_PI+'_secret_QASYNTHETIC_ONLY');
+    const stored=await fence(state).inspect();
+    assert.equal(stored.orderId,SERVER_ORDER);
+    assert.equal(stored.phase,'intent_created');
+    assert.equal(stored.paymentIntentId,SERVER_PI);
+    assert.ok(!state.raw().includes('clientSecret'));
+    await assert.rejects(()=>new DaQaCanonicalCheckoutSequence(
+      transport,fence(state)).reserveAndPrepare(QA_INPUT),
+      /DA_CHECKOUT_ATTEMPT_AMBIGUOUS_RECONCILIATION_REQUIRED/);
+    assert.equal(calls.length,2,'ambiguous previous PI may never contact backend again');
+    console.log('QA_CLIENT_TWO_STAGE_UUID_AND_MUTATION_PERSISTENCE=PASS');
+  });
+});
+test('QA Client interruption after order reservation cannot mint a new mutation',async()=>{
+  await withQaEnv(async()=>{
+    const state=inMemory(),headers=[],seenRoutes=[];
+    let failIntent=true;
+    const transport={async post(route,payload,header){
+      headers.push(header['Idempotency-Key']);
+      seenRoutes.push(route);
+      if(route.endsWith('/orders/create'))return {status:201,data:serverOrderResponse};
+      if(failIntent){failIntent=false;throw Error('QA_NETWORK_UNCERTAIN');}
+      return {status:200,data:serverIntentResponse};
+    }};
+    await assert.rejects(()=>new DaQaCanonicalCheckoutSequence(
+      transport,fence(state)).reserveAndPrepare(QA_INPUT),/QA_NETWORK_UNCERTAIN/);
+    const crashed=await fence(state).inspect();
+    assert.equal(crashed.orderId,SERVER_ORDER);
+    assert.equal(crashed.phase,'reserved');
+    const proposed={...QA_INPUT,
+      reservationDraftId:'reserve:OTHERDRAFTMUTATION',
+      clientMutationId:'OTHERNEW_MUTATION_002',
+    };
+    const result=await new DaQaCanonicalCheckoutSequence(
+      transport,fence(state)).reserveAndPrepare(proposed);
+    assert.equal(result.orderId,SERVER_ORDER);
+    assert.equal(headers.length,4);
+    assert.deepEqual([...new Set(headers)],[QA_INPUT.clientMutationId]);
+    assert.equal(seenRoutes.filter(x=>x.endsWith('/orders/create')).length,2);
+    assert.equal((await fence(state).inspect()).phase,'intent_created');
+    console.log('QA_CLIENT_CRASH_AFTER_POST_INTENT=RETRY_SAME_MUTATION_ONLY');
+  });
+});
+test('QA wrong server order or payment amount fails before PaymentSheet',async()=>{
+  await withQaEnv(async()=>{
+    const state=inMemory();
+    let calls=0;
+    const transport={async post(route){
+      calls++;
+      if(route.endsWith('/orders/create'))return {status:201,data:serverOrderResponse};
+      return {status:200,data:{...serverIntentResponse,amount:999}};
+    }};
+    await assert.rejects(()=>new DaQaCanonicalCheckoutSequence(
+      transport,fence(state)).reserveAndPrepare(QA_INPUT),
+      /DA_QA_CANONICAL_INTENT_RESPONSE_INVALID_NO_PAYMENT/);
+    assert.equal(calls,2);
+    assert.equal((await fence(state).inspect()).phase,'reserved');
+    assert.equal((await fence(state).inspect()).orderId,SERVER_ORDER);
+    const stateWrong=inMemory();
+    let orderCalls=0;
+    const wrong={async post(){
+      orderCalls++;return {status:201,data:{...serverOrderResponse,merchantSlug:'another-merchant'}};
+    }};
+    await assert.rejects(()=>new DaQaCanonicalCheckoutSequence(
+      wrong,fence(stateWrong)).reserveAndPrepare(QA_INPUT),
+      /DA_QA_CANONICAL_ORDER_RESPONSE_INVALID_NO_PAYMENT/);
+    assert.equal(orderCalls,1);
+    assert.equal((await fence(stateWrong).inspect()).orderId,QA_INPUT.reservationDraftId);
+    console.log('QA_CLIENT_PROVIDER_BINDING_MISMATCH=FAIL_CLOSED');
+  });
+});
+test('QA disabled production or secure storage outage never reaches backend',async()=>{
+  const saved=process.env.EXPO_PUBLIC_DA_CANONICAL_CHECKOUT_QA;
+  const savedMode=process.env.NODE_ENV;
+  let networkCalls=0;
+  const transport={async post(){networkCalls++;throw Error('UNREACHABLE');}};
+  try{
+    process.env.EXPO_PUBLIC_DA_CANONICAL_CHECKOUT_QA='';
+    process.env.NODE_ENV='test';
+    await assert.rejects(()=>new DaQaCanonicalCheckoutSequence(
+      transport,fence(inMemory())).reserveAndPrepare(QA_INPUT),
+      /DA_QA_CANONICAL_CHECKOUT_DISABLED/);
+    process.env.EXPO_PUBLIC_DA_CANONICAL_CHECKOUT_QA='YES';
+    process.env.NODE_ENV='production';
+    await assert.rejects(()=>new DaQaCanonicalCheckoutSequence(
+      transport,fence(inMemory())).reserveAndPrepare(QA_INPUT),
+      /DA_QA_CANONICAL_CHECKOUT_DISABLED/);
+    process.env.NODE_ENV='test';
+    const unavailable={
+      read:async()=>{throw Error('SECURESTORE_FAILED')},
+      write:async()=>{},clear:async()=>{},
+    };
+    await assert.rejects(()=>new DaQaCanonicalCheckoutSequence(
+      transport,new DaCheckoutAttemptFence(unavailable)).reserveAndPrepare(QA_INPUT),
+      /DA_CHECKOUT_FENCE_UNAVAILABLE_NO_NEW_PAYMENT/);
+    assert.equal(networkCalls,0);
+    console.log('QA_CLIENT_DISABLED_AND_SECURESTORE_FAILURE=ZERO_BACKEND_TRAFFIC');
+  }finally{
+    if(saved===undefined)delete process.env.EXPO_PUBLIC_DA_CANONICAL_CHECKOUT_QA;
+    else process.env.EXPO_PUBLIC_DA_CANONICAL_CHECKOUT_QA=saved;
+    if(savedMode===undefined)delete process.env.NODE_ENV;
+    else process.env.NODE_ENV=savedMode;
+  }
+});
