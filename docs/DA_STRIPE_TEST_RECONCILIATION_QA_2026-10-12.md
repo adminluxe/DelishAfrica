@@ -151,6 +151,26 @@ La fonction SQL reçoit issuer/subject du **serveur authentifiant**. Elle ne val
 
 **NO-GO maintenu** : aucune route réelle orders/create, payments/create-intent ou stripe/webhook migrée, aucune intégration Client PaymentSheet public, aucune application Merchant/Courier branchée sur le nouveau reçu, aucun Stripe TEST officiel autorisé, aucune migration PostgreSQL du VPS, aucun G0–G7, aucune fusion de PR ni soumission Store. Les PR #35 et #36 restent DRAFT.
 
+## Palier F4 — panier commercial PostgreSQL immuable (13 octobre 2026)
+
+**Commit de code certifié :** `e40b0ecb49d29f64c6abe4db68507de741b7427c`. Deux pipelines sur ce même SHA :
+- [PostgreSQL 17 / finance / 006 #38319913618](https://github.com/adminluxe/DelishAfrica/actions/runs/38319913618) **SUCCESS** — véritable base jetable `--network none`. Preuves : `QA_SNAPSHOT_MISSING=PAYMENT_BLOCKED`, `QA_SNAPSHOT_APP_ROLE_ATOMIC_COMMIT_AND_REPLAY=ONE_ORDER`, `QA_SNAPSHOT_FOREIGN_CLIENT_DUP_SKU_OR_PRICE=DENIED`, `QA_SNAPSHOT_IMMUTABLE_AFTER_COMMIT=PASS`, `QA_SNAPSHOT_CAPTURED_PAYMENT_AND_IMMUTABLE_LINES=DISPATCH_ALLOWED`, `QA_SNAPSHOT_REFUND_HOLD=DISPATCH_REVOKED`.
+- [API + Client + Merchant + Courier #38319916985](https://github.com/adminluxe/DelishAfrica/actions/runs/38319916985) **SUCCESS** — TypeScript, catalogue publié simulé, test de transaction et garde d'identité. Trois tests locaux de l'adaptateur utilisent un port PG factice et confirment BEGIN → réservation → snapshot → COMMIT, ROLLBACK sur interruption, rejet des prix ou identités invalides sans trafic SQL.
+
+### Contrat commercial durable préparé et testé
+
+- `services/api-nest/src/client-commerce/client-commerce-canonical-quote.pg-qa.adapter.ts` produit désormais, exclusivement à partir de la politique catalogue serveur, des lignes de fulfillment (SKU, nom, catégorie, quantité, prix unitaire et montant par ligne) et les frais de livraison. Prix, montant et drapeaux `paid` envoyés par un téléphone restent ignorés.
+- `services/api-nest/src/client-commerce/client-order-snapshot.pg-qa.adapter.ts` fournit `reserveOrderAndSnapshot()` : une **même transaction PG** écrit l'UUID de commande puis un instantané marchand sans PII, sur le rôle de base applicatif QA. Une interruption avant COMMIT annule les deux écritures. Cette méthode n'est pas intégrée à l'application distribuée.
+- La migration de test **006** (`20261013_006_canonical_order_snapshot_qa_only.sql`) crée `da_client_commerce_order_snapshot_qa`, interdit modification et suppression après validation, exige l'identité Client, le même UUID/devis/panier/devise/total, vérifie unicité SKU et arithmétique des lignes. Son garde `BEFORE INSERT` refuse toute nouvelle autorité de paiement **sans snapshot**.
+- `da_qa_commerce_order_dispatch_eligible(uuid)` exige désormais **snapshot immuable + capture Stripe TEST vérifiée + reçu financier exact + absence de refund/dispute**. Le SQL recontrôle les holds au moment de la lecture, sans donner un passe-droit permanent au Courier.
+- Les tests PostgreSQL 006 utilisent des commandes et preuves de paiement **synthétiques**. Ils vérifient refus de panier manquant, mutation/identité falsifiées, rejets de prix incorrects, replays, finance avant et après capture et retenue tardive. Le rôle app ne possède aucun SELECT/UPDATE direct sur le snapshot.
+
+### Limites, blocages et prochaine preuve
+
+Cette certification associe **le vrai SQL PG17** et **les tests transactionnels Node à ports simulés**, mais n'est pas encore la preuve d'un adaptateur Node réel connecté à PG17 dans un même test d'intégration. Un tel test de concurrence multi-PgPool est la vérification complémentaire suivante. **Aucun écran ni route publique Client/Merchant/Courier n'est branché sur ce flux** ; la réservation historique démo demeure en place. Les fonctions SECURITY DEFINER et l'ownership demandent une révision IAM avant toute promotion.
+
+Stripe TEST officiel n'a pas été contacté : clé `sk_test_`, clé publique, secret webhook `whsec_` et compte TEST épinglé sont absents du processus QA isolé. Ne pas importer des clés anciennes du VPS. **Aucun Stripe LIVE, aucune migration VPS, aucune publication, aucun G0–G7, aucune fusion**. PR #35 et #36 toujours DRAFT.
+
 ## Ordre de certification restant
 - **F0 / CI** : suite SQL vraie sur PG17 isolé, huit concurrents, garde des privilèges, TypeScript, erreurs et jeux de preuves exportés sans secret. Un échec = NO-GO.
 - **F1 / Création TEST officielle isolée** : vault/secret local dans un environnement de QA autorisé, clé `sk_test_` et compte épinglé, Idempotency-Key dérivée de la réservation SQL, montant serveur, confirmation manuelle. Prouver timeout fournisseur et reprise sans double PI.
