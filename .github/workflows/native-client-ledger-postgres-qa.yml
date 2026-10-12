@@ -60,7 +60,7 @@ jobs:
             --tmpfs /var/run/postgresql:rw,nosuid,nodev,size=16m,uid=70,gid=70,mode=0770 \
             --tmpfs /tmp:rw,nosuid,nodev,size=64m,uid=70,gid=70,mode=1777 \
             -e POSTGRES_HOST_AUTH_METHOD=trust \
-            "$IMAGE" -c listen_addresses='' >/dev/null
+            "$IMAGE" -c listen_addresses=127.0.0.1 >/dev/null
           ready=false
           for attempt in $(seq 1 90); do
             if docker exec "$NAME" pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; then
@@ -74,7 +74,7 @@ jobs:
             docker logs "$NAME" 2>&1 | tail -n 24
             exit 1
           fi
-          echo "QA_POSTGRES=READY_UNIX_SOCKET_ONLY"
+          echo "QA_POSTGRES=READY_LOOPBACK_TCP_ONLY"
           echo "QA_NETWORK=NONE"
           echo "QA_HOST_PORTS_PUBLISHED=NONE"
           docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres \
