@@ -11,6 +11,7 @@ on:
       - 'services/api-nest/src/auth/native-client-commerce.policy.ts'
       - 'services/api-nest/src/auth/native-client-jwt-verifier.ts'
       - 'services/api-nest/src/auth/native-client-nest-commerce.guard.ts'
+      - 'services/api-nest/test/native-client-nest-commerce.guard.test.cjs'
       - 'services/api-nest/test/native-client-jwt-verifier.test.cjs'
       - 'services/api-nest/test/native-client-commerce.policy.test.cjs'
       - 'services/api-nest/src/auth/external-jwks-verifier.service.ts'
@@ -95,6 +96,10 @@ jobs:
         env:
           TS_NODE_PROJECT: services/api-nest/tsconfig.json
         run: node -r ts-node/register/transpile-only --test services/api-nest/test/native-client-jwt-verifier.test.cjs
+      - name: Candidate NestJS HTTP Client admission - real guard without production wiring
+        env:
+          TS_NODE_PROJECT: services/api-nest/tsconfig.json
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/native-client-nest-commerce.guard.test.cjs
       - name: Native Client realm commerce requires signed JWT and durable SMS/email ledger
         env:
           TS_NODE_PROJECT: services/api-nest/tsconfig.json
