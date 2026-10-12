@@ -43,6 +43,21 @@ test('candidate resolver pins issuer, caches one strict HTTPS discovery and RSA 
   }finally{global.fetch=originalFetch;}
 });
 
+test('real Keycloak style JWKS may contain encryption and alternate signing algorithms',async()=>{
+  const keys=[
+    {...key,kid:'qa-encryption',use:'enc',alg:'RSA-OAEP'},
+    {...key,kid:'qa-ec-signing',kty:'EC',use:'sig',alg:'ES256'},
+    key,
+  ];
+  mocked(url=>json(url===discoveryUrl?discovery:{keys}));
+  try{
+    const accepted=await new NativeClientTrustedJwksResolver(issuer).loadTrustedJwks();
+    assert.deepEqual(accepted.keys.map(k=>k.kid),['qa-kid-1']);
+    assert.equal(accepted.keys[0].alg,'RS256');
+    console.log('QA_JWKS_KEYCLOAK_MIXED_KEYSET_RSA_RS256_FILTER=PASS');
+  }finally{global.fetch=originalFetch;}
+});
+
 test('malformed issuer, URL credentials, port, fragments and non-HTTPS rejected',()=>{
   for(const value of [
     'http://auth.qa.example.invalid/realms/da-client',
