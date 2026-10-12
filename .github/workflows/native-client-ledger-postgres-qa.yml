@@ -63,7 +63,7 @@ jobs:
             "$IMAGE" -c listen_addresses='' >/dev/null
           ready=false
           for attempt in $(seq 1 90); do
-            if docker exec "$NAME" pg_isready -U postgres >/dev/null 2>&1; then
+            if docker exec "$NAME" pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; then
               ready=true
               break
             fi
@@ -77,10 +77,10 @@ jobs:
           echo "QA_POSTGRES=READY_UNIX_SOCKET_ONLY"
           echo "QA_NETWORK=NONE"
           echo "QA_HOST_PORTS_PUBLISHED=NONE"
-          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres \
             < services/api-nest/migrations/client-enrollment/20261012_002_native_client_admission_qa_only.sql
           echo "QA_SCHEMA_CANDIDATE=CREATED_EPHEMERAL_ONLY"
-          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres \
             < services/api-nest/test/native-client-admission-ledger.qa.sql
           echo "QA_NATIVE_CLIENT_PG_LEDGER=PASS_SYNTHETIC_ONLY"
           echo "PRODUCTION_IMPACT=NONE"
