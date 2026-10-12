@@ -425,11 +425,20 @@ async function run() {
     await pg.connect();
     check((await pg.query('SELECT 1 AS ok')).rows[0].ok===1,
       'same_network_ephemeral_postgresql_connection');
-    commercePool=new PgPool({host:'127.0.0.1',port:5432,user:'postgres',
+    commercePool=new PgPool({host:'127.0.0.1',port:5432,user:'da_qa_client_commerce_app',
       database:'postgres',max:8,connectionTimeoutMillis:10000,
       statement_timeout:12000,query_timeout:12000});
     const clientCommerceAdapter=new QaClientCommercePgAdapter(
       commercePool,process.env.QA_COMMERCE_HMAC_KEY);
+    check((await commercePool.query('SELECT current_user AS u')).rows[0].u===
+      'da_qa_client_commerce_app',
+      'client_commerce_adapter_runs_with_no_table_dml_privileges');
+    let qaWriteDenied=false;
+    try{await commercePool.query(
+      'UPDATE public.da_client_commerce_payment_authority_qa '+
+      'SET provider_verified=true WHERE state=$1',['reserved']);}
+    catch(e){qaWriteDenied=e.code==='42501';}
+    check(qaWriteDenied,'client_commerce_app_role_cannot_forge_payment_verification');
     // The canonical quote below is generated server-side in QA; body.quote,
     // price, role, subject or issuer can never override these values.
     const qaCanonicalQuote=Object.freeze({
