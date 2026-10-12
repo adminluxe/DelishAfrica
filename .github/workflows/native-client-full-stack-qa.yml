@@ -10,6 +10,7 @@ on:
       - 'services/api-nest/test/synthetic-keycloak-tls-proxy.qa.cjs'
       - 'services/api-nest/src/auth/native-client-jwt-verifier.ts'
       - 'services/api-nest/src/auth/native-client-commerce.policy.ts'
+      - 'services/api-nest/src/auth/native-client-nest-commerce.guard.ts'
       - 'services/api-nest/migrations/client-enrollment/20261012_002_native_client_admission_qa_only.sql'
   workflow_dispatch:
 
@@ -42,6 +43,8 @@ jobs:
           assert(s.includes("commerce_pending_sms_ledger_rejected"));
           assert(s.includes("commerce_approved_only_after_verified_real_oidc_and_real_pg_commit"));
           assert(s.includes("commerce_revoked_subject_http_403"));
+          assert(s.includes("nestjs_real_keycloak_jwt_real_pg_after_mock_sms_admitted"));
+          assert(s.includes("nestjs_pg_unavailable_fail_closed"));
           assert(tls.includes("http.request("));
           for(const value of [s,tls]){
             assert(!/https?:\/\/(?:api\.delishafrica\.me|keycloak\.afritaste\.delishafrica\.me|194\.164\.72\.250)/i.test(value));
@@ -61,7 +64,10 @@ jobs:
           mkdir -p "$QA_DIR/tls" "$QA_DIR/deps" "$QA_DIR/built"
           npm --prefix "$QA_DIR/deps" install \
             --ignore-scripts --no-audit --no-fund --no-save \
-            pg@8.16.3 typescript@5.9.3 > /dev/null
+            pg@8.16.3 typescript@5.9.3 \
+            @nestjs/common@10.4.22 @nestjs/core@10.4.22 \
+            @nestjs/platform-express@10.4.22 @nestjs/testing@10.4.22 \
+            reflect-metadata@0.1.14 rxjs@7.8.1 > /dev/null
           openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 \
             -keyout "$QA_DIR/tls/qa.key" -out "$QA_DIR/tls/qa.crt" \
             -subj "/CN=127.0.0.1" \
@@ -70,11 +76,11 @@ jobs:
           NODE_PATH="$QA_DIR/deps/node_modules" node - "$QA_DIR/built" <<'NODE'
           const fs=require('node:fs'),path=require('node:path'),ts=require('typescript');
           const out=process.argv[2], root='services/api-nest/src/auth/';
-          for (const name of ['native-client-commerce.policy','native-client-jwt-verifier']) {
+          for (const name of ['native-client-commerce.policy','native-client-jwt-verifier','native-client-nest-commerce.guard']) {
             const content=fs.readFileSync(root+name+'.ts','utf8');
             const converted=ts.transpileModule(content,{
               compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,
-                esModuleInterop:true,strict:true},
+                esModuleInterop:true,strict:true,experimentalDecorators:true,emitDecoratorMetadata:true},
               fileName:name+'.ts',reportDiagnostics:true,
             });
             if (converted.diagnostics?.some(x=>x.category===ts.DiagnosticCategory.Error))
