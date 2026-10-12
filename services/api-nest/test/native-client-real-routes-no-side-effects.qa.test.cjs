@@ -63,6 +63,8 @@ const {nativeClientEmailBindingHmac} =
   require('../src/auth/native-client-commerce.policy');
 const {listDemoOrders,getDemoOrdersStoreFile} =
   require('../src/orders/orders.demo.store');
+Module._load=originalLoad; // restore loader after isolating PG vendor import
+
 
 const issuer='https://qa-issuer.example.invalid/realms/da-client';
 const clientId='delishafrica-client',subject='a63f867f-9f42-4573-9268-dc65a164d2c1';
@@ -182,15 +184,18 @@ test('ACTUAL Nest order/create & payment/create-intent reject before any side ef
     const moduleRef=await Test.createTestingModule({
       controllers:[OrdersController,PaymentsController],
       providers:[
-        {provide:OrdersAuthGuard,useValue:mockOldOrdersGuard},
-        {provide:PaymentsAuthGuard,useValue:mockOldPaymentsGuard},
         {provide:OrdersAccessService,useValue:orderAccess},
         {provide:OrdersDispatchService,useValue:{}},
         {provide:PaymentsService,useValue:payments},
         NativeClientNestCommerceGuard,
         {provide:NATIVE_CLIENT_COMMERCE_DEPS,useValue:deps},
       ],
-    }).compile();
+    })
+      // Nest registers @UseGuards() as enhancer providers. Overrides MUST
+      // target GUARDS, not ordinary injected service providers.
+      .overrideGuard(OrdersAuthGuard).useValue(mockOldOrdersGuard)
+      .overrideGuard(PaymentsAuthGuard).useValue(mockOldPaymentsGuard)
+      .compile();
     app=moduleRef.createNestApplication({logger:false});
     await app.listen(0,'127.0.0.1');
     const port=app.getHttpServer().address().port;
