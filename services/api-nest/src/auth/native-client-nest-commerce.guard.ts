@@ -26,6 +26,23 @@ import {
 } from './native-client-commerce.policy';
 
 export const NATIVE_CLIENT_COMMERCE_DEPS = Symbol('NATIVE_CLIENT_COMMERCE_DEPS');
+/**
+ * Non-serializable request-local trust channel. ONLY the successful
+ * cryptographic JWT + durable verified SMS/e-mail guard can populate it.
+ * Never build this value from JSON, user-supplied headers or mobile claims.
+ */
+export const NATIVE_CLIENT_ADMISSION_CONTEXT = Symbol('NATIVE_CLIENT_ADMISSION_CONTEXT');
+export type NativeClientAdmissionPrincipal = Readonly<{
+  issuer: string;
+  subject: string;
+  role: 'client';
+  authSource: 'external';
+  ownershipEligible: true;
+}>;
+export type NativeClientAdmittedHttpRequest = {
+  headers?: Record<string, unknown>;
+  [NATIVE_CLIENT_ADMISSION_CONTEXT]?: NativeClientAdmissionPrincipal;
+};
 
 export interface NativeClientCommerceDependencies {
   /** Configuration must be reviewed and server-controlled, NEVER HTTP input. */
@@ -53,9 +70,10 @@ export class NativeClientNestCommerceGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest<{
-      headers?: Record<string, unknown>;
-    }>();
+    const request = context.switchToHttp().getRequest<NativeClientAdmittedHttpRequest>();
+    // Do not let an earlier handler or a re-used synthetic context authorize
+    // a request. The symbol is set ONLY after every guard check succeeds.
+    if (request) delete request[NATIVE_CLIENT_ADMISSION_CONTEXT];
     const authorization = request?.headers?.authorization;
     // Reject duplicate, malformed, excessive or non-Bearer Authorization
     // values. Do not read X-User, X-Role, body, cookie or forwarded headers.
@@ -104,6 +122,15 @@ export class NativeClientNestCommerceGuard implements CanActivate {
     if (result) {
       throw new ForbiddenException('Client admission not approved');
     }
+    // Server-only identity forwarded to QA commerce adapter. Symbol lookup
+    // prevents the client from providing this value over HTTP/JSON.
+    request[NATIVE_CLIENT_ADMISSION_CONTEXT] = Object.freeze({
+      issuer: this.dependencies.issuer,
+      subject: String(verified.evidence.claims.sub),
+      role: 'client' as const,
+      authSource: 'external' as const,
+      ownershipEligible: true as const,
+    });
     // This grants ONLY the wrapped route. Ownership, prices, idempotency,
     // business authorization and Stripe gating require separate checks.
     return true;
