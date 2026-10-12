@@ -6,6 +6,7 @@
  * Client JWT + committed e-mail/SMS admission check, and a quote produced by
  * the authoritative server catalog (NEVER from HTTP body or JWT claims).
  *
+ * The PostgreSQL role must have EXECUTE on QA reservation functions only.
  * This adapter reserves records; it NEVER contacts Stripe, marks payment
  * succeeded, creates dispatch missions, or creates a live Order.
  * The payment authority verifier + its restricted DB role are NOT implemented.
@@ -125,7 +126,7 @@ export class QaClientCommercePgAdapter {
       throw Error('qa_client_mutation_id_invalid');
     }
     const result = await this.pool.query(
-      'SELECT * FROM public.da_qa_reserve_client_order(' +
+      'SELECT * FROM public.da_qa_service_reserve_order(' +
       '$1::text,$2::uuid,$3::varchar,$4::char(64),' +
       '$5::char(64),$6::varchar,$7::bigint,$8::char(3))',
       [client.issuer, client.subject, mutationId,
@@ -183,63 +184,30 @@ export class QaClientCommercePgAdapter {
     validateClient(client);
     if (!validUuid(orderId)) throw Error('qa_order_id_invalid');
     const key=this.idempotencyKey(client,orderId);
-    const conn=await this.pool.connect();
-    let inTransaction=false;
-    try {
-      await conn.query('BEGIN');
-      inTransaction=true;
-      const current=requiredRow(await conn.query(
-        'SELECT order_id,issuer,client_subject,quote_fingerprint,'+
-        'total_minor,currency,state FROM public.da_client_commerce_orders_qa '+
-        'WHERE order_id=$1::uuid AND issuer=$2 AND client_subject=$3::uuid FOR UPDATE',
-        [orderId,client.issuer,client.subject],
-      ),'qa_order_missing_or_cross_principal');
-      if(String(current.state)!=='pending_payment') {
-        throw Error('qa_payment_order_not_pending');
-      }
-
-      const inserted=await conn.query(
-        'INSERT INTO public.da_client_commerce_payment_authority_qa '+
-        '(order_id,issuer,client_subject,quote_fingerprint,total_minor,currency,'+
-        'stripe_idempotency_key) '+
-        'VALUES ($1::uuid,$2,$3::uuid,$4::char(64),$5::bigint,$6::char(3),$7) '+
-        'ON CONFLICT (order_id) DO NOTHING '+
-        'RETURNING authority_id,order_id,stripe_mode,stripe_idempotency_key,'+
-        'stripe_payment_intent_id,state',
-        [orderId,client.issuer,client.subject,
-          String(current.quote_fingerprint).trim(),
-          moneyMinor(current.total_minor),String(current.currency).trim(),key],
-      );
-      const rows=inserted.rows.length===1?inserted:await conn.query(
-        'SELECT authority_id,order_id,stripe_mode,stripe_idempotency_key,'+
-        'stripe_payment_intent_id,state FROM '+
-        'public.da_client_commerce_payment_authority_qa '+
-        'WHERE order_id=$1::uuid FOR UPDATE',[orderId],
-      );
-      const row=requiredRow(rows,'qa_payment_authority_missing');
-      if(String(row.stripe_idempotency_key)!==key ||
-          String(row.stripe_mode)!=='test' ||
-          String(row.order_id).toLowerCase()!==orderId.toLowerCase()) {
-        throw Error('qa_payment_authority_binding_mismatch');
-      }
-      await conn.query('COMMIT');
-      inTransaction=false;
-      return Object.freeze({
-        authorityId:String(row.authority_id),
-        orderId:String(row.order_id),
-        stripeMode:'test' as const,
-        stripeIdempotencyKey:key,
-        stripePaymentIntentId:row.stripe_payment_intent_id===null
-          ?null:String(row.stripe_payment_intent_id),
-        state:String(row.state),
-      });
-    } catch (err) {
-      if(inTransaction){
-        try { await conn.query('ROLLBACK'); } catch { /* never commit on errors */ }
-      }
-      throw err;
-    } finally {
-      conn.release();
+    // SQL SECURITY DEFINER port performs SELECT ... FOR UPDATE followed by
+    // INSERT ON CONFLICT. The unprivileged app login has NO table DML grants.
+    // The entire statement is atomic in PostgreSQL and serializes replays.
+    const result=await this.pool.query(
+      'SELECT * FROM public.da_qa_service_reserve_test_payment('+
+      '$1::uuid,$2::text,$3::uuid,$4::varchar)',
+      [orderId,client.issuer,client.subject,key],
+    );
+    const row=requiredRow(result,'qa_payment_authority_missing');
+    if(String(row.stripe_idempotency_key)!==key ||
+        String(row.stripe_mode)!=='test' ||
+        String(row.issuer)!==client.issuer ||
+        String(row.client_subject).toLowerCase()!==client.subject.toLowerCase() ||
+        String(row.order_id).toLowerCase()!==orderId.toLowerCase()) {
+      throw Error('qa_payment_authority_binding_mismatch');
     }
+    return Object.freeze({
+      authorityId:String(row.authority_id),
+      orderId:String(row.order_id),
+      stripeMode:'test' as const,
+      stripeIdempotencyKey:key,
+      stripePaymentIntentId:row.stripe_payment_intent_id===null
+        ?null:String(row.stripe_payment_intent_id),
+      state:String(row.state),
+    });
   }
 }
