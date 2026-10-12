@@ -13,6 +13,8 @@ const { Test } = require('@nestjs/testing');
 const { Controller, Get, UseGuards } = require('@nestjs/common');
 const { NativeClientNestCommerceGuard, NATIVE_CLIENT_COMMERCE_DEPS } =
   require('/qa-built/native-client-nest-commerce.guard.js');
+const { NativeClientTrustedJwksResolver } =
+  require('/qa-built/native-client-trusted-jwks.resolver.js');
 const { startQaHttpsProxy } = require('./synthetic-keycloak-tls-proxy.qa.cjs');
 const { verifyNativeClientJwt } = require('/qa-built/native-client-jwt-verifier.js');
 const { nativeClientEmailBindingHmac, evaluateNativeClientCommerce } =
@@ -477,6 +479,12 @@ async function run() {
     // guard implementation with the SAME real Keycloak access token and SAME
     // committed PostgreSQL record. No Nest production route is imported.
     let mockJwksDown=false, mockDbDown=false;
+    const trustedResolver=new NativeClientTrustedJwksResolver(issuer);
+    check(trustedResolver.issuer===issuer,'server_configured_client_issuer');
+    let invalidIssuerBlocked=false;
+    try{new NativeClientTrustedJwksResolver('http://127.0.0.1/realms/wrong')}
+    catch{invalidIssuerBlocked=true}
+    check(invalidIssuerBlocked,'jwks_client_http_downgrade_rejected');
     class QaNestController {
       check() { return { admitted:true, scenario:'synthetic-only' }; }
     }
@@ -491,19 +499,7 @@ async function run() {
       emailHmacSecret:emailSecret,maxTokenLifetimeSeconds:3600,
       async loadTrustedJwks(){
         if(mockJwksDown)throw Error('qa_forced_jwks_outage');
-        const discoveryResp=await fetch(
-          issuer+'/.well-known/openid-configuration',
-          {signal:AbortSignal.timeout(9000)});
-        if(discoveryResp.status!==200)throw Error('qa_oidc_discovery_down');
-        const discoveryBody=await discoveryResp.json();
-        const uri=issuer+'/protocol/openid-connect/certs';
-        if(discoveryBody.issuer!==issuer||discoveryBody.jwks_uri!==uri)
-          throw Error('qa_pinned_discovery_mismatch');
-        const keysResp=await fetch(uri,{signal:AbortSignal.timeout(9000)});
-        if(keysResp.status!==200)throw Error('qa_issuer_jwks_down');
-        const remoteKeys=await keysResp.json();
-        if(!Array.isArray(remoteKeys.keys))throw Error('qa_jwks_malformed');
-        return {issuer,provenanceVerified:true,keys:remoteKeys.keys};
+        return trustedResolver.loadTrustedJwks();
       },
       async readCommittedAdmission(readIssuer,subjectId){
         if(mockDbDown)throw Error('qa_forced_pg_outage');
@@ -625,6 +621,11 @@ async function run() {
       'commerce_approved_only_after_verified_real_oidc_and_real_pg_commit');
     await checkNest(realJwt,200,
       'nestjs_real_keycloak_jwt_real_pg_after_mock_sms_admitted');
+    const resolverSnapshot=await trustedResolver.loadTrustedJwks();
+    check(resolverSnapshot.provenanceVerified===true &&
+      resolverSnapshot.issuer===issuer &&
+      resolverSnapshot.keys.length>0,
+      'production_candidate_jwks_resolver_real_https_verified_and_cached');
     const other=crypto.randomUUID();
     const duplicate=await pg.query(
       'INSERT INTO public.da_native_client_admissions '+
