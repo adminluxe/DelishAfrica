@@ -198,6 +198,44 @@ Merchant/Courier : aucune route publique raccordée à ce jour
 
 **Test Node réellement connecté à PostgreSQL : CERTIFIÉ EN QA.** Le commit exact `2b54913be6310fa399f0c3ea676b73e40d911b81` passe les deux pipelines [PostgreSQL 17 #38320332214](https://github.com/adminluxe/DelishAfrica/actions/runs/38320332214) **SUCCESS** et [API + 3 apps #38320332362](https://github.com/adminluxe/DelishAfrica/actions/runs/38320332362) **SUCCESS**. Le fichier `services/api-nest/test/client-order-snapshot.pg-qa.integration.cjs` exerce l'adaptateur transactionnel contre deux PgPools applicatifs en véritable PostgreSQL 17 sans réseau : **8 courses simultanées → 1 UUID, 1 panier, 1 autorité de paiement**, compatibilité legacy sans panier refusée, panne avant COMMIT → ROLLBACK et aucune commande orpheline, SELECT/UPDATE directs refusés au rôle applicatif. Cette preuve complète les tests SQL 006; elle n'implique ni Stripe TEST officiel ni le raccordement Merchant/Courier. **Stripe officiel TEST non connecté, routes publiques non migrées, G0–G7 NO-GO, PR #35/#36 DRAFT, LIVE gelé.**
 
+## Architecture épinglée — flux Merchant / Dispatch / Courier QA 007 (13/10/2026)
+
+**Preuves :** migration SQL + contrôleur QA code `d3a0d48a317f3c867e64d229e752da23c9e59a33`, [CI PG17 #38322184915](https://github.com/adminluxe/DelishAfrica/actions/runs/38322184915) et [CI API/3 apps #38322184929](https://github.com/adminluxe/DelishAfrica/actions/runs/38322184929) **SUCCESS**. Adaptateur Node réel + trois pools PG `3ebcdcbd2db4a753beffc8b9e3c1d8c67f1903ee`, [CI PG17 #38322468685](https://github.com/adminluxe/DelishAfrica/actions/runs/38322468685) et [CI API/3 apps #38322468143](https://github.com/adminluxe/DelishAfrica/actions/runs/38322468143) **SUCCESS**.
+
+```text
+Client signé et admis
+  -> catalogue publié serveur
+  -> UUID + devis + snapshot immuable PostgreSQL 006
+  -> Stripe TEST *synthétique* ; capture + reçu financier + NO HOLD
+       |
+       v
+Merchant QA HTTP (OrdersAuthGuard + membership contractuel actif)
+  -> Pool da_qa_merchant_commerce_app
+  -> SQL da_qa_merchant_visible_paid_orders() : inbox payé uniquement
+  -> SQL da_qa_merchant_transition() : accepted -> ready
+       |
+       v
+Dispatch interne (courier roster serveur, JAMAIS HTTP du téléphone)
+  -> Pool da_qa_dispatch_commerce_app
+  -> SQL da_qa_dispatch_assign_offer() : un seul livreur assigné
+       |
+       v
+Courier QA HTTP (OrdersAuthGuard + registre actif)
+  -> Pool da_qa_courier_commerce_app
+  -> SQL da_qa_courier_assigned_offers() : assignee uniquement
+  -> SQL da_qa_courier_transition() : offered -> accepted
+                                             -> picked_up -> delivered
+       |
+       +-- à CHAQUE transition : snapshot + capture + reçu + absence hold
+       +-- hold refund/dispute déjà commité -> blocage, pas de pickup
+```
+
+**Frontières de confiance :** le vrai `OrdersAuthGuard` est exécuté en HTTP de laboratoire, mais son `AuthService` résout une identité simulée pendant ces tests. Les porteurs d'identité marchand et livreur réels, le ledger de membership et le registre Courier restent à intégrer. Les fonctions SQL en SECURITY DEFINER n'authentifient **pas** de façon autonome un issuer/subject ou un merchantSlug transmis par la couche applicative. Les rôles de base sont séparés, mais ce point exige un lien serveur↔base attesté ainsi qu'un propriétaire fonction NOLOGIN avant toute promotion.
+
+**Course financière à traiter :** les tests confirment le blocage si le refund est déjà commité avant `picked_up`, pas la sérialisation complète si hold et transition se produisent simultanément. La prévention transactionnelle doit être renforcée/testée pour éviter un TOCTOU de livraison. Adresse de livraison, géolocalisation/ETA, réassignation, vraies notifications et Ops n'appartiennent pas encore au modèle 007.
+
+**GEL TOTAL :** SQL 007 et routes QA **non installés sur VPS**, aucun module enregistré dans `AppModule`, aucun Stripe officiel TEST/LIVE, aucun EAS, aucun G0–G7, aucun merge des PR #35/#36, aucun Store. Ces schémas/sources sont des candidats QA, non des permissions de mise en production.
+
 ## Interventions interdites avant signature d'un passport G0–G7
 
 ```
