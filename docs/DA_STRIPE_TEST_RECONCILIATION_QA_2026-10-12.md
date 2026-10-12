@@ -196,6 +196,24 @@ Stripe TEST officiel n'a pas été contacté : clé `sk_test_`, clé publique, s
 
 **Statut :** F4B **certifié techniquement en laboratoire** ; **NO-GO** pour Stripe TEST officiel, routes publiques, déploiement, VPS, Keycloak, G0–G7, fusion et Stores. PR #35 et PR #36 maintenues en DRAFT. Prochain palier : réduire les écarts de confiance IAM/claims, tester le hold concurrent au dispatch, configurer les secrets officiels TEST en coffre isolé et seulement ensuite une vraie verticale commerciale G0–G7 approuvée.
 
+## Palier F4C — conflit refund / pickup totalement sérialisé en PostgreSQL 17 QA (13 octobre 2026)
+
+**Code vérifié :** migration QA additive `20261013_008_refund_dispatch_row_lock_qa_only.sql`, nouveau test `refund-pickup-row-lock.pg-qa.integration.cjs`, commit initial `670ad26dc1c2fe580481b75a17274ab0295b102f` puis commit corrigé et **certifié** `dde5b460d0c547d59c3dcafa907149b178d512d2`.
+
+**Preuves sur le SHA final :** [PostgreSQL17 et concurrence #38323181256](https://github.com/adminluxe/DelishAfrica/actions/runs/38323181256) **SUCCESS** et [API, Client, Merchant, Courier #38323181287](https://github.com/adminluxe/DelishAfrica/actions/runs/38323181287) **SUCCESS**. Le premier essai PG17 avait échoué sur une collision d'une empreinte de reçu **synthétique**, réutilisée par une autre suite ; la contrainte d'unicité du reçu a correctement arrêté la CI. Le commit corrigé utilise des SHA-256 uniques déterministes pour chaque cas. Aucun échec n'a été masqué.
+
+### Garantie transactionnelle F4C
+
+- Le reconciler financier TEST **simulé** `da_qa_finance_record_hold()` relit puis verrouille **la même ligne de commande `FOR UPDATE`** que les fonctions Merchant, Dispatcher et Courier du schéma 007, puis verrouille l'autorité de paiement. Il revalide le mode `test`, l'état `succeeded`, le reçu capturé immuable, la devise/le montant et le paiement `paid`. Le rôle financier conserve la seule permission EXECUTE nécessaire et les rôles applicatifs n'obtiennent aucun privilège supplémentaire.
+- **Refund valide d'abord :** la transaction hold maintient le verrou ; un pickup concurrent attend. Après COMMIT du refund, `picked_up` est refusé et le livreur reste au stade `accepted`. Résultat réel PG : `QA_008_REFUND_FIRST_COURIER_WAITED_THEN_PICKUP_DENIED`.
+- **Pickup valide d'abord :** la transaction Courier maintient le verrou ; le refund attend le COMMIT. La prise en charge préexistante reste enregistrée, mais dès que le refund est validé, le passage vers `delivered` est refusé. Résultat réel PG : `QA_008_PICKUP_FIRST_REFUND_WAITED_THEN_DELIVERY_DENIED`.
+- **Rejeu financier :** un deuxième appel pour le même ajustement est idempotent et ne débloque jamais la livraison : `QA_008_FINANCE_HOLD_REPLAY_STABLE`.
+- Le test Node utilise PostgreSQL17 réel en conteneur **sans réseau**, deux transactions explicitement ouvertes, les rôles PostgreSQL séparés `da_qa_stripe_finance_reconciler` / `da_qa_courier_commerce_app`, et `pg_stat_activity.wait_event_type='Lock'` pour prouver que l'opération concurrente attend réellement la transaction verrouillante. Les valeurs de charge, compte, paiement et reçu sont **synthétiques** ; aucun fournisseur Stripe n'est appelé.
+
+**Limite physique :** l'ordre des COMMIT est garanti, pas l'annulation matérielle d'un colis déjà enlevé avant le refund. La procédure de litige, d'assistance, de reprise et de suspension des missions doit être conçue avant lancement. Ce jalon **ne raccorde pas** le vrai OIDC Merchant/Courier, le registre réel, les adresses clients ni les routes commerciales publiques.
+
+**NO-GO confirmé :** Stripe TEST officiel non configuré dans la QA, aucun `sk_test_` / `pk_test_` / `whsec_` / compte TEST épinglé importé, aucun LIVE, aucune migration VPS, aucune publication, aucune fusion de PR, aucune soumission Store, aucun G0–G7. Les PR #35 et #36 demeurent DRAFT.
+
 ## Ordre de certification restant
 - **F0 / CI** : suite SQL vraie sur PG17 isolé, huit concurrents, garde des privilèges, TypeScript, erreurs et jeux de preuves exportés sans secret. Un échec = NO-GO.
 - **F1 / Création TEST officielle isolée** : vault/secret local dans un environnement de QA autorisé, clé `sk_test_` et compte épinglé, Idempotency-Key dérivée de la réservation SQL, montant serveur, confirmation manuelle. Prouver timeout fournisseur et reprise sans double PI.

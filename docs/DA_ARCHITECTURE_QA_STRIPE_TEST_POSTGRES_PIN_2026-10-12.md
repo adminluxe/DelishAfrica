@@ -236,6 +236,43 @@ Courier QA HTTP (OrdersAuthGuard + registre actif)
 
 **GEL TOTAL :** SQL 007 et routes QA **non installés sur VPS**, aucun module enregistré dans `AppModule`, aucun Stripe officiel TEST/LIVE, aucun EAS, aucun G0–G7, aucun merge des PR #35/#36, aucun Store. Ces schémas/sources sont des candidats QA, non des permissions de mise en production.
 
+## Architecture QA F4C — verrou financier et livraison atomiquement ordonnés (13/10/2026)
+
+**Code :** `dde5b460d0c547d59c3dcafa907149b178d512d2`. [CI PostgreSQL17 réelle #38323181256](https://github.com/adminluxe/DelishAfrica/actions/runs/38323181256) **SUCCESS** ; [CI API + 3 apps #38323181287](https://github.com/adminluxe/DelishAfrica/actions/runs/38323181287) **SUCCESS**.
+
+```text
+                 UNE COMMANDE UUID / ORDER ROW
+                         PostgreSQL17
+                              |
+                 Verrou unique FOR UPDATE
+                   ordre commande AVANT
+                ordre autorité de paiement
+                     /              \
+                    /                \
+        DA finance TEST QA      Courier/Dispatch QA
+          record_hold()           transition()
+          refund/dispute       accepted/picked_up/
+                               delivered (ou offer)
+                    \                /
+                     \              /
+              Une seule progression validée
+              à la fois; l'autre doit attendre
+                              |
+        +---------------------+----------------------+
+        |                                            |
+   hold COMMIT premier                      pickup COMMIT premier
+        |                                            |
+   pickup refusé                           hold attend puis s'inscrit
+   état reste accepted                             |
+                                            delivered ensuite refusé
+```
+
+**Migration QA 008 :** `CREATE OR REPLACE FUNCTION da_qa_finance_record_hold` ne change ni signature ni permissions de sa fonction 004 ; elle verrouille l'ordre et l'autorité dans le même ordre que les transitions 007, contrôle à nouveau le reçu financier, puis insère le hold append-only avec idempotence. Aucune table ni route publique modifiée. Les rôles restent séparés et le test réel utilise deux PgPools transactionnels et `pg_stat_activity` pour constater les attentes `wait_event_type=Lock`.
+
+**Garantie exacte :** la présence d'un hold déjà COMMIT interdit la progression, même si une opération Courier était simultanément en attente. Si l'enlèvement avait légalement COMMIT avant le remboursement, il ne peut être « dé-enlevé » ; la retenue empêche toute progression ultérieure vers `delivered`. L'exécution des litiges et retours physiques nécessite un processus Ops/assistance additionnel.
+
+**Frontières à corriger avant promotion :** fonctions SECURITY DEFINER avec propriétaire de laboratoire, issuer/subject/slug fournis par service applicatif sans attestation cryptographique dans la DB ; vrai JWT Merchant/Courier et membres KYB/registre actifs non intégrés au backend cible ; transports Expo et notifications non branchés ; jamais de connexion officielle Stripe TEST ni G0–G7 validés. Ne jamais appliquer 001–008 aux bases VPS en l'état.
+
 ## Interventions interdites avant signature d'un passport G0–G7
 
 ```
