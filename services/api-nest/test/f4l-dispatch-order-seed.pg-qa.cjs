@@ -33,7 +33,7 @@ const quote={
   unitAmountMinor:400,lineAmountMinor:800}]},
 };
 const stages=['success','same','simultaneous','refundFirst',
- 'refundConcurrent','revokedCourier','orgMove','picked',
+ 'refundConcurrent','assignThenRefund','revokedCourier','orgMove','picked',
  'machineRevoked','unready','foreign','reassign'];
 async function main(){
  const reserve=new QaCanonicalOrderSnapshotPgAdapter(client);
