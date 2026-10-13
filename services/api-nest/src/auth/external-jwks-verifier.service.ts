@@ -6,6 +6,7 @@ import * as https from 'node:https';
 import * as path from 'node:path';
 import type { DaAuthTokenPayload } from './auth.types';
 import { validateClientTokenIsolation } from './client-token-isolation';
+import { validatePartnerTokenIsolation } from './merchant-courier-token-isolation';
 import type {
   DaExternalTokenVerification,
   DaTrustedIdentityConfig,
@@ -152,6 +153,17 @@ export class ExternalJwksVerifierService
       if (isolationFailure) {
         return { ok: false, reason: isolationFailure };
       }
+    }
+    if (externalRole === 'merchant' || externalRole === 'courier') {
+      // This is an additional claim boundary after RSA signature validation.
+      // Tenant membership / legal organization / roster and PG proof remain
+      // mandatory independently; these checks alone never grant a wallet.
+      const failure=validatePartnerTokenIsolation(
+        claims,
+        externalRole==='merchant'?this.config.audience:COURIER_AUDIENCE,
+        externalRole,
+      );
+      if (failure) return {ok:false,reason:failure};
     }
     if (externalRole === 'ops') {
       if (!this.hasOpsAuthorizedParty(claims)) {
