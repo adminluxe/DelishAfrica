@@ -369,3 +369,32 @@ Branche candidate `feat/f4g-real-keycloak-partner-session-qa-20261013` ; [PR #39
 **Ce qui manque :** contrôle des vrais documents légaux et KYB/KYC, registre partenaires officiel multi-juridictions, service attestateur indépendant des credentials de l'API, finances multidivises/fiscalité/PSP, mutations Merchant/Dispatch/Courier réattestées, Stripe TEST officiel, G0–G7 et validation humaine explicite. Toutes les PR #35–#40 restent DRAFT et non fusionnées.
 
 **Passation :** `docs/DA_PASSATION_F4H_FINANCE_AUTHORITY_QA_2026-10-13.md`. Pour le SHA documentaire final, ne retenir la certification qu'après vérification des CI à ce SHA précis. **Signature provisoire : F4H-AUTHORITY-SQL-CODE-QA-SUCCESS / LIVE-IDENTITY-LEGAL-NO-GO / NO-PAYOUT / NO-PRODUCTION.**
+
+---
+
+## F4I — Attesteur financier en processus séparé, authentification SCRAM PostgreSQL (13 octobre 2026)
+
+**Statut : laboratoire de sécurité QA CERTIFIÉ sur code SHA `e7c58aee812b555030e2c06c987e3d8e716a4785` ; certificats sur HEAD documentaire à revérifier. Environnements et partenaires entièrement synthétiques.**
+
+- [PR #41 DRAFT](https://github.com/adminluxe/DelishAfrica/pull/41) empilée sur F4H #40 DRAFT. Aucune fusion, aucune migration VPS, aucun Stripe TEST officiel ou LIVE.
+- [Attesteur F4I séparé + Keycloak 26.4.7 réel en réseau Docker fermé + PostgreSQL 17 SCRAM, CI #38353167968 SUCCESS](https://github.com/adminluxe/DelishAfrica/actions/runs/38353167968).
+- [API + Client + Merchant + Courier TypeScript, CI #38353167959 SUCCESS](https://github.com/adminluxe/DelishAfrica/actions/runs/38353167959).
+- [Réconciliation finance historique et concurrence PostgreSQL 17, CI #38353167869 SUCCESS](https://github.com/adminluxe/DelishAfrica/actions/runs/38353167869).
+
+### Séparation technique ajoutée
+
+La migration additive **SQL 013** attribue l'unique EXECUTE d'attestation au rôle dédié `da_qa_wallet_attestor_isolated_013` et retire celui de l'ancien attesteur partagé 010. L'application ne peut ni `SET ROLE`, ni lire la table de sessions 011 ou le registre de coursiers 012, ni utiliser le mot de passe de l'attesteur. L'attesteur est un **processus Docker distinct** sans port publié, accessible par socket Unix protégé ; le conteneur applicatif ne monte ni ses identifiants SQL, ni le secret d'introspection Keycloak, ni les identifiants d'administration. Le runner active `SCRAM-SHA-256` sur toutes les connexions TCP PostgreSQL après la phase d'amorçage privilégiée, et vérifie les règles HBA effectives. La socket PostgreSQL de maintenance n'est pas partagée avec les processus applicatifs.
+
+Le service privé revalide à chaque demande la signature RSA/JWKS Keycloak, l'introspection active, `issuer/sub/sid/jti`, la révocation SQL 011, le catalogue Merchant existant, le registre Courier QA, l'organisation et le territoire. Il ne renvoie que le portefeuille QA autorisé à partir du ticket SQL 010 mono-usage lié à la session et du ledger 009 immuable. **Ce n'est pas un produit de production ni un endpoint financier public activé.**
+
+### Adversaires et incidents
+
+La batterie F4I a prouvé : JWT modifié et slug mobile supplémentaire refusés, sessions Merchant révoquées refusées alors que le token RSA reste signé, roster Courier suspendu refusé, lecture directe des registres et usurpation du rôle SQL impossibles, impossibilité de supprimer le socket depuis l'application non privilégiée. Le montant Merchant A 1 840 centimes détenus et les autres balances correspondent exclusivement au jeu de tests. `withdrawableMinor=0`, `payoutEnabled=false`, appels Stripe zéro, transfert et payouts zéro.
+
+Les échecs intermédiaires ont révélé d'abord des permissions Unix de dossiers temporaires, puis l'absence de migration 013 au moment d'attribuer le nouveau mot de passe SQL, puis le nettoyage final des répertoires. Ces erreurs de banc d'essai ont été corrigées sans assouplir les contrôles. La preuve #38353167968 termine aussi par `QA_F4I_EPHEMERAL_CLEANUP=PASS`.
+
+### Verrous restants avant exploitation réelle
+
+Même dans F4I, les **comptes Keycloak, contrats, KYB, KYC, entités juridiques, registre Courier et ledger** sont fictifs et jetables. L'attesteur QA conserve plusieurs secrets SQL dans un même processus, architecture à durcir avant production. Les révocations métier concurrentes à la consommation du ticket ne sont pas encore transactionnellement linéarisées entre la source réelle de droits et le ledger ; modèle juridique entité/devise/territoire à compléter. Les mutations historiques Merchant/Dispatch/Courier restent désactivées depuis SQL 010. Les véritables politiques pays, payout/settlement, Stripe TEST officiel et G0–G7 restent NO-GO.
+
+**Docs :** `docs/DA_PASSATION_F4I_ATTESTOR_ISOLATION_QA_2026-10-13.md`. **Signature code provisoire : F4I-SEPARATE-PROCESS-PG-SCRAM-EPHEMERAL-QA-SUCCESS / REAL-IDENTITY-NOT-ATTESTED / NO-PAYOUT / NO-LIVE / NO-MERGE / NO-STORE.**

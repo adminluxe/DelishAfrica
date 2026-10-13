@@ -11,6 +11,7 @@ on:
       - feat/f4e-wallet-scope-isolation-qa-20261013
       - feat/f4f-wallet-verified-session-bridge-qa-20261013
       - feat/f4g-real-keycloak-partner-session-qa-20261013
+      - feat/f4h-finance-authority-registry-qa-20261013
     paths:
       - 'services/api-nest/src/client-enrollment/**'
       - 'services/api-nest/src/client-commerce/**'
@@ -49,6 +50,12 @@ on:
       - 'services/api-nest/migrations/client-commerce/20261013_011_partner_session_qa_only.sql'
       - '.github/workflows/f4g-keycloak-merchant-courier-wallet-qa.yml'
       - '.github/workflows/f4h-keycloak-finance-authority-qa.yml'
+      - '.github/workflows/f4i-isolated-wallet-attestor-qa.yml'
+      - 'services/api-nest/migrations/client-commerce/20261013_013_separate_wallet_attestor_qa_only.sql'
+      - 'services/api-nest/test/merchant-courier-wallet-isolated-attestor.setup.cjs'
+      - 'services/api-nest/test/merchant-courier-wallet-isolated-attestor.pg-qa.service.cjs'
+      - 'services/api-nest/test/merchant-courier-wallet-isolated-attestor.client.pg-qa.integration.cjs'
+      - 'docs/DA_PASSATION_F4I_ATTESTOR_ISOLATION_QA_2026-10-13.md'
       - 'docs/DA_PASSATION_F4H_FINANCE_AUTHORITY_QA_2026-10-13.md'
       - 'docs/DA_STRIPE_TEST_RECONCILIATION_QA_2026-10-12.md'
       - 'docs/DA_ARCHITECTURE_QA_STRIPE_TEST_POSTGRES_PIN_2026-10-12.md'
@@ -171,6 +178,27 @@ jobs:
         env:
           QA_SYNTHETIC_ONLY: 'YES'
         run: node --test services/api-nest/test/merchant-courier-wallet-release-isolation.qa.test.cjs
+      - name: F4I separate private attestor and locked SQL role release protection
+        run: |
+          node --check services/api-nest/test/merchant-courier-wallet-isolated-attestor.setup.cjs
+          node --check services/api-nest/test/merchant-courier-wallet-isolated-attestor.pg-qa.service.cjs
+          node --check services/api-nest/test/merchant-courier-wallet-isolated-attestor.client.pg-qa.integration.cjs
+          node - <<'NODE'
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          const migration=fs.readFileSync('services/api-nest/migrations/client-commerce/20261013_013_separate_wallet_attestor_qa_only.sql','utf8');
+          const workflow=fs.readFileSync('.github/workflows/f4i-isolated-wallet-attestor-qa.yml','utf8');
+          const bridge=fs.readFileSync('services/api-nest/src/client-commerce/merchant-courier-wallet-signed-session.pg-qa.bridge.ts','utf8');
+          const app=fs.readFileSync('services/api-nest/src/app.module.ts','utf8');
+          assert(migration.includes('da_qa_wallet_attestor_isolated_013'));
+          assert(migration.includes('REVOKE EXECUTE ON FUNCTION'));
+          assert(workflow.includes('scram-sha-256'));
+          assert(workflow.includes('QA_F4I_APP_ONLY'));
+          assert(workflow.includes('QA_F4I_PRIVATE_SERVICE'));
+          assert(bridge.includes('da_qa_wallet_attestor_isolated_013'));
+          assert(!app.includes('QaWalletVerifiedSessionBridge'));
+          assert(!app.includes('merchant-courier-wallet-isolated-attestor'));
+          console.log('QA_F4I_FINANCE_ATTESTOR_PRODUCTION_MODULE_ISOLATED=PASS');
+          NODE
       - name: F4H committed Merchant catalogue and independent Courier registry QA static boundary
         run: |
           node --check services/api-nest/test/merchant-courier-finance-authority-keycloak.pg-qa.integration.cjs

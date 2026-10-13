@@ -518,3 +518,54 @@ Le nouveau compte SQL da_qa_finance_registry_reader_012 est un login réservé �
 **Précision non négociable :** le schéma Merchant est le **vrai schéma du code** de l'API, mais ses données Merchant, les pièces juridiques QA, tous les enregistrements Courier, la session 011 et le ledger restent **fictifs et éphémères**. Keycloak binaire réel ne signifie pas compte Keycloak de production. Ceci ne certifie aucune preuve de KYB/KYC légale ni onboarding Courier officiel, aucune gestion multi-juridictions, aucun paiement ni reversement effectif. Pas de connexion au domaine Keycloak public ou au VPS, pas de migration de production, pas de Store, pas de Stripe TEST officiel ni LIVE, pas de merge.
 
 Prochains travaux P0 : service attestor réellement indépendant, véritables preuves d'identité et de contrat en QA autorisée, registry Courier officiel avec audit, séparation multi-organisation; requalification des mutations Merchant/Dispatch/Courier, puis règlement international/PSP TEST/G0–G7. [Passation F4H](./DA_PASSATION_F4H_FINANCE_AUTHORITY_QA_2026-10-13.md). Vérifier les trois CI sur le SHA final documentaire avant de déclarer la PR entièrement certifiée.
+
+---
+
+## F4I — Architecture épinglée de séparation du service financier (13/10/2026)
+
+**Branche :** `feat/f4i-isolated-finance-attestor-qa-20261013`, [PR #41 DRAFT](https://github.com/adminluxe/DelishAfrica/pull/41), sur F4H #40 DRAFT et les précédentes QA. **Certification sur code** `e7c58aee812b555030e2c06c987e3d8e716a4785` : [Keycloak + SCRAM + socket QA #38353167968 SUCCESS](https://github.com/adminluxe/DelishAfrica/actions/runs/38353167968), [API + 3 apps #38353167959 SUCCESS](https://github.com/adminluxe/DelishAfrica/actions/runs/38353167959), [PostgreSQL finance historique #38353167869 SUCCESS](https://github.com/adminluxe/DelishAfrica/actions/runs/38353167869). La preuve de SHA documentaire final sera vérifiée après cette mise à jour.
+
+```text
+        Keycloak 26.4.7 RÉEL, conteneur jetable,
+        realm et 4 partenaires Merchant/Courier FICTIFS
+                       | signé RS256 / JWKS HTTPS localhost
+                       v
+      +-------------------------------------------+
+      | PROCESSUS « APPLICATION » NON PRIVILÉGIÉ   |
+      | Docker UID 1000, pas d'admin Keycloak,     |
+      | pas de mot de passe SQL attestor/registre  |
+      +-------------------------------------------+
+                       |
+                 Socket Unix protégé
+                 (pas de port publié)
+                       v
+      +-------------------------------------------+
+      | PROCESSUS « ATTESTEUR » PRIVÉ F4I           |
+      | Docker UID 1001, secrets propres           |
+      | Signature RSA + introspection Keycloak    |
+      | PG session_011 : SHA256(iss/sub/sid/jti)   |
+      | Merchant catalogue + Courier QA roster    |
+      | F4E 010 : challenge, ticket lié au backend|
+      +-------------------------------------------+
+              |             |               |
+              v             v               v
+     PG17 login_013     registry_reader  Merchant/Courier wallet logins
+       attest-only        SELECT-only       fonctions F4E limitées
+              \             |              /
+                  SCRAM-SHA-256 obligatoire
+                 pour TCP dans Docker --network none
+                          |
+                          v
+             Ledger synthétique 009 append-only
+                          |
+                    withdrawableMinor=0
+                       payoutEnabled=false
+```
+
+L'ancien rôle PostgreSQL `da_qa_wallet_attestor_010` perd EXECUTE de l'attestation SQL après l'installation additive de `20261013_013_separate_wallet_attestor_qa_only.sql`. Seul `da_qa_wallet_attestor_isolated_013` reçoit ce droit. Les comptes Merchant/Courier ne peuvent pas `SET ROLE` vers le nouveau rôle ni lire les registres financiers privilégiés, et l'application test ne dispose d'aucun secret d'attestation. Les règles `pg_hba.conf` hôte passent de trust (amorceur QA historique) à `scram-sha-256` avant de lancer les tests des processus séparés ; la socket PG de maintenance demeure interne au conteneur PostgreSQL.
+
+**Distinction stricte :** ceci démontre seulement une **séparation QA de processus, de secrets, de logins SQL, de socket et d'identités fictives Keycloak**. Le schéma Merchant interrogé est celui du véritable code, mais les lignes de contrats/KYB, entités et coursiers restent de test. Aucune vérification légale réelle n'a eu lieu. Le service privé actuel possède des secrets SQL de lecture Merchant et Courier : un affinement architectural de privilèges reste obligatoire avant production. La révocation entre la source métier F4H et la consommation du ticket F4E ne possède pas encore de preuve atomique cross-service ; ne pas attribuer à F4I cette garantie.
+
+**Barrières permanentes :** aucun code F4I ajouté aux AppModule et routes publiques, aucun port ni migration VPS, aucun Stripe TEST officiel ou LIVE, aucun payout, aucune fusion, aucun EAS payant, aucune soumission Store. SQL 010 continue de révoquer les anciennes fonctions Merchant/Dispatch/Courier de mutation. G0–G7 et autorisation humaine obligatoires.
+
+**Passation :** [F4I attestateur QA](./DA_PASSATION_F4I_ATTESTOR_ISOLATION_QA_2026-10-13.md).

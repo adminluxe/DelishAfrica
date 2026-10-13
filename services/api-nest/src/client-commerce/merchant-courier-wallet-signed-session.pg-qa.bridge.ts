@@ -207,7 +207,9 @@ export class QaWalletVerifiedSessionBridge {
       if(login.login!==ROLE_LOGIN[role])deny();
       const attestLogin=one((await this.trust.attestor.query(
         'SELECT session_user AS login')).rows);
-      if(attestLogin.login!=='da_qa_wallet_attestor_010')deny();
+      const requiredAttestorLogin=process.env.QA_F4I_PRIVATE_SERVICE==='YES'?
+        'da_qa_wallet_attestor_isolated_013':'da_qa_wallet_attestor_010';
+      if(attestLogin.login!==requiredAttestorLogin)deny();
       const challenge=one((await client.query(
         'SELECT public.da_qa_wallet_begin_scope_010() AS challenge')).rows);
       if(typeof challenge.challenge!=='string'||
