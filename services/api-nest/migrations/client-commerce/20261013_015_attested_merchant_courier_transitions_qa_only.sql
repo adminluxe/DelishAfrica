@@ -33,6 +33,10 @@ GRANT EXECUTE ON FUNCTION
   TO da_qa_fulfillment_writer_015;
 GRANT SELECT ON TABLE public.da_qa_wallet_ticket_010
   TO da_qa_fulfillment_writer_015;
+-- SELECT FOR SHARE on the ticket also requires UPDATE privilege on one
+-- identifier column; never grant mutation of ticket state or tenant fields.
+GRANT UPDATE(ticket_id) ON TABLE public.da_qa_wallet_ticket_010
+  TO da_qa_fulfillment_writer_015;
 
 CREATE TABLE public.da_qa_fulfillment_receipt_015(
   order_id uuid NOT NULL REFERENCES
