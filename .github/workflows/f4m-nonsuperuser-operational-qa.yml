@@ -1,0 +1,919 @@
+name: F4M QA — non-superuser SQL owners and full F4K/F4L operational regression
+on:
+  pull_request:
+    branches:
+      - feat/f4l-oidc-machine-dispatch-assign-qa-20261013
+    paths:
+      - '.github/workflows/f4m-nonsuperuser-operational-qa.yml'
+      - 'services/api-nest/migrations/client-commerce/20261013_017_nonsuperuser_operational_definers_qa_only.sql'
+      - 'services/api-nest/test/f4m-nonsuperuser-operational-owners.pg-qa.sql'
+      - 'docs/DA_PASSATION_F4M_OPERATIONAL_SQL_OWNER_QA_2026-10-13.md'
+      - '.github/workflows/f4l-oidc-machine-dispatch-qa.yml'
+      - 'services/api-nest/migrations/client-commerce/20261013_016_oidc_machine_dispatch_authority_qa_only.sql'
+      - 'services/api-nest/test/f4l-dispatch-**'
+      - 'docs/DA_PASSATION_F4L_MACHINE_DISPATCH_QA_2026-10-13.md'
+      - '.github/workflows/f4k-attested-merchant-courier-transitions-qa.yml'
+      - 'services/api-nest/migrations/client-commerce/20261013_013_separate_wallet_attestor_qa_only.sql'
+      - 'services/api-nest/migrations/client-commerce/20261013_014_wallet_business_revocation_linearized_qa_only.sql'
+      - 'services/api-nest/migrations/client-commerce/20261013_015_attested_merchant_courier_transitions_qa_only.sql'
+      - 'services/api-nest/test/merchant-courier-attested-transition-order-seed.pg-qa.cjs'
+      - 'services/api-nest/test/merchant-courier-attested-financial-pulse.pg-qa.sql'
+      - 'services/api-nest/test/merchant-courier-attested-transition-client.pg-qa.integration.cjs'
+      - 'services/api-nest/test/merchant-courier-attested-transition-private.pg-qa.service.cjs'
+      - 'docs/DA_PASSATION_F4K_ATTESTED_MERCHANT_COURIER_OPERATIONS_QA_2026-10-13.md'
+      - 'services/api-nest/test/merchant-courier-wallet-revocation-linearized.pg-qa.integration.cjs'
+      - 'services/api-nest/src/client-commerce/merchant-courier-wallet-signed-session.pg-qa.bridge.ts'
+      - 'services/api-nest/test/merchant-courier-wallet-isolated-attestor.setup.cjs'
+      - 'services/api-nest/test/merchant-courier-wallet-isolated-attestor.pg-qa.service.cjs'
+      - 'services/api-nest/test/merchant-courier-wallet-isolated-attestor.client.pg-qa.integration.cjs'
+      - 'docs/DA_PASSATION_F4I_ATTESTOR_ISOLATION_QA_2026-10-13.md'
+      - 'docs/DA_PASSATION_F4J_WALLET_REVOCATION_LINEARIZATION_QA_2026-10-13.md'
+      - 'docs/DA_STRIPE_TEST_RECONCILIATION_QA_2026-10-12.md'
+      - 'docs/DA_ARCHITECTURE_QA_STRIPE_TEST_POSTGRES_PIN_2026-10-12.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  keycloak-partner-wallet:
+    name: Keycloak 26.4.7 + PostgreSQL17, Merchant/Courier RSA identity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+
+      - name: F4I no production, network or SQL bypass preflight
+        run: |
+          set -Eeuo pipefail
+          for f in \
+            services/api-nest/test/merchant-courier-wallet-isolated-attestor.setup.cjs \
+            services/api-nest/test/merchant-courier-wallet-isolated-attestor.pg-qa.service.cjs \
+            services/api-nest/test/merchant-courier-wallet-isolated-attestor.client.pg-qa.integration.cjs
+          do node --check "$f"; done
+          node --check services/api-nest/test/merchant-courier-wallet-revocation-linearized.pg-qa.integration.cjs
+          node --check services/api-nest/test/merchant-courier-attested-transition-order-seed.pg-qa.cjs
+          node --check services/api-nest/test/merchant-courier-attested-transition-client.pg-qa.integration.cjs
+          node --check services/api-nest/test/merchant-courier-attested-transition-private.pg-qa.service.cjs
+          node - <<'NODE'
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          const wf=fs.readFileSync('.github/workflows/f4k-attested-merchant-courier-transitions-qa.yml','utf8');
+          const migration=fs.readFileSync('services/api-nest/migrations/client-commerce/20261013_013_separate_wallet_attestor_qa_only.sql','utf8');
+          const f4j=fs.readFileSync('services/api-nest/migrations/client-commerce/20261013_014_wallet_business_revocation_linearized_qa_only.sql','utf8');
+          const f4k=fs.readFileSync('services/api-nest/migrations/client-commerce/20261013_015_attested_merchant_courier_transitions_qa_only.sql','utf8');
+          const mutation=fs.readFileSync('services/api-nest/test/merchant-courier-attested-transition-private.pg-qa.service.cjs','utf8');
+          const pulse=fs.readFileSync('services/api-nest/test/merchant-courier-attested-financial-pulse.pg-qa.sql','utf8');
+          assert(pulse.includes('qa_f4k_financial_pulse_stage_mismatch'));
+          assert(pulse.includes('qa_f4k_posting_balance_or_synthetic_commission_mismatch'));
+          assert(pulse.includes('qa_wallet_immutable_audit'));
+          assert(f4k.includes('da_qa_partner_transition_attested_015'));
+          assert(f4k.includes('da_qa_wallet_read_linearized_014'));
+          assert(f4k.includes('da_qa_fulfillment_receipt_015'));
+          assert(f4k.includes('da_qa_wallet_append_only'));
+          assert(f4k.includes('da_qa_merchant_transition'));
+          assert(f4k.includes('REVOKE EXECUTE ON FUNCTION'));
+          assert(!/GRANT EXECUTE ON FUNCTION\s+public\.da_qa_dispatch_assign_offer/i.test(f4k));
+          assert(!/DROP TABLE|TRUNCATE TABLE|ALTER SYSTEM/i.test(f4k));
+          assert(mutation.includes('bridge.transition('));
+          assert(mutation.includes("SOCKET='/qa-ipc/finance-transition.sock'"));
+          const adapter=fs.readFileSync('services/api-nest/src/client-commerce/merchant-courier-wallet-signed-session.pg-qa.bridge.ts','utf8');
+          assert(f4j.includes('da_qa_wallet_read_linearized_014'));
+          assert(f4j.includes('da_merchant_memberships'));
+          assert(f4j.includes('da_qa_finance_courier_roster_012'));
+          assert(f4j.includes('da_qa_partner_oidc_sessions_011'));
+          assert(f4j.includes('FOR SHARE'));
+          assert(f4j.includes('FOR UPDATE'));
+          assert(f4j.includes('REVOKE EXECUTE ON FUNCTION'));
+          assert(adapter.includes("QA_F4J_ATOMIC_SQL==='YES'"));
+          assert(!/DROP TABLE|TRUNCATE TABLE|ALTER SYSTEM/i.test(f4j));
+          const app=fs.readFileSync('services/api-nest/src/app.module.ts','utf8');
+          const service=fs.readFileSync('services/api-nest/test/merchant-courier-wallet-isolated-attestor.pg-qa.service.cjs','utf8');
+          assert(wf.includes('--network none'));
+          assert(wf.includes('--network "container:$KC_ID"'));
+          assert(wf.includes('scram-sha-256'));
+          assert(wf.includes('QA_F4I_APP_ONLY'));
+          assert(wf.includes('QA_F4I_PRIVATE_SERVICE'));
+          assert(service.includes("server.listen(SOCKET,resolve)"));
+          assert(!service.includes('http.createServer().listen(0.0.0.0)'));
+          assert(migration.includes('da_qa_wallet_attestor_isolated_013'));
+          assert(migration.includes('REVOKE EXECUTE ON FUNCTION'));
+          assert(!/DROP TABLE|TRUNCATE TABLE|ALTER SYSTEM/i.test(migration));
+          assert(!app.includes('QaWalletVerifiedSessionBridge'));
+          const imageCommands=wf.split('\n').filter(x=>/^\s*docker run\s/.test(x));
+          assert(imageCommands.length>=2);
+          assert(imageCommands.every(x=>!/\s(?:-p|--publish)(?:\s|=)/.test(x)));
+          console.log('QA_F4I_NO_PRODUCTION_NO_PUBLIC_PORT_NO_PAYOUT=PASS');
+          NODE
+
+      - name: Prepare disposable TypeScript runtime TLS and QA secrets
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          umask 077
+          QA_DIR="$RUNNER_TEMP/da-f4i-$GITHUB_RUN_ID"
+          mkdir -p "$QA_DIR/deps" "$QA_DIR/built" "$QA_DIR/tls"
+          npm --prefix "$QA_DIR/deps" install --ignore-scripts \
+            --no-audit --no-fund --no-save \
+            pg@8.16.3 typescript@5.9.3 \
+            @nestjs/common@10.4.22 reflect-metadata@0.1.14 \
+            rxjs@7.8.1 >/dev/null
+          openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 \
+            -keyout "$QA_DIR/tls/qa.key" \
+            -out "$QA_DIR/tls/qa.crt" \
+            -subj "/CN=127.0.0.1" \
+            -addext "subjectAltName=IP:127.0.0.1" \
+            -addext "basicConstraints=critical,CA:TRUE" >/dev/null 2>&1
+          NODE_PATH="$QA_DIR/deps/node_modules" node - "$QA_DIR/built" <<'NODE'
+          const fs=require('node:fs'),ts=require('typescript'),path=require('node:path');
+          const files=[
+            ['services/api-nest/src/client-commerce/client-commerce.pg-qa.adapter.ts','client-commerce.pg-qa.adapter.js'],
+            ['services/api-nest/src/client-commerce/client-order-snapshot.pg-qa.adapter.ts','client-order-snapshot.pg-qa.adapter.js'],
+            ['services/api-nest/src/client-commerce/merchant-courier-fulfillment.pg-qa.adapter.ts','merchant-courier-fulfillment.pg-qa.adapter.js'],
+            ['services/api-nest/src/client-commerce/merchant-courier-wallet.pg-qa.adapter.ts','merchant-courier-wallet.pg-qa.adapter.js'],
+            ['services/api-nest/src/client-commerce/merchant-courier-wallet-signed-session.pg-qa.bridge.ts','merchant-courier-wallet-signed-session.pg-qa.bridge.js'],
+            ['services/api-nest/src/client-commerce/merchant-courier-finance-authority.pg-qa.adapter.ts','merchant-courier-finance-authority.pg-qa.adapter.js'],
+            ['services/api-nest/src/auth/client-token-isolation.ts','client-token-isolation.js'],
+            ['services/api-nest/src/auth/merchant-courier-token-isolation.ts','merchant-courier-token-isolation.js'],
+            ['services/api-nest/src/auth/external-jwks-verifier.service.ts','external-jwks-verifier.service.js'],
+          ];
+          for(const [file,name] of files){
+            const out=ts.transpileModule(fs.readFileSync(file,'utf8'),{
+              compilerOptions:{
+                module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,
+                esModuleInterop:true,experimentalDecorators:true,
+                emitDecoratorMetadata:true,strict:true,
+              },fileName:file,reportDiagnostics:true,
+            });
+            if(out.diagnostics?.some(d=>d.category===ts.DiagnosticCategory.Error))
+              throw Error('F4H TypeScript transpile failed: '+file);
+            fs.writeFileSync(path.join(process.argv[2],name),out.outputText,{mode:0o600});
+          }
+          console.log('QA_F4I_VERIFIER_BRIDGE_COMPILED=YES');
+          NODE
+          node - "$QA_DIR/test.env" <<'NODE'
+          const fs=require('node:fs'),crypto=require('node:crypto');
+          const random=()=>crypto.randomBytes(32).toString('hex');
+          const secret=random();
+          fs.writeFileSync(process.argv[2],[
+            'KC_BOOTSTRAP_ADMIN_USERNAME=qa_admin',
+            'KC_BOOTSTRAP_ADMIN_PASSWORD='+secret,
+            'QA_BOOTSTRAP_ADMIN_PASSWORD='+secret,
+            'QA_COMMERCE_HMAC_KEY='+random(),
+            'GITHUB_ACTIONS=true',
+            'QA_SYNTHETIC_ONLY=YES',
+            'QA_KEYCLOAK_ORIGIN=https://127.0.0.1',
+            'QA_HTTPS_ORIGIN=https://127.0.0.1',
+            'QA_COMMERCE_DB_HOST=127.0.0.1',
+            'QA_COMMERCE_DB_NAME=postgres',
+            'NODE_EXTRA_CA_CERTS=/qa-tls/qa.crt',
+            'KC_HOSTNAME=https://127.0.0.1',
+            'KC_PROXY_HEADERS=xforwarded',
+            'KC_HEALTH_ENABLED=false',
+            'KC_METRICS_ENABLED=false',
+            '',
+          ].join('\n'),{mode:0o600});
+          console.log('QA_F4I_EPHEMERAL_SECRETS_CREATED_NOT_LOGGED=YES');
+          NODE
+          chmod 755 "$QA_DIR" "$QA_DIR/deps" "$QA_DIR/built" "$QA_DIR/tls"
+          chmod -R a+rX "$QA_DIR/deps" "$QA_DIR/built" "$QA_DIR/tls"
+          chmod 600 "$QA_DIR/test.env"
+
+      - name: Run disconnected REAL Keycloak and PostgreSQL 17
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          QA_DIR="$RUNNER_TEMP/da-f4i-$GITHUB_RUN_ID"
+          KC_ID="da-f4i-keycloak-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          PG_ID="da-f4i-postgres-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          TLS_ID="da-f4i-tls-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          AT_ID="da-f4i-attestor-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          MUT_ID="da-f4k-mutation-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          cleanup(){
+            docker rm -f "$MUT_ID" >/dev/null 2>&1 || true
+            docker rm -f "${F4L_ATTESTOR_ID:-none}" >/dev/null 2>&1 || true
+            docker rm -f "$AT_ID" >/dev/null 2>&1 || true
+            docker rm -f "$TLS_ID" >/dev/null 2>&1 || true
+            docker rm -f "$PG_ID" >/dev/null 2>&1 || true
+            docker rm -f "$KC_ID" >/dev/null 2>&1 || true
+            if [[ "$QA_DIR" == "$RUNNER_TEMP/da-f4i-$GITHUB_RUN_ID" ]]; then
+              sudo chown "$(id -u)":"$(id -g)" \
+                "$QA_DIR/seed" "$QA_DIR/users" "$QA_DIR/ipc" "$QA_DIR/dispatch-ipc" 2>/dev/null || true
+              rm -rf "$QA_DIR" || true
+            fi
+            if [[ -e "$QA_DIR" ]]; then
+              echo "QA_F4I_EPHEMERAL_CLEANUP=INCOMPLETE"
+            else
+              echo "QA_F4I_EPHEMERAL_CLEANUP=PASS"
+            fi
+          }
+          trap cleanup EXIT
+          docker pull quay.io/keycloak/keycloak:26.4.7 >/dev/null
+          docker pull postgres:17-alpine >/dev/null
+          docker pull node:22-alpine >/dev/null
+          docker run -d --name "$KC_ID" --pull never \
+            --network none --user 1000:0 --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 330 --memory 3g \
+            --tmpfs /opt/keycloak/data:rw,nosuid,nodev,size=384m,uid=1000,gid=0,mode=0700 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=128m,uid=1000,gid=0,mode=1777 \
+            --env-file "$QA_DIR/test.env" \
+            quay.io/keycloak/keycloak:26.4.7 \
+            start-dev --http-port=18195 --http-host=127.0.0.1 \
+              --proxy-headers=xforwarded >/dev/null
+          docker run -d --name "$PG_ID" --pull never \
+            --network "container:$KC_ID" --user 70:70 --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 150 --memory 768m \
+            --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev,size=320m,uid=70,gid=70,mode=0700 \
+            --tmpfs /var/run/postgresql:rw,nosuid,nodev,size=16m,uid=70,gid=70,mode=0770 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=64m,uid=70,gid=70,mode=1777 \
+            -e POSTGRES_HOST_AUTH_METHOD=trust \
+            postgres:17-alpine -c listen_addresses=127.0.0.1 >/dev/null
+          echo "QA_F4I_DOCKER_NETWORK=NONE"
+          echo "QA_F4I_HOST_PORTS_PUBLISHED=ZERO"
+          echo "QA_F4I_KEYCLOAK_REAL=26.4.7"
+          echo "QA_F4I_POSTGRES_REAL=17"
+          tester(){
+            docker run --rm --pull never --user 1000:1000 \
+              --network "container:$KC_ID" --cap-drop ALL \
+              --cap-add NET_BIND_SERVICE \
+              --security-opt no-new-privileges --read-only \
+              --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+              --env-file "$QA_DIR/test.env" \
+              -e NODE_PATH=/qa-deps/node_modules \
+              -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+              -v "$QA_DIR/tls:/qa-tls:ro" \
+              -v "$QA_DIR/deps:/qa-deps:ro" \
+              -v "$QA_DIR/built:/qa-built:ro" \
+              node:22-alpine "$@"
+          }
+          ready=false
+          for i in $(seq 1 90); do
+            if docker exec "$PG_ID" pg_isready -h 127.0.0.1 \
+              -U postgres >/dev/null 2>&1; then ready=true; break; fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then echo "QA_F4I_PG_READY=NO"; exit 1; fi
+          MIG="services/api-nest/migrations/client-commerce"
+          for f in \
+            "$MIG/20261012_001_client_commerce_authority_qa_only.sql" \
+            "$MIG/20261012_002_client_commerce_least_privilege_qa_only.sql" \
+            "$MIG/20261012_003_stripe_test_webhook_inbox_qa_only.sql" \
+            "$MIG/20261012_004_stripe_test_financial_reconciliation_qa_only.sql" \
+            "$MIG/20261012_005_client_order_receipt_read_qa_only.sql" \
+            "$MIG/20261013_006_canonical_order_snapshot_qa_only.sql" \
+            "$MIG/20261013_007_merchant_courier_fulfillment_qa_only.sql" \
+            "$MIG/20261013_008_refund_dispatch_row_lock_qa_only.sql" \
+            "$MIG/20261013_009_merchant_courier_wallet_qa_only.sql"
+          do
+            docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+              -h 127.0.0.1 -U postgres -d postgres < "$f" >/dev/null
+          done
+          echo "QA_F4I_SQL_001_TO_009=INSTALLED_DISCONNECTED"
+          tester node --test /qa-tests/merchant-courier-wallet.pg-qa.integration.cjs
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < "$MIG/20261013_010_wallet_tenant_bound_scope_qa_only.sql" >/dev/null
+          tester node --test /qa-tests/merchant-courier-wallet-tenant-scope.pg-qa.integration.cjs
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < "$MIG/20261013_011_partner_session_qa_only.sql" >/dev/null
+          echo "QA_F4I_SQL_SESSION_LEDGER_011=INSTALLED_DISCONNECTED"
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/migrations/catalog-foundation/34b4b5b2a5a2_001_catalog_foundation.sql >/dev/null
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < "$MIG/20261013_012_finance_authority_registry_qa_only.sql" >/dev/null
+          echo "QA_F4I_MERCHANT_FOUNDATION_AND_COURIER_REGISTRY_012=INSTALLED_DISCONNECTED"
+          tester node -e '
+            (async()=>{for(let i=0;i<110;i++){try{
+              const r=await fetch("http://127.0.0.1:18195/realms/master/.well-known/openid-configuration",
+                {signal:AbortSignal.timeout(2200)});
+              if(r.status===200){console.log("QA_F4I_KEYCLOAK_READY=YES");return;}
+            }catch{} await new Promise(resolve=>setTimeout(resolve,2000));}
+            console.error("QA_F4I_KEYCLOAK_READY=NO");process.exitCode=1;})();
+          '
+          # Existing PostgreSQL 001-012 and Keycloak are initialized, but
+          # all tokens/merchant/legal/Courier fixtures are still synthetic.
+          TLS_ID="da-f4i-tls-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          AT_ID="da-f4i-attestor-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          docker run -d --name "$TLS_ID" --pull never --user 1000:1000 \
+            --network "container:$KC_ID" --cap-drop ALL \
+            --cap-add NET_BIND_SERVICE --security-opt no-new-privileges \
+            --read-only --tmpfs /tmp:rw,nosuid,nodev,size=32m \
+            --env-file "$QA_DIR/test.env" \
+            -v "$QA_DIR/tls:/qa-tls:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node -e \
+            'require("/qa-tests/synthetic-keycloak-tls-proxy.qa.cjs").startQaHttpsProxy().then(()=>console.log("QA_F4I_LOCAL_TLS_PROXY_READY=YES")).catch(()=>process.exit(1))' >/dev/null
+          tester node -e '
+            (async()=>{for(let i=0;i<60;i++){try{
+              const r=await fetch("https://127.0.0.1/realms/master/.well-known/openid-configuration",
+                {signal:AbortSignal.timeout(2200)});
+              if(r.status===200)return;
+            }catch{} await new Promise(resolve=>setTimeout(resolve,350));}
+            process.exitCode=1;})();
+          '
+          mkdir -p "$QA_DIR/seed" "$QA_DIR/users" "$QA_DIR/ipc"
+          sudo chown 1000:1000 "$QA_DIR/seed"
+          sudo chmod 0700 "$QA_DIR/seed"
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$KC_ID" --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+            --env-file "$QA_DIR/test.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/seed:/qa-seed:rw" \
+            -v "$QA_DIR/tls:/qa-tls:ro" \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node \
+              /qa-tests/merchant-courier-wallet-isolated-attestor.setup.cjs
+          echo "QA_F4I_PRIVILEGED_QA_INITIALIZER_EXITED=YES"
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            < "$MIG/20261013_013_separate_wallet_attestor_qa_only.sql" >/dev/null
+          echo "QA_F4I_SQL_EXCLUSIVE_ATTESTOR_ROLE_013=INSTALLED"
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            < "$MIG/20261013_014_wallet_business_revocation_linearized_qa_only.sql" >/dev/null
+          echo "QA_F4J_SQL_REVOCATION_LINEARIZED_014=INSTALLED"
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$KC_ID" --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+            --env-file "$QA_DIR/test.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/seed:/qa-seed:ro" \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node --test \
+              /qa-tests/merchant-courier-wallet-revocation-linearized.pg-qa.integration.cjs
+          echo "QA_F4J_COMMIT_ORDER_SESSION_MEMBERSHIP_KYB_ROSTER=PASS"
+          # The initializer's protected files belong to UID 1000. Move only
+          # the confidential introspection proof into the runner-private
+          # staging area; do not relax file or directory permissions.
+          sudo install -m 0600 -o "$(id -u)" -g "$(id -g)" \
+            "$QA_DIR/seed/private-introspection.json" "$QA_DIR/introspection.json"
+
+          # Only now introduce strong authentication. PG socket local
+          # superuser remains inside the PG container; app shares NO socket.
+          node - "$QA_DIR" <<'NODE'
+          const fs=require('node:fs'),crypto=require('node:crypto'),path=require('node:path');
+          const dir=process.argv[2],secret=()=>crypto.randomBytes(32).toString('hex');
+          const secrets={
+            a:secret(),r:secret(),m:secret(),c:secret(),
+            client:secret(),super:secret(),
+          };
+          const q=x=>"'"+x.replaceAll("'","''")+"'";
+          fs.writeFileSync(path.join(dir,'roles.sql'),[
+            "SET password_encryption='scram-sha-256';",
+            "ALTER ROLE da_qa_wallet_attestor_isolated_013 PASSWORD "+q(secrets.a)+";",
+            "ALTER ROLE da_qa_finance_registry_reader_012 PASSWORD "+q(secrets.r)+";",
+            "ALTER ROLE da_qa_merchant_commerce_app PASSWORD "+q(secrets.m)+";",
+            "ALTER ROLE da_qa_courier_commerce_app PASSWORD "+q(secrets.c)+";",
+            "ALTER ROLE da_qa_client_commerce_app PASSWORD "+q(secrets.client)+";",
+            "ALTER ROLE postgres PASSWORD "+q(secrets.super)+";",
+            '',
+          ].join('\n'),{mode:0o600});
+          const introspection=JSON.parse(fs.readFileSync(
+            path.join(dir,'introspection.json'),'utf8'));
+          const shared=['GITHUB_ACTIONS=true','QA_SYNTHETIC_ONLY=YES'];
+          fs.writeFileSync(path.join(dir,'attestor.env'),[
+            ...shared,'QA_F4I_PRIVATE_SERVICE=YES',
+            'QA_F4J_ATOMIC_SQL=YES',
+            'NODE_EXTRA_CA_CERTS=/qa-tls/qa.crt',
+            'QA_ATTESTOR_DB_PASSWORD='+secrets.a,
+            'QA_REGISTRY_DB_PASSWORD='+secrets.r,
+            'QA_MERCHANT_DB_PASSWORD='+secrets.m,
+            'QA_COURIER_DB_PASSWORD='+secrets.c,
+            'QA_INTROSPECT_CLIENT_SECRET='+introspection.secret,
+            '',
+          ].join('\n'),{mode:0o600});
+          fs.writeFileSync(path.join(dir,'client.env'),[
+            ...shared,'QA_F4I_APP_ONLY=YES',
+            'QA_MERCHANT_DB_PASSWORD='+secrets.m,
+            'QA_COURIER_DB_PASSWORD='+secrets.c,
+            '',
+          ].join('\n'),{mode:0o600});
+          const f4kHmac=fs.readFileSync(path.join(dir,'test.env'),'utf8')
+            .match(/^QA_COMMERCE_HMAC_KEY=([a-f0-9]{64})$/m)?.[1];
+          if(!f4kHmac)throw Error('QA_F4K_HMAC_TEST_FIXTURE_MISSING');
+          fs.writeFileSync(path.join(dir,'order-fixture.env'),[
+            ...shared,
+            'QA_COMMERCE_DB_HOST=127.0.0.1',
+            'QA_COMMERCE_DB_NAME=postgres',
+            'QA_CLIENT_DB_PASSWORD='+secrets.client,
+            'QA_COMMERCE_HMAC_KEY='+f4kHmac,
+            '',
+          ].join('\n'),{mode:0o600});
+          console.log('QA_F4I_SCRAM_SEPARATE_ONE_TIME_ROLE_CREDENTIALS=GENERATED');
+          NODE
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres < "$QA_DIR/roles.sql" >/dev/null
+          docker exec "$PG_ID" sh -c \
+            'sed -i -E "s/^([[:space:]]*host[[:space:]].*[[:space:]])(trust|md5|password)([[:space:]]*)$/\1scram-sha-256\3/" "$PGDATA/pg_hba.conf"'
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 -U postgres \
+            -d postgres -Atc "SELECT pg_reload_conf()" | grep -qx t
+          db_hba="$(docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres -Atc \
+            "SELECT count(*) FROM pg_hba_file_rules WHERE type LIKE 'host%' AND (error IS NOT NULL OR auth_method <> 'scram-sha-256')")"
+          if [[ "$db_hba" != "0" ]]; then
+            echo "QA_F4I_PG_HBA_POLICY=DENIED"; exit 1
+          fi
+          echo "QA_F4I_PG17_ALL_HOST_ROLES_REQUIRE_SCRAM=PASS"
+          sudo install -m 0400 -o 1000 -g 3000 \
+            "$QA_DIR/seed/users.json" "$QA_DIR/users/users.json"
+          sudo chown 1000:3000 "$QA_DIR/users"
+          sudo chmod 0750 "$QA_DIR/users"
+          sudo chown 1001:3000 "$QA_DIR/ipc"
+          sudo chmod 0710 "$QA_DIR/ipc"
+
+          # This container owns ALL financial DB credentials. The app
+          # cannot read any private env file and sees only a protected Unix
+          # socket, not the attestor's identity, session or SQL secret.
+          docker run -d --name "$AT_ID" --pull never --user 1001:3000 \
+            --network "container:$KC_ID" --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=32m \
+            --env-file "$QA_DIR/attestor.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/ipc:/qa-ipc:rw" \
+            -v "$QA_DIR/tls/qa.crt:/qa-tls/qa.crt:ro" \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node \
+              /qa-tests/merchant-courier-wallet-isolated-attestor.pg-qa.service.cjs >/dev/null
+          ready=false
+          for i in $(seq 1 40); do
+            if [[ -S "$QA_DIR/ipc/finance-attestor.sock" ]]; then
+              ready=true;break
+            fi
+            if [[ "$(docker inspect -f '{{.State.Running}}' "$AT_ID")" != "true" ]]; then
+              echo "QA_F4I_ATTESTOR_EXITED_UNEXPECTEDLY";docker logs "$AT_ID" | tail -n 10; exit 1
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then
+            echo "QA_F4I_ATTESTOR_SOCKET=UNAVAILABLE";docker logs "$AT_ID" | tail -n 10;exit 1
+          fi
+          echo "QA_F4I_PRIVATE_SOCKET_FILE_ONLY=PASS"
+          run_client(){
+            local stage="$1"
+            docker run --rm --pull never --user 1000:3000 \
+              --network "container:$KC_ID" --cap-drop ALL \
+              --security-opt no-new-privileges --read-only \
+              --tmpfs /tmp:rw,nosuid,nodev,size=32m \
+              --env-file "$QA_DIR/client.env" \
+              -e QA_F4I_STAGE="$stage" \
+              -e NODE_PATH=/qa-deps/node_modules \
+              -v "$QA_DIR/ipc:/qa-ipc:ro" \
+              -v "$QA_DIR/users:/qa-users:ro" \
+              -v "$QA_DIR/deps:/qa-deps:ro" \
+              -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+              node:22-alpine node --test \
+                /qa-tests/merchant-courier-wallet-isolated-attestor.client.pg-qa.integration.cjs
+          }
+          run_client baseline
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres -c \
+            "UPDATE public.da_qa_partner_oidc_sessions_011 SET revoked_at=clock_timestamp() WHERE owner_role='merchant'" >/dev/null
+          run_client merchant-revoked
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres -c \
+            "UPDATE public.da_qa_finance_courier_roster_012 SET roster_status='suspended'" >/dev/null
+          run_client courier-suspended
+          echo "QA_F4I_PRIVATE_PROCESS_LIVE_IDENTITY_SQL_SPLIT=PASS"
+          # F4I's previous deliberately revoked users are reset ONLY in
+          # disposable PostgreSQL for subsequent F4K synthetic tests.
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres -c \
+            "UPDATE public.da_qa_partner_oidc_sessions_011 SET revoked_at=NULL WHERE owner_role='merchant'; UPDATE public.da_qa_finance_courier_roster_012 SET roster_status='active' WHERE roster_status='suspended'" >/dev/null
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            < "$MIG/20261013_015_attested_merchant_courier_transitions_qa_only.sql" >/dev/null
+          echo "QA_F4K_SQL_OPS_ATTESTATION_015=INSTALLED"
+          # F4M: remove privileged owners BEFORE all F4K signed transitions.
+          # Exercise BOTH F4K and F4L with legacy operations/finance gate
+          # owned by domain-specific NOLOGIN non-superuser roles.
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            < "$MIG/20261013_017_nonsuperuser_operational_definers_qa_only.sql" >/dev/null
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            < services/api-nest/test/f4m-nonsuperuser-operational-owners.pg-qa.sql
+          echo "QA_F4M_NO_PRIVILEGED_FINANCE_OR_LEGACY_007_DEFINER=PASS"
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$KC_ID" --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=48m \
+            --env-file "$QA_DIR/order-fixture.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/seed:/qa-seed:rw" \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node \
+              /qa-tests/merchant-courier-attested-transition-order-seed.pg-qa.cjs
+          sudo install -m 0600 -o "$(id -u)" -g "$(id -g)" \
+            "$QA_DIR/seed/f4k-finance.sql" "$QA_DIR/f4k-finance.sql"
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres < "$QA_DIR/f4k-finance.sql" >/dev/null
+          echo "QA_F4K_TWO_SYNTHETIC_CAPTURED_JOURNALS=PASS"
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            < services/api-nest/test/merchant-courier-attested-financial-pulse.pg-qa.sql >/dev/null
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            -c "SELECT public.da_qa_f4k_assert_pulse('captured')" >/dev/null
+          sudo install -m 0400 -o 1000 -g 3000 \
+            "$QA_DIR/seed/f4k-orders.json" "$QA_DIR/users/f4k-orders.json"
+          sudo install -m 0600 -o "$(id -u)" -g "$(id -g)" \
+            "$QA_DIR/seed/f4k-orders.json" "$QA_DIR/f4k-orders-runner.json"
+
+          # Isolated F4I wallet server is retired; F4K uses a separate
+          # mutation-only service with NO PUBLIC HTTP port and new socket.
+          docker rm -f "$AT_ID" >/dev/null
+          MUT_ID="da-f4k-mutation-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          docker run -d --name "$MUT_ID" --pull never --user 1001:3000 \
+            --network "container:$KC_ID" --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=32m \
+            --env-file "$QA_DIR/attestor.env" \
+            -e QA_F4K_OPERATION_WRITES=YES \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/ipc:/qa-ipc:rw" \
+            -v "$QA_DIR/tls/qa.crt:/qa-tls/qa.crt:ro" \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node \
+              /qa-tests/merchant-courier-attested-transition-private.pg-qa.service.cjs >/dev/null
+          ready=false
+          for i in $(seq 1 45); do
+            if [[ -S "$QA_DIR/ipc/finance-transition.sock" ]]; then
+              ready=true;break
+            fi
+            if [[ "$(docker inspect -f '{{.State.Running}}' "$MUT_ID")" != true ]]; then
+              echo "QA_F4K_MUTATION_SERVICE=DENIED"
+              docker logs "$MUT_ID" | tail -n 10; exit 1
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then
+            echo "QA_F4K_MUTATION_SOCKET=UNAVAILABLE"
+            docker logs "$MUT_ID" | tail -n 10; exit 1
+          fi
+          echo "QA_F4K_PRIVATE_MUTATION_SOCKET=PASS"
+          run_ops(){
+            local stage="$1"
+            docker run --rm --pull never --user 1000:3000 \
+              --network "container:$KC_ID" --cap-drop ALL \
+              --security-opt no-new-privileges --read-only \
+              --tmpfs /tmp:rw,nosuid,nodev,size=32m \
+              --env-file "$QA_DIR/client.env" \
+              -e QA_F4K_STAGE="$stage" \
+              -e NODE_PATH=/qa-deps/node_modules \
+              -v "$QA_DIR/ipc:/qa-ipc:ro" \
+              -v "$QA_DIR/users:/qa-users:ro" \
+              -v "$QA_DIR/deps:/qa-deps:ro" \
+              -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+              node:22-alpine node --test \
+                /qa-tests/merchant-courier-attested-transition-client.pg-qa.integration.cjs
+          }
+          run_ops merchant
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            -c "SELECT public.da_qa_f4k_assert_pulse('merchant_ready')" >/dev/null
+          node - "$QA_DIR/f4k-orders-runner.json" "$QA_DIR/f4k-dispatch.sql" "$QA_DIR/f4k-hold.sql" <<'NODE'
+          const fs=require('node:fs');
+          const orders=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const id=/^[0-9a-f]{8}-[0-9a-f-]{27,30}$/i;
+          for(const x of ['deliver','refund']){
+            if(!id.test(orders[x]?.orderId)||!id.test(orders[x]?.authorityId))
+              throw Error('qa_f4k_invalid_order_fixture');
+          }
+          const lines=['DO $q$','DECLARE c record; n integer;',
+            'BEGIN',
+            'SELECT issuer,subject INTO STRICT c FROM public.da_qa_finance_courier_roster_012',
+            "WHERE organization_id='a43f867f-9f42-4573-9268-dc65a164d2c2'::uuid",
+            "AND roster_status='active';",
+            "PERFORM public.da_qa_dispatch_assign_offer('"+
+              orders.deliver.orderId+"'::uuid,c.issuer,c.subject::uuid);",
+            "PERFORM public.da_qa_dispatch_assign_offer('"+
+              orders.refund.orderId+"'::uuid,c.issuer,c.subject::uuid);",
+            'END $q$;'];
+          fs.writeFileSync(process.argv[3],lines.join('\n')+'\n',
+            {mode:0o600});
+          fs.writeFileSync(process.argv[4],
+            "SELECT * FROM public.da_qa_finance_record_hold('"+
+            orders.refund.authorityId+
+            "'::uuid,'re_QAF4KREFUND00002','refund');\n",{mode:0o600});
+          NODE
+          # Dispatcher is NOT callable by any app role. This is privileged
+          # QA fixture setup ONLY after paid+ready, not a certified dispatch.
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            < "$QA_DIR/f4k-dispatch.sql" >/dev/null
+          echo "QA_F4K_SYSTEM_DISPATCH=FIXTURE_ONLY_NO_APP_GRANT"
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            -c "SELECT public.da_qa_f4k_assert_pulse('offered')" >/dev/null
+          run_ops courier
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            -c "SELECT public.da_qa_f4k_assert_pulse('courier_progress')" >/dev/null
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            < "$QA_DIR/f4k-hold.sql" >/dev/null
+          run_ops held
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            -c "SELECT public.da_qa_f4k_assert_pulse('refund_held')" >/dev/null
+
+          # Revoke merchant contract and courier roster. Real JWTs remain
+          # signed and active, but both operations must now DENY.
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres -c \
+            "UPDATE public.da_merchant_memberships SET membership_status='suspended',contract_status='suspended' WHERE partner_id='qa_partner_a'; UPDATE public.da_qa_finance_courier_roster_012 SET roster_status='suspended' WHERE organization_id='a43f867f-9f42-4573-9268-dc65a164d2c2'::uuid" >/dev/null
+          run_ops revoked
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            -c "SELECT public.da_qa_f4k_assert_pulse('revoked')" >/dev/null
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres -c \
+            "DO \$q\$ DECLARE n integer; BEGIN SELECT count(*) INTO n FROM public.da_qa_fulfillment_receipt_015; IF n<>8 THEN RAISE EXCEPTION 'qa_f4k_receipts_expected_8_got_%',n; END IF; END \$q\$;" >/dev/null
+          echo "QA_F4K_IMMUTABLE_OPERATION_RECEIPTS=8"
+          echo "QA_F4K_LEGACY_DISPATCH_APP_ROLE=DENIED"
+          echo "QA_F4K_STRIPE_PROVIDER_CALLS=ZERO_PAYOUTS=ZERO"
+
+          echo "QA_F4I_NO_STRIPE_NO_BANK_NO_PAYOUT=PASS"
+          echo "QA_F4I_NO_PRODUCTION_NO_VPS_NO_STORE=PASS"
+
+          # F4L runs only after the exact prior F4K Keycloak and ledger lab.
+          echo "QA_F4L_F4K_SIGNED_OPERATIONS_PRECONDITION=PASS"
+          for f in services/api-nest/test/f4l-dispatch-*.cjs; do node --check "$f"; done
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            < "$MIG/20261013_016_oidc_machine_dispatch_authority_qa_only.sql" >/dev/null
+          echo "QA_F4L_SQL_MACHINE_DISPATCH_016=INSTALLED"
+          # F4K deliberately suspended these QA synthetic identities as its
+          # last assertion. Reset only the ephemeral rows for fresh QA orders.
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres -c \
+            "UPDATE public.da_merchant_memberships SET membership_status='active',contract_status='active' WHERE partner_id='qa_partner_a'; UPDATE public.da_qa_finance_courier_roster_012 SET roster_status='active' WHERE organization_id='a43f867f-9f42-4573-9268-dc65a164d2c2'::uuid" >/dev/null
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$KC_ID" --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=40m \
+            --env-file "$QA_DIR/order-fixture.env" -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/seed:/qa-seed:rw" -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node /qa-tests/f4l-dispatch-order-seed.pg-qa.cjs
+          sudo install -m 0600 -o "$(id -u)" -g "$(id -g)" \
+            "$QA_DIR/seed/f4l-finance.sql" "$QA_DIR/f4l-finance.sql"
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres < "$QA_DIR/f4l-finance.sql" >/dev/null
+          sudo install -m 0400 -o 1000 -g 3000 \
+            "$QA_DIR/seed/f4l-orders.json" "$QA_DIR/users/f4l-orders.json"
+          sudo install -m 0600 -o "$(id -u)" -g "$(id -g)" \
+            "$QA_DIR/seed/f4l-orders.json" "$QA_DIR/f4l-orders-runner.json"
+          docker run --rm --pull never --user 1000:3000 \
+            --network "container:$KC_ID" --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=40m \
+            --env-file "$QA_DIR/client.env" -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/ipc:/qa-ipc:ro" -v "$QA_DIR/users:/qa-users:ro" \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node /qa-tests/f4l-dispatch-merchant-prepare.pg-qa.cjs
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$KC_ID" --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=40m \
+            --env-file "$QA_DIR/test.env" \
+            -v "$QA_DIR/seed:/qa-seed:rw" -v "$QA_DIR/tls:/qa-tls:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node /qa-tests/f4l-dispatch-oidc-machine.setup.pg-qa.cjs
+          sudo install -m 0600 -o "$(id -u)" -g "$(id -g)" \
+            "$QA_DIR/seed/f4l-dispatch-machine.json" "$QA_DIR/f4l-machine-private.json"
+
+          # Write ephemeral independent SQL credentials after SCRAM is enabled.
+          # Keep all secrets in runner-private 0600 files, never in logs.
+          node - "$QA_DIR" <<'F4LENV'
+          const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
+          const base=process.argv[2],read=p=>fs.readFileSync(path.join(base,p),'utf8');
+          const data=JSON.parse(read('f4l-machine-private.json'));
+          const introspection=JSON.parse(read('introspection.json'));
+          const secret=()=>crypto.randomBytes(36).toString('hex');
+          const sql=x=>"'"+String(x).replaceAll("'","''")+"'";
+          const machine=secret(),attestor=secret();
+          const org='a43f867f-9f42-4573-9268-dc65a164d2c2';
+          fs.writeFileSync(path.join(base,'f4l-roles.sql'),[
+            "SET password_encryption='scram-sha-256';",
+            "ALTER ROLE da_qa_dispatch_machine_016 PASSWORD "+sql(machine)+";",
+            "ALTER ROLE da_qa_dispatch_attestor_016 PASSWORD "+sql(attestor)+";",
+            "INSERT INTO public.da_qa_dispatch_machine_registry_016("+
+              "issuer,subject,client_id,organization_id,territory,grant_status) VALUES("+
+              [data.issuer,data.subject,data.clientId,org,'BE','active'].map(sql).join(',')+");",
+            ''
+          ].join('\n'),{mode:0o600});
+          const shared=['GITHUB_ACTIONS=true','QA_SYNTHETIC_ONLY=YES',
+            'NODE_EXTRA_CA_CERTS=/qa-tls/qa.crt'];
+          const worker=[...shared,'QA_F4L_MACHINE_WORKER=YES',
+            'QA_F4L_MACHINE_CLIENT_SECRET='+data.clientSecret,
+            'QA_F4L_MACHINE_DB_PASSWORD='+machine];
+          fs.writeFileSync(path.join(base,'f4l-worker.env'),worker.join('\n')+'\n',{mode:0o600});
+          const otherRoles=read('client.env');
+          const merchant=otherRoles.match(/^QA_MERCHANT_DB_PASSWORD=(.+)$/m)?.[1];
+          const courier=otherRoles.match(/^QA_COURIER_DB_PASSWORD=(.+)$/m)?.[1];
+          if(!merchant||!courier)throw Error('QA_F4L_MISSING_APP_FIXTURES');
+          fs.writeFileSync(path.join(base,'f4l-access-audit.env'),[
+            ...worker,'QA_MERCHANT_DB_PASSWORD='+merchant,
+            'QA_COURIER_DB_PASSWORD='+courier,''
+          ].join('\n'),{mode:0o600});
+          fs.writeFileSync(path.join(base,'f4l-attestor.env'),[
+            ...shared,'QA_F4L_PRIVATE_ATTESTOR=YES',
+            'QA_F4L_ATTESTOR_DB_PASSWORD='+attestor,
+            'QA_INTROSPECT_CLIENT_SECRET='+introspection.secret,''
+          ].join('\n'),{mode:0o600});
+          console.log('QA_F4L_MACHINE_SECRETS_SEPARATE_SQL_SCRAM=PASS');
+          F4LENV
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres < "$QA_DIR/f4l-roles.sql" >/dev/null
+          mkdir -p "$QA_DIR/dispatch-ipc"
+          sudo chown 1002:3100 "$QA_DIR/dispatch-ipc"
+          sudo chmod 0710 "$QA_DIR/dispatch-ipc"
+          F4L_ATTESTOR_ID="da-f4l-attestor-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          docker run -d --name "$F4L_ATTESTOR_ID" --pull never --user 1002:3100 \
+            --network "container:$KC_ID" --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=32m \
+            --env-file "$QA_DIR/f4l-attestor.env" -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/dispatch-ipc:/qa-dispatch-ipc:rw" \
+            -v "$QA_DIR/tls/qa.crt:/qa-tls/qa.crt:ro" \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node /qa-tests/f4l-dispatch-private-attestor.pg-qa.service.cjs >/dev/null
+          ready=false
+          for i in $(seq 1 40); do
+            if docker exec "$F4L_ATTESTOR_ID" node -e "if (!require('node:fs').statSync('/qa-dispatch-ipc/dispatch-attestor.sock').isSocket()) process.exit(1)" >/dev/null 2>&1; then ready=true;break;fi
+            if [[ "$(docker inspect -f '{{.State.Running}}' "$F4L_ATTESTOR_ID")" != true ]]; then
+              echo "QA_F4L_ATTESTOR_EXITED";docker logs "$F4L_ATTESTOR_ID" | tail -n 12;exit 1
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then echo "QA_F4L_SOCKET_MISSING";docker logs "$F4L_ATTESTOR_ID" | tail -n 30;exit 1;fi
+          echo "QA_F4L_STRONG_MACHINE_OIDC_AND_PRIVATE_SOCKET=PASS"
+          run_f4l(){
+            local filename="$1" stage="$2" pick="$3"
+            local env_file="$QA_DIR/f4l-worker.env"
+            if [[ "$filename" == *permissions* ]]; then env_file="$QA_DIR/f4l-access-audit.env";fi
+            docker run --rm --pull never --user 1000:3100 --group-add 3000 \
+              --network "container:$KC_ID" --cap-drop ALL \
+              --security-opt no-new-privileges --read-only \
+              --tmpfs /tmp:rw,nosuid,nodev,size=40m \
+              --env-file "$env_file" \
+              -e QA_F4L_STAGE="$stage" -e QA_F4L_PICK_STAGE="$pick" \
+              -e NODE_PATH=/qa-deps/node_modules \
+              -v "$QA_DIR/dispatch-ipc:/qa-dispatch-ipc:ro" \
+              -v "$QA_DIR/ipc:/qa-ipc:ro" \
+              -v "$QA_DIR/users:/qa-users:ro" \
+              -v "$QA_DIR/tls/qa.crt:/qa-tls/qa.crt:ro" \
+              -v "$QA_DIR/deps:/qa-deps:ro" \
+              -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+              node:22-alpine node "/qa-tests/$filename"
+          }
+          run_f4l f4l-dispatch-permissions.pg-qa.integration.cjs "" ""
+          run_f4l f4l-dispatch-token-isolation.pg-qa.integration.cjs "" ""
+          run_f4l f4l-dispatch-basic.pg-qa.integration.cjs "" ""
+          run_f4l f4l-dispatch-pickup-replay.pg-qa.integration.cjs "" create
+          # F4K Courier separately authorizes pickup with signed personal JWT.
+          docker run --rm --pull never --user 1000:3000 \
+            --network "container:$KC_ID" --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=40m \
+            --env-file "$QA_DIR/client.env" -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/ipc:/qa-ipc:ro" -v "$QA_DIR/users:/qa-users:ro" \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node /qa-tests/f4l-dispatch-courier-pickup.pg-qa.cjs
+          run_f4l f4l-dispatch-pickup-replay.pg-qa.integration.cjs "" verify
+
+          # Independent denial: a SECOND, otherwise eligible Courier in the
+          # SAME organization cannot silently replace an already offered one.
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
+            -c "UPDATE public.da_qa_finance_courier_roster_012 SET organization_id='a43f867f-9f42-4573-9268-dc65a164d2c2'::uuid,territory='BE' WHERE (issuer,subject) IN (SELECT issuer,subject::text FROM public.da_qa_wallet_courier_scope_010 WHERE organization_id='a43f867f-9f42-4573-9268-dc65a164d2c4'::uuid)" >/dev/null
+          run_f4l f4l-dispatch-machine.pg-qa.integration.cjs reassignment ""
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
+            -c "UPDATE public.da_qa_finance_courier_roster_012 SET organization_id='a43f867f-9f42-4573-9268-dc65a164d2c4'::uuid,territory='FR' WHERE (issuer,subject) IN (SELECT issuer,subject::text FROM public.da_qa_wallet_courier_scope_010 WHERE organization_id='a43f867f-9f42-4573-9268-dc65a164d2c4'::uuid)" >/dev/null
+          echo "QA_F4L_SAME_ORG_COURIER_REASSIGNMENT=DENIED"
+
+          # Financial holds on real captured QA authorities: one committed
+          # before Dispatch, one racing while the order FOR UPDATE is held.
+          node - "$QA_DIR/f4l-orders-runner.json" "$QA_DIR" <<'F4LHOLDS'
+          const fs=require('node:fs'),path=require('node:path');
+          const orders=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const dir=process.argv[3];
+          const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
+          for(const [name,marker,suffix] of [
+            ['refundFirst','re_QAF4LREFUND00004','first'],
+            ['refundConcurrent','re_QAF4LREFUND00005','race']]){
+            if(!uuid.test(orders[name]?.authorityId))throw Error('QA_F4L_BAD_HOLD_UUID');
+            const statement="SELECT * FROM public.da_qa_finance_record_hold('"+
+              orders[name].authorityId+"'::uuid,'"+marker+"','refund');";
+            fs.writeFileSync(path.join(dir,'f4l-hold-'+suffix+'.sql'),
+              suffix==='first'?statement+'\n':
+                'BEGIN;\n'+statement+'\nSELECT pg_sleep(8);\nCOMMIT;\n',
+              {mode:0o600});
+          }
+          F4LHOLDS
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres < "$QA_DIR/f4l-hold-first.sql" >/dev/null
+          run_f4l f4l-dispatch-revocation-refund.pg-qa.integration.cjs refund-first ""
+          (docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres < "$QA_DIR/f4l-hold-race.sql" >/dev/null) &
+          hold_pid=$!
+          sleep 0.5
+          (run_f4l f4l-dispatch-revocation-refund.pg-qa.integration.cjs refund-race "" \
+            > "$QA_DIR/f4l-race-test.log" 2>&1) &
+          race_pid=$!
+          blocked=0
+          for i in $(seq 1 55); do
+            n="$(docker exec "$PG_ID" psql -U postgres -d postgres -Atc \
+              "SELECT count(*) FROM pg_stat_activity WHERE usename='da_qa_dispatch_machine_016' AND wait_event_type='Lock'")"
+            if [[ "$n" != 0 ]]; then blocked=1;break;fi
+            sleep 0.12
+          done
+          wait "$hold_pid"
+          wait "$race_pid"
+          cat "$QA_DIR/f4l-race-test.log"
+          if [[ "$blocked" != 1 ]]; then
+            echo "QA_F4L_CONCURRENT_REFUND_POSTGRES_ORDER_LOCK=NOT_OBSERVED";exit 1
+          fi
+          echo "QA_F4L_CONCURRENT_REFUND_POSTGRES_ORDER_LOCK=PASS"
+          # Reverse interleaving: Dispatch holds the order FOR UPDATE and commits
+          # an immutable offer FIRST; a concurrent refund must wait and then
+          # make BOTH new Dispatch and F4K Courier acceptance fail closed.
+          run_f4l f4l-dispatch-machine.pg-qa.integration.cjs assignment-hold "" \
+            > "$QA_DIR/f4l-assign-owner.log" 2>&1 &
+          f4l_assign_pid=$!
+          ready=false
+          for i in $(seq 1 60); do
+            n="$(docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -Atc \
+              "SELECT count(*) FROM pg_stat_activity WHERE usename='da_qa_dispatch_machine_016' AND state='active' AND query LIKE '%pg_sleep(7)%'")"
+            if [[ "$n" != 0 ]]; then ready=true;break;fi
+            sleep 0.1
+          done
+          if [[ "$ready" != true ]];then
+            echo "QA_F4L_ASSIGNMENT_FIRST_LOCK_NOT_OBSERVED";exit 1
+          fi
+          f4l_after_id="$(node -e "console.log(require(process.argv[1]).assignThenRefund.authorityId)" "$QA_DIR/f4l-orders-runner.json")"
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
+            -c "SET application_name='f4l_refund_waiter'; SELECT public.da_qa_finance_record_hold('$f4l_after_id'::uuid,'re_QAF4LREFUND00006','refund')" \
+            > "$QA_DIR/f4l-refund-after-assign.log" 2>&1 &
+          f4l_refund_pid=$!
+          blocked=0
+          for i in $(seq 1 60); do
+            n="$(docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -Atc \
+              "SELECT count(*) FROM pg_stat_activity WHERE application_name='f4l_refund_waiter' AND wait_event_type='Lock'")"
+            if [[ "$n" != 0 ]]; then blocked=1;break;fi
+            sleep 0.1
+          done
+          wait "$f4l_assign_pid" || { cat "$QA_DIR/f4l-assign-owner.log";exit 1; }
+          wait "$f4l_refund_pid" || { cat "$QA_DIR/f4l-refund-after-assign.log";exit 1; }
+          if [[ "$blocked" != 1 ]]; then
+            echo "QA_F4L_REFUND_WAIT_AFTER_DISPATCH_NOT_OBSERVED";exit 1
+          fi
+          cat "$QA_DIR/f4l-assign-owner.log"
+          run_f4l f4l-dispatch-machine.pg-qa.integration.cjs assignment-refund-held ""
+          echo "QA_F4L_ASSIGNMENT_FIRST_REFUND_WAITS_COURIER_HELD=PASS"
+
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres -c \
+            "UPDATE public.da_qa_finance_courier_roster_012 SET roster_status='revoked' WHERE organization_id='a43f867f-9f42-4573-9268-dc65a164d2c2'::uuid" >/dev/null
+          run_f4l f4l-dispatch-revocation-refund.pg-qa.integration.cjs courier-revoked ""
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres -c \
+            "UPDATE public.da_qa_finance_courier_roster_012 SET roster_status='active',organization_id='a43f867f-9f42-4573-9268-dc65a164d2c4'::uuid,territory='FR' WHERE organization_id='a43f867f-9f42-4573-9268-dc65a164d2c2'::uuid" >/dev/null
+          run_f4l f4l-dispatch-revocation-refund.pg-qa.integration.cjs org-moved ""
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres -c \
+            "UPDATE public.da_qa_dispatch_machine_registry_016 SET grant_status='revoked'" >/dev/null
+          run_f4l f4l-dispatch-revocation-refund.pg-qa.integration.cjs machine-revoked ""
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            < services/api-nest/test/f4l-dispatch-final-accounting.pg-qa.sql
+          echo "QA_F4L_STRIPE_PROVIDER_CALLS=ZERO_PAYOUTS=ZERO"
+          echo "QA_F4L_NO_VPS_NO_STORE_NO_MERGE=PASS"
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            < services/api-nest/test/f4m-nonsuperuser-operational-owners.pg-qa.sql
+          echo "QA_F4M_F4K_F4L_PG17_SYNTHETIC_OPERATIONS_UNDER_NOLOGIN_OWNERS=PASS"
+          echo "QA_F4M_FINANCE_LEDGER_AND_PAYOUT_INVARIANTS_PRESERVED=PASS"
+          echo "QA_F4M_NO_VPS_STRIPE_STORE_PAYOUT_MERGE=PASS"
