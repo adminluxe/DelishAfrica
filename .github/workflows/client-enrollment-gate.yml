@@ -15,7 +15,12 @@ on:
       - feat/f4i-isolated-finance-attestor-qa-20261013
       - feat/f4j-wallet-revocation-linearization-qa-20261013
       - feat/f4k-attested-merchant-courier-ops-qa-20261013
+      - feat/f4l-oidc-machine-dispatch-assign-qa-20261013
     paths:
+      - '.github/workflows/f4m-nonsuperuser-operational-qa.yml'
+      - 'services/api-nest/migrations/client-commerce/20261013_017_nonsuperuser_operational_definers_qa_only.sql'
+      - 'services/api-nest/test/f4m-nonsuperuser-operational-owners.pg-qa.sql'
+      - 'docs/DA_PASSATION_F4M_OPERATIONAL_SQL_OWNER_QA_2026-10-13.md'
       - '.github/workflows/f4l-oidc-machine-dispatch-qa.yml'
       - 'services/api-nest/migrations/client-commerce/20261013_016_oidc_machine_dispatch_authority_qa_only.sql'
       - 'services/api-nest/test/f4l-dispatch-**'
