@@ -1,6 +1,6 @@
 # DELISHAFRICA® — PASSATION F4I / ATTESTATEUR FINANCIER ISOLÉ / QA
 
-**Date : 13 octobre 2026 · PR #41 DRAFT · Statut : laboratoire QA, certification finale non encore acquise**
+**Date : 13 octobre 2026 · PR #41 DRAFT · Statut : CERTIFICATION CODE F4I QA ACQUISE, autorités réelles NO-GO**
 
 > Toutes les identités Keycloak utilisées ici sont **jetables et fictives** ; les montants financiers et données KYB/KYC également. Le serveur Keycloak 26.4.7 et PostgreSQL 17 sont de vrais logiciels exécutés dans des conteneurs, sans accès au réseau externe. Aucune production, aucun Stripe, aucun payout.
 
@@ -87,3 +87,23 @@ Le service est monté exclusivement dans un conteneur QA rootless et n'écoute *
 **Règles :** `withdrawableMinor=0`, `payoutEnabled=false`, argent synthétique ; aucun Stripe TEST officiel ni LIVE, aucun VPS, aucune fusion, aucun EAS payant, aucune soumission Store sans batterie G0–G7, preuves exactes et validation humaine. Papy Toshiba reste hors du laboratoire.
 
 **Signature provisoire : F4I-QA-ISOLATION-CANDIDATE / FINAL-CI-NOT-YET-CERTIFIED / REAL-IDENTITY-NO-GO / ZERO-PAYOUT / NO-PRODUCTION / DRAFT.**
+
+---
+
+## 7. Certificat provisoire sur code QA F4I
+
+**SHA code `e7c58aee812b555030e2c06c987e3d8e716a4785` : TROIS CI SUCCESS sur le même SHA, avant consolidation documentaire :**
+
+1. [#38353167968](https://github.com/adminluxe/DelishAfrica/actions/runs/38353167968) — vrai Keycloak 26.4.7 isolé + PostgreSQL 17, migration 013, SCRAM effectif, socket et service privé F4I ; success.
+2. [#38353167959](https://github.com/adminluxe/DelishAfrica/actions/runs/38353167959) — TypeScript API et Client/Merchant/Courier et vérification de non-enregistrement en production ; success.
+3. [#38353167869](https://github.com/adminluxe/DelishAfrica/actions/runs/38353167869) — tests financiers PostgreSQL 17 historiques, réconciliation et concurrence ; success.
+
+**Marqueurs réellement constatés :** `QA_F4I_SQL_EXCLUSIVE_ATTESTOR_ROLE_013=INSTALLED`, `QA_F4I_PG17_ALL_HOST_ROLES_REQUIRE_SCRAM=PASS`, `QA_F4I_PRIVATE_SOCKET_FILE_ONLY=PASS`, `QA_F4I_APP_CANNOT_ASSUME_ATTESTOR_OR_READ_REGISTRY=PASS`, `QA_F4I_REAL_SIGNED_JWT_TO_SEPARATE_PROCESS_WALLET=PASS`, `QA_F4I_FORGED_JWT_AND_CALLER_SLUG=DENIED`, `QA_F4I_DURABLE_MERCHANT_SESSION_REVOKED_WITH_VALID_JWT=DENIED`, `QA_F4I_COURIER_ROSTER_SUSPENDED_WITH_VALID_JWT=DENIED`, `QA_F4I_PRIVATE_PROCESS_LIVE_IDENTITY_SQL_SPLIT=PASS`, `QA_F4I_NO_STRIPE_NO_BANK_NO_PAYOUT=PASS`, `QA_F4I_EPHEMERAL_CLEANUP=PASS`.
+
+**Échecs intermédiaires non effacés :** dossier de fixtures chiffrées au mauvais UID (premier échec), mot de passe d'un rôle 013 non installé (migration non encore exécutée à ce point dans la séquence), puis suppression finale des fichiers temporaires refusée au runner non propriétaire. Le banc a été corrigé en conservant les protections (nouvelle migration appliquée avant attribution de secret ; transfert Unix via propriétaire explicite ; nettoyage sous contrôle du chemin runner et du propriétaire). Aucune de ces corrections ne désactive SCRAM, les privilèges SQL, les vérifications Keycloak ou les tests d'attaque. Le code SHA e7c58aee a effectivement passé la phase finale de nettoyage.
+
+**Ne pas sur-interpréter :** cette preuve n'affirme ni la vérification d'une entreprise réelle, ni la robustesse d'une infrastructure d'attestation de production multi-régions, ni l'absence de course entre une révocation métier et la consommation de ticket. Le service privé F4I garde des connexions de lecture des wallets ; prochaine revue de privilèges requise avant toute exposition. L'ancien service de mutation 007 reste bloqué.
+
+**SHA documentaire final :** les trois pipelines seront relus sur le HEAD exact après mises à jour de cette passation, du roadbook financier et de l'architecture. Ne signer la version finale qu'une fois les trois SUCCESS synchronisés.
+
+**État de passage : F4I-CODE-QA-3CI-GREEN / TRUE-KEYCLOAK-BINARY-SYNTHETIC-USERS / OFFICIAL-LEGAL-NO-GO / NO-PAYOUT / NO-MERGE / NO-PROD.**
