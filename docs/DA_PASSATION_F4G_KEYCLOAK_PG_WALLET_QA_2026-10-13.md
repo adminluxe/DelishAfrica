@@ -46,4 +46,22 @@ Pour accélérer le contrôle du backend, les clients OAuth **jetables du labora
 - Les mutations Merchant/Dispatch/Courier historiques 007 restent interdites après le verrou 010 : rétablissement seulement après attestation d'écriture et tests adversariaux.
 - Ni Stripe TEST officiel, ni Stripe LIVE, ni migration VPS, ni fusion, ni builds payants, ni Store, ni payout sans approbation et G0–G7.
 
-**Statut : F4G LABORATOIRE EN COURS DE CERTIFICATION ; identités réelles de production NO-GO ; flux financiers réels = ZÉRO.**
+**Statut : F4G QA VALIDÉ SUR CODE SHA 21cd567d / identités réelles de production NO-GO ; flux financiers réels = ZÉRO.**
+
+---
+
+## H. Certification du premier SHA F4G avec Keycloak réellement exécuté
+
+**Code SHA `21cd567d07ef31a91ed199df299c8bce3c24fd4a`, triple CI SUCCESS :**
+
+- [Keycloak 26.4.7 réel + PG17 + wallets Merchant/Courier — #38329914958](https://github.com/adminluxe/DelishAfrica/actions/runs/38329914958) — **SUCCESS**.
+- [API TypeScript + Client/Merchant/Courier — #38329914989](https://github.com/adminluxe/DelishAfrica/actions/runs/38329914989) — **SUCCESS**.
+- [Laboratoire PostgreSQL 17 complet, finance et concurrence — #38329915018](https://github.com/adminluxe/DelishAfrica/actions/runs/38329915018) — **SUCCESS**.
+
+Marqueurs consultés dans la CI Keycloak : `QA_F4G_LOCAL_KEYCLOAK_REAL_HTTPS_JWKS=PASS`, `QA_F4G_FOUR_REAL_KEYCLOAK_SIGNED_PARTNER_JWTS_AND_INTROSPECTION=PASS`, `QA_F4G_REAL_KEYCLOAK_MERCHANT_A_B_PG17_SEPARATION=PASS`, `QA_F4G_KEYCLOAK_REAL_COURIER_UNASSIGNED_ZERO_EARNINGS=PASS`, `QA_F4G_TAMPERED_RSA_AND_KEYCLOAK_CROSS_ROLE=DENIED`, `QA_F4G_SIGNED_JWT_BUT_DURABLE_PG_SESSION_REVOKED=DENIED`, `QA_F4G_REAL_KEYCLOAK_LOGOUT_INTROSPECTION_INACTIVE=PASS`, `QA_F4G_SIGNED_JWT_KYB_CONTRACT_ROSTER_REVOCATION=DENIED`, `QA_F4G_ATTESTOR_AND_APP_LEAST_PRIVILEGE=PASS`, `QA_F4G_STRIPE_CALLS=ZERO_PAYOUTS=ZERO`.
+
+**Renseignement nouveau issu des vrais JWT Keycloak 26 :** `sid` satisfait une forme bornée simple ; `jti` est une valeur opaque signée de 43 caractères incluant `:`. La lecture précédente échouait à tort sur ce format ; le bridge ne l'accepte désormais que sous une expression rationnelle bornée de caractères imprimables autorisés et le hache avant recherche SQL paramétrée. Aucun jeton, `jti`, `sid` ou secret en clair n'a été journalisé.
+
+La certification F4G porte sur un **Keycloak réel dans un environnement fictif entièrement isolé**, des contrats/KYB et le registre Courier **toujours synthétiques**, une table session 011 **éphémère**, et des soldes d'essai qui **ne peuvent pas être retirés**. Le prestataire de paiement réel, le Keycloak public et le registre juridique officiel ne sont pas raccordés.
+
+**Important :** les correctifs ultérieurs (notamment l'échappement explicite `\/` dans la grammaire `jti`, puis les commits documentaires) doivent repasser en CI sur le SHA final pour signer le HEAD de PR #39. Les échecs intermédiaires du laboratoire restent archivés. Aucune fusion et aucun déploiement.
