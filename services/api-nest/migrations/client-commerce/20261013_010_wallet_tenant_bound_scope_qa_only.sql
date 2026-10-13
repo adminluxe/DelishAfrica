@@ -102,13 +102,14 @@ CREATE TABLE public.da_qa_wallet_merchant_scope_010(
   revoked_at timestamptz,
   PRIMARY KEY(issuer,subject,merchant_slug,organization_id,territory)
 );
--- Each wallet slug has exactly ONE legal organization and territory.
--- The 009 ledger is keyed by slug only, so cross-organization reuse of the
--- slug must FAIL CLOSED until allocation includes organization+territory.
+-- The 009 merchant ledger has slug but no independent organization key.
+-- Forbid aliasing the same slug into another organization or territory.
 CREATE TABLE public.da_qa_wallet_slug_owner_010(
   merchant_slug varchar(120) PRIMARY KEY,
   organization_id uuid NOT NULL,
-  territory char(2) NOT NULL CHECK(territory ~ '^[A-Z]{2}
+  territory char(2) NOT NULL CHECK(territory ~ '^[A-Z]{2}$')
+);
+CREATE TABLE public.da_qa_wallet_courier_scope_010(
   issuer text NOT NULL,
   subject uuid NOT NULL,
   organization_id uuid NOT NULL,
@@ -122,8 +123,8 @@ CREATE TABLE public.da_qa_wallet_slug_owner_010(
   valid_until timestamptz,
   revoked_at timestamptz,
   PRIMARY KEY(issuer,subject,organization_id,territory),
-  -- The QA 007 courier ledger has no territory dimension, therefore
-  -- the same identity cannot be admitted to two territory wallets.
+  -- Courier offer/ledger 007-009 lacks an organization/territory key.
+  -- A repeated issuer+subject in another jurisdiction is not supported.
   UNIQUE(issuer,subject)
 );
 CREATE TABLE public.da_qa_wallet_challenge_010(
@@ -235,10 +236,10 @@ BEGIN
         AND m.merchant_slug=p_merchant
         AND m.organization_id=p_organization AND m.territory=p_territory
         AND EXISTS (
-          SELECT 1 FROM public.da_qa_wallet_slug_owner_010 owned
-          WHERE owned.merchant_slug=m.merchant_slug
-            AND owned.organization_id=m.organization_id
-            AND owned.territory=m.territory
+          SELECT 1 FROM public.da_qa_wallet_slug_owner_010 owner0
+          WHERE owner0.merchant_slug=m.merchant_slug
+            AND owner0.organization_id=m.organization_id
+            AND owner0.territory=m.territory
         )
         AND m.membership_status='active'
         AND m.contract_status='active' AND m.kyb_status='verified'
@@ -319,264 +320,11 @@ BEGIN
         AND m.merchant_slug=t.merchant_slug
         AND m.organization_id=t.organization_id AND m.territory=t.territory
         AND EXISTS (
-          SELECT 1 FROM public.da_qa_wallet_slug_owner_010 owned
-          WHERE owned.merchant_slug=m.merchant_slug
-            AND owned.organization_id=m.organization_id
-            AND owned.territory=m.territory
+          SELECT 1 FROM public.da_qa_wallet_slug_owner_010 owner0
+          WHERE owner0.merchant_slug=m.merchant_slug
+            AND owner0.organization_id=m.organization_id
+            AND owner0.territory=m.territory
         )
-        AND m.membership_status='active' AND m.contract_status='active'
-        AND m.kyb_status='verified' AND m.partner_state='published'
-        AND m.revoked_at IS NULL AND m.valid_from<=clock_timestamp()
-        AND (m.valid_until IS NULL OR m.valid_until>clock_timestamp())
-      FOR SHARE;
-    IF NOT FOUND THEN RAISE EXCEPTION 'qa_scope_merchant_revoked'; END IF;
-    SELECT to_jsonb(s) INTO result_summary
-      FROM public.da_qa_wallet_merchant_summary(t.merchant_slug) s;
-    SELECT coalesce(jsonb_agg(to_jsonb(a)),'[]'::jsonb)
-      INTO result_activity FROM
-      public.da_qa_wallet_merchant_activity(t.merchant_slug,p_limit) a;
-  ELSIF t.owner_kind='courier' THEN
-    PERFORM 1 FROM public.da_qa_wallet_courier_scope_010 c
-      WHERE c.issuer=t.issuer AND c.subject=t.subject
-        AND c.organization_id=t.organization_id AND c.territory=t.territory
-        AND c.roster_active=true AND c.agreement_status='active'
-        AND c.kyc_status='verified' AND c.revoked_at IS NULL
-        AND c.valid_from<=clock_timestamp()
-        AND (c.valid_until IS NULL OR c.valid_until>clock_timestamp())
-      FOR SHARE;
-    IF NOT FOUND THEN RAISE EXCEPTION 'qa_scope_courier_revoked'; END IF;
-    SELECT to_jsonb(s) INTO result_summary
-      FROM public.da_qa_wallet_courier_summary(t.issuer,t.subject) s;
-    SELECT coalesce(jsonb_agg(to_jsonb(a)),'[]'::jsonb)
-      INTO result_activity FROM
-      public.da_qa_wallet_courier_activity(t.issuer,t.subject,p_limit) a;
-  ELSE
-    RAISE EXCEPTION 'qa_scope_kind_invalid';
-  END IF;
-  UPDATE public.da_qa_wallet_ticket_010 SET consumed_at=clock_timestamp()
-    WHERE ticket_id=p_ticket;
-  RETURN jsonb_build_object(
-    'mode','qa_synthetic_only','ownerRole',t.owner_kind,
-    'merchantSlug',t.merchant_slug,
-    'organizationId',t.organization_id,'territory',t.territory,
-    'summary',result_summary,'activity',result_activity,
-    'withdrawableMinor',0,'payoutEnabled',false);
-END;
-$$;
-ALTER FUNCTION public.da_qa_wallet_read_attested_010(uuid,integer)
-  OWNER TO da_qa_wallet_read_owner_010;
-REVOKE ALL ON FUNCTION public.da_qa_wallet_read_attested_010(uuid,integer)
-  FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.da_qa_wallet_read_attested_010(uuid,integer)
-  TO da_qa_merchant_commerce_app,da_qa_courier_commerce_app;
-
-COMMENT ON FUNCTION public.da_qa_wallet_attest_010(
-  uuid,text,uuid,varchar,uuid,char(2))
-  IS 'QA only. Trusted separated attestor must verify real OIDC and committed registry before use; test fixtures are NOT production identity evidence.';
-COMMENT ON FUNCTION public.da_qa_wallet_read_attested_010(uuid,integer)
-  IS 'QA only. Backend-bound one-use scope, active registry recheck, no payout. Does not expose raw issuer/subject parameters to shared DB login.';
-COMMIT;
-)
-);
-CREATE TABLE public.da_qa_wallet_courier_scope_010(
-  issuer text NOT NULL,
-  subject uuid NOT NULL,
-  organization_id uuid NOT NULL,
-  territory char(2) NOT NULL CHECK(territory ~ '^[A-Z]{2}$'),
-  roster_active boolean NOT NULL DEFAULT false,
-  agreement_status text NOT NULL CHECK(
-    agreement_status IN('active','suspended','terminated')),
-  kyc_status text NOT NULL CHECK(
-    kyc_status IN('verified','pending','rejected','expired')),
-  valid_from timestamptz NOT NULL,
-  valid_until timestamptz,
-  revoked_at timestamptz,
-  PRIMARY KEY(issuer,subject,organization_id,territory)
-);
-CREATE TABLE public.da_qa_wallet_challenge_010(
-  challenge_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  db_login text NOT NULL CHECK(db_login IN(
-    'da_qa_merchant_commerce_app','da_qa_courier_commerce_app')),
-  backend_pid integer NOT NULL,
-  backend_start timestamptz NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
-);
-CREATE TABLE public.da_qa_wallet_ticket_010(
-  ticket_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  challenge_id uuid NOT NULL UNIQUE REFERENCES
-    public.da_qa_wallet_challenge_010(challenge_id),
-  owner_kind text NOT NULL CHECK(owner_kind IN('merchant','courier')),
-  issuer text NOT NULL,
-  subject uuid NOT NULL,
-  merchant_slug varchar(120),
-  organization_id uuid NOT NULL,
-  territory char(2) NOT NULL CHECK(territory ~ '^[A-Z]{2}$'),
-  issued_at timestamptz NOT NULL DEFAULT clock_timestamp(),
-  expires_at timestamptz NOT NULL,
-  consumed_at timestamptz,
-  CHECK ((owner_kind='merchant' AND merchant_slug IS NOT NULL)
-      OR (owner_kind='courier' AND merchant_slug IS NULL))
-);
-ALTER TABLE public.da_qa_wallet_merchant_scope_010,
-  public.da_qa_wallet_courier_scope_010,
-  public.da_qa_wallet_challenge_010,
-  public.da_qa_wallet_ticket_010
-  OWNER TO da_qa_wallet_read_owner_010;
-REVOKE ALL ON TABLE
-  public.da_qa_wallet_merchant_scope_010,
-  public.da_qa_wallet_courier_scope_010,
-  public.da_qa_wallet_challenge_010,
-  public.da_qa_wallet_ticket_010
-  FROM PUBLIC,da_qa_merchant_commerce_app,da_qa_courier_commerce_app,
-       da_qa_wallet_attestor_010;
-
--- A challenge is generated ONLY by the current app database backend.
--- Neither a client-supplied GUC nor a passed slug/issuer is authoritative.
-CREATE FUNCTION public.da_qa_wallet_begin_scope_010()
-RETURNS uuid LANGUAGE plpgsql VOLATILE SECURITY DEFINER
-SET search_path=pg_catalog,public AS $$
-DECLARE
-  started timestamptz;
-  ticket uuid;
-BEGIN
-  IF session_user NOT IN (
-    'da_qa_merchant_commerce_app','da_qa_courier_commerce_app') THEN
-    RAISE EXCEPTION 'qa_scope_application_login_required';
-  END IF;
-  SELECT backend_start INTO started
-    FROM pg_catalog.pg_stat_activity WHERE pid=pg_backend_pid();
-  IF started IS NULL THEN RAISE EXCEPTION 'qa_scope_backend_missing'; END IF;
-  INSERT INTO public.da_qa_wallet_challenge_010(
-    db_login,backend_pid,backend_start)
-    VALUES(session_user,pg_backend_pid(),started)
-    RETURNING challenge_id INTO ticket;
-  RETURN ticket;
-END;
-$$;
-ALTER FUNCTION public.da_qa_wallet_begin_scope_010()
-  OWNER TO da_qa_wallet_read_owner_010;
-REVOKE ALL ON FUNCTION public.da_qa_wallet_begin_scope_010() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.da_qa_wallet_begin_scope_010()
-  TO da_qa_merchant_commerce_app,da_qa_courier_commerce_app;
-
--- Only an INDEPENDENT identity-attestation DB login can mint a ticket.
--- That login must first validate an actual RS256/OIDC session and durable
--- membership/roster through its own service. QA tests below use synthetic
--- evidence only; this function itself does NOT verify JWT cryptography.
-CREATE FUNCTION public.da_qa_wallet_attest_010(
-  p_challenge uuid,p_issuer text,p_subject uuid,p_merchant varchar,
-  p_organization uuid,p_territory char(2)
-) RETURNS uuid LANGUAGE plpgsql VOLATILE SECURITY DEFINER
-SET search_path=pg_catalog,public AS $$
-DECLARE
-  ch public.da_qa_wallet_challenge_010%ROWTYPE;
-  kind text;
-  proof uuid;
-BEGIN
-  IF p_challenge IS NULL OR p_subject IS NULL OR p_organization IS NULL OR
-    p_issuer IS NULL OR
-    p_issuer !~ '^https://[A-Za-z0-9.-]+/realms/[A-Za-z0-9_-]+$' OR
-    p_territory IS NULL OR p_territory !~ '^[A-Z]{2}$' THEN
-    RAISE EXCEPTION 'qa_scope_untrusted_issuer_subject_or_territory';
-  END IF;
-  SELECT * INTO ch FROM public.da_qa_wallet_challenge_010
-    WHERE challenge_id=p_challenge FOR UPDATE;
-  IF NOT FOUND OR ch.created_at<clock_timestamp()-interval '30 seconds'
-    OR ch.created_at>clock_timestamp() OR
-    EXISTS(SELECT 1 FROM public.da_qa_wallet_ticket_010
-      WHERE challenge_id=p_challenge) THEN
-    RAISE EXCEPTION 'qa_scope_challenge_invalid_or_replayed';
-  END IF;
-  kind:=CASE ch.db_login
-    WHEN 'da_qa_merchant_commerce_app' THEN 'merchant'
-    WHEN 'da_qa_courier_commerce_app' THEN 'courier' ELSE NULL END;
-  IF kind='merchant' THEN
-    IF p_merchant IS NULL OR
-       p_merchant !~ '^[a-z0-9][a-z0-9_-]{1,119}$' THEN
-      RAISE EXCEPTION 'qa_scope_merchant_invalid';
-    END IF;
-    PERFORM 1 FROM public.da_qa_wallet_merchant_scope_010 m
-      WHERE m.issuer=p_issuer AND m.subject=p_subject
-        AND m.merchant_slug=p_merchant
-        AND m.organization_id=p_organization AND m.territory=p_territory
-        AND m.membership_status='active'
-        AND m.contract_status='active' AND m.kyb_status='verified'
-        AND m.partner_state='published' AND m.revoked_at IS NULL
-        AND m.valid_from<=clock_timestamp()
-        AND (m.valid_until IS NULL OR m.valid_until>clock_timestamp())
-      FOR SHARE;
-  ELSIF kind='courier' THEN
-    IF p_merchant IS NOT NULL THEN
-      RAISE EXCEPTION 'qa_scope_courier_cannot_choose_merchant';
-    END IF;
-    PERFORM 1 FROM public.da_qa_wallet_courier_scope_010 c
-      WHERE c.issuer=p_issuer AND c.subject=p_subject
-        AND c.organization_id=p_organization AND c.territory=p_territory
-        AND c.roster_active=true AND c.agreement_status='active'
-        AND c.kyc_status='verified' AND c.revoked_at IS NULL
-        AND c.valid_from<=clock_timestamp()
-        AND (c.valid_until IS NULL OR c.valid_until>clock_timestamp())
-      FOR SHARE;
-  ELSE
-    RAISE EXCEPTION 'qa_scope_unrecognized_db_role';
-  END IF;
-  IF NOT FOUND THEN RAISE EXCEPTION 'qa_scope_registry_denied'; END IF;
-  INSERT INTO public.da_qa_wallet_ticket_010(
-    challenge_id,owner_kind,issuer,subject,merchant_slug,
-    organization_id,territory,expires_at)
-    VALUES(p_challenge,kind,p_issuer,p_subject,p_merchant,
-      p_organization,p_territory,clock_timestamp()+interval '20 seconds')
-    RETURNING ticket_id INTO proof;
-  RETURN proof;
-END;
-$$;
-ALTER FUNCTION public.da_qa_wallet_attest_010(
-  uuid,text,uuid,varchar,uuid,char(2))
-  OWNER TO da_qa_wallet_read_owner_010;
-REVOKE ALL ON FUNCTION public.da_qa_wallet_attest_010(
-  uuid,text,uuid,varchar,uuid,char(2)) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.da_qa_wallet_attest_010(
-  uuid,text,uuid,varchar,uuid,char(2)) TO da_qa_wallet_attestor_010;
-
--- A SINGLE read returns summary + activity, atomically consuming the
--- non-forgeable DB ticket. The app supplies ONLY ticket UUID and page size.
--- Revocation/contract/KYB/roster are rechecked after attestation.
-CREATE FUNCTION public.da_qa_wallet_read_attested_010(
-  p_ticket uuid,p_limit integer DEFAULT 20
-) RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY DEFINER
-SET search_path=pg_catalog,public AS $$
-DECLARE
-  t public.da_qa_wallet_ticket_010%ROWTYPE;
-  ch public.da_qa_wallet_challenge_010%ROWTYPE;
-  started timestamptz;
-  result_summary jsonb;
-  result_activity jsonb;
-BEGIN
-  IF p_ticket IS NULL OR p_limit IS NULL OR p_limit<1 OR p_limit>50 THEN
-    RAISE EXCEPTION 'qa_scope_ticket_or_limit_invalid';
-  END IF;
-  SELECT * INTO t FROM public.da_qa_wallet_ticket_010
-    WHERE ticket_id=p_ticket FOR UPDATE;
-  IF NOT FOUND OR t.consumed_at IS NOT NULL OR
-    t.expires_at<=clock_timestamp() THEN
-    RAISE EXCEPTION 'qa_scope_ticket_expired_or_replayed';
-  END IF;
-  SELECT * INTO ch FROM public.da_qa_wallet_challenge_010
-    WHERE challenge_id=t.challenge_id;
-  SELECT backend_start INTO started FROM pg_catalog.pg_stat_activity
-    WHERE pid=pg_backend_pid();
-  IF NOT FOUND OR started IS NULL OR
-    ch.db_login<>session_user OR ch.backend_pid<>pg_backend_pid()
-    OR ch.backend_start<>started OR
-    (ch.db_login='da_qa_merchant_commerce_app' AND t.owner_kind<>'merchant')
-    OR (ch.db_login='da_qa_courier_commerce_app' AND t.owner_kind<>'courier') THEN
-    RAISE EXCEPTION 'qa_scope_postgres_session_mismatch';
-  END IF;
-  IF t.owner_kind='merchant' THEN
-    PERFORM 1 FROM public.da_qa_wallet_merchant_scope_010 m
-      WHERE m.issuer=t.issuer AND m.subject=t.subject
-        AND m.merchant_slug=t.merchant_slug
-        AND m.organization_id=t.organization_id AND m.territory=t.territory
         AND m.membership_status='active' AND m.contract_status='active'
         AND m.kyb_status='verified' AND m.partner_state='published'
         AND m.revoked_at IS NULL AND m.valid_from<=clock_timestamp()
