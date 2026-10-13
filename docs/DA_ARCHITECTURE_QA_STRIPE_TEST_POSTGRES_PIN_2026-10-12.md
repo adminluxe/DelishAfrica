@@ -426,3 +426,52 @@ flowchart TD
 Le code `merchant-courier-wallet-signed-session.pg-qa.bridge.ts` ne s'enregistre dans aucun `AppModule` ni route exposée. Il refuse les requêtes si `NODE_ENV=production`, hors CI ou sans flag QA. Aucun paramètre mobile de tenant, slug, subject, organisation, territoire ou montant n'est pris en compte par l'attestation. Le port d'attestation DOIT appartenir à un service séparé, jamais au public gateway. Le test emploie une clé privée RSA créée en mémoire, un cache JWKS de test et un registre SQL 010/registre de révocation entièrement synthétiques ; il **ne** relie **pas** à Keycloak de production. Aucune lecture bancaire n'est réalisée.
 
 **Manque avant P0 réel** : véritable Keycloak Merchant/Courier + provenance JWKS et révocation persistante, rattachement en temps réel aux contrats/KYB, organisation/territoire et registre Courier, rôles de DB dédiés à un service attestateur indépendant durci, vérification de la rotation et des replays, mutation Merchant/Dispatch/Courier attestée, ledger juridique multinational. Le gate réel n'est PAS certifié ; `Stripe TEST officiel`, `LIVE`, `payout`, VPS, merges, builds EAS et Stores restent gelés.
+
+---
+
+## F4G — Architecture épinglée de la preuve réelle Keycloak en laboratoire (13/10/2026)
+
+**Branche :** `feat/f4g-real-keycloak-partner-session-qa-20261013`, [PR #39 DRAFT](https://github.com/adminluxe/DelishAfrica/pull/39), empilée sur #38 F4F et #37 F4E sans fusion. **Code vérifié :** SHA `21cd567d07ef31a91ed199df299c8bce3c24fd4a`, [Keycloak26 + PG17 38329914958](https://github.com/adminluxe/DelishAfrica/actions/runs/38329914958), [API+apps 38329914989](https://github.com/adminluxe/DelishAfrica/actions/runs/38329914989) et [PG finance 38329915018](https://github.com/adminluxe/DelishAfrica/actions/runs/38329915018) : **SUCCESS**, tous en QA.
+
+```text
+Docker CI --network none / zero port publié
+  |
+  +-- Keycloak 26.4.7 RÉEL, realm factice da-wallet-partners-qa
+  |      +-- Merchant A, Merchant B (JWT RSA / aud merchant)
+  |      +-- Courier A, Courier B (JWT RSA / aud courier)
+  |      +-- client confidentiel d'introspection, secret jetable
+  |
+  +-- TLS loopback 127.0.0.1 / CA éphémère / sans désactivation TLS
+  |       |
+  |       v
+  |     ExternalJwksVerifierService API RÉEL
+  |       | signed JWT issuer + audience + azp + role + sub UUID
+  |       v
+  |     introspection Keycloak : active=true obligatoire
+  |       |
+  |       v
+  +-- PostgreSQL 17 RÉEL, données strictement SYNTHÉTIQUES
+          |
+          +-- 011 session_key SHA256(issuer/sub/sid/jti), révocation
+          |       Attestor SELECT uniquement
+          |
+          +-- 010 membership, KYB, contrats et registre Courier fictifs
+          |       org/territoire/issuer/subject ; fail-closed
+          |
+          +-- ticket one-use lié à backend PID / start / session_user
+          |
+          +-- 009 journal comptable équilibré, en lecture seule
+                  |
+                  +-- Merchant A : 1 840 centimes SYNTHÉTIQUES held
+                  +-- Merchant B : zéro
+                  +-- Courier A et B : zéro (non assignés)
+                  +-- withdrawableMinor=0 / payoutEnabled=false
+```
+
+**Différence essentielle F4F → F4G :** les JWT ne proviennent plus d'une simple paire RSA générée dans le test, mais sont signés par le **logiciel Keycloak 26.4.7 réellement exécuté** dans le runner sans réseau extérieur. Le véritable vérificateur de l'API télécharge le JWKS local, puis une introspection locale Keycloak invalide le token dès le logout. La table SQL 011 traite la révocation de session indépendante sur identifiant haché ; les contrats, KYB, territoires et coursiers restent issus de fixtures.
+
+Le test d'identification utilise provisoirement `password grant` seulement dans ce realm QA ; l'authentification mobile PKCE, la sécurité de l'attestor séparé physiquement et l'implémentation des registres juridiques durables sur **vrai** Keycloak/PG ne sont pas certifiées. Les rôles historiques Merchant/Courier/Dispatch de mutation restent bloqués après migration 010. La preuve QA ne constitue **aucun droit de paiement effectif**, aucun Stripe TEST officiel et aucun vrai virement.
+
+**Architecture réelle cible (toujours non activée) :** Keycloak officiel + vérification et révocation live → autorité contractuelle Merchant KYB / registre Courier commités → service attestateur indépendant sur identité juridique et pays → PG ledger global multi-entités/devise/PSP avec ligne immuable et contrôle de solde → settlement/payout autorisé séparément → UI Premium avec solde daté, commissions et retenues. G0–G7 avant fusion, production, EAS et Stores.
+
+**Référence :** [passation F4G](./DA_PASSATION_F4G_KEYCLOAK_PG_WALLET_QA_2026-10-13.md). En dehors du conteneur : Toshiba et VPS absolument inchangés, finances réelles zéro.
