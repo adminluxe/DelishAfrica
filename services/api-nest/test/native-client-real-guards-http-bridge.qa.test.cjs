@@ -108,6 +108,15 @@ test('actual Nest HTTP routes: real legacy and native guards, zero unauthorized 
       }:{}),
     });
   };
+  const mkOldClient=()=>mkJwt(oldKeys.privateKey,{
+    iss:legacyIssuer,sub:subject,
+    iat:now-10,exp:now+240,
+    aud:['account','delishafrica-client'],
+    azp:'delishafrica-client',
+    realm_access:{roles:['client','default-roles-afritaste']},
+    sid:'qa-legacy-client-session-20261013',
+    email,email_verified:true,
+  });
   const nativeClaims={
     iss:nativeIssuer,sub:subject,azp:'delishafrica-client',
     aud:['account','delishafrica-client'],
@@ -128,6 +137,13 @@ test('actual Nest HTTP routes: real legacy and native guards, zero unauthorized 
   oldVerifier.ready=true;
   oldVerifier.refreshKeys=async()=>{throw Error('QA_LEGACY_JWKS_NETWORK_FORBIDDEN');};
   const auth=new AuthService(oldVerifier);
+  // Only simulate a healthy non-revoked legacy session in isolated QA.
+  // This makes the test sensitive to legacy Client commerce bypass; it does
+  // NOT connect to Redis and it does not bypass the real JWT verifier.
+  auth.redisCommand=async args=>{
+    assert.equal(args[0],'EXISTS');
+    return 0;
+  };
   const deps={
     issuer:nativeIssuer,clientId:'delishafrica-client',
     audience:'delishafrica-client',
@@ -246,6 +262,26 @@ test('actual Nest HTTP routes: real legacy and native guards, zero unauthorized 
     }
     assert.equal(legacyList,3);
     console.log('QA_REAL_LEGACY_MERCHANT_COURIER_OPS_GUARD_HTTP=PASS');
+
+    const legacyClient=mkOldClient();
+    const proof=await auth.resolvePrincipalFromAuthorization('Bearer '+legacyClient);
+    assert.equal(proof.ok,true,
+      'real legacy RS256 JWT with healthy revocation session must verify');
+    assert.equal(proof.principal.role,'client');
+    assert.equal(proof.principal.authSource,'external');
+    assert.equal(proof.principal.ownershipEligible,true);
+    // Read-only continuity: old Client can list only their existing orders
+    // (the access service still applies issuer + subject ownership).
+    assert.equal(await post('/orders/list',legacyClient,body),201);
+    assert.equal(legacyList,4);
+    // The previous guards would pass this historical Client and reach the
+    // side-effect services. This is the exact policy bypass we close here.
+    assert.equal(await post('/orders/create',legacyClient,body),403);
+    assert.equal(await post('/orders/demo/create',legacyClient,body),403);
+    assert.equal(await post('/payments/create-intent',legacyClient,body),403);
+    assert.deepEqual(safeEffects(),untouched);
+    console.log('QA_LEGACY_SIGNED_CLIENT_WRITE_BYPASS_BLOCKED=PASS');
+    console.log('QA_LEGACY_SIGNED_CLIENT_READ_CONTINUITY=PASS');
     for(const route of routes) {
       assert.equal(await post(route,null,body),401);
       assert.equal(await post(route,mkNative()+'x',body),401);

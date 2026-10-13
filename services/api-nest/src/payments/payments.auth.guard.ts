@@ -24,7 +24,11 @@ export class PaymentsAuthGuard implements CanActivate {
     if (request) delete request.daPaymentsPrincipal;
     const authorization = this.header(request, 'authorization');
     let principal: DaAuthPrincipal;
-    if (this.nativeBridge?.isNativeIssuerToken(authorization)) {
+    // The legacy issuer may contain a correctly signed Client role but it
+    // has not proved the new commerce email/SMS + PostgreSQL admission.
+    // Only the verified Native Client bridge may mint a payment principal.
+    const nativeClientAdmission = this.nativeBridge?.isNativeIssuerToken(authorization) === true;
+    if (nativeClientAdmission) {
       principal = await this.nativeBridge.authenticate(context);
     } else {
       const resolution = await this.auth.resolvePrincipalFromAuthorization(authorization);
@@ -36,6 +40,13 @@ export class PaymentsAuthGuard implements CanActivate {
         });
       }
       principal = resolution.principal;
+    }
+
+    if (principal.role === 'client' && !nativeClientAdmission) {
+      throw new ForbiddenException({
+        ok: false,
+        code: 'payments_native_client_admission_required',
+      });
     }
 
     if (principal.role !== 'client') {

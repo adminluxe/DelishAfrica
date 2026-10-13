@@ -38,6 +38,20 @@ export class OrdersAuthGuard implements CanActivate {
     }
 
     const principal = resolution.principal;
+    // Legacy-realm Clients may read their OWN existing orders; they may
+    // not create or mutate orders until they have been explicitly admitted
+    // by the issuer-pinned Native Client bridge and durable email/SMS ledger.
+    // Handler identity is NestJS code metadata, not an HTTP query/path hint.
+    // Fail closed if the handler is unknown or its name changes.
+    if (principal.role === 'client') {
+      const handlerName = context.getHandler?.()?.name;
+      if (handlerName !== 'list' && handlerName !== 'get') {
+        throw new ForbiddenException({
+          ok: false,
+          code: 'orders_native_client_admission_required',
+        });
+      }
+    }
     if (!['client', 'merchant', 'courier', 'ops'].includes(principal.role)) {
       throw new ForbiddenException({ ok: false, code: 'orders_role_not_allowed' });
     }
