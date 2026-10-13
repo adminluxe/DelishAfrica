@@ -251,6 +251,11 @@ BEGIN
  IF FOUND AND (existing.courier_issuer<>t.courier_issuer OR
   existing.courier_subject<>t.courier_subject OR existing.state<>'offered')
  THEN RAISE EXCEPTION 'qa_f4l_reassignment_or_picked_up_denied'; END IF;
+ -- A ticket expiring while blocked on an order / refund lock must not
+ -- authorize a late dispatch after it finally obtains the row lock.
+ IF t.expires_at<=clock_timestamp() THEN
+  RAISE EXCEPTION 'qa_f4l_ticket_replayed_or_expired';
+ END IF;
  next_state:=public.da_qa_dispatch_assign_offer(
    t.order_id,t.courier_issuer,t.courier_subject);
  IF next_state<>'offered' THEN RAISE EXCEPTION 'qa_f4l_offer_state_invalid'; END IF;
