@@ -754,7 +754,7 @@ jobs:
             fi
             sleep 1
           done
-          if [[ "$ready" != true ]]; then echo "QA_F4L_SOCKET_MISSING";exit 1;fi
+          if [[ "$ready" != true ]]; then echo "QA_F4L_SOCKET_MISSING";docker logs "$F4L_ATTESTOR_ID" | tail -n 30;exit 1;fi
           echo "QA_F4L_STRONG_MACHINE_OIDC_AND_PRIVATE_SOCKET=PASS"
           run_f4l(){
             local filename="$1" stage="$2" pick="$3"
