@@ -747,3 +747,46 @@ flowchart TD
 La certification F4L est **technique QA**, pas un feu vert d'exploitation : absence de partenaires/KYB/KYC/rosters légalement vérifiés, absence de couplage des apps Expo réelles, révocation Keycloak↔PostgreSQL non atomique, anciennes fonctions 007 superuser-definer en environnement de test, absence de sécurité réseau de production (mTLS possible ultérieurement), politique globale pays/devise/fiscalité, chargeback réel, intégration réelle PSP/banque, règlement et distribution. Une mutation SQL 016 ne doit **jamais** être appliquée directement au VPS. Production, paiements, fusion PR, build payant et publication requièrent une validation expresse et un nouveau passport.
 
 **PIN : F4L-MACHINE-OIDC-ATTESTED-DISPATCH-QA-ONLY / PG17-ATOMIC-ORDER-LOCK / NO-MOBILE-DISPATCH / ZERO-PAYOUT / NO-PRODUCTION / DRAFT.**
+
+---
+
+## PIN F4M — Propriétaires `SECURITY DEFINER` métiers non privilégiés (13 octobre 2026)
+
+**Périmètre : QA GitHub Actions déconnectée seulement.** Le runtime `/opt/delishafrica/monorepo/apps/{client,merchant,courier}`, la base persistante et le Toshiba historique ne sont pas modifiés. Le bloc F4L précédent reste valide sur [son SHA certifié](https://github.com/adminluxe/DelishAfrica/commit/27faa871e3f18df0f3ca2e254de484352b8d93c9). Cette nouvelle couche de propriétaires est candidate dans [PR #45 DRAFT](https://github.com/adminluxe/DelishAfrica/pull/45), branche `feat/f4m-nonsuperuser-operational-sql-qa-20261013`.
+
+### Défaut traité : propriétaire SQL excessif derrière l'attestation
+
+F4K contrôle correctement l'identité Merchant/Courier et F4L contrôle correctement l'identité de service Dispatch, mais la fonction 007 historique appelée par ces wrappers était encore `SECURITY DEFINER` sous le propriétaire privilégié de création initiale. L'éligibilité financière 004, durcie par l'extension canonique 006, était dans le même cas. F4M change **leur identité SQL effective**, pas les règles de capture ou de livraison.
+
+```mermaid
+flowchart TD
+    KC["Keycloak réel / identités synthétiques"] -->|"JWT signé / périmètre vérifié"| G["Wrappers attestés F4K-015 et Dispatch F4L-016"]
+    G -->|"ports 007, permissions NOLOGIN seulement"| W["Owner F4M 017 NOLOGIN / NOSUPERUSER<br/>Merchant accepted-ready / Dispatch offer / Courier transition"]
+    G -->|"lectures restreintes"| R["Owner projection opérationnelle<br/>NOLOGIN / SELECT-only"]
+    W -->|"port finance EXECUTE"| F["Owner contrôle financier NOLOGIN / SELECT-only<br/>commande + snapshot 006 + capture + hold"]
+    R -->|"port finance EXECUTE"| F
+    W -->|"INSERT / UPDATE par colonne"| S["État Merchant + offre Courier<br/>verrous 007-008"]
+    F --> C["Vérification snapshot canonique, capture,<br/>refund / dispute, sans mutation financière"]
+    H["Applications Merchant / Courier / Client"] -.->|"SQL 007 interdit, SET ROLE interdit"| X["Refus sans effet"]
+```
+
+### Tableau des propriétaires et garanties
+
+| Autorité F4M | SQL dont elle est propriétaire | Autorité DB maximale accordée |
+|---|---|---|
+| `da_qa_f4m_finance_gate_owner_017` | `da_qa_commerce_order_dispatch_eligible(uuid)` | `SELECT` commandes, snapshot canonique, autorité de paiement, reçu financier et retenue ; **jamais INSERT/UPDATE/DELETE financier** |
+| `da_qa_f4m_ops_reader_owner_017` | `da_qa_merchant_visible_paid_orders` ; `da_qa_courier_assigned_offers` | `SELECT` projections des commandes et offres ; aucun `UPDATE` |
+| `da_qa_f4m_ops_writer_owner_017` | `da_qa_merchant_transition` ; `da_qa_dispatch_assign_offer` ; `da_qa_courier_transition` | `SELECT` commandes/états/offres ; `INSERT` et `UPDATE` strictement limités aux colonnes métier nécessaires et à la clé verrouillée |
+| Wrappers `015/016` | Restent sous leurs propriétaires attestés antérieurs | Appels aux fonctions 007 autorisés seulement entre propriétaires `NOLOGIN`, jamais via un GRANT 007 direct aux appareils |
+
+**Invariants structurels contrôlés :** les trois nouveaux propriétaires sont `NOLOGIN`, `NOSUPERUSER`, `NOINHERIT`, `NOBYPASSRLS`, `NOCREATEROLE`. Aucun rôle Merchant/Courier/Dispatch n'en est membre. Les six fonctions conservent leur `SECURITY DEFINER`, mais avec `search_path=pg_catalog,public,pg_temp` pour éviter qu'un schéma temporaire soit recherché avant les objets de confiance.
+
+**Ordre de migration QA :** 001–015 historiques → **017** (retirer privilèges effectifs avant la suite) → replay intégral F4K identités Keycloak et mutations → **016** identité machine Dispatch F4L → replay F4L et concurrence financière. L'ordre 017 avant 016 est intentionnel ; 016 fournit ensuite l'unique port Dispatch à son propre propriétaire `NOLOGIN`.
+
+**Audit F4M :** `services/api-nest/test/f4m-nonsuperuser-operational-owners.pg-qa.sql` teste les 6 propriétaires, permissions, membership, verrouillage des accès 007 et absence d'écriture financière croisée. Le workflow `.github/workflows/f4m-nonsuperuser-operational-qa.yml` refait les tests F4K/F4L déjà certifiés avec SQL 017 ; les régressions API+3 apps et finance historique sont indépendantes. Aucune preuve ne vaut certification sans les trois CI SUCCESS sur le SHA final de la PR #45.
+
+**Résultats à préserver, sans les présumer avant les CI :** 16 allocations synthétiques, 64 écritures financières équilibrées de somme zéro, 35 événements opérationnels F4K+F4L, 6 reçus Dispatch immuables, revenu non retirable et `payoutEnabled=false`. Les tests refusent les retraits, les affectations illégitimes, les rejouements de ticket, les erreurs de territoire et les opérations post-refund.
+
+**Gates NO-GO :** fonctions financières/ledger non encore intégralement déprivilégiées, registres/KYB/KYC fictifs, autorisation mTLS et sécurité réseau de production non certifiées, identité opérateur, taxes/devise et politiques pays inconnues, client Expo non raccordé, logout Keycloak externe non atomique avec SQL. Aucun Stripe TEST officiel ou LIVE, transaction bancaire, payout, migration VPS, merge, EAS payant ou Store sans approbation explicite.
+
+**PIN : F4M-LEGACY-SECURITY-DEFINER-NOLOGIN / F4K-F4L-REGRESSION-REQUIRED / QA-SYNTHETIC-ONLY / NO-PAYOUT / NO-PROD / PR-DRAFT.**
