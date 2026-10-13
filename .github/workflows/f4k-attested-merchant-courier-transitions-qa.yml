@@ -60,7 +60,7 @@ jobs:
           assert(f4k.includes('da_qa_wallet_read_linearized_014'));
           assert(f4k.includes('da_qa_fulfillment_receipt_015'));
           assert(f4k.includes('da_qa_wallet_append_only'));
-          assert(f4k.includes('da_qa_finance'));
+          assert(f4k.includes('da_qa_merchant_transition'));
           assert(f4k.includes('REVOKE EXECUTE ON FUNCTION'));
           assert(!/GRANT EXECUTE ON FUNCTION\s+public\.da_qa_dispatch_assign_offer/i.test(f4k));
           assert(!/DROP TABLE|TRUNCATE TABLE|ALTER SYSTEM/i.test(f4k));
