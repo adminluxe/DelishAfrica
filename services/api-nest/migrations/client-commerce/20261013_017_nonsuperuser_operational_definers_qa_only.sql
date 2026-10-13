@@ -106,8 +106,7 @@ REVOKE EXECUTE ON FUNCTION
  public.da_qa_dispatch_assign_offer(uuid,text,uuid),
  public.da_qa_courier_transition(uuid,text,uuid,text)
  FROM PUBLIC,da_qa_merchant_commerce_app,da_qa_courier_commerce_app,
- da_qa_dispatch_commerce_app,da_qa_dispatch_machine_016,
- da_qa_dispatch_attestor_016;
+ da_qa_dispatch_commerce_app;
 -- 016 owner has already received the original Dispatch function EXECUTE;
 -- it remains restricted to this NOLOGIN role and to 015's NOLOGIN writer.
 COMMENT ON ROLE da_qa_f4m_finance_gate_owner_017 IS
