@@ -1,5 +1,8 @@
 import * as SecureStore from 'expo-secure-store';
 import { loadOidcSession, refreshOidcSession } from '../auth/daOidcSession';
+import { daAttestIdentityProof } from './daTrustNetwork';
+import type { DaOidcSession } from '../auth/daOidcTypes';
+import { daCanonicalContact, daLocalProofFresh } from './daProofIdentity';
 
 const ROLE = 'client' as const;
 const PROFILE_BASE = '__DELISHAFRICA_CLIENT_PROFILE_LITE_V1__';
@@ -155,9 +158,16 @@ async function ensurePrincipal(force = false): Promise<PrincipalState> {
 }
 
 async function subjectForStorage(): Promise<string> {
-  // Preserve an already-scoped local Client profile during the OIDC migration.
-  // Business authorization is now exclusively Keycloak OIDC, but existing local
-  // profile/proof data must not silently jump accounts during the live vertical.
+  // Once a canonical OIDC subject is active, storage must follow THAT subject.
+  // An old guest marker must never retain ownership after a different login.
+  const authenticated = await canonicalOidcPrincipal(false);
+  if (authenticated) {
+    const marker = await readPrincipalMarker();
+    if (marker?.subject !== authenticated.subject) {
+      await savePrincipalMarker(authenticated.subject);
+    }
+    return authenticated.subject;
+  }
   const marker = await readPrincipalMarker();
   if (marker?.subject) return marker.subject;
 
@@ -220,6 +230,83 @@ export async function daAccountStorageKey(base: string): Promise<string> {
   const target = `${base}.${scope}`;
   await migrateValue(base, target, subject);
   return target;
+}
+
+export async function daCaptureClientProfileBeforeLogin(): Promise<string | null> {
+  // Read ONLY the currently scoped profile before the system-browser changes
+  // the OIDC principal. No profile from another principal is transferred.
+  const key = await daAccountStorageKey(PROFILE_BASE);
+  return SecureStore.getItemAsync(key);
+}
+
+export async function daLinkVerifiedClientProfileAfterLogin(
+  session: DaOidcSession,
+  snapshot: string | null,
+): Promise<boolean> {
+  if (session.status !== 'authenticated' || session.role !== ROLE ||
+      !session.subject || !session.email || !snapshot) return false;
+
+  let profile: Record<string, any>;
+  try { profile = JSON.parse(snapshot); } catch { return false; }
+  if (!profile || typeof profile !== 'object' || !profile.id) return false;
+  const email = daCanonicalContact('email', profile.email);
+  const phone = daCanonicalContact('sms', profile.phone);
+  const expectedEmail = daCanonicalContact('email', session.email);
+  const emailProof = profile.proofs?.email;
+  const phoneProof = profile.proofs?.phone;
+  if (!email || email !== expectedEmail ||
+      !daLocalProofFresh('email', emailProof, email) ||
+      !daLocalProofFresh('sms', phoneProof, phone)) return false;
+
+  // Re-read server identity. No bearer, no migration.
+  const principal = await canonicalOidcPrincipal(false);
+  if (!principal || principal.subject !== session.subject ||
+      daCanonicalContact('email', principal.user.email) !== email) return false;
+  const apiUrl = String(
+    process.env.EXPO_PUBLIC_API_BASE_URL ||
+      process.env.EXPO_PUBLIC_API_URL ||
+      'https://api.delishafrica.me/api/v1',
+  ).replace(/\/+$/, '').replace(/\/api\/v1$/, '') + '/api/v1/auth/client/me';
+  let identity: any;
+  try {
+    const response = await fetch(apiUrl, {
+      headers: { Authorization: 'Bearer ' + principal.token },
+    });
+    if (!response.ok) return false;
+    identity = await response.json();
+  } catch { return false; }
+  if (!identity?.authenticated || identity?.role !== ROLE ||
+      String(identity?.principal?.subject || '') !== session.subject ||
+      daCanonicalContact('email', identity?.user?.email) !== email) return false;
+
+  const proofs = await Promise.all([
+    daAttestIdentityProof({
+      channel: 'email', role: ROLE, destination: email, proofToken: emailProof.token,
+    }),
+    daAttestIdentityProof({
+      channel: 'sms', role: ROLE, destination: phone, proofToken: phoneProof.token,
+    }),
+  ]).catch(() => null);
+  if (!proofs || proofs.some((proof) => proof.valid !== true)) return false;
+
+  const scope = hashScope(ROLE + ':' + session.subject);
+  const key = PROFILE_BASE + '.' + scope;
+  const existing = await SecureStore.getItemAsync(key);
+  if (existing) {
+    try {
+      const previous = JSON.parse(existing) as Record<string, unknown>;
+      if (daCanonicalContact('email', previous.email) !== email) return false;
+    } catch { return false; }
+  } else {
+    // Write before changing the active identity marker; failure leaves the
+    // source profile untouched and the payment preflight closed.
+    await SecureStore.setItemAsync(key, snapshot, {
+      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    });
+  }
+  await savePrincipalMarker(session.subject);
+  await bindActiveScope(scope);
+  return true;
 }
 
 export async function daOrdersFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {

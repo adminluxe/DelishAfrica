@@ -1,0 +1,76 @@
+# DELISHAFRICA — ROADBOOK CLIENT SELF-ENROLLMENT, EAS AND IPHONE QA
+**Date : 2026-10-11 — PR #35 DRAFT, stacked on PR #32. NO LIVE CHANGE.**
+
+## Situation prouvée, directement auditée
+- Les 3 apps Client/Merchant/Courier sont visibles sur de vrais iPhones. Client affiche 3/3 preuves adresse/SMS/e-mail, mais le domaine Keycloak public ne propose pas de création de compte : le client n'obtient pas d'identifiants.
+- Keycloak `afritaste` 26.4.7 : inscription OFF, vérification email OFF, récupération mot de passe OFF, SMTP absent. 33 utilisateurs actifs existants. Les applications OIDC sont activées et séparées par `azp`/`aud` ; le rôle de royaume `client` est explicitement obligatoire pour l'API. Le rôle `client` ne figure PAS dans les rôles par défaut du realm. **Ne pas activer l'auto-inscription globale.**
+- Infrastructure après le nettoyage précédent : API VPS HTTP200, zéro commande et zéro événement dans les tables consultées. Les commandes historiques Stripe TEST ont été archivées, sans suppression chez Stripe.
+- Appareils enregistrés EAS internes sous équipe Apple AfriFood Global : iPhone XR + un autre iPhone. L'iPhone tiers Purple Eco-Value n'est pas identifié comme enregistré. Build Client IOS DEV existant du 19 septembre, version 3.0.0, EAS build ID `a3c88664-7c99-4834-9314-f78d2d47f8ef`.
+- IPA téléchargé en local privé sur Toshiba et analysé : bundle `com.delishafrica.client.dev`, AIRMap présent en natif, RNMapsAirModule absent. L'alignement JS `react-native-maps=1.20.1` est candidat, **pas encore attesté tactilement**.
+
+## Code candidat implémenté dans PR #35 (non déployé)
+- Backend `services/api-nest/src/client-enrollment/` : endpoint GET readiness, POST register ; preuves email+SMS signées et validées par l'API, rôle fixe `client`, consentement, phrase secrète forte, UUID de requête.
+- Base PostgreSQL : migration additive `services/api-nest/migrations/client-enrollment/20261011_001_client_enrollment_guarded.sql` ; e-mail/téléphone et preuves uniquement sous forme de HMAC, unicité, anti-rejeu et limitation du demandeur.
+- Compte de service Keycloak dédié, futur : accès uniquement en Docker privé `http://afritaste-keycloak:8080`, rôle de royaume `client` vérifié. **Le compte créé reste désactivé jusqu'à la preuve de rôle puis activation finale.** Échec de provisionnement : blocage et désactivation, revue humaine.
+- Frontend : `apps/client/app/activate-account.tsx`, lien depuis `client-space.tsx` et `secure-session.tsx`; confirmation 2 preuves, création compte et retour OIDC PKCE ; aucune requête de paiement déclenchée.
+- Profil invité → nouveau compte : transfert seulement après `/auth/client/me` conforme, e-mail identique et preuves SMS + email attestées à nouveau. Pas de migration entre comptes différents.
+- Feature flag fail-closed `DA_CLIENT_ENROLLMENT_ENABLED`, gate `DA_CLIENT_ENROLLMENT_SECURITY_GATE`, HMAC secret, service account credentials ; OFF sur serveur live.
+- GitHub CI de la PR #35 : **SUCCESS**, compilation TS API + Client/Merchant/Courier, installation PNPM gelée, tests Keycloak mock (rôle Client et erreurs) et garde statique. À répéter après chaque modification.
+
+## Machines et tests en cours
+- Asus : copie de QA séparée `C:\Users\Valérie\Documents\DA_CLIENT_ENROLL_QA_20261011\workspace` ; 4 fichiers frontend PR #35 récupérés et hashes Git vérifiés, TypeScript Client PASS. Metro QA indépendant sur `http://192.168.1.5:8095`, manifeste iOS identifié DelishAfrica Client et bundle iOS à vérifier après correction des jonctions PNPM ; les serveurs officiels 8081/8082/8083 et QA 8091/8093 restent inchangés.
+- Toshiba : IPA uniquement dans `/home/tontoncestcarre/work/DA_IPA_AUDIT_20261011/client_dev_20260919.ipa` — fichier binaire Apple propriétaire de notre application, garder privé.
+
+## Gates stricts pour la mise à disposition
+1. Examiner la sécurité de la migration, la rollback et les permissions fines du compte de service (Keycloak FGAP) : ne PAS attribuer `manage-users` global si l'on peut éviter.
+2. Compléter un mécanisme sûr de récupération de compte sans accès à un quelconque secret utilisateur ; personnaliser la page et les e-mails DelishAfrica FR/EN (actuellement "Sign in to afritaste").
+3. Tester véritablement un nouveau compte Client, `GET /auth/client/me` rôle/issuer/aud/azp/subject et cross-role 401/403 ; ajouter tests d'abus/réutilisation identité.
+4. Test manuel iPhone autorisé, nouveau profil isolé, panier préservé, connexion, checkout, bouton paiement Stripe TEST seulement. Jamais de paiement réel ni d'exécution automatique au callback.
+5. L'iPhone tiers nécessite un enregistrement Apple si absent ; option `eas build:resign` sur IPA compatible sans recompilation, après vérification des dépendances natives et expiration profile. Ne rien déclencher de payant maintenant.
+6. Enregistrer un ID unique de transaction Stripe TEST, puis le suivre sur Merchant et Courier, suivi GPS/ETA, confirmations et vérification des tableaux de bord, Android ensuite.
+7. **HOLD** : PR #35 DRAFT, PR #32 DRAFT, aucun merge, aucune EAS build, aucun Store push, aucune configuration Keycloak realm modifiée, aucun Stripe live.
+
+Liens : https://github.com/adminluxe/DelishAfrica/pull/35 ; https://github.com/adminluxe/DelishAfrica/issues/33 ; https://github.com/adminluxe/DelishAfrica/issues/34
+## Complément contrôlé du 11 octobre — après QA iOS et thème
+- **QA Client 8095 validée pour le bundling** : depuis Toshiba, manifeste iOS DelishAfrica Client correct ; bundle Hermes HTTP 200 de 11 358 686 octets, 1 709 modules. Présence vérifiée du CTA « Activer mon compte DelishAfrica » et de `/client-enrollment/readiness` + `/client-enrollment/register` ; anciens libellés « Keycloak » supprimés. **Ce test n'est pas une inscription réussie sur iPhone.**
+- L'installation PNPM de QA utilise provisoirement une configuration Metro locale pour résoudre les dépendances de la copie Asus ; elle ne modifie pas le monorepo Git ni les autres serveurs Metro.
+- **Migration PostgreSQL** : téléchargée par SHA Git blob `df5d813af183a3d45b4be50b870c68f86852f763`, exécutée au sein d'une transaction SQL isolée `BEGIN … CREATE TABLE / INDEX / COMMENT … ROLLBACK`, toutes les instructions PASS. Relecture `information_schema` après le rollback : table absente (0). **Aucun schéma de production modifié.**
+- **Thème de connexion DelishAfrica FR/EN** : ressources Login et Email basées sur le thème Keycloak maintenu, CSS vert-émeraude/or sans dépendances réseau externes, traductions des écrans connexion et récupération. Ressources dans `ops/keycloak/themes/delishafrica/`. Non déployé, non sélectionné dans le realm.
+- **Contrôle CI GitHub après le thème : SUCCESS** sur la branche PR #35, TypeScript API + 3 apps, tests Keycloak mocks et analyse du thème. Aucune permission realm ne change.
+- **Vérification finale** : les ports Asus 8081,8082,8083,8091,8093,8095 répondent tous HTTP 200 ; VPS 3010 et 3011 répondent HTTP 200 ; zéro commande et événement dans la base active.
+- **État des appareils** : un DEV IPA iOS Apple déjà compilé est disponible, profil de distribution interne ; `AIRMap` présent, `RNMapsAirModule` absent. Pour l'iPhone non enregistré, commande EAS documentée `eas device:create` puis `eas build:resign --platform ios --id a3c88664-7c99-4834-9314-f78d2d47f8ef --target-profile development` à n'exécuter qu'après assurance de compatibilité et enregistrement du nouvel appareil. **Aucune commande EAS de mutation exécutée.**
+- **Reste bloqué volontairement** : permissions du service account Keycloak, e-mail de récupération, vrai test de compte/identité, QA iPhone des écrans et paiement Stripe TEST jusqu'à la livraison. Pas de Store push ni de paiement LIVE.
+## Incident iPhone DEV LAN — 11 octobre, après 22h (résolution en attente du test sur appareil)
+- Capture DA Client DEV : `No development servers found` et `Failed to connect to http://192.168.1.5:8095`. Ce n'est PAS un échec d'inscription Keycloak ni une panne API. La découverte mDNS et la connexion réseau directe sont deux tests distincts.
+- ASUS : adresse Wi-Fi `192.168.1.5/24`, SSID `WiFi-2.4-F2CB`, profil Privé. Node/Expo écoute au port `8095`, pare-feu Windows autorise déjà Node.js en TCP/UDP privés, sans restriction de port ni d'IP.
+- Toshiba : `192.168.1.33/24` sur le LAN ; accès `http://192.168.1.5:8095/status` HTTP 200 (~45 ms), contenu `packager-status:running` ; manifeste iOS Expo HTTP 200 et URL JS correcte. Autres ports QA et historiques non modifiés.
+- Metro `8095` redémarré **uniquement en mode interactif sans `CI=1`** ; services 8081/8082/8083/8091/8093 inchangés. Tout test depuis iPhone reste à refaire ; aucune connexion physique de l'iPhone n'a été prouvée.
+- Analyse de l'IPA DEV historique du 19 septembre : `NSAppTransportSecurity.NSAllowsLocalNetworking=true`, mais absences des entrées `NSLocalNetworkUsageDescription` et `NSBonjourServices`. L'absence constitue une anomalie de déclaration native, sans prouver à elle seule le blocage observé.
+- Correctif PR #35 `apps/client/app.config.js` : uniquement si `EAS_BUILD_PROFILE=development`, ajoute le texte d'autorisation LAN et `NSBonjourServices: ['_expo._tcp']`. Aucun changement à la version Production. CI complète TypeScript/API/mobile, tests et contrôle natif DEV/PROD : **SUCCESS**. **Ce correctif n'affecte PAS l'IPA installée** ; une recompilation native serait requise si nécessaire, pas une simple re-signature.
+- Test décisif demandé sur le même iPhone : Safari → `http://192.168.1.5:8095/status`. Si `packager-status:running`, inspecter Réglages → Confidentialité et sécurité → Réseau local → DA Client DEV. Si Safari échoue, confirmer même réseau Wi-Fi, absence VPN/isolation et IPv4 du téléphone avant toute compilation.
+- Aucun changement au pare-feu, à Keycloak, au DNS, aux certificats, à Stripe, aux stores, ni paiement/build EAS. **RÉSOLUTION iPHONE EN ATTENTE**.
+
+## 12 octobre 2026 — UX premium Client : continuité de vérification et retour panier
+
+### Constat sur captures iPhone, QA 8095
+- L'écran Client d'activation apparaît réellement sur iPhone avec les deux contacts confirmés et le blocage explicite des comptes lorsque le backend ne permet pas l'enrôlement.
+- L'image à 22:45 indique 1/3, puis les images à 22:50 affichent 2 contacts confirmés ; elles ne prouvent pas à elles seules une perte de preuve sur un même profil. Le comparateur précédent utilisait toutefois une égalité textuelle stricte entre `destination` et les coordonnées, alors que les API normalisent téléphone et e-mail. Risque de faux négatif corrigé.
+- Le premier parcours utilisait des choix techniques superflus en état non connecté et laissait l'intention de checkout se perdre lors d'allers-retours dans la vérification.
+
+### Correctifs branchés en PR #35 (non fusionnés)
+- `apps/client/utils/daProofIdentity.ts` : canonisation alignée avec les API (`+32`/`0032`, espaces, points, tirets, parenthèses ; e-mail casse/espaces) ; preuve reconnue uniquement si token présent, même contact canonique et date d'expiration strictement future.
+- `apps/client/app/client-space.tsx` : preuve conservée en cas de modification *seulement cosmétique* du contact, effacée lors d'un véritable changement. Persistance SecureStore terminée avant mise à jour de son cache mémoire. Distinction nette `Profil enregistré` / `Compte activé`, suppression de formule dépréciative ; continuation de commande : si session OIDC absente, navigation vers activation avec `returnTo=checkout`, sans appeler Stripe.
+- `apps/client/app/activate-account.tsx` : même normalisation ; si enrôlement serveur OFF, pas de formulaire de mot de passe inutile ; états lisibles et panier conservé. Transmission de `returnTo=checkout` vers les contacts et la connexion.
+- `apps/client/app/secure-session.tsx` : aucun bouton `Me déconnecter` lorsque non connecté, retrait des actions techniques inutiles ; restauration présentée seulement en cas de panne d'authentification.
+- `apps/client/app/checkout-preflight.tsx`, `apps/client/utils/daOrdersApi.ts` : reconnaissance canonique des preuves dans le préflight et la liaison du profil invité, sans retirer la **revalidation des deux preuves signées côté API**, la vérification du principal OIDC serveur, ni le geste de paiement volontaire.
+- `apps/client/test/daProofIdentity.test.cjs` : tests de formats équivalents, d'identité différente, d'expiration, de token manquant et des barrières OIDC/attestation du checkout ; intégrés au workflow `.github/workflows/client-enrollment-gate.yml`.
+
+### Validation technique
+- GitHub Actions dernier head code `bdf128cc6adab9bd7bfe501673172474c0b2977e` : **SUCCESS** (TypeScript API et 3 apps, tests de preuves, Keycloak mock, sécurité et paramètres natifs DEV/PROD), job 114590009508.
+- Asus QA isolée `C:\Users\Valérie\Documents\DA_CLIENT_ENROLL_QA_20261011\workspace` actualisée (blob Git vérifié), `tsc --noEmit` **EXIT 0**, port Metro `8095` en service ; bundle iOS Hermes `HTTP 200` (11 363 146 octets) depuis Toshiba.
+- URLs : `http://192.168.1.5:8095` (DEV Client QA) et `http://192.168.1.5:8095/status` (connectivité LAN). Ports officiels `8081/8082/8083` non touchés. Aucun nouvel IPA ou paiement généré.
+- **Validation iPhone post-correctifs : NON ENCORE REÇUE.** Une compilation/CI réussie ne remplace pas un test de l'UX et du checkout avec l'utilisateur.
+
+### Verrous inchangés
+- Enrôlement réel toujours désactivé ; le compte de service Keycloak least-privilege, SMTP/récupération et la validation d'identité complète restent à livrer. L'application ne doit pas présenter de pseudo-inscription réussie.
+- Stripe LIVE interdit, aucune transaction de paiement déclenchée par la connexion ou l'enrôlement ; pas de Store push/merge, test Stripe TEST bout-en-bout supervisé ultérieurement.

@@ -1,0 +1,86 @@
+name: Native Client PostgreSQL QA — isolated ledger integrity
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/native-client-ledger-postgres-qa.yml'
+      - 'services/api-nest/migrations/client-enrollment/20261012_002_native_client_admission_qa_only.sql'
+      - 'services/api-nest/test/native-client-admission-ledger.qa.sql'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-client-ledger-isolated-db:
+    name: Synthetic SMS/e-mail ledger PostgreSQL integrity (no VPS)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - name: Checkout without reusable GitHub credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Static defensive gate
+        run: |
+          set -Eeuo pipefail
+          node - <<'NODE'
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          const migration=fs.readFileSync(
+            'services/api-nest/migrations/client-enrollment/20261012_002_native_client_admission_qa_only.sql','utf8');
+          const proof=fs.readFileSync(
+            'services/api-nest/test/native-client-admission-ledger.qa.sql','utf8');
+          const ddl=migration.split(/\r?\n/).filter(s=>!s.trimStart().startsWith('--')).join('\n');
+          assert(ddl.includes('CREATE TABLE public.da_native_client_admissions'));
+          assert(ddl.includes('CREATE TRIGGER da_native_client_admission_guard_before_update'));
+          assert(ddl.includes('CONSTRAINT native_client_approval_requires_two_proofs'));
+          assert(ddl.includes('sms_provider_proof_hmac char(64) UNIQUE'));
+          assert(!/\b(DROP|TRUNCATE|DELETE FROM|ALTER ROLE|CREATE USER)\b/i.test(ddl),
+            'disallow destructive SQL');
+          assert(!/\b(email_plaintext|phone_plaintext|sms_code|access_token|refresh_token|password)\b/i
+            .test(ddl),'no raw client PII or secrets in schema');
+          assert(proof.includes('ROLLBACK;')&&proof.includes('\\set ON_ERROR_STOP on'));
+          console.log('QA_LEDGER_STATIC=PASS');
+          NODE
+      - name: Run PostgreSQL 17 under disconnected ephemeral container
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          NAME="da-native-ledger-qa-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          IMAGE="postgres:17-alpine"
+          cleanup() {
+            docker rm -f "$NAME" >/dev/null 2>&1 || true
+            echo "QA_OWN_EPHEMERAL_CONTAINER_CLEANUP=COMPLETE"
+          }
+          trap cleanup EXIT
+          docker pull "$IMAGE" >/dev/null
+          docker run -d --rm --name "$NAME" --pull never \
+            --network none --user 70:70 --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 150 --memory 768m \
+            --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev,size=320m,uid=70,gid=70,mode=0700 \
+            --tmpfs /var/run/postgresql:rw,nosuid,nodev,size=16m,uid=70,gid=70,mode=0770 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=64m,uid=70,gid=70,mode=1777 \
+            -e POSTGRES_HOST_AUTH_METHOD=trust \
+            "$IMAGE" -c listen_addresses=127.0.0.1 >/dev/null
+          ready=false
+          for attempt in $(seq 1 90); do
+            if docker exec "$NAME" pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != "true" ]]; then
+            echo "QA_POSTGRES=NOT_READY"
+            docker logs "$NAME" 2>&1 | tail -n 24
+            exit 1
+          fi
+          echo "QA_POSTGRES=READY_LOOPBACK_TCP_ONLY"
+          echo "QA_NETWORK=NONE"
+          echo "QA_HOST_PORTS_PUBLISHED=NONE"
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/migrations/client-enrollment/20261012_002_native_client_admission_qa_only.sql
+          echo "QA_SCHEMA_CANDIDATE=CREATED_EPHEMERAL_ONLY"
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/test/native-client-admission-ledger.qa.sql
+          echo "QA_NATIVE_CLIENT_PG_LEDGER=PASS_SYNTHETIC_ONLY"
+          echo "PRODUCTION_IMPACT=NONE"

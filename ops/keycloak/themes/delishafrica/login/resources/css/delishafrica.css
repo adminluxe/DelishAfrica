@@ -1,0 +1,91 @@
+/* DelishAfrica® Login — Golden Ratio / Deep Emerald, mobile-first.
+   Inherits Keycloak's maintained templates and security controls.
+   No external fonts, tracking, remote assets, cookies or JS. */
+:root {
+  --da-night: #051910;
+  --da-forest: #0e3022;
+  --da-gold: #e9c877;
+  --da-mint: #bfe3cd;
+  --da-cream: #fffaf0;
+}
+html, body { min-height: 100%; }
+body.login-pf, .login-pf body, body {
+  background:
+    radial-gradient(circle at 85% 12%, rgba(222,187,102,.16) 0%, transparent 32%),
+    radial-gradient(circle at 5% 92%, rgba(48,126,87,.18) 0%, transparent 46%),
+    linear-gradient(153deg, #04120d 0%, #09291c 59%, #06140e 100%) !important;
+  background-attachment: fixed !important;
+  color: var(--da-cream);
+}
+#kc-header-wrapper {
+  color: var(--da-gold);
+  text-transform: uppercase;
+  font-weight: 900;
+  letter-spacing: .24em;
+  text-shadow: none;
+  margin-top: 36px;
+  line-height: 1.45;
+}
+#kc-content, #kc-content-wrapper { max-width: 520px; margin-inline: auto; }
+.card-pf, .pf-v5-c-login__main, .pf-v6-c-login__main,
+#kc-form-wrapper {
+  box-shadow: 0 28px 95px rgba(0,0,0,.33);
+}
+.card-pf, .pf-v5-c-login__main, .pf-v6-c-login__main {
+  background: linear-gradient(153deg, rgba(14,49,34,.99), rgba(7,28,19,.99));
+  color: var(--da-cream);
+  border: 1px solid rgba(233,200,119,.32);
+  border-radius: 26px;
+  overflow: hidden;
+}
+#kc-page-title, h1, .pf-c-title, .pf-v5-c-title, .pf-v6-c-title {
+  color: var(--da-cream);
+  font-weight: 800;
+  letter-spacing: -.02em;
+}
+label, #kc-info, #kc-registration, .control-label,
+.pf-v5-c-form__label-text, .pf-v6-c-form__label-text {
+  color: var(--da-mint);
+}
+input[type="email"], input[type="text"], input[type="password"],
+.pf-c-form-control, .pf-v5-c-form-control, .pf-v6-c-form-control {
+  min-height: 52px;
+  background: #061e15 !important;
+  color: #fffaf0 !important;
+  border: 1px solid #456d59 !important;
+  border-radius: 11px;
+}
+input:focus-visible, button:focus-visible, a:focus-visible {
+  outline: 3px solid #f7d88d !important;
+  outline-offset: 3px;
+}
+#kc-login, input[type="submit"].pf-c-button, .pf-c-button.pf-m-primary,
+.pf-v5-c-button.pf-m-primary, .pf-v6-c-button.pf-m-primary {
+  min-height: 54px;
+  border: 0;
+  border-radius: 13px;
+  background: linear-gradient(112deg, #fae39c, #e0b65a) !important;
+  color: #102417 !important;
+  font-weight: 800;
+  transition: filter .2s ease, transform .2s ease;
+}
+#kc-login:hover, .pf-c-button.pf-m-primary:hover {
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+}
+a, .pf-c-login__main-footer-band-item a {
+  color: #f3d289;
+  text-underline-offset: 4px;
+}
+a:hover { color: #fff1bf; }
+#kc-info-wrapper { background: transparent; }
+#kc-social-providers { border-top-color: rgba(233,200,119,.2); }
+@media (max-width: 640px) {
+  body.login-pf, .login-pf body { background-attachment: scroll !important; }
+  #kc-header-wrapper { font-size: 17px; letter-spacing: .14em; margin-top: 16px; }
+  .card-pf, .pf-v5-c-login__main, .pf-v6-c-login__main { border-radius: 20px; margin: 14px 12px; }
+  #kc-content-wrapper { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}

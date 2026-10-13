@@ -1,0 +1,203 @@
+name: Client Enrollment V1 — fail-closed gate
+on:
+  pull_request:
+    branches:
+      - main
+      - fix/client-native-maps-auth-ux-20261011
+    paths:
+      - 'services/api-nest/src/client-enrollment/**'
+      - 'services/api-nest/src/client-commerce/**'
+      - 'services/api-nest/src/payments/payments.service.ts'
+      - 'services/api-nest/test/payments-stripe-financial-finality.qa.test.cjs'
+      - 'services/api-nest/src/identity-proof/**'
+      - 'services/api-nest/src/auth/client-token-isolation.ts'
+      - 'services/api-nest/src/auth/native-client-commerce.policy.ts'
+      - 'services/api-nest/src/auth/native-client-jwt-verifier.ts'
+      - 'services/api-nest/src/auth/native-client-nest-commerce.guard.ts'
+      - 'services/api-nest/src/auth/native-client-trusted-jwks.resolver.ts'
+      - 'services/api-nest/test/native-client-trusted-jwks.resolver.test.cjs'
+      - 'services/api-nest/test/native-client-nest-commerce.guard.test.cjs'
+      - 'services/api-nest/test/native-client-real-routes-no-side-effects.qa.test.cjs'
+      - 'services/api-nest/test/native-client-jwt-verifier.test.cjs'
+      - 'services/api-nest/test/native-client-commerce.policy.test.cjs'
+      - 'services/api-nest/src/auth/external-jwks-verifier.service.ts'
+      - 'services/api-nest/src/auth/auth.service.ts'
+      - 'services/api-nest/test/auth-hmac-legacy-issuer-interlock.qa.test.cjs'
+      - 'services/api-nest/src/auth/external-jwks-verifier.types.ts'
+      - 'services/api-nest/test/client-oidc-isolation.test.cjs'
+      - 'services/api-nest/test/client-enrollment-requester-origin.test.cjs'
+      - 'services/api-nest/src/app.module.ts'
+      - 'services/api-nest/migrations/client-enrollment/**'
+      - 'services/api-nest/test/client-enrollment.guard.test.cjs'
+      - 'apps/client/**'
+      - 'ops/keycloak/themes/delishafrica/**'
+      - 'ops/client-enrollment/**'
+      - '.github/workflows/client-enrollment-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  secure-client-enrollment:
+    name: TypeScript, guarded registration and Client-only roles
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pin pnpm 9.15.4
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+          pnpm --version
+      - name: Limit CI manifest to the mobile/API workspaces only
+        # Landing has an older unrelated lock importer; leave its tracked files untouched.
+        run: |
+          cat > pnpm-workspace.yaml <<'YAML'
+          packages:
+            - apps/client
+            - apps/merchant
+            - apps/courier
+            - services/api-nest
+            - packages/*
+          YAML
+      - name: Frozen dependencies with third-party install scripts disabled
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: API TypeScript
+        run: pnpm exec tsc --noEmit -p services/api-nest/tsconfig.json
+      - name: Client TypeScript
+        run: pnpm exec tsc --noEmit -p apps/client/tsconfig.json
+      - name: Client/Courier/Merchant compatibility
+        run: |
+          pnpm exec tsc --noEmit -p apps/merchant/tsconfig.json
+          pnpm exec tsc --noEmit -p apps/courier/tsconfig.json
+      - name: Canonical Client contact proofs and checkout continuity
+        run: node --test apps/client/test/daProofIdentity.test.cjs
+      - name: Safe one-shot enrollment preflight syntax
+        run: |
+          bash -n ops/client-enrollment/DA_CLIENT_ENROLLMENT_SAFE_GATE_V1.sh
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const source = fs.readFileSync('ops/client-enrollment/DA_CLIENT_ENROLLMENT_SAFE_GATE_V1.sh','utf8');
+          assert(source.includes('mode=READ_ONLY'));
+          assert(source.includes('keycloak_global_registration=UNTOUCHED'));
+          assert(!/docker\s+(rm|stop|restart|run)\b|DROP TABLE|TRUNCATE TABLE|ALTER TABLE|CREATE TABLE|curl\s+(-X|-d|--data)/i.test(source));
+          console.log('SAFE_ENROLL_GATE_SCRIPT_OK');
+          NODE
+      - name: Trusted requester origin and anti-spoofed-header tests
+        env:
+          TS_NODE_PROJECT: services/api-nest/tsconfig.json
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/client-enrollment-requester-origin.test.cjs
+      - name: Client OIDC signed-claim and cross-product isolation
+        env:
+          TS_NODE_PROJECT: services/api-nest/tsconfig.json
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/client-oidc-isolation.test.cjs
+      - name: Real PaymentsService synthetic Stripe TEST retrieval + webhook financial-finality denials
+        env:
+          TS_NODE_PROJECT: services/api-nest/tsconfig.json
+          QA_SYNTHETIC_ONLY: 'YES'
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/payments-stripe-financial-finality.qa.test.cjs
+      - name: Native Client TLS issuer-bound JWKS discovery and outage denial matrix
+        env:
+          TS_NODE_PROJECT: services/api-nest/tsconfig.json
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/native-client-trusted-jwks.resolver.test.cjs
+      - name: Strong internal HMAC and real legacy guard issuer interlock (synthetic only)
+        env:
+          TS_NODE_PROJECT: services/api-nest/tsconfig.json
+          QA_SYNTHETIC_ONLY: 'YES'
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/auth-hmac-legacy-issuer-interlock.qa.test.cjs
+      - name: Native Client RSA/JWKS key isolation, cross-realm and ledger access denials
+        env:
+          TS_NODE_PROJECT: services/api-nest/tsconfig.json
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/native-client-jwt-verifier.test.cjs
+      - name: Candidate NestJS HTTP Client admission - real guard without production wiring
+        env:
+          TS_NODE_PROJECT: services/api-nest/tsconfig.json
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/native-client-nest-commerce.guard.test.cjs
+      - name: Real legacy Orders and Payments guards plus Native Client admission - isolated HTTP
+        env:
+          TS_NODE_PROJECT: services/api-nest/tsconfig.json
+          QA_SYNTHETIC_ONLY: 'YES'
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/native-client-real-guards-http-bridge.qa.test.cjs
+      - name: Actual Orders and Payments Nest routes - no side effects before Client admission
+        env:
+          TS_NODE_PROJECT: services/api-nest/tsconfig.json
+          QA_SYNTHETIC_ONLY: 'YES'
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/native-client-real-routes-no-side-effects.qa.test.cjs
+      - name: Native Client realm commerce requires signed JWT and durable SMS/email ledger
+        env:
+          TS_NODE_PROJECT: services/api-nest/tsconfig.json
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/native-client-commerce.policy.test.cjs
+      - name: Client-only policy and mocked Keycloak provisioning tests
+        env:
+          TS_NODE_PROJECT: services/api-nest/tsconfig.json
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/client-enrollment.guard.test.cjs
+      - name: Mandatory guarded-by-default and no Store/publisher permissions
+        run: |
+          node - <<'NODE'
+          const assert=require('node:assert/strict');
+          const fs=require('node:fs');
+          const read=p=>fs.readFileSync(p,'utf8');
+          const service=read('services/api-nest/src/client-enrollment/client-enrollment.service.ts');
+          const policy=read('services/api-nest/src/client-enrollment/client-enrollment.policy.ts');
+          const keycloak=read('services/api-nest/src/client-enrollment/client-enrollment.keycloak.ts');
+          const migration=read('services/api-nest/migrations/client-enrollment/20261011_001_client_enrollment_guarded.sql');
+          assert(service.includes("role: 'client'"));
+          assert(service.includes("channel: 'sms'") && service.includes("channel: 'email'"));
+          assert(policy.includes("APPROVED_AFTER_REVIEW"));
+          assert(keycloak.includes("AUTHORIZED_INTERNAL_HOST = 'afritaste-keycloak'"));
+          assert(keycloak.includes("'/roles/' + CLIENT_ROLE"));
+          assert(migration.includes('UNIQUE') && !/\bTRUNCATE\b|\bDROP TABLE\b/i.test(migration));
+          assert(!service.includes('createPaymentIntent') && !service.includes('presentPaymentSheet'));
+          console.log('CLIENT_ENROLLMENT_STATIC_GATES_PASS');
+          NODE
+      - name: Review theme files without enabling a realm
+        run: |
+          node - <<'NODE'
+          const assert=require('node:assert/strict');
+          const fs=require('node:fs');
+          const path='ops/keycloak/themes/delishafrica/';
+          const login=fs.readFileSync(path+'login/theme.properties','utf8');
+          const css=fs.readFileSync(path+'login/resources/css/delishafrica.css','utf8');
+          assert(login.includes('parent=keycloak') && login.includes('locales=fr,en'));
+          assert(!/url\([\x22\x27]?https?:\/\//.test(css));
+          assert(!/@import\s+url\(/.test(css));
+          for(const locale of ['fr','en']) {
+            const m=fs.readFileSync(path+'login/messages/messages_'+locale+'.properties','utf8');
+            assert(m.includes('DelishAfrica') || m.includes('DELISHAFRICA'));
+          }
+          assert(!fs.existsSync(path+'login/login.ftl'), 'Do not override maintained login template');
+          console.log('BRANDED_LOGIN_THEME_STATIC_PASS');
+          NODE
+      - name: iOS Dev LAN entitlement config guard
+        run: |
+          cd apps/client
+          node - <<'NODE'
+          const assert=require('node:assert/strict');
+          const previous=process.env.EAS_BUILD_PROFILE;
+          try {
+            process.env.EAS_BUILD_PROFILE='development';
+            delete require.cache[require.resolve('./app.config.js')];
+            const dev=require('./app.config.js')({config:{ios:{infoPlist:{ITSAppUsesNonExemptEncryption:false}}}});
+            assert(dev.ios.infoPlist.NSLocalNetworkUsageDescription.includes('DelishAfrica'));
+            assert(dev.ios.infoPlist.NSBonjourServices.includes('_expo._tcp'));
+            process.env.EAS_BUILD_PROFILE='production';
+            delete require.cache[require.resolve('./app.config.js')];
+            const prod=require('./app.config.js')({config:{ios:{infoPlist:{ITSAppUsesNonExemptEncryption:false}}}});
+            assert(!Object.hasOwn(prod.ios.infoPlist,'NSLocalNetworkUsageDescription'));
+            assert(!Object.hasOwn(prod.ios.infoPlist,'NSBonjourServices'));
+            assert.equal(prod.ios.infoPlist.ITSAppUsesNonExemptEncryption,false);
+            console.log('IOS_DEV_LAN_ONLY_GUARD_PASS');
+          } finally {
+            if(previous===undefined)delete process.env.EAS_BUILD_PROFILE;
+            else process.env.EAS_BUILD_PROFILE=previous;
+          }
+          NODE

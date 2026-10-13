@@ -1,0 +1,233 @@
+name: Native Client QA — Keycloak HTTPS + PostgreSQL + fake SMS + HTTP
+on:
+  pull_request:
+    branches:
+      - main
+      - fix/client-native-maps-auth-ux-20261011
+    paths:
+      - '.github/workflows/native-client-full-stack-qa.yml'
+      - 'services/api-nest/test/native-client-full-stack.qa.cjs'
+      - 'services/api-nest/test/synthetic-keycloak-tls-proxy.qa.cjs'
+      - 'services/api-nest/src/auth/native-client-jwt-verifier.ts'
+      - 'services/api-nest/src/auth/native-client-commerce.policy.ts'
+      - 'services/api-nest/src/auth/native-client-nest-commerce.guard.ts'
+      - 'services/api-nest/src/client-commerce/client-commerce.pg-qa.adapter.ts'
+      - 'services/api-nest/migrations/client-commerce/20261012_001_client_commerce_authority_qa_only.sql'
+      - 'services/api-nest/migrations/client-commerce/20261012_002_client_commerce_least_privilege_qa_only.sql'
+      - 'services/api-nest/src/auth/native-client-trusted-jwks.resolver.ts'
+      - 'services/api-nest/migrations/client-enrollment/20261012_002_native_client_admission_qa_only.sql'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-full-stack:
+    name: Real Keycloak JWT and PostgreSQL, local fake SMS, HTTP 401/403
+    runs-on: ubuntu-24.04
+    timeout-minutes: 23
+    steps:
+      - name: Checkout without reusable credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+
+      - name: Syntax and isolation gates
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          node --check services/api-nest/test/native-client-full-stack.qa.cjs
+          node --check services/api-nest/test/synthetic-keycloak-tls-proxy.qa.cjs
+          node - <<'NODE'
+          const fs=require('node:fs'), assert=require('node:assert/strict');
+          const s=fs.readFileSync('services/api-nest/test/native-client-full-stack.qa.cjs','utf8');
+          const tls=fs.readFileSync('services/api-nest/test/synthetic-keycloak-tls-proxy.qa.cjs','utf8');
+          assert(s.includes("const ROOT = 'https://127.0.0.1'"));
+          assert(s.includes("process.env.QA_SYNTHETIC_ONLY !== 'YES'"));
+          assert(s.includes("commerce_pending_sms_ledger_rejected"));
+          assert(s.includes("commerce_approved_only_after_verified_real_oidc_and_real_pg_commit"));
+          assert(s.includes("commerce_revoked_subject_http_403"));
+          assert(s.includes("nestjs_real_keycloak_jwt_real_pg_after_mock_sms_admitted"));
+          assert(s.includes("nestjs_pg_unavailable_fail_closed"));
+          assert(s.includes("NATIVE_KEYCLOAK_NEST_PG_COMMERCE"));
+          assert(s.includes("nestjs_revoked_client_does_not_create_any_new_orders"));
+          assert(s.includes("production_candidate_jwks_resolver_real_https_verified_and_cached"));
+          assert(tls.includes("http.request("));
+          for(const value of [s,tls]){
+            assert(!/https?:\/\/(?:api\.delishafrica\.me|keycloak\.afritaste\.delishafrica\.me|194\.164\.72\.250)/i.test(value));
+            assert(!/NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*['"]?0|rejectUnauthorized\s*:\s*false/i.test(value));
+          }
+          const a=fs.readFileSync('services/api-nest/src/app.module.ts','utf8');
+          assert(!a.includes("native-client-full-stack"),'production must remain untouched');
+          console.log('QA_SYNTHETIC_ONLY_STATIC=PASS');
+          NODE
+
+      - name: Prepare ephemeral-only Node dependencies, TLS and source compilation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          umask 077
+          QA_DIR="$RUNNER_TEMP/da-native-qa"
+          mkdir -p "$QA_DIR/tls" "$QA_DIR/deps" "$QA_DIR/built"
+          npm --prefix "$QA_DIR/deps" install \
+            --ignore-scripts --no-audit --no-fund --no-save \
+            pg@8.16.3 typescript@5.9.3 \
+            @nestjs/common@10.4.22 @nestjs/core@10.4.22 \
+            @nestjs/platform-express@10.4.22 @nestjs/testing@10.4.22 \
+            reflect-metadata@0.1.14 rxjs@7.8.1 > /dev/null
+          openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 \
+            -keyout "$QA_DIR/tls/qa.key" -out "$QA_DIR/tls/qa.crt" \
+            -subj "/CN=127.0.0.1" \
+            -addext "subjectAltName=IP:127.0.0.1" \
+            -addext "basicConstraints=critical,CA:TRUE" > /dev/null 2>&1
+          NODE_PATH="$QA_DIR/deps/node_modules" node - "$QA_DIR/built" <<'NODE'
+          const fs=require('node:fs'),path=require('node:path'),ts=require('typescript');
+          const out=process.argv[2], root='services/api-nest/src/auth/';
+          for (const name of ['native-client-commerce.policy','native-client-jwt-verifier','native-client-nest-commerce.guard','native-client-trusted-jwks.resolver']) {
+            const content=fs.readFileSync(root+name+'.ts','utf8');
+            const converted=ts.transpileModule(content,{
+              compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,
+                esModuleInterop:true,strict:true,experimentalDecorators:true,emitDecoratorMetadata:true},
+              fileName:name+'.ts',reportDiagnostics:true,
+            });
+            if (converted.diagnostics?.some(x=>x.category===ts.DiagnosticCategory.Error))
+              throw Error('candidate policy transpilation failed');
+            fs.writeFileSync(path.join(out,name+'.js'),converted.outputText,{mode:0o600});
+          }
+          const commerce='services/api-nest/src/client-commerce/client-commerce.pg-qa.adapter.ts';
+          const transpiled=ts.transpileModule(fs.readFileSync(commerce,'utf8'),{
+            compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,
+              esModuleInterop:true,strict:true},
+            fileName:commerce,reportDiagnostics:true,
+          });
+          if(transpiled.diagnostics?.some(x=>x.category===ts.DiagnosticCategory.Error))
+            throw Error('qa_commerce_pg_adapter_compilation_failed');
+          fs.writeFileSync(path.join(out,'client-commerce.pg-qa.adapter.js'),
+            transpiled.outputText,{mode:0o600});
+          console.log('QA_CLIENT_POLICY_COMPILED=YES');
+          console.log('QA_CLIENT_COMMERCE_ADAPTER_COMPILED=YES');
+          NODE
+          node - "$QA_DIR/test.env" <<'NODE'
+          const fs=require('node:fs'),crypto=require('node:crypto');
+          const random=()=>crypto.randomBytes(32).toString('hex');
+          fs.writeFileSync(process.argv[2],[
+            'KC_BOOTSTRAP_ADMIN_USERNAME=qa_admin',
+            'KC_BOOTSTRAP_ADMIN_PASSWORD='+random(),
+            'QA_BOOTSTRAP_ADMIN_PASSWORD=PLACEHOLDER',
+            'QA_EMAIL_HMAC_SECRET='+random(),
+            'QA_COMMERCE_HMAC_KEY='+random(),
+            'GITHUB_ACTIONS=true',
+            'QA_SYNTHETIC_ONLY=YES',
+            'QA_KEYCLOAK_ORIGIN=https://127.0.0.1',
+            'QA_HTTPS_ORIGIN=https://127.0.0.1',
+            'QA_PG_HOST=127.0.0.1',
+            'NODE_EXTRA_CA_CERTS=/qa-tls/qa.crt',
+            'KC_HOSTNAME=https://127.0.0.1',
+            'KC_PROXY_HEADERS=xforwarded',
+            'KC_HEALTH_ENABLED=false',
+            'KC_METRICS_ENABLED=false',
+            '',
+          ].join('\n'),{mode:0o600});
+          const s=fs.readFileSync(process.argv[2],'utf8');
+          const pass=s.match(/^KC_BOOTSTRAP_ADMIN_PASSWORD=(.*)$/m)[1];
+          fs.writeFileSync(process.argv[2],s.replace('QA_BOOTSTRAP_ADMIN_PASSWORD=PLACEHOLDER',
+            'QA_BOOTSTRAP_ADMIN_PASSWORD='+pass),{mode:0o600});
+          console.log('QA_EPHEMERAL_SECRETS_GENERATED=YES');
+          NODE
+          # Docker's isolated tester may use a remapped UID. Permit read-only
+          # mounts of disposable public CA, test key and temporary JS modules.
+          # Keep the bootstrap envfile private on the host.
+          chmod 755 "$QA_DIR" "$QA_DIR/tls" "$QA_DIR/deps" "$QA_DIR/built"
+          chmod -R a+rX "$QA_DIR/tls" "$QA_DIR/deps" "$QA_DIR/built"
+          chmod 600 "$QA_DIR/test.env"
+          echo "QA_DISPOSABLE_MOUNTS_READABLE=YES"
+          echo "QA_TLS_LOCAL_ONLY=YES"
+
+      - name: Execute disconnected Keycloak + PostgreSQL + mock SMS HTTP
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          QA_DIR="$RUNNER_TEMP/da-native-qa"
+          KC_ID="da-client-kc-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          PG_ID="da-client-pg-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          clean() {
+            docker rm -f "$PG_ID" >/dev/null 2>&1 || true
+            docker rm -f "$KC_ID" >/dev/null 2>&1 || true
+            rm -rf "$QA_DIR"
+            echo "QA_EPHEMERAL_RESOURCES_DESTROYED=YES"
+          }
+          trap clean EXIT
+          docker pull quay.io/keycloak/keycloak:26.4.7 >/dev/null
+          docker pull postgres:17-alpine >/dev/null
+          docker pull node:22-alpine >/dev/null
+          docker run -d --name "$KC_ID" --pull never \
+            --network none --user 1000:0 --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 330 --memory 3g \
+            --tmpfs /opt/keycloak/data:rw,nosuid,nodev,size=384m,uid=1000,gid=0,mode=0700 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=128m,uid=1000,gid=0,mode=1777 \
+            --env-file "$QA_DIR/test.env" \
+            quay.io/keycloak/keycloak:26.4.7 \
+            start-dev --http-port=18195 --http-host=127.0.0.1 \
+              --proxy-headers=xforwarded >/dev/null
+          docker run -d --name "$PG_ID" --pull never \
+            --network "container:$KC_ID" --user 70:70 --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 150 --memory 768m \
+            --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev,size=320m,uid=70,gid=70,mode=0700 \
+            --tmpfs /var/run/postgresql:rw,nosuid,nodev,size=16m,uid=70,gid=70,mode=0770 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=64m,uid=70,gid=70,mode=1777 \
+            -e POSTGRES_HOST_AUTH_METHOD=trust \
+            postgres:17-alpine -c listen_addresses=127.0.0.1 >/dev/null
+          echo "QA_DOCKER_NETWORK=NONE"
+          echo "QA_PUBLISHED_HOST_PORTS=NONE"
+          echo "QA_REAL_KEYCLOAK_VERSION=26.4.7"
+          echo "QA_REAL_POSTGRES_VERSION=17"
+
+          tester() {
+            docker run --rm --pull never \
+              --network "container:$KC_ID" --cap-drop ALL \
+              --cap-add NET_BIND_SERVICE \
+              --security-opt no-new-privileges --read-only \
+              --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+              --env-file "$QA_DIR/test.env" \
+              -e NODE_PATH=/qa-deps/node_modules \
+              -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa:ro" \
+              -v "$QA_DIR/tls:/qa-tls:ro" \
+              -v "$QA_DIR/built:/qa-built:ro" \
+              -v "$QA_DIR/deps:/qa-deps:ro" \
+              node:22-alpine "$@"
+          }
+          ready=false
+          for i in $(seq 1 90); do
+            if docker exec "$PG_ID" pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then
+            echo "QA_POSTGRES_NOT_READY"; docker logs "$PG_ID" 2>&1 | tail -n 20
+            exit 1
+          fi
+          docker exec -i "$PG_ID" psql -U postgres -d postgres \
+            -v ON_ERROR_STOP=1 -h 127.0.0.1 \
+            < services/api-nest/migrations/client-enrollment/20261012_002_native_client_admission_qa_only.sql
+          docker exec -i "$PG_ID" psql -U postgres -d postgres \
+            -v ON_ERROR_STOP=1 -h 127.0.0.1 \
+            < services/api-nest/migrations/client-commerce/20261012_001_client_commerce_authority_qa_only.sql
+          docker exec -i "$PG_ID" psql -U postgres -d postgres \
+            -v ON_ERROR_STOP=1 -h 127.0.0.1 \
+            < services/api-nest/migrations/client-commerce/20261012_002_client_commerce_least_privilege_qa_only.sql
+          echo "QA_REAL_PG_SCHEMA_CREATED_EPHEMERAL=YES"
+          echo "QA_PG_COMMERCE_APP_ACL=NO_DIRECT_DML"
+          echo "QA_COMMERCE_PG_SCHEMA_CREATED_EPHEMERAL=YES"
+          tester node -e '
+            (async()=>{for(let i=0;i<100;i++){try{
+              const r=await fetch("http://127.0.0.1:18195/realms/master/.well-known/openid-configuration",
+                {signal:AbortSignal.timeout(2500)});
+              if(r.status===200){console.log("QA_KEYCLOAK_INTERNAL_READY=YES");return;}
+            }catch{} await new Promise(resolve=>setTimeout(resolve,2000));}
+            console.error("QA_KEYCLOAK_READY=NO");process.exitCode=1;})();
+          '
+          tester node /qa/native-client-full-stack.qa.cjs
+          echo "QA_NATIVE_CLIENT_FULL_STACK=PASS_SYNTHETIC_ONLY"
+          echo "PRODUCTION_IMPACT=NONE"

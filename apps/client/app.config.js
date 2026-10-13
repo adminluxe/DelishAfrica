@@ -1,6 +1,10 @@
 const fs = require("fs");
 
 const CLIENT_BOOT_BACKGROUND = "#051411";
+const CLIENT_DEV_LOCAL_NETWORK_PURPOSE =
+  "La version de développement DelishAfrica utilise votre Wi-Fi local pour joindre le serveur de test sur votre réseau. Aucun accès n'est nécessaire pour commander dans l'application publique.";
+const CLIENT_IS_DEV_NATIVE_BUILD = process.env.EAS_BUILD_PROFILE === "development";
+
 const CLIENT_CAMERA_PURPOSE =
   "DelishAfrica utilise l’appareil photo uniquement si vous choisissez de scanner une carte de paiement pour renseigner plus rapidement ses informations. Aucune image n’est conservée par DelishAfrica.";
 
@@ -59,6 +63,13 @@ module.exports = ({ config }) => {
       infoPlist: {
         ...((config.ios && config.ios.infoPlist) || {}),
         NSCameraUsageDescription: CLIENT_CAMERA_PURPOSE,
+        ...(CLIENT_IS_DEV_NATIVE_BUILD
+          ? {
+              NSLocalNetworkUsageDescription: CLIENT_DEV_LOCAL_NETWORK_PURPOSE,
+              NSBonjourServices: ["_expo._tcp"],
+            }
+          : {}),
+
       },
       splash: {
         image: splashPath,

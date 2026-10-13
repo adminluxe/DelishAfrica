@@ -1,0 +1,237 @@
+name: Native Client Commerce Authority — isolated PostgreSQL and concurrency
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/native-client-commerce-authority-postgres-qa.yml'
+      - 'services/api-nest/migrations/client-commerce/20261012_001_client_commerce_authority_qa_only.sql'
+      - 'services/api-nest/migrations/client-commerce/20261012_002_client_commerce_least_privilege_qa_only.sql'
+      - 'services/api-nest/migrations/client-commerce/20261012_003_stripe_test_webhook_inbox_qa_only.sql'
+      - 'services/api-nest/src/client-commerce/stripe-test-webhook-inbox.pg-qa.adapter.ts'
+      - 'services/api-nest/test/stripe-test-webhook-inbox.pg-qa.integration.cjs'
+      - 'services/api-nest/test/native-client-commerce-authority.qa.sql'
+      - 'services/api-nest/src/client-commerce/client-commerce.pg-qa.adapter.ts'
+      - 'services/api-nest/test/client-commerce.pg-qa.integration.cjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-client-ledger-isolated-db:
+    name: Stripe TEST order/payment authority + 8-way concurrency (no VPS)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - name: Checkout without reusable GitHub credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Static defensive gate
+        run: |
+          set -Eeuo pipefail
+          node - <<'NODE'
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          const migration=fs.readFileSync(
+            'services/api-nest/migrations/client-commerce/20261012_001_client_commerce_authority_qa_only.sql','utf8');
+          const proof=fs.readFileSync(
+            'services/api-nest/test/native-client-commerce-authority.qa.sql','utf8');
+          const ddl=migration.split(/\r?\n/).filter(s=>!s.trimStart().startsWith('--')).join('\n');
+          assert(ddl.includes('CREATE TABLE public.da_client_commerce_orders_qa'));
+          assert(ddl.includes('CREATE TABLE public.da_client_commerce_payment_authority_qa'));
+          assert(ddl.includes('CREATE FUNCTION public.da_qa_reserve_client_order'));
+          assert(ddl.includes('UNIQUE (issuer,client_subject,client_mutation_id)'));
+          assert(!/\b(DROP|TRUNCATE|DELETE FROM|ALTER ROLE|CREATE USER)\b/i.test(ddl),
+            'disallow destructive SQL');
+          assert(!/\b(email_plaintext|phone_plaintext|sms_code|access_token|refresh_token|password)\b/i
+            .test(ddl),'no raw client PII or secrets in schema');
+          assert(proof.includes('ROLLBACK;')&&proof.includes('\\set ON_ERROR_STOP on'));
+          const adapter=fs.readFileSync('services/api-nest/src/client-commerce/client-commerce.pg-qa.adapter.ts','utf8');
+          const test=fs.readFileSync('services/api-nest/test/client-commerce.pg-qa.integration.cjs','utf8');
+          assert(adapter.includes('class QaClientCommercePgAdapter'));
+          assert(adapter.includes('da_qa_service_reserve_order'));
+          assert(adapter.includes('da_qa_service_reserve_test_payment'));
+          const acl=fs.readFileSync('services/api-nest/migrations/client-commerce/20261012_002_client_commerce_least_privilege_qa_only.sql','utf8');
+          assert(acl.includes('SECURITY DEFINER'));
+          assert(acl.includes('SET search_path=pg_catalog,public'));
+          assert(acl.includes('REVOKE ALL ON TABLE'));
+          assert(!/sk_live_|api\.stripe\.com/.test(acl));
+          const inboxSql=fs.readFileSync('services/api-nest/migrations/client-commerce/20261012_003_stripe_test_webhook_inbox_qa_only.sql','utf8');
+          const inboxAdapter=fs.readFileSync('services/api-nest/src/client-commerce/stripe-test-webhook-inbox.pg-qa.adapter.ts','utf8');
+          const inboxTest=fs.readFileSync('services/api-nest/test/stripe-test-webhook-inbox.pg-qa.integration.cjs','utf8');
+          assert(inboxSql.includes('CREATE TABLE public.da_stripe_test_webhook_inbox_qa'));
+          assert(inboxSql.includes('CREATE FUNCTION public.da_qa_record_signed_test_webhook'));
+          assert(inboxSql.includes('REVOKE ALL ON TABLE public.da_stripe_test_webhook_inbox_qa'));
+          assert(inboxSql.includes('SECURITY DEFINER'));
+          assert(inboxSql.includes('SET search_path=pg_catalog,public'));
+          assert(inboxAdapter.includes("createHmac('sha256'"));
+          assert(inboxAdapter.includes('timingSafeEqual'));
+          assert(inboxAdapter.includes('receiveSignedTestWebhook'));
+          assert(inboxTest.includes('QA_STRIPE_INBOX_SIGNED_EVENT_NEVER_MARKS_PAID'));
+          assert(!/api\.stripe\.com|sk_live_|pk_live_|live_provider/i
+            .test(inboxSql+inboxAdapter+inboxTest));
+          assert(test.includes('QA_ADAPTER_8_WAY_TWO_POOLS=ONE_ORDER'));
+          assert(!/api\.stripe\.com|sk_live_|pk_live_/.test(adapter+test));
+          console.log('QA_COMMERCE_STATIC=PASS');
+          NODE
+      - name: Prepare QA-only TypeScript adapter and isolated Node dependencies
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          umask 077
+          QA_DIR="$RUNNER_TEMP/da-client-commerce-$GITHUB_RUN_ID"
+          mkdir -p "$QA_DIR/deps" "$QA_DIR/built"
+          npm --prefix "$QA_DIR/deps" install --no-audit --no-fund \
+            --ignore-scripts --no-save pg@8.16.3 typescript@5.9.3 > /dev/null
+          NODE_PATH="$QA_DIR/deps/node_modules" node - "$QA_DIR/built" <<'NODE'
+          const fs=require('node:fs'),ts=require('typescript'),path=require('node:path');
+          for(const name of [
+            'client-commerce.pg-qa.adapter',
+            'stripe-test-webhook-inbox.pg-qa.adapter'
+          ]){
+            const file='services/api-nest/src/client-commerce/'+name+'.ts';
+            const source=fs.readFileSync(file,'utf8');
+            const out=ts.transpileModule(source,{
+              compilerOptions:{module:ts.ModuleKind.CommonJS,
+                target:ts.ScriptTarget.ES2022,esModuleInterop:true,strict:true},
+              fileName:file,reportDiagnostics:true,
+            });
+            if(out.diagnostics?.some(x=>x.category===ts.DiagnosticCategory.Error))
+              throw Error('qa_adapter_transpile_failed');
+            fs.writeFileSync(path.join(process.argv[2],name+'.js'),
+              out.outputText,{mode:0o600});
+          }
+          NODE
+          node - "$QA_DIR/test.env" <<'NODE'
+          const fs=require('node:fs'),crypto=require('node:crypto');
+          const secret=crypto.randomBytes(32).toString('hex');
+          fs.writeFileSync(process.argv[2],[
+            'GITHUB_ACTIONS=true','QA_SYNTHETIC_ONLY=YES',
+            'QA_COMMERCE_DB_HOST=127.0.0.1',
+            'QA_COMMERCE_DB_NAME=postgres',
+            'QA_COMMERCE_DB_USER=postgres',
+            'QA_COMMERCE_HMAC_KEY='+secret,
+            'QA_WEBHOOK_TEST_SECRET=whsec_'+crypto.randomBytes(32).toString('hex'),'',
+          ].join('\n'),{mode:0o600});
+          console.log('QA_COMMERCE_EPHEMERAL_HMAC=GENERATED_NOT_LOGGED');
+          NODE
+          chmod 755 "$QA_DIR" "$QA_DIR/deps" "$QA_DIR/built"
+          chmod -R a+rX "$QA_DIR/deps" "$QA_DIR/built"
+          chmod 600 "$QA_DIR/test.env"
+          node --check services/api-nest/test/client-commerce.pg-qa.integration.cjs
+          node --check services/api-nest/test/stripe-test-webhook-inbox.pg-qa.integration.cjs
+          echo "QA_COMMERCE_ADAPTER_BUILD=EPHEMERAL_ONLY"
+
+      - name: Run PostgreSQL 17 under disconnected ephemeral container
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          NAME="da-commerce-pg-qa-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          QA_DIR="$RUNNER_TEMP/da-client-commerce-$GITHUB_RUN_ID"
+          IMAGE="postgres:17-alpine"
+          cleanup() {
+            docker rm -f "$NAME" >/dev/null 2>&1 || true
+            rm -rf "$QA_DIR"
+            echo "QA_OWN_EPHEMERAL_CONTAINER_CLEANUP=COMPLETE"
+          }
+          trap cleanup EXIT
+          docker pull "$IMAGE" >/dev/null
+          docker run -d --rm --name "$NAME" --pull never \
+            --network none --user 70:70 --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 150 --memory 768m \
+            --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev,size=320m,uid=70,gid=70,mode=0700 \
+            --tmpfs /var/run/postgresql:rw,nosuid,nodev,size=16m,uid=70,gid=70,mode=0770 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=64m,uid=70,gid=70,mode=1777 \
+            -e POSTGRES_HOST_AUTH_METHOD=trust \
+            "$IMAGE" -c listen_addresses=127.0.0.1 >/dev/null
+          ready=false
+          for attempt in $(seq 1 90); do
+            if docker exec "$NAME" pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != "true" ]]; then
+            echo "QA_POSTGRES=NOT_READY"
+            docker logs "$NAME" 2>&1 | tail -n 24
+            exit 1
+          fi
+          echo "QA_COMMERCE_POSTGRES=READY_LOOPBACK_TCP_ONLY"
+          echo "QA_NETWORK=NONE"
+          echo "QA_HOST_PORTS_PUBLISHED=NONE"
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/migrations/client-commerce/20261012_001_client_commerce_authority_qa_only.sql
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/migrations/client-commerce/20261012_002_client_commerce_least_privilege_qa_only.sql
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/migrations/client-commerce/20261012_003_stripe_test_webhook_inbox_qa_only.sql
+          echo "QA_STRIPE_TEST_WEBHOOK_INBOX=CREATED_ONLY_EPHEMERAL"
+          echo "QA_COMMERCE_LEAST_PRIVILEGE_ROLES=CREATED_EPHEMERAL_ONLY"
+          echo "QA_COMMERCE_SCHEMA_CANDIDATE=CREATED_EPHEMERAL_ONLY"
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/test/native-client-commerce-authority.qa.sql
+          echo "QA_COMMERCE_SEQUENTIAL=PASS_SYNTHETIC_ONLY"
+          # Eight simultaneous sessions must return one and the same order_id.
+          SQL="SELECT order_id FROM public.da_qa_reserve_client_order('https://qa.example.invalid/realms/da-client','a63f867f-9f42-4573-9268-dc65a164d2c1'::uuid,'mutation-qa-concurrent',repeat('a',64)::char(64),repeat('b',64)::char(64),'qa-merchant',1200::bigint,'EUR'::char(3));"
+          RESULT="$RUNNER_TEMP/da-commerce-concurrent-$GITHUB_RUN_ID.txt"
+          : > "$RESULT"
+          pids=""
+          for i in $(seq 1 8); do
+            docker exec "$NAME" psql -v ON_ERROR_STOP=1 -At \
+              -h 127.0.0.1 -U postgres -d postgres -c "$SQL" >> "$RESULT" &
+            pids="$pids $!"
+          done
+          for pid in $pids; do wait "$pid"; done
+          count="$(wc -l < "$RESULT" | tr -d '[:space:]')"
+          uniques="$(sort -u "$RESULT" | wc -l | tr -d '[:space:]')"
+          if [[ "$count" != 8 || "$uniques" != 1 ]]; then
+            echo "QA_COMMERCE_CONCURRENCY=FAILED"; exit 1
+          fi
+          db_count="$(docker exec "$NAME" psql -v ON_ERROR_STOP=1 -At \
+            -h 127.0.0.1 -U postgres -d postgres \
+            -c "SELECT count(*) FROM public.da_client_commerce_orders_qa WHERE client_mutation_id='mutation-qa-concurrent';")"
+          if [[ "$db_count" != 1 ]]; then
+            echo "QA_COMMERCE_CONCURRENCY_DB=FAILED"; exit 1
+          fi
+          echo "QA_COMMERCE_8_CONCURRENT_RETRIES=ONE_ORDER"
+          BAD_SQL="SELECT order_id FROM public.da_qa_reserve_client_order('https://qa.example.invalid/realms/da-client','a63f867f-9f42-4573-9268-dc65a164d2c1'::uuid,'mutation-qa-concurrent',repeat('a',64)::char(64),repeat('b',64)::char(64),'qa-merchant',9999::bigint,'EUR'::char(3));"
+          if docker exec "$NAME" psql -v ON_ERROR_STOP=1 -At \
+            -h 127.0.0.1 -U postgres -d postgres -c "$BAD_SQL" > /dev/null 2>&1; then
+            echo "QA_COMMERCE_MUTATED_REPLAY=ACCEPTED"; exit 1
+          fi
+          rm -f "$RESULT"
+          echo "QA_COMMERCE_MUTATED_REPLAY=REJECTED"
+
+          # Test the actual TypeScript adapter, compiled as JS in ephemeral
+          # workspace, against the same PostgreSQL 17 instance. Two PgPools
+          # exercise connection and transaction concurrency. No Stripe.
+          docker pull node:22-alpine >/dev/null
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$NAME" \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --read-only --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+            --env-file "$QA_DIR/test.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node --test \
+              /qa-tests/client-commerce.pg-qa.integration.cjs
+          echo "QA_COMMERCE_NEST_ADAPTER_PG_REAL=PASS_SYNTHETIC_ONLY"
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$NAME" \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --read-only --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+            --env-file "$QA_DIR/test.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node --test \
+              /qa-tests/stripe-test-webhook-inbox.pg-qa.integration.cjs
+          echo "QA_STRIPE_WEBHOOK_INBOX_PG_REAL=PASS_SYNTHETIC_NO_STRIPE"
+          echo "QA_COMMERCE_PG=PASS_REAL_PG_AND_8_WAY_CONCURRENCY"
+          echo "STRIPE_PROVIDER_CALLS=ZERO"
+          echo "PRODUCTION_IMPACT=NONE"

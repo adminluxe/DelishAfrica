@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
-import * as path from 'path';
 import * as net from 'node:net';
 import * as tls from 'node:tls';
 import type {
@@ -14,6 +13,10 @@ import type {
   DaResolvedAuthSource,
 } from './auth.types';
 import { ExternalJwksVerifierService } from './external-jwks-verifier.service';
+
+// QA/dev token key is unique per process. Never derive a signing key from
+// cwd, hostname, machine IDs or other predictable deployment metadata.
+const EPHEMERAL_NONPRODUCTION_AUTH_SECRET = crypto.randomBytes(48).toString('hex');
 
 type DevLoginInput = {
   role?: DaAuthRole | string;
@@ -496,8 +499,16 @@ export class AuthService {
       if (parts.length !== 3) return null;
 
       const [encodedHeader, encodedPayload, signature] = parts;
-      const expected = this.sign(`${encodedHeader}.${encodedPayload}`);
+      // Select HS256 internally before touching the HMAC key. RS256 tokens
+      // must pass exclusively through the independently pinned JWKS verifier.
+      const header = JSON.parse(
+        Buffer.from(encodedHeader, 'base64url').toString('utf8'),
+      ) as Record<string, unknown>;
+      if (!header || typeof header !== 'object' || Array.isArray(header) ||
+          header.alg !== 'HS256' || header.typ !== 'JWT' ||
+          Object.keys(header).length !== 2) return null;
 
+      const expected = this.sign(`${encodedHeader}.${encodedPayload}`);
       if (!this.safeEqual(signature, expected)) return null;
 
       const payload = JSON.parse(
@@ -509,7 +520,10 @@ export class AuthService {
       if (payload.iss !== this.issuer) return null;
       if (payload.aud !== this.audience) return null;
       if (!payload.exp || payload.exp < now) return null;
-      if (!payload.sub || !payload.role) return null;
+      if (!payload.sub || !['client', 'merchant', 'courier', 'ops'].includes(payload.role)) return null;
+      // Internal dev-only tokens must NEVER impersonate an external OIDC
+      // identity even when a valid HS256 signature is present.
+      if (payload.authSource !== 'dev-login') return null;
 
       return payload;
     } catch {
@@ -592,26 +606,35 @@ export class AuthService {
   }
 
   private secret(): string {
+    const strong = (value: string, source: 'env' | 'file'): string => {
+      const candidate = value.trim();
+      if (Buffer.byteLength(candidate, 'utf8') < 32) {
+        throw new Error(`auth_hmac_secret_too_short_${source}`);
+      }
+      return candidate;
+    };
+
     const explicit = String(process.env.DA_AUTH_SECRET || '').trim();
-    if (explicit) return explicit;
+    if (explicit) return strong(explicit, 'env');
 
     const filePath = String(
       process.env.DA_AUTH_SECRET_FILE || '/run/secrets/delishafrica-auth-secret',
     ).trim();
-
+    let fileValue = '';
     try {
-      const fileSecret = fs.readFileSync(filePath, 'utf8').trim();
-      if (fileSecret) return fileSecret;
+      fileValue = fs.readFileSync(filePath, 'utf8').trim();
     } catch {
-      // Progressive fallback below.
+      // A missing file is NOT permission to use a predictable key.
     }
+    if (fileValue) return strong(fileValue, 'file');
 
-    const host = String(process.env.HOSTNAME || 'local');
-    return crypto
-      .createHash('sha256')
-      .update(path.resolve(process.cwd()))
-      .update('|')
-      .update(host)
-      .digest('hex');
+    // Never mint or accept internal HS256 JWTs in production without a
+    // provisioned secret. External RS256 verification remains independent.
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('auth_hmac_secret_not_configured');
+    }
+    // Local-only development: ephemeral high-entropy secret, not stable across
+    // restarts and not portable between machines. Never use for real accounts.
+    return EPHEMERAL_NONPRODUCTION_AUTH_SECRET;
   }
 }
