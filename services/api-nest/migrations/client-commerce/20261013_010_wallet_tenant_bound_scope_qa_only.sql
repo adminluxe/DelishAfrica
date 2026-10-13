@@ -15,7 +15,7 @@ CREATE ROLE da_qa_wallet_attestor_010 LOGIN NOSUPERUSER
 -- SECURITY DEFINER owner. Isolate the exceptional stats capability:
 -- no login, no DML, exposes CURRENT BACKEND start only.
 CREATE ROLE da_qa_wallet_backend_observer_010 NOLOGIN NOSUPERUSER
-  NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION;
+  NOCREATEDB NOCREATEROLE INHERIT NOREPLICATION;
 GRANT pg_read_all_stats TO da_qa_wallet_backend_observer_010;
 GRANT USAGE ON SCHEMA public TO
   da_qa_wallet_read_owner_010,da_qa_wallet_write_owner_010,
