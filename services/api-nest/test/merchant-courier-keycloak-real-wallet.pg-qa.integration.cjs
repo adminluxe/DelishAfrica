@@ -285,7 +285,7 @@ test('F4G Keycloak 26 real local HTTPS RSA/JWKS and PG17 authorization',async()=
       console.log('QA_F4G_CLAIM_SHAPE_'+u.role+'='+
         JSON.stringify({
           sidBound:/^[A-Za-z0-9_-]{8,180}$/.test(v.payload.sid),
-          jtiBound:/^[A-Za-z0-9._~:+/-]{8,255}$/.test(v.payload.jti),
+          jtiBound:/^[A-Za-z0-9._~:+\/-]{8,255}$/.test(v.payload.jti),
           jtiLength:v.payload.jti.length,
           jtiHasColon:v.payload.jti.includes(':'),
           jtiHasDot:v.payload.jti.includes('.'),
