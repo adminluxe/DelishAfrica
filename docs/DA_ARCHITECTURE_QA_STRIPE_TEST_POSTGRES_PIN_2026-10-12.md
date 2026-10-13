@@ -626,3 +626,57 @@ La fonction `da_qa_wallet_read_linearized_014(uuid,integer,text)` est le **nouve
 **Ne pas confondre les domaines atomiques :** la preuve vaut **uniquement pour les tables et mutations PostgreSQL couvertes par les verrous**, pas pour un logout Keycloak externe survenant simultanément, ni pour un changement de KYB dans un service distant non répliqué et sans protocole transactionnel. Les comptes Keycloak, le catalogue Merchant, le registre Courier 012 et le ledger restent peuplés de **données fictives de QA**. Les anciennes fonctions Merchant/Dispatch/Courier d'écriture 007 restent révoquées après 010.
 
 Aucun Stripe TEST officiel ou LIVE, compte bancaire, payout, migration VPS, fusion, build EAS, publication Store ou G0–G7 n'est autorisé par F4J. **Passation :** [DA_PASSATION_F4J_WALLET_REVOCATION_LINEARIZATION_QA_2026-10-13.md](./DA_PASSATION_F4J_WALLET_REVOCATION_LINEARIZATION_QA_2026-10-13.md). Prochaine architecture F4K : mutations signées et sérialisées sous le même cadre d'autorisations, puis politiques internationales et PSP TEST officiels sous validation.
+
+---
+
+## F4K — Architecture épinglée : mutations Merchant/Courier signées (13/10/2026)
+
+**Périmètre :** [PR #43 DRAFT](https://github.com/adminluxe/DelishAfrica/pull/43), branche feat/f4k-attested-merchant-courier-ops-qa-20261013 sur F4J #42. Code SHA c2e67a7e17d6ed65ea30964610c521f307f560b3, triple QA SUCCESS : [F4K Keycloak/PG17 #38362829428](https://github.com/adminluxe/DelishAfrica/actions/runs/38362829428), [API + trois apps #38362829434](https://github.com/adminluxe/DelishAfrica/actions/runs/38362829434), [finance PostgreSQL historique #38362829468](https://github.com/adminluxe/DelishAfrica/actions/runs/38362829468). SHA documentaire final à recertifier après ces ajouts.
+
+~~~text
+Keycloak 26.4.7 RÉEL, comptes Merchant/Courier QA FICTIFS
+                       |
+         JWT signé RS256 / JWKS / aud / azp
+                       |
+           APP QA non privilégiée UID 1000
+                 sans secret attesteur
+                       |
+          Unix socket local et protégé
+                       |
+      Processus F4K privé mutation-only UID 1001
+        introspection Keycloak et contrat/KYB
+        session révoquable 011, registres 012
+        SQL SCRAM, prévalidation F4J 014
+                       |
+        Challenge backend F4E 010 / ticket neuf
+                       |
+          SQL 015 SECURITY DEFINER NOLOGIN
+                 même transaction
+           +-----------+------------+
+           |                        |
+     F4J row locks             007 ordre FOR UPDATE
+     session/identité          capture prouvée,
+     membership/KYB           hold/refund 008,
+     entité/territoire        séquence Merchant/Courier
+           |                        |
+           +-----------+------------+
+                       |
+         Reçu immutable 015 / opération
+         idempotence par order+role+stage
+                       |
+      009 journal comptable et projections
+         Pending / Available / Held
+         withdrawableMinor=0
+         payoutEnabled=false
+
+DISPATCH : AUCUN DROIT APPLICATIF F4K
+Fixture : superuser éphémère dans PG QA pour deux offres
+~~~
+
+Le propriétaire SQL da_qa_fulfillment_writer_015 est NOLOGIN/NOSUPERUSER et ne possède que les droits strictement nécessaires à la preuve 014, aux transitions Merchant/Courier 007 et aux reçus immuables 015. Les fonctions historiques 007 restent inaccessible aux logins d'app. Le Dispatch reçoit **zéro GRANT** via 015. L'identité et le territoire ne peuvent pas être choisis dans la charge mobile ; seuls le JWT valide, le ticket indépendant et les registres SQL autorisent la transition.
+
+**Pulses financiers démontrés :** deux commandes nouvelles artificielles de 26,90 €, gain Merchant de 18,40 € et commission de menu fictive 4,60 € par commande, réserve Courier de 3,90 €. La capture donne un gain en attente ; la commande prête le rend disponible côté Merchant ; l'offre attribuée crée le gain Courier en attente ; la livraison le rend disponible ; le remboursement le place en retenue. Six snapshots F4K (captured, merchant_ready, offered, courier_progress, refund_held, revoked) vérifient les montants exacts ; trois allocations forment 12 postings équilibrés à zéro. Les 8 reçus opérationnels sont append-only. Toutes ces valeurs, y compris 20 % de commission, sont SYNTHÉTIQUES et non contractuelles.
+
+**Ce qui reste NO-GO :** vrai realm/PKCE, KYB/KYC et contrats juridiquement vérifiés, registre Courier officiel, authentification machine Dispatch/annulation, sources d'autorité distribuées, choix PSP/pays/devise/taxation, Stripe TEST officiel, Stripe LIVE, banques, settlement et payouts. Les apps Expo réelles ne sont pas branchées sur 015 ; aucune migration VPS, fusion PR, EAS payant ou Store. Le logout Keycloak externe n'est pas atomique avec la transaction PostgreSQL et cette preuve ne prétend pas le contraire.
+
+**Étape F4L cible :** attestation de l'identité machine Dispatch, délégation minimale d'affectation, concurrence affectation/remboursement/livraison, identité Courier revocable, puis vrais contrats KYB/KYC et conditions internationales. Suivi : [Passation F4K](./DA_PASSATION_F4K_ATTESTED_MERCHANT_COURIER_OPERATIONS_QA_2026-10-13.md) et [roadbook financier](./DA_STRIPE_TEST_RECONCILIATION_QA_2026-10-12.md).

@@ -13,6 +13,7 @@ on:
       - feat/f4g-real-keycloak-partner-session-qa-20261013
       - feat/f4h-finance-authority-registry-qa-20261013
       - feat/f4i-isolated-finance-attestor-qa-20261013
+      - feat/f4j-wallet-revocation-linearization-qa-20261013
     paths:
       - 'services/api-nest/src/client-enrollment/**'
       - 'services/api-nest/src/client-commerce/**'
@@ -53,6 +54,13 @@ on:
       - '.github/workflows/f4h-keycloak-finance-authority-qa.yml'
       - '.github/workflows/f4i-isolated-wallet-attestor-qa.yml'
       - '.github/workflows/f4j-wallet-revocation-linearized-qa.yml'
+      - '.github/workflows/f4k-attested-merchant-courier-transitions-qa.yml'
+      - 'services/api-nest/migrations/client-commerce/20261013_015_attested_merchant_courier_transitions_qa_only.sql'
+      - 'services/api-nest/test/merchant-courier-attested-transition-order-seed.pg-qa.cjs'
+      - 'services/api-nest/test/merchant-courier-attested-transition-client.pg-qa.integration.cjs'
+      - 'services/api-nest/test/merchant-courier-attested-financial-pulse.pg-qa.sql'
+      - 'services/api-nest/test/merchant-courier-attested-transition-private.pg-qa.service.cjs'
+      - 'docs/DA_PASSATION_F4K_ATTESTED_MERCHANT_COURIER_OPERATIONS_QA_2026-10-13.md'
       - 'services/api-nest/migrations/client-commerce/20261013_014_wallet_business_revocation_linearized_qa_only.sql'
       - 'services/api-nest/test/merchant-courier-wallet-revocation-linearized.pg-qa.integration.cjs'
       - 'docs/DA_PASSATION_F4J_WALLET_REVOCATION_LINEARIZATION_QA_2026-10-13.md'
@@ -183,6 +191,27 @@ jobs:
         env:
           QA_SYNTHETIC_ONLY: 'YES'
         run: node --test services/api-nest/test/merchant-courier-wallet-release-isolation.qa.test.cjs
+      - name: F4K signed Merchant/Courier operations are private and Dispatch remains denied
+        run: |
+          for f in services/api-nest/test/merchant-courier-attested-transition-*.cjs
+          do node --check "$f"; done
+          node - <<'NODE'
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          const migration=fs.readFileSync('services/api-nest/migrations/client-commerce/20261013_015_attested_merchant_courier_transitions_qa_only.sql','utf8');
+          const bridge=fs.readFileSync('services/api-nest/src/client-commerce/merchant-courier-wallet-signed-session.pg-qa.bridge.ts','utf8');
+          const service=fs.readFileSync('services/api-nest/test/merchant-courier-attested-transition-private.pg-qa.service.cjs','utf8');
+          const app=fs.readFileSync('services/api-nest/src/app.module.ts','utf8');
+          assert(migration.includes('da_qa_fulfillment_receipt_015'));
+          assert(migration.includes('da_qa_wallet_read_linearized_014'));
+          assert(migration.includes('REVOKE EXECUTE ON FUNCTION'));
+          assert(migration.includes('da_qa_dispatch_assign_offer'));
+          assert(!/GRANT EXECUTE ON FUNCTION\s+public\.da_qa_dispatch_assign_offer/i.test(migration));
+          assert(bridge.includes("QA_F4K_OPERATION_WRITES!=='YES'"));
+          assert(service.includes("req.url!=='/transition'"));
+          assert(!app.includes('QaWalletVerifiedSessionBridge'));
+          assert(!app.includes('da_qa_partner_transition_attested_015'));
+          console.log('QA_F4K_SIGNED_WRITE_APP_MODULE_NOT_REGISTERED_DISPATCH_DENIED=PASS');
+          NODE
       - name: F4J PostgreSQL-local revocation and forbidden legacy wallet path
         run: |
           node --check services/api-nest/test/merchant-courier-wallet-revocation-linearized.pg-qa.integration.cjs
