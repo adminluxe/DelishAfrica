@@ -219,6 +219,11 @@ async function main(){
  }else if(stage==='refund-race'){
   await deniedSql('refundConcurrent',access,/qa_f4l_order_payment_hold/);
   console.log('QA_F4L_REFUND_LOCK_ORDERING_BLOCKS_DISPATCH=PASS');
+ }else if(stage==='assignment-refund-held'){
+  await deniedSql('assignThenRefund',access,/qa_f4l_order_payment_hold/);
+  assert.equal(await f4kCourier('assignThenRefund','accepted'),403,
+   'Courier cannot accept after financial hold, even if offered');
+  console.log('QA_F4L_ASSIGNMENT_BEFORE_REFUND_HOLD_BLOCKS_COURIER=PASS');
  }else if(stage==='courier-revoked'){
   await deniedSql('revokedCourier',access,
    /qa_f4l_courier_roster_or_territory_denied/);
