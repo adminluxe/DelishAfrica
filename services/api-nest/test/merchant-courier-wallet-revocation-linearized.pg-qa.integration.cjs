@@ -22,6 +22,7 @@ const admin=pg('postgres');
 const merchant=pg('da_qa_merchant_commerce_app');
 const courier=pg('da_qa_courier_commerce_app');
 const attestor=pg('da_qa_wallet_attestor_isolated_013');
+const dispatch=pg('da_qa_dispatch_commerce_app');
 const users=JSON.parse(fs.readFileSync('/qa-seed/users.json','utf8'));
 const prefix='DA-F4G-keycloak-partner-sid-jti-v1\n';
 function claims(role){
@@ -190,10 +191,34 @@ test('F4J atomic post-attestation read closes PostgreSQL revocation TOCTOU',
       await denied(read(isolated,mB,valid));
     }finally{isolated.release();}
     console.log('QA_F4J_CROSS_PARTNER_SESSION_DIGEST=DENIED');
-    console.log('QA_F4J_FINANCIAL_MUTATIONS=STILL_REVOKED');
+    // Explicit old-port attack: no fixture is mutated; permission MUST
+    // fail before any SECDEF body evaluates the hostile parameters.
+    const bogus='2a56a6bb-a3ce-4c04-81b2-7f1db07dd5f1';
+    await denied(merchant.query(
+      'SELECT public.da_qa_merchant_transition('+
+      '$1::uuid,$2::varchar,$3::text)',
+      [bogus,'qa-restaurant','ready']));
+    await denied(courier.query(
+      'SELECT public.da_qa_courier_transition('+
+      '$1::uuid,$2::text,$3::uuid,$4::text)',
+      [bogus,cA.iss,cA.sub,'delivered']));
+    await denied(dispatch.query(
+      'SELECT public.da_qa_dispatch_assign_offer('+
+      '$1::uuid,$2::text,$3::uuid)',
+      [bogus,cA.iss,cA.sub]));
+    await denied(merchant.query(
+      'SELECT public.da_qa_wallet_merchant_summary($1::varchar)',
+      ['qa-restaurant']));
+    await denied(courier.query(
+      'SELECT public.da_qa_wallet_courier_summary($1::text,$2::uuid)',
+      [cA.iss,cA.sub]));
+    await denied(merchant.query(
+      'SELECT public.da_qa_wallet_accrue_verified_capture($1::uuid)',
+      [bogus]));
+    console.log('QA_F4J_FINANCIAL_MUTATIONS_AND_LEGACY_READS=DENIED_SQL');
     console.log('QA_F4J_STRIPE_CALLS=ZERO_PAYOUTS=ZERO');
   }finally{
     await Promise.all([admin.end(),merchant.end(),courier.end(),
-      attestor.end()]);
+      attestor.end(),dispatch.end()]);
   }
 });
