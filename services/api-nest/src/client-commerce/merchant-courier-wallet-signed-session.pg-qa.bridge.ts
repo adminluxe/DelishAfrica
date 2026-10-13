@@ -126,6 +126,89 @@ export class QaWalletVerifiedSessionBridge {
        !trust?.courierPool?.connect||!trust?.attestor?.query)deny();
   }
 
+  /**
+   * F4K QA-only operational mutation. The existing wallet read acts as a
+   * complete independent Keycloak/introspection/SQL-authority preflight;
+   * a NEW ticket is then minted for this single operation. PostgreSQL 015
+   * repeats the 014 row-lock authorization during the exact same
+   * transaction that changes the operational row and records the receipt.
+   * No caller-provided slug, issuer, subject or courier assignment.
+   */
+  async transition(
+    authorization:unknown,orderId:unknown,next:unknown,
+  ):Promise<Readonly<{
+    mode:'qa_synthetic_only';orderId:string;ownerRole:Role;state:string;
+    replayed:boolean;withdrawableMinor:0;payoutEnabled:false;
+  }>>{
+    if(process.env.NODE_ENV==='production'||
+       process.env.GITHUB_ACTIONS!=='true'||
+       process.env.QA_SYNTHETIC_ONLY!=='YES'||
+       process.env.QA_F4I_PRIVATE_SERVICE!=='YES'||
+       process.env.QA_F4J_ATOMIC_SQL!=='YES'||
+       process.env.QA_F4K_OPERATION_WRITES!=='YES')deny();
+    if(typeof orderId!=='string'||!UUID.test(orderId)||
+       typeof next!=='string'||
+       !['accepted','ready','picked_up','delivered'].includes(next))deny();
+    const scope=await this.readWallet(authorization,1);
+    const raw=typeof authorization==='string'?
+      authorization.match(/^Bearer ([^\s]+)$/i)?.[1]:null;
+    if(!raw||!JWT.test(raw))deny();
+    let v:DaExternalTokenVerification;
+    try{v=await this.trust.verify.verifyToken(raw);}catch{deny();}
+    if(!v.ok)deny();
+    const p=v.payload,role=p.role;
+    if((role!=='merchant'&&role!=='courier')||
+       p.authSource!=='external'||p.iss!==this.trustedIssuer||
+       !UUID.test(p.sub||'')||!SID.test(p.sid||'')||
+       !JTI.test(p.jti||'')||
+       role!==scope.ownerRole||
+       (role==='merchant'&&!['accepted','ready'].includes(next))||
+       (role==='courier'&&!['accepted','picked_up','delivered']
+         .includes(next)))deny();
+    const pool=role==='merchant'?this.trust.merchantPool:
+      this.trust.courierPool;
+    let client:QaWalletDbClient|null=null;
+    try{
+      client=await pool.connect();
+      const login=one((await client.query(
+        'SELECT session_user AS login')).rows);
+      if(login.login!==ROLE_LOGIN[role])deny();
+      const attestLogin=one((await this.trust.attestor.query(
+        'SELECT session_user AS login')).rows);
+      if(attestLogin.login!=='da_qa_wallet_attestor_isolated_013')deny();
+      const challenge=one((await client.query(
+        'SELECT public.da_qa_wallet_begin_scope_010() AS challenge')).rows);
+      if(typeof challenge.challenge!=='string'||
+         !UUID.test(challenge.challenge))deny();
+      const ticket=one((await this.trust.attestor.query(
+        'SELECT public.da_qa_wallet_attest_010('+
+        '$1::uuid,$2::text,$3::uuid,$4::varchar,$5::uuid,$6::char(2)) AS ticket',
+        [challenge.challenge,p.iss,p.sub,
+          role==='merchant'?scope.merchantSlug:null,
+          scope.organizationId,scope.territory])).rows);
+      if(typeof ticket.ticket!=='string'||!UUID.test(ticket.ticket))deny();
+      const key=createHash('sha256')
+        .update('DA-F4G-keycloak-partner-sid-jti-v1\n'+
+          [p.iss,p.sub,p.sid,p.jti].join('\n')).digest('hex');
+      const received=one((await client.query(
+        'SELECT public.da_qa_partner_transition_attested_015('+
+        '$1::uuid,$2::text,$3::uuid,$4::text) AS receipt',
+        [ticket.ticket,key,orderId,next])).rows);
+      const receipt=object(received.receipt);
+      if(receipt.mode!=='qa_synthetic_only'||
+         receipt.orderId!==orderId||receipt.ownerRole!==role||
+         receipt.state!==next||
+         typeof receipt.replayed!=='boolean'||
+         receipt.withdrawableMinor!==0||receipt.payoutEnabled!==false)deny();
+      return Object.freeze({
+        mode:'qa_synthetic_only' as const,orderId,ownerRole:role,
+        state:next,replayed:receipt.replayed,
+        withdrawableMinor:0 as const,payoutEnabled:false as const,
+      });
+    }catch{deny();}
+    finally{if(client)client.release();}
+  }
+
   async readWallet(
     authorization:unknown,limit=20,
   ):Promise<QaVerifiedWalletRead>{
