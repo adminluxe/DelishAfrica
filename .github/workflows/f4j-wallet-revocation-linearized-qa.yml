@@ -1,0 +1,442 @@
+name: F4J QA — real isolated Keycloak signed partner wallet
+on:
+  pull_request:
+    branches:
+      - feat/f4i-isolated-finance-attestor-qa-20261013
+    paths:
+      - '.github/workflows/f4j-wallet-revocation-linearized-qa.yml'
+      - 'services/api-nest/migrations/client-commerce/20261013_013_separate_wallet_attestor_qa_only.sql'
+      - 'services/api-nest/migrations/client-commerce/20261013_014_wallet_business_revocation_linearized_qa_only.sql'
+      - 'services/api-nest/test/merchant-courier-wallet-revocation-linearized.pg-qa.integration.cjs'
+      - 'services/api-nest/src/client-commerce/merchant-courier-wallet-signed-session.pg-qa.bridge.ts'
+      - 'services/api-nest/test/merchant-courier-wallet-isolated-attestor.setup.cjs'
+      - 'services/api-nest/test/merchant-courier-wallet-isolated-attestor.pg-qa.service.cjs'
+      - 'services/api-nest/test/merchant-courier-wallet-isolated-attestor.client.pg-qa.integration.cjs'
+      - 'docs/DA_PASSATION_F4I_ATTESTOR_ISOLATION_QA_2026-10-13.md'
+      - 'docs/DA_STRIPE_TEST_RECONCILIATION_QA_2026-10-12.md'
+      - 'docs/DA_ARCHITECTURE_QA_STRIPE_TEST_POSTGRES_PIN_2026-10-12.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  keycloak-partner-wallet:
+    name: Keycloak 26.4.7 + PostgreSQL17, Merchant/Courier RSA identity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+
+      - name: F4I no production, network or SQL bypass preflight
+        run: |
+          set -Eeuo pipefail
+          for f in \
+            services/api-nest/test/merchant-courier-wallet-isolated-attestor.setup.cjs \
+            services/api-nest/test/merchant-courier-wallet-isolated-attestor.pg-qa.service.cjs \
+            services/api-nest/test/merchant-courier-wallet-isolated-attestor.client.pg-qa.integration.cjs
+          do node --check "$f"; done
+          node --check services/api-nest/test/merchant-courier-wallet-revocation-linearized.pg-qa.integration.cjs
+          node - <<'NODE'
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          const wf=fs.readFileSync('.github/workflows/f4j-wallet-revocation-linearized-qa.yml','utf8');
+          const migration=fs.readFileSync('services/api-nest/migrations/client-commerce/20261013_013_separate_wallet_attestor_qa_only.sql','utf8');
+          const f4j=fs.readFileSync('services/api-nest/migrations/client-commerce/20261013_014_wallet_business_revocation_linearized_qa_only.sql','utf8');
+          const adapter=fs.readFileSync('services/api-nest/src/client-commerce/merchant-courier-wallet-signed-session.pg-qa.bridge.ts','utf8');
+          assert(f4j.includes('da_qa_wallet_read_linearized_014'));
+          assert(f4j.includes('da_merchant_memberships'));
+          assert(f4j.includes('da_qa_finance_courier_roster_012'));
+          assert(f4j.includes('da_qa_partner_oidc_sessions_011'));
+          assert(f4j.includes('FOR SHARE'));
+          assert(f4j.includes('FOR UPDATE'));
+          assert(f4j.includes('REVOKE EXECUTE ON FUNCTION'));
+          assert(adapter.includes("QA_F4J_ATOMIC_SQL==='YES'"));
+          assert(!/DROP TABLE|TRUNCATE TABLE|ALTER SYSTEM/i.test(f4j));
+          const app=fs.readFileSync('services/api-nest/src/app.module.ts','utf8');
+          const service=fs.readFileSync('services/api-nest/test/merchant-courier-wallet-isolated-attestor.pg-qa.service.cjs','utf8');
+          assert(wf.includes('--network none'));
+          assert(wf.includes('--network "container:$KC_ID"'));
+          assert(wf.includes('scram-sha-256'));
+          assert(wf.includes('QA_F4I_APP_ONLY'));
+          assert(wf.includes('QA_F4I_PRIVATE_SERVICE'));
+          assert(service.includes("server.listen(SOCKET,resolve)"));
+          assert(!service.includes('http.createServer().listen(0.0.0.0)'));
+          assert(migration.includes('da_qa_wallet_attestor_isolated_013'));
+          assert(migration.includes('REVOKE EXECUTE ON FUNCTION'));
+          assert(!/DROP TABLE|TRUNCATE TABLE|ALTER SYSTEM/i.test(migration));
+          assert(!app.includes('QaWalletVerifiedSessionBridge'));
+          const imageCommands=wf.split('\n').filter(x=>/^\s*docker run\s/.test(x));
+          assert(imageCommands.length>=2);
+          assert(imageCommands.every(x=>!/\s(?:-p|--publish)(?:\s|=)/.test(x)));
+          console.log('QA_F4I_NO_PRODUCTION_NO_PUBLIC_PORT_NO_PAYOUT=PASS');
+          NODE
+
+      - name: Prepare disposable TypeScript runtime TLS and QA secrets
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          umask 077
+          QA_DIR="$RUNNER_TEMP/da-f4i-$GITHUB_RUN_ID"
+          mkdir -p "$QA_DIR/deps" "$QA_DIR/built" "$QA_DIR/tls"
+          npm --prefix "$QA_DIR/deps" install --ignore-scripts \
+            --no-audit --no-fund --no-save \
+            pg@8.16.3 typescript@5.9.3 \
+            @nestjs/common@10.4.22 reflect-metadata@0.1.14 \
+            rxjs@7.8.1 >/dev/null
+          openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 \
+            -keyout "$QA_DIR/tls/qa.key" \
+            -out "$QA_DIR/tls/qa.crt" \
+            -subj "/CN=127.0.0.1" \
+            -addext "subjectAltName=IP:127.0.0.1" \
+            -addext "basicConstraints=critical,CA:TRUE" >/dev/null 2>&1
+          NODE_PATH="$QA_DIR/deps/node_modules" node - "$QA_DIR/built" <<'NODE'
+          const fs=require('node:fs'),ts=require('typescript'),path=require('node:path');
+          const files=[
+            ['services/api-nest/src/client-commerce/client-commerce.pg-qa.adapter.ts','client-commerce.pg-qa.adapter.js'],
+            ['services/api-nest/src/client-commerce/client-order-snapshot.pg-qa.adapter.ts','client-order-snapshot.pg-qa.adapter.js'],
+            ['services/api-nest/src/client-commerce/merchant-courier-fulfillment.pg-qa.adapter.ts','merchant-courier-fulfillment.pg-qa.adapter.js'],
+            ['services/api-nest/src/client-commerce/merchant-courier-wallet.pg-qa.adapter.ts','merchant-courier-wallet.pg-qa.adapter.js'],
+            ['services/api-nest/src/client-commerce/merchant-courier-wallet-signed-session.pg-qa.bridge.ts','merchant-courier-wallet-signed-session.pg-qa.bridge.js'],
+            ['services/api-nest/src/client-commerce/merchant-courier-finance-authority.pg-qa.adapter.ts','merchant-courier-finance-authority.pg-qa.adapter.js'],
+            ['services/api-nest/src/auth/client-token-isolation.ts','client-token-isolation.js'],
+            ['services/api-nest/src/auth/merchant-courier-token-isolation.ts','merchant-courier-token-isolation.js'],
+            ['services/api-nest/src/auth/external-jwks-verifier.service.ts','external-jwks-verifier.service.js'],
+          ];
+          for(const [file,name] of files){
+            const out=ts.transpileModule(fs.readFileSync(file,'utf8'),{
+              compilerOptions:{
+                module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,
+                esModuleInterop:true,experimentalDecorators:true,
+                emitDecoratorMetadata:true,strict:true,
+              },fileName:file,reportDiagnostics:true,
+            });
+            if(out.diagnostics?.some(d=>d.category===ts.DiagnosticCategory.Error))
+              throw Error('F4H TypeScript transpile failed: '+file);
+            fs.writeFileSync(path.join(process.argv[2],name),out.outputText,{mode:0o600});
+          }
+          console.log('QA_F4I_VERIFIER_BRIDGE_COMPILED=YES');
+          NODE
+          node - "$QA_DIR/test.env" <<'NODE'
+          const fs=require('node:fs'),crypto=require('node:crypto');
+          const random=()=>crypto.randomBytes(32).toString('hex');
+          const secret=random();
+          fs.writeFileSync(process.argv[2],[
+            'KC_BOOTSTRAP_ADMIN_USERNAME=qa_admin',
+            'KC_BOOTSTRAP_ADMIN_PASSWORD='+secret,
+            'QA_BOOTSTRAP_ADMIN_PASSWORD='+secret,
+            'QA_COMMERCE_HMAC_KEY='+random(),
+            'GITHUB_ACTIONS=true',
+            'QA_SYNTHETIC_ONLY=YES',
+            'QA_KEYCLOAK_ORIGIN=https://127.0.0.1',
+            'QA_HTTPS_ORIGIN=https://127.0.0.1',
+            'QA_COMMERCE_DB_HOST=127.0.0.1',
+            'QA_COMMERCE_DB_NAME=postgres',
+            'NODE_EXTRA_CA_CERTS=/qa-tls/qa.crt',
+            'KC_HOSTNAME=https://127.0.0.1',
+            'KC_PROXY_HEADERS=xforwarded',
+            'KC_HEALTH_ENABLED=false',
+            'KC_METRICS_ENABLED=false',
+            '',
+          ].join('\n'),{mode:0o600});
+          console.log('QA_F4I_EPHEMERAL_SECRETS_CREATED_NOT_LOGGED=YES');
+          NODE
+          chmod 755 "$QA_DIR" "$QA_DIR/deps" "$QA_DIR/built" "$QA_DIR/tls"
+          chmod -R a+rX "$QA_DIR/deps" "$QA_DIR/built" "$QA_DIR/tls"
+          chmod 600 "$QA_DIR/test.env"
+
+      - name: Run disconnected REAL Keycloak and PostgreSQL 17
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          QA_DIR="$RUNNER_TEMP/da-f4i-$GITHUB_RUN_ID"
+          KC_ID="da-f4i-keycloak-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          PG_ID="da-f4i-postgres-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          TLS_ID="da-f4i-tls-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          AT_ID="da-f4i-attestor-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          cleanup(){
+            docker rm -f "$AT_ID" >/dev/null 2>&1 || true
+            docker rm -f "$TLS_ID" >/dev/null 2>&1 || true
+            docker rm -f "$PG_ID" >/dev/null 2>&1 || true
+            docker rm -f "$KC_ID" >/dev/null 2>&1 || true
+            if [[ "$QA_DIR" == "$RUNNER_TEMP/da-f4i-$GITHUB_RUN_ID" ]]; then
+              sudo chown "$(id -u)":"$(id -g)" \
+                "$QA_DIR/seed" "$QA_DIR/users" "$QA_DIR/ipc" 2>/dev/null || true
+              rm -rf "$QA_DIR" || true
+            fi
+            if [[ -e "$QA_DIR" ]]; then
+              echo "QA_F4I_EPHEMERAL_CLEANUP=INCOMPLETE"
+            else
+              echo "QA_F4I_EPHEMERAL_CLEANUP=PASS"
+            fi
+          }
+          trap cleanup EXIT
+          docker pull quay.io/keycloak/keycloak:26.4.7 >/dev/null
+          docker pull postgres:17-alpine >/dev/null
+          docker pull node:22-alpine >/dev/null
+          docker run -d --name "$KC_ID" --pull never \
+            --network none --user 1000:0 --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 330 --memory 3g \
+            --tmpfs /opt/keycloak/data:rw,nosuid,nodev,size=384m,uid=1000,gid=0,mode=0700 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=128m,uid=1000,gid=0,mode=1777 \
+            --env-file "$QA_DIR/test.env" \
+            quay.io/keycloak/keycloak:26.4.7 \
+            start-dev --http-port=18195 --http-host=127.0.0.1 \
+              --proxy-headers=xforwarded >/dev/null
+          docker run -d --name "$PG_ID" --pull never \
+            --network "container:$KC_ID" --user 70:70 --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 150 --memory 768m \
+            --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev,size=320m,uid=70,gid=70,mode=0700 \
+            --tmpfs /var/run/postgresql:rw,nosuid,nodev,size=16m,uid=70,gid=70,mode=0770 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=64m,uid=70,gid=70,mode=1777 \
+            -e POSTGRES_HOST_AUTH_METHOD=trust \
+            postgres:17-alpine -c listen_addresses=127.0.0.1 >/dev/null
+          echo "QA_F4I_DOCKER_NETWORK=NONE"
+          echo "QA_F4I_HOST_PORTS_PUBLISHED=ZERO"
+          echo "QA_F4I_KEYCLOAK_REAL=26.4.7"
+          echo "QA_F4I_POSTGRES_REAL=17"
+          tester(){
+            docker run --rm --pull never --user 1000:1000 \
+              --network "container:$KC_ID" --cap-drop ALL \
+              --cap-add NET_BIND_SERVICE \
+              --security-opt no-new-privileges --read-only \
+              --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+              --env-file "$QA_DIR/test.env" \
+              -e NODE_PATH=/qa-deps/node_modules \
+              -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+              -v "$QA_DIR/tls:/qa-tls:ro" \
+              -v "$QA_DIR/deps:/qa-deps:ro" \
+              -v "$QA_DIR/built:/qa-built:ro" \
+              node:22-alpine "$@"
+          }
+          ready=false
+          for i in $(seq 1 90); do
+            if docker exec "$PG_ID" pg_isready -h 127.0.0.1 \
+              -U postgres >/dev/null 2>&1; then ready=true; break; fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then echo "QA_F4I_PG_READY=NO"; exit 1; fi
+          MIG="services/api-nest/migrations/client-commerce"
+          for f in \
+            "$MIG/20261012_001_client_commerce_authority_qa_only.sql" \
+            "$MIG/20261012_002_client_commerce_least_privilege_qa_only.sql" \
+            "$MIG/20261012_003_stripe_test_webhook_inbox_qa_only.sql" \
+            "$MIG/20261012_004_stripe_test_financial_reconciliation_qa_only.sql" \
+            "$MIG/20261012_005_client_order_receipt_read_qa_only.sql" \
+            "$MIG/20261013_006_canonical_order_snapshot_qa_only.sql" \
+            "$MIG/20261013_007_merchant_courier_fulfillment_qa_only.sql" \
+            "$MIG/20261013_008_refund_dispatch_row_lock_qa_only.sql" \
+            "$MIG/20261013_009_merchant_courier_wallet_qa_only.sql"
+          do
+            docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+              -h 127.0.0.1 -U postgres -d postgres < "$f" >/dev/null
+          done
+          echo "QA_F4I_SQL_001_TO_009=INSTALLED_DISCONNECTED"
+          tester node --test /qa-tests/merchant-courier-wallet.pg-qa.integration.cjs
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < "$MIG/20261013_010_wallet_tenant_bound_scope_qa_only.sql" >/dev/null
+          tester node --test /qa-tests/merchant-courier-wallet-tenant-scope.pg-qa.integration.cjs
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < "$MIG/20261013_011_partner_session_qa_only.sql" >/dev/null
+          echo "QA_F4I_SQL_SESSION_LEDGER_011=INSTALLED_DISCONNECTED"
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/migrations/catalog-foundation/34b4b5b2a5a2_001_catalog_foundation.sql >/dev/null
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < "$MIG/20261013_012_finance_authority_registry_qa_only.sql" >/dev/null
+          echo "QA_F4I_MERCHANT_FOUNDATION_AND_COURIER_REGISTRY_012=INSTALLED_DISCONNECTED"
+          tester node -e '
+            (async()=>{for(let i=0;i<110;i++){try{
+              const r=await fetch("http://127.0.0.1:18195/realms/master/.well-known/openid-configuration",
+                {signal:AbortSignal.timeout(2200)});
+              if(r.status===200){console.log("QA_F4I_KEYCLOAK_READY=YES");return;}
+            }catch{} await new Promise(resolve=>setTimeout(resolve,2000));}
+            console.error("QA_F4I_KEYCLOAK_READY=NO");process.exitCode=1;})();
+          '
+          # Existing PostgreSQL 001-012 and Keycloak are initialized, but
+          # all tokens/merchant/legal/Courier fixtures are still synthetic.
+          TLS_ID="da-f4i-tls-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          AT_ID="da-f4i-attestor-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          docker run -d --name "$TLS_ID" --pull never --user 1000:1000 \
+            --network "container:$KC_ID" --cap-drop ALL \
+            --cap-add NET_BIND_SERVICE --security-opt no-new-privileges \
+            --read-only --tmpfs /tmp:rw,nosuid,nodev,size=32m \
+            --env-file "$QA_DIR/test.env" \
+            -v "$QA_DIR/tls:/qa-tls:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node -e \
+            'require("/qa-tests/synthetic-keycloak-tls-proxy.qa.cjs").startQaHttpsProxy().then(()=>console.log("QA_F4I_LOCAL_TLS_PROXY_READY=YES")).catch(()=>process.exit(1))' >/dev/null
+          tester node -e '
+            (async()=>{for(let i=0;i<60;i++){try{
+              const r=await fetch("https://127.0.0.1/realms/master/.well-known/openid-configuration",
+                {signal:AbortSignal.timeout(2200)});
+              if(r.status===200)return;
+            }catch{} await new Promise(resolve=>setTimeout(resolve,350));}
+            process.exitCode=1;})();
+          '
+          mkdir -p "$QA_DIR/seed" "$QA_DIR/users" "$QA_DIR/ipc"
+          sudo chown 1000:1000 "$QA_DIR/seed"
+          sudo chmod 0700 "$QA_DIR/seed"
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$KC_ID" --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+            --env-file "$QA_DIR/test.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/seed:/qa-seed:rw" \
+            -v "$QA_DIR/tls:/qa-tls:ro" \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node \
+              /qa-tests/merchant-courier-wallet-isolated-attestor.setup.cjs
+          echo "QA_F4I_PRIVILEGED_QA_INITIALIZER_EXITED=YES"
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            < "$MIG/20261013_013_separate_wallet_attestor_qa_only.sql" >/dev/null
+          echo "QA_F4I_SQL_EXCLUSIVE_ATTESTOR_ROLE_013=INSTALLED"
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            < "$MIG/20261013_014_wallet_business_revocation_linearized_qa_only.sql" >/dev/null
+          echo "QA_F4J_SQL_REVOCATION_LINEARIZED_014=INSTALLED"
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$KC_ID" --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+            --env-file "$QA_DIR/test.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/seed:/qa-seed:ro" \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node --test \
+              /qa-tests/merchant-courier-wallet-revocation-linearized.pg-qa.integration.cjs
+          echo "QA_F4J_COMMIT_ORDER_SESSION_MEMBERSHIP_KYB_ROSTER=PASS"
+          # The initializer's protected files belong to UID 1000. Move only
+          # the confidential introspection proof into the runner-private
+          # staging area; do not relax file or directory permissions.
+          sudo install -m 0600 -o "$(id -u)" -g "$(id -g)" \
+            "$QA_DIR/seed/private-introspection.json" "$QA_DIR/introspection.json"
+
+          # Only now introduce strong authentication. PG socket local
+          # superuser remains inside the PG container; app shares NO socket.
+          node - "$QA_DIR" <<'NODE'
+          const fs=require('node:fs'),crypto=require('node:crypto'),path=require('node:path');
+          const dir=process.argv[2],secret=()=>crypto.randomBytes(32).toString('hex');
+          const secrets={
+            a:secret(),r:secret(),m:secret(),c:secret(),super:secret(),
+          };
+          const q=x=>"'"+x.replaceAll("'","''")+"'";
+          fs.writeFileSync(path.join(dir,'roles.sql'),[
+            "SET password_encryption='scram-sha-256';",
+            "ALTER ROLE da_qa_wallet_attestor_isolated_013 PASSWORD "+q(secrets.a)+";",
+            "ALTER ROLE da_qa_finance_registry_reader_012 PASSWORD "+q(secrets.r)+";",
+            "ALTER ROLE da_qa_merchant_commerce_app PASSWORD "+q(secrets.m)+";",
+            "ALTER ROLE da_qa_courier_commerce_app PASSWORD "+q(secrets.c)+";",
+            "ALTER ROLE postgres PASSWORD "+q(secrets.super)+";",
+            '',
+          ].join('\n'),{mode:0o600});
+          const introspection=JSON.parse(fs.readFileSync(
+            path.join(dir,'introspection.json'),'utf8'));
+          const shared=['GITHUB_ACTIONS=true','QA_SYNTHETIC_ONLY=YES'];
+          fs.writeFileSync(path.join(dir,'attestor.env'),[
+            ...shared,'QA_F4I_PRIVATE_SERVICE=YES',
+            'QA_F4J_ATOMIC_SQL=YES',
+            'NODE_EXTRA_CA_CERTS=/qa-tls/qa.crt',
+            'QA_ATTESTOR_DB_PASSWORD='+secrets.a,
+            'QA_REGISTRY_DB_PASSWORD='+secrets.r,
+            'QA_MERCHANT_DB_PASSWORD='+secrets.m,
+            'QA_COURIER_DB_PASSWORD='+secrets.c,
+            'QA_INTROSPECT_CLIENT_SECRET='+introspection.secret,
+            '',
+          ].join('\n'),{mode:0o600});
+          fs.writeFileSync(path.join(dir,'client.env'),[
+            ...shared,'QA_F4I_APP_ONLY=YES',
+            'QA_MERCHANT_DB_PASSWORD='+secrets.m,
+            'QA_COURIER_DB_PASSWORD='+secrets.c,
+            '',
+          ].join('\n'),{mode:0o600});
+          console.log('QA_F4I_SCRAM_SEPARATE_ONE_TIME_ROLE_CREDENTIALS=GENERATED');
+          NODE
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres < "$QA_DIR/roles.sql" >/dev/null
+          docker exec "$PG_ID" sh -c \
+            'sed -i -E "s/^([[:space:]]*host[[:space:]].*[[:space:]])(trust|md5|password)([[:space:]]*)$/\1scram-sha-256\3/" "$PGDATA/pg_hba.conf"'
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 -U postgres \
+            -d postgres -Atc "SELECT pg_reload_conf()" | grep -qx t
+          db_hba="$(docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres -Atc \
+            "SELECT count(*) FROM pg_hba_file_rules WHERE type LIKE 'host%' AND (error IS NOT NULL OR auth_method <> 'scram-sha-256')")"
+          if [[ "$db_hba" != "0" ]]; then
+            echo "QA_F4I_PG_HBA_POLICY=DENIED"; exit 1
+          fi
+          echo "QA_F4I_PG17_ALL_HOST_ROLES_REQUIRE_SCRAM=PASS"
+          sudo install -m 0400 -o 1000 -g 3000 \
+            "$QA_DIR/seed/users.json" "$QA_DIR/users/users.json"
+          sudo chown 1000:3000 "$QA_DIR/users"
+          sudo chmod 0750 "$QA_DIR/users"
+          sudo chown 1001:3000 "$QA_DIR/ipc"
+          sudo chmod 0710 "$QA_DIR/ipc"
+
+          # This container owns ALL financial DB credentials. The app
+          # cannot read any private env file and sees only a protected Unix
+          # socket, not the attestor's identity, session or SQL secret.
+          docker run -d --name "$AT_ID" --pull never --user 1001:3000 \
+            --network "container:$KC_ID" --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=32m \
+            --env-file "$QA_DIR/attestor.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/ipc:/qa-ipc:rw" \
+            -v "$QA_DIR/tls/qa.crt:/qa-tls/qa.crt:ro" \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node \
+              /qa-tests/merchant-courier-wallet-isolated-attestor.pg-qa.service.cjs >/dev/null
+          ready=false
+          for i in $(seq 1 40); do
+            if [[ -S "$QA_DIR/ipc/finance-attestor.sock" ]]; then
+              ready=true;break
+            fi
+            if [[ "$(docker inspect -f '{{.State.Running}}' "$AT_ID")" != "true" ]]; then
+              echo "QA_F4I_ATTESTOR_EXITED_UNEXPECTEDLY";docker logs "$AT_ID" | tail -n 10; exit 1
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then
+            echo "QA_F4I_ATTESTOR_SOCKET=UNAVAILABLE";docker logs "$AT_ID" | tail -n 10;exit 1
+          fi
+          echo "QA_F4I_PRIVATE_SOCKET_FILE_ONLY=PASS"
+          run_client(){
+            local stage="$1"
+            docker run --rm --pull never --user 1000:3000 \
+              --network "container:$KC_ID" --cap-drop ALL \
+              --security-opt no-new-privileges --read-only \
+              --tmpfs /tmp:rw,nosuid,nodev,size=32m \
+              --env-file "$QA_DIR/client.env" \
+              -e QA_F4I_STAGE="$stage" \
+              -e NODE_PATH=/qa-deps/node_modules \
+              -v "$QA_DIR/ipc:/qa-ipc:ro" \
+              -v "$QA_DIR/users:/qa-users:ro" \
+              -v "$QA_DIR/deps:/qa-deps:ro" \
+              -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+              node:22-alpine node --test \
+                /qa-tests/merchant-courier-wallet-isolated-attestor.client.pg-qa.integration.cjs
+          }
+          run_client baseline
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres -c \
+            "UPDATE public.da_qa_partner_oidc_sessions_011 SET revoked_at=clock_timestamp() WHERE owner_role='merchant'" >/dev/null
+          run_client merchant-revoked
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres -c \
+            "UPDATE public.da_qa_finance_courier_roster_012 SET roster_status='suspended'" >/dev/null
+          run_client courier-suspended
+          echo "QA_F4I_PRIVATE_PROCESS_LIVE_IDENTITY_SQL_SPLIT=PASS"
+          echo "QA_F4I_NO_STRIPE_NO_BANK_NO_PAYOUT=PASS"
+          echo "QA_F4I_NO_PRODUCTION_NO_VPS_NO_STORE=PASS"
