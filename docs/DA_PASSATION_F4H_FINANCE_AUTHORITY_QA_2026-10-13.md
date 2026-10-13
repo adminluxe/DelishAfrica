@@ -1,6 +1,6 @@
 # DELISHAFRICA® — PASSATION F4H — Autorité financière Merchant/Courier PostgreSQL
 
-**13 octobre 2026 | PR #40 DRAFT | Laboratoire QA isolé | CERTIFICATION F4H EN COURS**
+**13 octobre 2026 | PR #40 DRAFT | Laboratoire QA isolé | CODE QA F4H SUCCESS, IDENTITÉS RÉELLES NO-GO**
 
 ## 1. Héritage certifié et frontière
 
@@ -52,3 +52,20 @@ Les mutations Merchant/Dispatch/Courier historiques restent désactivées après
 **Prochain verrou :** véritable service d'autorité métier indépendant (Merchant contractuel/KYB et roster Courier officiel) raccordé en QA autorisée, puis attestation des mutations et politique pays/devise/PSP. Ensuite seulement Stripe TEST officiel avec secrets dédiés et revue d'approbation.
 
 **Signature provisoire : F4H-SYNTHETIC-DURABLE-SCHEMA-QA-CANDIDATE / REAL-PARTNER-ENTITLEMENTS-NOT-CERTIFIED / NO-STRIPE / NO-PAYOUT / NO-PROD / NO-MERGE / NO-STORE.**
+
+---
+
+## 6. Preuves d'exécution, défaut découvert et correction
+
+**Code QA réussi sur SHA e603966d80a96afd6e9526730f9cb2e40dfcba08 :**
+
+- [Keycloak 26.4.7 réellement exécuté en environnement jetable + PostgreSQL 17, finance Merchant/Courier, CI #38331022065 — SUCCESS](https://github.com/adminluxe/DelishAfrica/actions/runs/38331022065).
+- [API + TypeScript Client, Merchant, Courier, CI #38331022061 — SUCCESS](https://github.com/adminluxe/DelishAfrica/actions/runs/38331022061).
+
+Journal Keycloak/PG17 consulté : QA_F4H_ACTUAL_CATALOG_MEMBERSHIPS_AND_DURABLE_QA_COURIER_ROSTER=SEEDED ; QA_F4H_REAL_KEYCLOAK_MERCHANT_A_B_PG17_SEPARATION=PASS ; QA_F4H_MERCHANT_CATALOG_ROLE_CONTRACT_PUBLISH_AND_MULTI_ORG=DENIED ; QA_F4H_SHARED_ENTITY_KYB_FREEZE_BOTH_PARTNER_TYPES=DENIED ; QA_F4H_MERCHANT_LEGAL_ENTITY_TERRITORY_010_MISMATCH=DENIED ; QA_F4H_COURIER_COMMITTED_ROSTER_AND_IDENTITY_REVOCATION=DENIED ; QA_F4H_FINANCE_REGISTRY_READER_HAS_SELECT_ONLY=PASS ; QA_F4H_REAL_KEYCLOAK_LOGOUT_INTROSPECTION_INACTIVE=PASS ; QA_F4H_STRIPE_CALLS=ZERO_PAYOUTS=ZERO ; et zéro test en échec.
+
+**Incident utile :** la première CI F4H #38330886926 a échoué lorsque le jeu adversarial tentait de suspendre contract_status mais de conserver membership_status='active' dans da_merchant_memberships. Le schéma réel interdit ce couple inconsistant via la contrainte active_gate_check. Nous avons corrigé **le jeu de test** pour mettre contract_status et membership_status sur 'suspended' simultanément, puis les restaurer simultanément, sans toucher au contrôle de sécurité SQL. La CI suivante a passé toute la matrice.
+
+La QA n'autorise jamais à changer une attribution réelle ni à se substituer à une entreprise. Les quatre acteurs tests sont fictifs, l'autorité 012 n'atteste aucun acte juridique réel, et le registre Courier officiel n'est pas intégré. **Aucune véritable capacité de paiement ou retrait n'est activée.**
+
+**Preuve de SHA final :** les trois pipelines F4H (Keycloak+PG17, API+apps, PostgreSQL historique) devront être revérifiés sur la révision HEAD incluant toutes les présentes mises à jour documentaires avant clôture. Les SUCCESS du code sont distincts des futures exécutions et ne doivent jamais être attribués par erreur à un autre SHA.
