@@ -61,7 +61,10 @@ export type QaWalletTrustPorts=Readonly<{
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SLUG=/^[a-z0-9][a-z0-9_-]{1,119}$/;
 const TERRITORY=/^[A-Z]{2}$/;
-const ID=/^[A-Za-z0-9_-]{8,180}$/;
+const SID=/^[A-Za-z0-9_-]{8,180}$/;
+// Keycloak 26 access-token jti may use its documented internal tr: prefix.
+// Accept only that bounded form or a plain opaque token identifier.
+const JTI=/^(?:tr:)?[A-Za-z0-9_-]{8,180}$/;
 const JWT=/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 const ISSUER=/^https:\/\/[A-Za-z0-9.-]+\/realms\/[A-Za-z0-9_-]+$/;
 const ROLE_LOGIN={
@@ -145,7 +148,7 @@ export class QaWalletVerifiedSessionBridge {
     if((role!=='merchant'&&role!=='courier')||
        p.authSource!=='external'||p.iss!==this.trustedIssuer||
        !UUID.test(p.sub||'')||p.azp!==ROLE_AUD[role]||
-       !ID.test(p.sid||'')||!ID.test(p.jti||'')||
+       !SID.test(p.sid||'')||!JTI.test(p.jti||'')||
        !Number.isSafeInteger(p.exp)||!Number.isSafeInteger(p.iat)||
        p.iat>seconds+30||p.exp<=seconds||
        p.exp-p.iat>900||p.exp-seconds>900)deny();
