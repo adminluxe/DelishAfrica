@@ -11,9 +11,15 @@ CREATE ROLE da_qa_wallet_write_owner_010 NOLOGIN NOSUPERUSER
   NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION;
 CREATE ROLE da_qa_wallet_attestor_010 LOGIN NOSUPERUSER
   NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION;
+-- PostgreSQL hides other-role backend_start when called from a
+-- SECURITY DEFINER owner. Isolate the exceptional stats capability:
+-- no login, no DML, exposes CURRENT BACKEND start only.
+CREATE ROLE da_qa_wallet_backend_observer_010 NOLOGIN NOSUPERUSER
+  NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION;
+GRANT pg_read_all_stats TO da_qa_wallet_backend_observer_010;
 GRANT USAGE ON SCHEMA public TO
   da_qa_wallet_read_owner_010,da_qa_wallet_write_owner_010,
-  da_qa_wallet_attestor_010;
+  da_qa_wallet_attestor_010,da_qa_wallet_backend_observer_010;
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 
 -- CLOSE ALL PREVIOUS IDENTITY-BEARING ENTRYPOINTS: a compromised shared
@@ -170,6 +176,22 @@ REVOKE ALL ON TABLE
   FROM PUBLIC,da_qa_merchant_commerce_app,da_qa_courier_commerce_app,
        da_qa_wallet_attestor_010;
 
+-- Exceptional PG stats role cannot log in and cannot read another
+-- session's information through this function. Only wallet read_owner
+-- is permitted to call it; app logins have no direct EXECUTE privilege.
+CREATE FUNCTION public.da_qa_wallet_current_backend_start_010()
+RETURNS timestamptz LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path=pg_catalog,public AS $$
+  SELECT backend_start FROM pg_catalog.pg_stat_activity
+  WHERE pid=pg_catalog.pg_backend_pid()
+$$;
+ALTER FUNCTION public.da_qa_wallet_current_backend_start_010()
+  OWNER TO da_qa_wallet_backend_observer_010;
+REVOKE ALL ON FUNCTION public.da_qa_wallet_current_backend_start_010()
+  FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.da_qa_wallet_current_backend_start_010()
+  TO da_qa_wallet_read_owner_010;
+
 -- A challenge is generated ONLY by the current app database backend.
 -- Neither a client-supplied GUC nor a passed slug/issuer is authoritative.
 CREATE FUNCTION public.da_qa_wallet_begin_scope_010()
@@ -183,8 +205,7 @@ BEGIN
     'da_qa_merchant_commerce_app','da_qa_courier_commerce_app') THEN
     RAISE EXCEPTION 'qa_scope_application_login_required';
   END IF;
-  SELECT backend_start INTO started
-    FROM pg_catalog.pg_stat_activity WHERE pid=pg_backend_pid();
+  started:=public.da_qa_wallet_current_backend_start_010();
   IF started IS NULL THEN RAISE EXCEPTION 'qa_scope_backend_missing'; END IF;
   INSERT INTO public.da_qa_wallet_challenge_010(
     db_login,backend_pid,backend_start)
@@ -309,9 +330,8 @@ BEGIN
   END IF;
   SELECT * INTO ch FROM public.da_qa_wallet_challenge_010
     WHERE challenge_id=t.challenge_id;
-  SELECT backend_start INTO started FROM pg_catalog.pg_stat_activity
-    WHERE pid=pg_backend_pid();
-  IF NOT FOUND OR started IS NULL OR
+  started:=public.da_qa_wallet_current_backend_start_010();
+  IF started IS NULL OR
     ch.db_login<>session_user OR ch.backend_pid<>pg_backend_pid()
     OR ch.backend_start<>started OR
     (ch.db_login='da_qa_merchant_commerce_app' AND t.owner_kind<>'merchant')
