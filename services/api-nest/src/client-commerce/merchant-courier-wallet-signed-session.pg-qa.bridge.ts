@@ -62,9 +62,10 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 const SLUG=/^[a-z0-9][a-z0-9_-]{1,119}$/;
 const TERRITORY=/^[A-Z]{2}$/;
 const SID=/^[A-Za-z0-9_-]{8,180}$/;
-// Keycloak 26 access-token jti may use its documented internal tr: prefix.
-// Accept only that bounded form or a plain opaque token identifier.
-const JTI=/^(?:tr:)?[A-Za-z0-9_-]{8,180}$/;
+// Treat a signed Keycloak token id as an OPAQUE identifier. Bound it to
+// printable URI-safe ASCII; never interpolate or log it. It is hashed before
+// a parameterized PostgreSQL lookup, so '-' ':' '.' '/' and '+' are safe.
+const JTI=/^[A-Za-z0-9._~:+/-]{8,255}$/;
 const JWT=/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 const ISSUER=/^https:\/\/[A-Za-z0-9.-]+\/realms\/[A-Za-z0-9_-]+$/;
 const ROLE_LOGIN={
