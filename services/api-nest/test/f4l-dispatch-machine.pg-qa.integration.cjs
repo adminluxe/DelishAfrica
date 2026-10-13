@@ -190,6 +190,29 @@ async function main(){
   console.log('QA_F4L_CONCURRENT_SEVEN_OFFERS_EXACTLY_ONE_RECEIPT=PASS');
   console.log('QA_F4L_ORG_UNREADY_PICKED_UP_REASSIGN=DENIED');
   console.log('QA_F4L_IDEMPOTENT_MACHINE_OPERATION=PASS');
+ }else if(stage==='reassignment'){
+  await assert.rejects(assign('reassign',access,{courier:'courierB'}),
+   /qa_f4l_reassignment_or_picked_up_denied/);
+  console.log('QA_F4L_SAME_ORG_COURIER_REASSIGNMENT=DENIED');
+ }else if(stage==='assignment-hold'){
+  const conn=await machine.connect();
+  let begun=false;
+  try{
+   const t=await ticket(conn,'assignThenRefund',access);
+   assert.equal(t.status,200);
+   await conn.query('BEGIN');begun=true;
+   const q=await conn.query(
+    'SELECT public.da_qa_dispatch_assign_attested_016($1::uuid) AS receipt',
+    [t.body.ticketId]);
+   assert.equal(q.rows[0].receipt.state,'offered');
+   console.log('QA_F4L_ASSIGNMENT_LOCK_ACQUIRED=YES');
+   await conn.query("SELECT pg_sleep(7)");
+   await conn.query('COMMIT');begun=false;
+   console.log('QA_F4L_ASSIGNMENT_BEFORE_REFUND_COMMITTED=PASS');
+  }finally{
+   if(begun)await conn.query('ROLLBACK').catch(()=>{});
+   conn.release();
+  }
  }else if(stage==='refund-first'){
   await deniedSql('refundFirst',access,/qa_f4l_order_payment_hold/);
   console.log('QA_F4L_REFUND_FIRST_BLOCKS_DISPATCH=PASS');
