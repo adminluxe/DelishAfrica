@@ -1,0 +1,226 @@
+name: F4G QA — real isolated Keycloak signed partner wallet
+on:
+  pull_request:
+    branches:
+      - feat/f4f-wallet-verified-session-bridge-qa-20261013
+    paths:
+      - '.github/workflows/f4g-keycloak-merchant-courier-wallet-qa.yml'
+      - 'services/api-nest/test/merchant-courier-keycloak-real-wallet.pg-qa.integration.cjs'
+      - 'services/api-nest/migrations/client-commerce/20261013_011_partner_session_qa_only.sql'
+      - 'services/api-nest/src/auth/external-jwks-verifier.service.ts'
+      - 'services/api-nest/src/auth/merchant-courier-token-isolation.ts'
+      - 'services/api-nest/src/client-commerce/merchant-courier-wallet-signed-session.pg-qa.bridge.ts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  keycloak-partner-wallet:
+    name: Keycloak 26.4.7 + PostgreSQL17, Merchant/Courier RSA identity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+
+      - name: Fail-closed isolated test syntax and production tripwire
+        run: |
+          set -Eeuo pipefail
+          node --check services/api-nest/test/merchant-courier-keycloak-real-wallet.pg-qa.integration.cjs
+          node - <<'NODE'
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          const workflow=fs.readFileSync('.github/workflows/f4g-keycloak-merchant-courier-wallet-qa.yml','utf8');
+          const test=fs.readFileSync('services/api-nest/test/merchant-courier-keycloak-real-wallet.pg-qa.integration.cjs','utf8');
+          const migration=fs.readFileSync('services/api-nest/migrations/client-commerce/20261013_011_partner_session_qa_only.sql','utf8');
+          const module=fs.readFileSync('services/api-nest/src/app.module.ts','utf8');
+          assert(workflow.includes('--network none'));
+          assert(workflow.includes('--network "container:$KC_ID"'));
+          assert(workflow.includes('NODE_EXTRA_CA_CERTS'));
+          const dockerCommands=workflow.split('\n').filter(x=>/^\s*docker\s+run\s/.test(x));
+          assert(dockerCommands.length>=3);
+          assert(dockerCommands.every(x=>!/\s(?:-p|--publish)(?:\s|=)/.test(x)));
+          assert(test.includes('ExternalJwksVerifierService'));
+          assert(test.includes('QaWalletVerifiedSessionBridge'));
+          assert(test.includes('token/introspect'));
+          assert(test.includes('fixture.adminToken'));
+          assert(test.includes('real Keycloak')||test.includes('Keycloak'));
+          assert(test.includes('QA_F4G_STRIPE_CALLS=ZERO_PAYOUTS=ZERO'));
+          assert(migration.includes('REVOKE ALL ON TABLE'));
+          assert(!/DROP TABLE|TRUNCATE TABLE|CREATE EXTENSION/i.test(migration));
+          assert(!module.includes('QaWalletVerifiedSessionBridge'));
+          assert(!/\bsk_live_|\bpk_live_|\bpayouts\.create|\btransfers\.create|api\.stripe\.com/i.test(test+migration));
+          console.log('QA_F4G_NO_PRODUCTION_NO_STRIPE_NO_PAYOUT_STATIC=PASS');
+          NODE
+
+      - name: Prepare disposable TypeScript runtime TLS and QA secrets
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          umask 077
+          QA_DIR="$RUNNER_TEMP/da-f4g-$GITHUB_RUN_ID"
+          mkdir -p "$QA_DIR/deps" "$QA_DIR/built" "$QA_DIR/tls"
+          npm --prefix "$QA_DIR/deps" install --ignore-scripts \
+            --no-audit --no-fund --no-save \
+            pg@8.16.3 typescript@5.9.3 \
+            @nestjs/common@10.4.22 reflect-metadata@0.1.14 \
+            rxjs@7.8.1 >/dev/null
+          openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 \
+            -keyout "$QA_DIR/tls/qa.key" \
+            -out "$QA_DIR/tls/qa.crt" \
+            -subj "/CN=127.0.0.1" \
+            -addext "subjectAltName=IP:127.0.0.1" \
+            -addext "basicConstraints=critical,CA:TRUE" >/dev/null 2>&1
+          NODE_PATH="$QA_DIR/deps/node_modules" node - "$QA_DIR/built" <<'NODE'
+          const fs=require('node:fs'),ts=require('typescript'),path=require('node:path');
+          const files=[
+            ['services/api-nest/src/client-commerce/client-commerce.pg-qa.adapter.ts','client-commerce.pg-qa.adapter.js'],
+            ['services/api-nest/src/client-commerce/client-order-snapshot.pg-qa.adapter.ts','client-order-snapshot.pg-qa.adapter.js'],
+            ['services/api-nest/src/client-commerce/merchant-courier-fulfillment.pg-qa.adapter.ts','merchant-courier-fulfillment.pg-qa.adapter.js'],
+            ['services/api-nest/src/client-commerce/merchant-courier-wallet.pg-qa.adapter.ts','merchant-courier-wallet.pg-qa.adapter.js'],
+            ['services/api-nest/src/client-commerce/merchant-courier-wallet-signed-session.pg-qa.bridge.ts','merchant-courier-wallet-signed-session.pg-qa.bridge.js'],
+            ['services/api-nest/src/auth/client-token-isolation.ts','client-token-isolation.js'],
+            ['services/api-nest/src/auth/merchant-courier-token-isolation.ts','merchant-courier-token-isolation.js'],
+            ['services/api-nest/src/auth/external-jwks-verifier.service.ts','external-jwks-verifier.service.js'],
+          ];
+          for(const [file,name] of files){
+            const out=ts.transpileModule(fs.readFileSync(file,'utf8'),{
+              compilerOptions:{
+                module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,
+                esModuleInterop:true,experimentalDecorators:true,
+                emitDecoratorMetadata:true,strict:true,
+              },fileName:file,reportDiagnostics:true,
+            });
+            if(out.diagnostics?.some(d=>d.category===ts.DiagnosticCategory.Error))
+              throw Error('F4G TypeScript transpile failed: '+file);
+            fs.writeFileSync(path.join(process.argv[2],name),out.outputText,{mode:0o600});
+          }
+          console.log('QA_F4G_VERIFIER_BRIDGE_COMPILED=YES');
+          NODE
+          node - "$QA_DIR/test.env" <<'NODE'
+          const fs=require('node:fs'),crypto=require('node:crypto');
+          const random=()=>crypto.randomBytes(32).toString('hex');
+          const secret=random();
+          fs.writeFileSync(process.argv[2],[
+            'KC_BOOTSTRAP_ADMIN_USERNAME=qa_admin',
+            'KC_BOOTSTRAP_ADMIN_PASSWORD='+secret,
+            'QA_BOOTSTRAP_ADMIN_PASSWORD='+secret,
+            'QA_COMMERCE_HMAC_KEY='+random(),
+            'GITHUB_ACTIONS=true',
+            'QA_SYNTHETIC_ONLY=YES',
+            'QA_KEYCLOAK_ORIGIN=https://127.0.0.1',
+            'QA_HTTPS_ORIGIN=https://127.0.0.1',
+            'QA_COMMERCE_DB_HOST=127.0.0.1',
+            'QA_COMMERCE_DB_NAME=postgres',
+            'NODE_EXTRA_CA_CERTS=/qa-tls/qa.crt',
+            'KC_HOSTNAME=https://127.0.0.1',
+            'KC_PROXY_HEADERS=xforwarded',
+            'KC_HEALTH_ENABLED=false',
+            'KC_METRICS_ENABLED=false',
+            '',
+          ].join('\n'),{mode:0o600});
+          console.log('QA_F4G_EPHEMERAL_SECRETS_CREATED_NOT_LOGGED=YES');
+          NODE
+          chmod 755 "$QA_DIR" "$QA_DIR/deps" "$QA_DIR/built" "$QA_DIR/tls"
+          chmod -R a+rX "$QA_DIR/deps" "$QA_DIR/built" "$QA_DIR/tls"
+          chmod 600 "$QA_DIR/test.env"
+
+      - name: Run disconnected REAL Keycloak and PostgreSQL 17
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          QA_DIR="$RUNNER_TEMP/da-f4g-$GITHUB_RUN_ID"
+          KC_ID="da-f4g-keycloak-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          PG_ID="da-f4g-postgres-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          cleanup(){
+            docker rm -f "$PG_ID" >/dev/null 2>&1 || true
+            docker rm -f "$KC_ID" >/dev/null 2>&1 || true
+            rm -rf "$QA_DIR"
+            echo "QA_F4G_EPHEMERAL_RESOURCES_DESTROYED=YES"
+          }
+          trap cleanup EXIT
+          docker pull quay.io/keycloak/keycloak:26.4.7 >/dev/null
+          docker pull postgres:17-alpine >/dev/null
+          docker pull node:22-alpine >/dev/null
+          docker run -d --name "$KC_ID" --pull never \
+            --network none --user 1000:0 --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 330 --memory 3g \
+            --tmpfs /opt/keycloak/data:rw,nosuid,nodev,size=384m,uid=1000,gid=0,mode=0700 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=128m,uid=1000,gid=0,mode=1777 \
+            --env-file "$QA_DIR/test.env" \
+            quay.io/keycloak/keycloak:26.4.7 \
+            start-dev --http-port=18195 --http-host=127.0.0.1 \
+              --proxy-headers=xforwarded >/dev/null
+          docker run -d --name "$PG_ID" --pull never \
+            --network "container:$KC_ID" --user 70:70 --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 150 --memory 768m \
+            --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev,size=320m,uid=70,gid=70,mode=0700 \
+            --tmpfs /var/run/postgresql:rw,nosuid,nodev,size=16m,uid=70,gid=70,mode=0770 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=64m,uid=70,gid=70,mode=1777 \
+            -e POSTGRES_HOST_AUTH_METHOD=trust \
+            postgres:17-alpine -c listen_addresses=127.0.0.1 >/dev/null
+          echo "QA_F4G_DOCKER_NETWORK=NONE"
+          echo "QA_F4G_HOST_PORTS_PUBLISHED=ZERO"
+          echo "QA_F4G_KEYCLOAK_REAL=26.4.7"
+          echo "QA_F4G_POSTGRES_REAL=17"
+          tester(){
+            docker run --rm --pull never --user 1000:1000 \
+              --network "container:$KC_ID" --cap-drop ALL \
+              --cap-add NET_BIND_SERVICE \
+              --security-opt no-new-privileges --read-only \
+              --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+              --env-file "$QA_DIR/test.env" \
+              -e NODE_PATH=/qa-deps/node_modules \
+              -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+              -v "$QA_DIR/tls:/qa-tls:ro" \
+              -v "$QA_DIR/deps:/qa-deps:ro" \
+              -v "$QA_DIR/built:/qa-built:ro" \
+              node:22-alpine "$@"
+          }
+          ready=false
+          for i in $(seq 1 90); do
+            if docker exec "$PG_ID" pg_isready -h 127.0.0.1 \
+              -U postgres >/dev/null 2>&1; then ready=true; break; fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then echo "QA_F4G_PG_READY=NO"; exit 1; fi
+          MIG="services/api-nest/migrations/client-commerce"
+          for f in \
+            "$MIG/20261012_001_client_commerce_authority_qa_only.sql" \
+            "$MIG/20261012_002_client_commerce_least_privilege_qa_only.sql" \
+            "$MIG/20261012_003_stripe_test_webhook_inbox_qa_only.sql" \
+            "$MIG/20261012_004_stripe_test_financial_reconciliation_qa_only.sql" \
+            "$MIG/20261012_005_client_order_receipt_read_qa_only.sql" \
+            "$MIG/20261013_006_canonical_order_snapshot_qa_only.sql" \
+            "$MIG/20261013_007_merchant_courier_fulfillment_qa_only.sql" \
+            "$MIG/20261013_008_refund_dispatch_row_lock_qa_only.sql" \
+            "$MIG/20261013_009_merchant_courier_wallet_qa_only.sql"
+          do
+            docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+              -h 127.0.0.1 -U postgres -d postgres < "$f" >/dev/null
+          done
+          echo "QA_F4G_SQL_001_TO_009=INSTALLED_DISCONNECTED"
+          tester node --test /qa-tests/merchant-courier-wallet.pg-qa.integration.cjs
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < "$MIG/20261013_010_wallet_tenant_bound_scope_qa_only.sql" >/dev/null
+          tester node --test /qa-tests/merchant-courier-wallet-tenant-scope.pg-qa.integration.cjs
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < "$MIG/20261013_011_partner_session_qa_only.sql" >/dev/null
+          echo "QA_F4G_SQL_SESSION_LEDGER_011=INSTALLED_DISCONNECTED"
+          tester node -e '
+            (async()=>{for(let i=0;i<110;i++){try{
+              const r=await fetch("http://127.0.0.1:18195/realms/master/.well-known/openid-configuration",
+                {signal:AbortSignal.timeout(2200)});
+              if(r.status===200){console.log("QA_F4G_KEYCLOAK_READY=YES");return;}
+            }catch{} await new Promise(resolve=>setTimeout(resolve,2000));}
+            console.error("QA_F4G_KEYCLOAK_READY=NO");process.exitCode=1;})();
+          '
+          tester node --test /qa-tests/merchant-courier-keycloak-real-wallet.pg-qa.integration.cjs
+          echo "QA_F4G_REAL_LOCAL_KEYCLOAK_JWKS_PARTNER_WALLET=PASS"
+          echo "QA_F4G_PRODUCTION_KEYCLOAK=NOT_TOUCHED"
+          echo "QA_F4G_REAL_PROVIDER_STRIPE_CALLS=ZERO"
+          echo "QA_F4G_PRODUCTION_IMPACT=NONE"

@@ -312,3 +312,37 @@ Le besoin exprimé par le fondateur : Merchant et Courier doivent observer leurs
 **Lacunes bloquantes :** la vérification RS256 contre un Keycloak réel, les clés et métadonnées JWKS d'origine authentifiée, la révocation Partner depuis une autorité persistante, les données contractuelles/KYB officielles, le registre Courier, le processus attestor isolé réellement déployé, le nouveau modèle comptable légal multi-organisation/territoire, les permissions d'écriture Courier/Dispatch/merchant sous attestation et les politiques internationales de paiement ne sont PAS certifiés. F4E ferme les fonctions d'écriture non attestées après 010. Les pipelines ne représentent **jamais** une autorisation Stripe TEST/LIVE, un virement, une fusion ou une soumission Store.
 
 **G0–G7 toujours NO-GO.** La signature F4F QA sur le HEAD documentaire final nécessite une nouvelle vérification du SHA exact. Le prochain verrou incontournable est l'intégration indépendante des véritables identités et contrats Keycloak/KYB/Courier en QA contrôlée.
+
+---
+
+## 13 octobre 2026 — F4G / Keycloak 26 réel en laboratoire isolé, partenaire → wallet PostgreSQL 17
+
+**Statut technique : F4G QA signé avec de vrais jetons émis par Keycloak 26.4.7 ÉPHÉMÈRE, mais aucun partenaire ou montant financier réel n'est encore certifié.**
+
+Branche candidate `feat/f4g-real-keycloak-partner-session-qa-20261013` ; [PR #39 DRAFT](https://github.com/adminluxe/DelishAfrica/pull/39) empilée sur #38 F4F puis #37 F4E. Worktree Toshiba et VPS intacts.
+
+**Première triple preuve CI vertes sur le même SHA `21cd567d07ef31a91ed199df299c8bce3c24fd4a` :**
+
+- [Keycloak 26.4.7 + PG17 + tokens et wallets — #38329914958 SUCCESS](https://github.com/adminluxe/DelishAfrica/actions/runs/38329914958).
+- [API et trois apps TypeScript — #38329914989 SUCCESS](https://github.com/adminluxe/DelishAfrica/actions/runs/38329914989).
+- [PostgreSQL17 et laboratoire finance historique — #38329915018 SUCCESS](https://github.com/adminluxe/DelishAfrica/actions/runs/38329915018).
+
+### F4G réalisé et prouvé
+
+1. **Keycloak binaire officiel 26.4.7** démarré dans un Docker `--network none`, certificat local vérifié, découverte OIDC HTTPS et JWKS signant réellement les JWT des deux comptes marchand et des deux comptes coursier synthétiques. L'API vérifie ces signatures avec son véritable `ExternalJwksVerifierService`, audience/azp/rôles et issuer de test épinglé.
+2. Client confidentiel d'**introspection Keycloak éphémère** pour vérifier le statut du token à chaque demande ; `logout` administrateur QA provoque `active=false` puis refus de lecture. Le mot de passe et les clés sont jetables et non journalisés.
+3. Session indépendante persistante pendant le seul test via SQL additive `20261013_011_partner_session_qa_only.sql`, indexée par SHA-256 `issuer/sub/sid/jti`, révocable ; attestor SQL peut seulement la lire, jamais la modifier ; rôles Merchant/Courier n'y accèdent pas.
+4. `QaWalletVerifiedSessionBridge` F4F joint signature, introspection, session 011, droits contractuels synthétiques, KYB/roster synthétiques, puis ticket SQL F4E `010` lié au backend PostgreSQL. Une violation de n'importe quelle barrière arrête la lecture.
+5. Attaques testées : sujet JWT modifié, rôle/app étranger, logout côté Keycloak, session SQL révoquée alors que le JWT reste signé, contrat suspendu, coursier désactivé, SQL de l'attestor hors privilèges. Deux commerçants ont des vues séparées : compte A 18,40 € **synthétiques en retenue**, compte B zéro ; les deux nouveaux coursiers Keycloak n'ont aucune offre attribuée et restent à zéro.
+6. Découverte du format `jti` opaque signé Keycloak 26, parfois contenant des deux-points ; filtre borné, aucun logging de valeur et recherche par hachage paramétré. Les refus initiaux ont été corrigés sans supprimer les tests.
+
+### Barrières qui RESTENT NO-GO
+
+- Le Keycloak réellement exécuté est **éphémère et fictif**, pas le realm DelishAfrica utilisé par les clients. Les données de contrats et KYB Merchant et le registre Courier de test sont synthétiques ; aucune liaison juridique à une vraie entreprise/personne.
+- Le grant `password` n'est ouvert **que sur les clients de test** ; l'expérience officielle sur appareils doit être certifiée via Authorization Code + PKCE dans G0–G7.
+- Le registre 011 n'est pas la vraie infrastructure de révocation Merchant/Courier du domaine : durabilité, multi-régions, HA, sauvegardes, revocation distribuée, audit IAM et attestor isolé restent à produire.
+- Aucun fonds, avoir, payout, settlement, Stripe Connect ou transfert juridique réel. **`withdrawableMinor=0` ; `payoutEnabled=false`.**
+- Aucun Stripe TEST officiel, Stripe LIVE, migration VPS/production, fusion, EAS payant, soumission Store. Critères G0–G7 et validation expresse demeurent obligatoires.
+- Les fonctions Merchant/Dispatch/Courier d'écriture historiques, volontairement révoquées après `010`, doivent être redéveloppées sous attestation avant toute application réelle.
+
+**Passation F4G détaillée :** `docs/DA_PASSATION_F4G_KEYCLOAK_PG_WALLET_QA_2026-10-13.md`. **Signature : F4G-EPHEMERAL-KEYCLOAK-PG17-SYNTHETIC-QA-CERTIFIED-ON-21cd567d / REAL-PARTNERS-NOT-ATTESTED / NO-STRIPE / ZERO-PAYOUT / NO-MERGE / NO-STORE.** Toute évolution sur un autre SHA exige ses propres CI SUCCESS.
