@@ -21,6 +21,8 @@ on:
       - 'services/api-nest/test/native-client-jwt-verifier.test.cjs'
       - 'services/api-nest/test/native-client-commerce.policy.test.cjs'
       - 'services/api-nest/src/auth/external-jwks-verifier.service.ts'
+      - 'services/api-nest/src/auth/auth.service.ts'
+      - 'services/api-nest/test/auth-hmac-legacy-issuer-interlock.qa.test.cjs'
       - 'services/api-nest/src/auth/external-jwks-verifier.types.ts'
       - 'services/api-nest/test/client-oidc-isolation.test.cjs'
       - 'services/api-nest/test/client-enrollment-requester-origin.test.cjs'
@@ -107,6 +109,11 @@ jobs:
         env:
           TS_NODE_PROJECT: services/api-nest/tsconfig.json
         run: node -r ts-node/register/transpile-only --test services/api-nest/test/native-client-trusted-jwks.resolver.test.cjs
+      - name: Strong internal HMAC and real legacy guard issuer interlock (synthetic only)
+        env:
+          TS_NODE_PROJECT: services/api-nest/tsconfig.json
+          QA_SYNTHETIC_ONLY: 'YES'
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/auth-hmac-legacy-issuer-interlock.qa.test.cjs
       - name: Native Client RSA/JWKS key isolation, cross-realm and ledger access denials
         env:
           TS_NODE_PROJECT: services/api-nest/tsconfig.json
