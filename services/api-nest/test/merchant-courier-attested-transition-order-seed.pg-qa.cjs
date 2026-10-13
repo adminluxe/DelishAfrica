@@ -63,7 +63,7 @@ async function main(){
       paid.authorityId+"'::uuid,'"+pi+"',2690,'EUR');",
       "SELECT * FROM public.da_qa_finance_commit_captured_test('"+
       paid.authorityId+"'::uuid,'"+pi+"','"+charge+
-      "','acct_QA015_SAFEFIXTURE',2690,'EUR','"+mac+"',NULL);",
+      "','acct_QA015SAFEFIXTURE',2690,'EUR','"+mac+"',NULL);",
       "SELECT * FROM public.da_qa_wallet_accrue_verified_capture('"+
       order.orderId+"'::uuid);",
     );
