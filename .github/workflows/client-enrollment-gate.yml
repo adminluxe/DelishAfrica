@@ -58,6 +58,7 @@ on:
       - 'services/api-nest/migrations/client-commerce/20261013_015_attested_merchant_courier_transitions_qa_only.sql'
       - 'services/api-nest/test/merchant-courier-attested-transition-order-seed.pg-qa.cjs'
       - 'services/api-nest/test/merchant-courier-attested-transition-client.pg-qa.integration.cjs'
+      - 'services/api-nest/test/merchant-courier-attested-financial-pulse.pg-qa.sql'
       - 'services/api-nest/test/merchant-courier-attested-transition-private.pg-qa.service.cjs'
       - 'docs/DA_PASSATION_F4K_ATTESTED_MERCHANT_COURIER_OPERATIONS_QA_2026-10-13.md'
       - 'services/api-nest/migrations/client-commerce/20261013_014_wallet_business_revocation_linearized_qa_only.sql'
