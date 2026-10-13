@@ -493,3 +493,27 @@ Tous les six tests de pulse ont émis PASS : `captured`, `merchant_ready`, `offe
 **Documents épinglés :** [Passation F4L](./DA_PASSATION_F4L_MACHINE_DISPATCH_QA_2026-10-13.md) ; [Architecture QA](./DA_ARCHITECTURE_QA_STRIPE_TEST_POSTGRES_PIN_2026-10-12.md). La partie F4K ci-dessus est conservée comme historique exact ; la mention « F4L prochain laboratoire » est désormais **supplantée par cette mise à jour**, sans effacer la chronologie.
 
 **Signature de code : F4L-MACHINE-DISPATCH-KEYCLOAK26-PG17-SCRAM-SQL016-3CI-SUCCESS / QA-FICTIF / NO-PAYOUT / NO-PROD / PR-DRAFT. Validation documentaire finale : preuves à consigner sur le HEAD final de #44.**
+
+---
+
+## F4M — Réduction P0 des pouvoirs SQL historiques (13 octobre 2026)
+
+**Point de reprise :** F4L [PR #44 DRAFT](https://github.com/adminluxe/DelishAfrica/pull/44) **certifiée** sur SHA `27faa871e3f18df0f3ca2e254de484352b8d93c9` ; trois CI SUCCESS Keycloak+PostgreSQL17 / API + Client/Merchant/Courier / PG17 finance. La nouvelle [PR #45 F4M DRAFT](https://github.com/adminluxe/DelishAfrica/pull/45) est basée exactement sur ce SHA et n'est pas fusionnée.
+
+**Risque P0 supplémentaire** : derrière les wrappers attestés 015/016, les cinq fonctions opérationnelles historiques SQL 007 et le prédicat financier 004 étaient encore des `SECURITY DEFINER` héritant d'un propriétaire privilégié de la base QA. La vérification des JWT, des tickets et des registres était déjà imposée, mais **le propriétaire effectif des fonctions legacy** méritait une séparation des privilèges défendable.
+
+**F4M / migration SQL 017 QA :**
+- Création de **trois rôles indépendants NOLOGIN, NOSUPERUSER, NOBYPASSRLS** : une autorité lecture financière, une projection opérationnelle Merchant/Courier et un écrivain opérationnel limité aux deux tables `da_qa_fulfillment_state` et `da_qa_courier_offer`.
+- Transfert de propriétaire pour **six fonctions** : éligibilité financière 004, deux lectures 007 et trois mutations 007. Permissions SELECT minimales, `INSERT/UPDATE` par colonne uniquement ; aucune mutation de paiement, identité, registre, montant ou ledger.
+- `search_path=pg_catalog,public,pg_temp` sur ces fonctions. Aucun rôle mobile membre des propriétaires, aucun accès SQL 007 direct rendu aux applications.
+- Les fonctions attestées F4K/015 et F4L/016 conservent leurs ports strictement limités ; les machines restent séparées par OIDC, attesteur privé et SQL SCRAM.
+
+**Preuve exigée avant signature :** installer 017 **avant** les transitions F4K, rejouer toutes les preuves de sécurité F4K/F4L sur Keycloak 26.4.7 et PostgreSQL 17 éphémères, tester ACL et opérations transactionnelles, concurrence Dispatch↔refund dans les deux sens, et confirmer **16 allocations synthétiques / 64 écritures équilibrées, 6 reçus Dispatch immuables, 35 reçus opérationnels attestés**, `withdrawableMinor=0`, `payoutEnabled=false`. Exécuter en outre les CI API + trois apps et régressions historiques sur **le SHA final documentaire identique**.
+
+**Statut de la présente entrée :** décision d'architecture et protocole F4M enregistrés ; **une CI en échec ne vaut pas certification**. Les SHA et les trois preuves finales devront être ajoutés dans la discussion de la PR #45 après validation, sans nouvel amendement du code ou de ces documents.
+
+**Limites inchangées :** tout est fictif, sans Stripe TEST officiel/LIVE, sans payout, sans partenaire/KYB/KYC réel, sans connexion aux applications Expo du VPS, sans déploiement, migration ou merge. Aucun commit F4M n'ouvre le droit de publier un build EAS/Store. La commission de 20 % reste une fixture strictement synthétique. Les autres `SECURITY DEFINER` de paiements, wallet et registres seront audités dans un laboratoire ultérieur.
+
+**Documents :** [Passation F4M](./DA_PASSATION_F4M_OPERATIONAL_SQL_OWNER_QA_2026-10-13.md) et [Architecture QA](./DA_ARCHITECTURE_QA_STRIPE_TEST_POSTGRES_PIN_2026-10-12.md).
+
+**Signature d'intention F4M : NOLOGIN-DOMAIN-OWNERS / 004-007-PRIVILEGE-REDUCTION / F4K-F4L-FULL-REGRESSION / QA-FICTIF / PR-DRAFT / NO-PRODUCTION / ZERO-PAYOUT.**
