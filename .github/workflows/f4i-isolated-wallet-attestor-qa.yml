@@ -334,6 +334,8 @@ jobs:
           echo "QA_F4I_PG17_ALL_HOST_ROLES_REQUIRE_SCRAM=PASS"
           sudo install -m 0400 -o 1000 -g 3000 \
             "$QA_DIR/seed/users.json" "$QA_DIR/users/users.json"
+          sudo chown 1000:3000 "$QA_DIR/users"
+          sudo chmod 0750 "$QA_DIR/users"
           sudo chown 1001:3000 "$QA_DIR/ipc"
           sudo chmod 0710 "$QA_DIR/ipc"
 
