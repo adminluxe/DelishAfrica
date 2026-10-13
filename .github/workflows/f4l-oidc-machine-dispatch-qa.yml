@@ -794,10 +794,10 @@ jobs:
           # Independent denial: a SECOND, otherwise eligible Courier in the
           # SAME organization cannot silently replace an already offered one.
           docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
-            -c "UPDATE public.da_qa_finance_courier_roster_012 SET organization_id='a43f867f-9f42-4573-9268-dc65a164d2c2'::uuid,territory='BE' WHERE (issuer,subject) IN (SELECT issuer,subject FROM public.da_qa_wallet_courier_scope_010 WHERE organization_id='a43f867f-9f42-4573-9268-dc65a164d2c4'::uuid)" >/dev/null
+            -c "UPDATE public.da_qa_finance_courier_roster_012 SET organization_id='a43f867f-9f42-4573-9268-dc65a164d2c2'::uuid,territory='BE' WHERE (issuer,subject) IN (SELECT issuer,subject::text FROM public.da_qa_wallet_courier_scope_010 WHERE organization_id='a43f867f-9f42-4573-9268-dc65a164d2c4'::uuid)" >/dev/null
           run_f4l f4l-dispatch-machine.pg-qa.integration.cjs reassignment ""
           docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
-            -c "UPDATE public.da_qa_finance_courier_roster_012 SET organization_id='a43f867f-9f42-4573-9268-dc65a164d2c4'::uuid,territory='FR' WHERE (issuer,subject) IN (SELECT issuer,subject FROM public.da_qa_wallet_courier_scope_010 WHERE organization_id='a43f867f-9f42-4573-9268-dc65a164d2c4'::uuid)" >/dev/null
+            -c "UPDATE public.da_qa_finance_courier_roster_012 SET organization_id='a43f867f-9f42-4573-9268-dc65a164d2c4'::uuid,territory='FR' WHERE (issuer,subject) IN (SELECT issuer,subject::text FROM public.da_qa_wallet_courier_scope_010 WHERE organization_id='a43f867f-9f42-4573-9268-dc65a164d2c4'::uuid)" >/dev/null
           echo "QA_F4L_SAME_ORG_COURIER_REASSIGNMENT=DENIED"
 
           # Financial holds on real captured QA authorities: one committed
