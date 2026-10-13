@@ -423,3 +423,44 @@ Matrice réellement observée : révocation Merchant validée en premier → lec
 **Passation détaillée :** `docs/DA_PASSATION_F4J_WALLET_REVOCATION_LINEARIZATION_QA_2026-10-13.md`. **Le HEAD documentaire final doit obtenir une nouvelle triple CI verte sur le SHA exact** ; le SHA de code ci-dessus ne suffit pas pour la clôture finale.
 
 **Signature : F4J-PG-LOCAL-ATOMIC-WALLET-QA-CODE-GREEN / REAL-KEYCLOAK-LAW-NO-GO / NO-STRIPE / NO-PAYOUT / NO-PROD / NO-MERGE.**
+
+---
+
+## F4K — Transitions Merchant/Courier attestées et pulses financiers (13 octobre 2026)
+
+**Statut : LABORATOIRE QA RÉUSSI sur code SHA `c2e67a7e17d6ed65ea30964610c521f307f560b3`. Partenaires, opérations et montants exclusivement SYNTHÉTIQUES.**
+
+Nouvelle branche `feat/f4k-attested-merchant-courier-ops-qa-20261013`, [PR #43 DRAFT](https://github.com/adminluxe/DelishAfrica/pull/43) empilée sur F4J #42, sans fusion. Aucun VPS, aucun build, aucun Stripe TEST officiel ni LIVE.
+
+**Preuves trois CI identiques :** [F4K Keycloak/PG17 opérations #38362829428 SUCCESS](https://github.com/adminluxe/DelishAfrica/actions/runs/38362829428), [API+Client/Merchant/Courier #38362829434 SUCCESS](https://github.com/adminluxe/DelishAfrica/actions/runs/38362829434), [PG17 historique et concurrence #38362829468 SUCCESS](https://github.com/adminluxe/DelishAfrica/actions/runs/38362829468).
+
+### Déverrouillage strictement expérimental
+
+- Migration additive SQL `20261013_015_attested_merchant_courier_transitions_qa_only.sql` : propriétaire NOLOGIN `da_qa_fulfillment_writer_015`, nouvelle entrée `da_qa_partner_transition_attested_015` pour Merchant et Courier seulement, **aucun EXECUTE Dispatch**. Les applications ne récupèrent pas d'accès direct aux anciennes fonctions 007.
+- JWT signé par vrai Keycloak 26.4.7 mais utilisateurs **fictifs** ; attesteur privé F4K dans un processus distinct, socket Unix protégé, PostgreSQL 17 SCRAM. Avant chaque action : prélecture F4J vérifiée, nouveau ticket à usage unique, session hachée 011, contrats/KYB/roster/territoire SQL 012–014 verrouillés et contrôle ordre/finance/remboursement SQL 007–008.
+- Reçus opérationnels 015 **append-only**, PK `order_id/role/action`, replays idempotents et sujet/émetteur strictement identiques à la première opération. Huit événements committés dans le scénario.
+- Tentatives refusées : JWT modifié, double rôle, commerçant/‌coursier étranger, saut d'étape, paramètre `merchantSlug` injecté, appel direct SQL 007, suspension contrat/roster avec JWT encore valide, pickup après remboursement. Aucun portefeuille étranger consultable.
+- **Dispatch dans la CI : uniquement fixture injectée par le superuser PG du runner jetable après préparation validée.** Ce n'est pas une autorité Dispatch réelle, et aucun login applicatif ne peut s'auto-attribuer une course.
+
+### Vérifications des gains et commissions après chaque événement
+
+Chaque commande fictive est de 26,90 € : menu 23,00 €, livraison 3,90 €, commission **fictive** menu 20 % = 4,60 €, revenu Merchant 18,40 €, réserve Courier 3,90 €. Le laboratoire contient un ancien gain Merchant de 18,40 € déjà retenu et ajoute deux commandes.
+
+| Événement | Merchant A : acquis / en attente / disponible / retenu | Courier A : acquis / en attente / disponible / retenu |
+|---|---|---|
+| Capture des deux commandes | 55,20 / 36,80 / 0 / 18,40 € | 0 / 0 / 0 / 0 € |
+| Les deux commandes sont prêtes | 55,20 / 0 / 36,80 / 18,40 € | 0 / 0 / 0 / 0 € |
+| Deux offres Courier | Inchangé | 7,80 / 7,80 / 0 / 0 € |
+| Première livraison, seconde acceptée | Inchangé | 7,80 / 3,90 / 3,90 / 0 € |
+| Remboursement de la seconde | 55,20 / 0 / 18,40 / 36,80 € | 7,80 / 0 / 3,90 / 3,90 € |
+| Suspension contrat/roster | Historique inchangé, nouvelles opérations refusées | Historique inchangé, nouvelles opérations refusées |
+
+Tous les six tests de pulse ont émis PASS : `captured`, `merchant_ready`, `offered`, `courier_progress`, `refund_held`, `revoked`. Le journal de trois allocations contient exactement 12 postings, de somme **zéro**, pour 3 captures artificielles. Chaque allocation suit les montants synthétiques ci-dessus. Les reçus sont vérifiés immuables en tentant un UPDATE malveillant et exigeant un refus SQL ; `withdrawableMinor=0`, `payoutEnabled=false`, aucun virement.
+
+**Incident contrôlé :** l'identifiant PSP synthétique de la première fixture ne respectait pas la regex SQL `acct_[A-Za-z0-9]`. La CI a correctement refusé `qa_finance_provider_identity_invalid`. La fixture a été corrigée, sans toucher à la contrainte, puis la triple CI de code est passée.
+
+**NO-GO réel :** identité Keycloak publique, actes juridiques KYB/KYC, contrats authentiques, registre Courier officiel, Dispatch machine authentifié, politiques multidevises/pays/fiscalité/PSP, Stripe TEST officiel, ledger de production, settlement/payout, atomicité Keycloak↔PG17, publication. Les mutations 007 restent fermées côté apps ; aucun transfert réel.
+
+**Documents :** `docs/DA_PASSATION_F4K_ATTESTED_MERCHANT_COURIER_OPERATIONS_QA_2026-10-13.md`. Prochain jalon **F4L : Dispatch officiel signé et affectation sous contrôle de paiement**, puis intégration des autorités réelles et tests G0–G7.
+
+**Attention au SHA :** les résultats ci-dessus signent le code avant mise à jour du présent document. Confirmer trois SUCCESS sur le HEAD documentaire final avant clôture formelle de la PR #43. **Signature provisoire : F4K-CODE-3CI-SUCCESS / REAL-AUTHORITY-NO-GO / ZERO-PAYOUT / NO-MERGE / NO-PROD.**
