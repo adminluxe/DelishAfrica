@@ -230,8 +230,7 @@ export class QaWalletVerifiedSessionBridge {
         'SELECT public.da_qa_wallet_read_attested_010('+
           '$1::uuid,$2::integer) AS report';
       const sessionHash=f4j?createHash('sha256')
-        .update('DA-F4G-keycloak-partner-sid-jti-v1\\n'
-          .replace('\\n','\n')+
+        .update('DA-F4G-keycloak-partner-sid-jti-v1\n'+
           [p.iss,p.sub,p.sid,p.jti].join('\n')).digest('hex'):null;
       const row=one((await client.query(readSql,
         f4j?[ticket.ticket,limit,sessionHash]:
