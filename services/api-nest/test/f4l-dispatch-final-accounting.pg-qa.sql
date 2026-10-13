@@ -10,11 +10,11 @@ BEGIN
  SELECT count(*) INTO n FROM public.da_qa_wallet_allocation;
  IF n<>16 THEN RAISE EXCEPTION 'qa_f4l_allocation_count_%',n; END IF;
  SELECT count(*) INTO out_count FROM public.da_qa_dispatch_receipt_016;
- IF out_count<>5 THEN RAISE EXCEPTION 'qa_f4l_receipt_count_%',out_count; END IF;
+ IF out_count<>6 THEN RAISE EXCEPTION 'qa_f4l_receipt_count_%',out_count; END IF;
  SELECT count(*) INTO n FROM public.da_qa_courier_offer
  WHERE state='offered' AND order_id IN(
   SELECT order_id FROM public.da_qa_dispatch_receipt_016);
- IF n<>4 THEN RAISE EXCEPTION 'qa_f4l_offer_state_count_%',n; END IF;
+ IF n<>5 THEN RAISE EXCEPTION 'qa_f4l_offer_state_count_%',n; END IF;
  IF EXISTS(
   SELECT 1 FROM pg_roles WHERE rolname='da_qa_dispatch_owner_016'
    AND (rolcanlogin OR rolsuper OR rolcreaterole)
@@ -33,6 +33,6 @@ BEGIN
   IF SQLERRM<>'qa_wallet_immutable_audit' THEN RAISE; END IF;
  END;
  RAISE NOTICE 'QA_F4L_LEDGER_ZERO_SUM_64_POSTINGS=PASS';
- RAISE NOTICE 'QA_F4L_MACHINE_ASSIGNMENT_RECEIPTS_IMMUTABLE_5=PASS';
+ RAISE NOTICE 'QA_F4L_MACHINE_ASSIGNMENT_RECEIPTS_IMMUTABLE_6=PASS';
  RAISE NOTICE 'QA_F4L_NO_LEGACY_SQL_007_APP_GRANTS=PASS';
 END $qa$;
