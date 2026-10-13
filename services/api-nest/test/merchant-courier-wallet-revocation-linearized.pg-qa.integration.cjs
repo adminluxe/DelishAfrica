@@ -109,8 +109,10 @@ async function readLockedThenRevoke(p,role,updateSql,updateArgs,restoreSql,
   const app=await clientFor(role);
   const revoker=await admin.connect();
   try{
-    await app.query('BEGIN');
+    // Mint/commit the challenge before entering the read transaction:
+    // the isolated attestor is a SECOND connection and must see it.
     const token=await ticket(app,p,role);
+    await app.query('BEGIN');
     const result=(await read(app,p,token)).rows[0]?.report;
     assert.equal(result.ownerRole,role);
     assert.equal(result.withdrawableMinor,0);
