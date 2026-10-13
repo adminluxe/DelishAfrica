@@ -398,3 +398,28 @@ Les échecs intermédiaires ont révélé d'abord des permissions Unix de dossie
 Même dans F4I, les **comptes Keycloak, contrats, KYB, KYC, entités juridiques, registre Courier et ledger** sont fictifs et jetables. L'attesteur QA conserve plusieurs secrets SQL dans un même processus, architecture à durcir avant production. Les révocations métier concurrentes à la consommation du ticket ne sont pas encore transactionnellement linéarisées entre la source réelle de droits et le ledger ; modèle juridique entité/devise/territoire à compléter. Les mutations historiques Merchant/Dispatch/Courier restent désactivées depuis SQL 010. Les véritables politiques pays, payout/settlement, Stripe TEST officiel et G0–G7 restent NO-GO.
 
 **Docs :** `docs/DA_PASSATION_F4I_ATTESTOR_ISOLATION_QA_2026-10-13.md`. **Signature code provisoire : F4I-SEPARATE-PROCESS-PG-SCRAM-EPHEMERAL-QA-SUCCESS / REAL-IDENTITY-NOT-ATTESTED / NO-PAYOUT / NO-LIVE / NO-MERGE / NO-STORE.**
+
+---
+
+## F4J — Verrous atomiques entre révocations et lectures du portefeuille (13 octobre 2026)
+
+**PR [#42 DRAFT](https://github.com/adminluxe/DelishAfrica/pull/42), branche `feat/f4j-wallet-revocation-linearization-qa-20261013`, sur PR #41 F4I. Aucun merge.**
+
+Constat P0 : F4I validait signature Keycloak, introspection, session 011, contrats/KYB et roster 012 **avant** l'attestation. La lecture SQL finale revérifiait seulement les anciens scopes 010. Il existait donc une fenêtre entre une modification métier et la consommation du ticket. Cela ne signifie pas qu'une fraude réelle a eu lieu ; c'est une faille de principe détectée avant livraison.
+
+**Correction additive QA `20261013_014_wallet_business_revocation_linearized_qa_only.sql` :**
+- Propriétaire SQL dédié `da_qa_wallet_linear_owner_014` non-superuser et sans login, avec SELECT sur les autorités du portefeuille et droit de verrouillage strictement limité à des colonnes identifiantes.
+- Révocation du EXECUTE applicatif de `da_qa_wallet_read_attested_010` ; seule la nouvelle fonction `da_qa_wallet_read_linearized_014(ticket,limit,session_sha256)` est autorisée.
+- Vérification de la session 011 (hash issuer/sub/sid/jti), de l'identité active, de tous les memberships financiers, du partenaire publié, du contrat et KYB, de l'entité légale/territoire, ou du roster et contrat Courier, sous `FOR UPDATE / FOR SHARE` **dans la même transaction PG17** que la consommation du ticket unique.
+- Hash de session calculé par l'attesteur F4I à partir du JWT déjà signé et introspecté. Aucun slug/sujet/organisation/territoire provenant de l'application n'est autorité. Les doubles appartenances non représentables restent refusées.
+- Règles d'écriture 007 révoquées depuis F4E : **toujours fermées**. Aucune fonction de payout.
+
+**Première triple CI SUCCESS sur SHA de code `1bc1f770f83edb908a3e6b38debcce8246859d7e` :** [Keycloak/F4J/PG17 #38356090975](https://github.com/adminluxe/DelishAfrica/actions/runs/38356090975), [API + Client/Merchant/Courier #38356090898](https://github.com/adminluxe/DelishAfrica/actions/runs/38356090898), [PostgreSQL finance/concurrence historique #38356091032](https://github.com/adminluxe/DelishAfrica/actions/runs/38356091032).
+
+Matrice réellement observée : révocation Merchant validée en premier → lecture bloquée puis **DENIED** ; lecture ayant acquis les verrous → modification KYB attend son COMMIT ; révocation roster Courier en premier → **DENIED** ; lecture avant révocation de session 011 → modification attend la fin de transaction ; hash d'un partenaire différent → **DENIED** ; accès direct à la fonction 010 → **permission denied**. L'attesteur privé sous PostgreSQL SCRAM fonctionne aussi avec la lecture 014. Toute somme et tout contrat de test demeurent **fictifs**.
+
+**Limites non franchies :** le logout Keycloak externe n'est pas atomique avec PG17, aucun vrai contrat/KYB/KYC/roster Courier certifié, aucun service financier international opérationnel ni Stripe TEST officiel. L'ancien Dispatch et les mutations Merchant/Courier ne sont toujours pas raccordés au mécanisme signé. Aucun argent réel : `withdrawableMinor=0` et `payoutEnabled=false`. Production/VPS, PR merge, LIVE, builds EAS payants, Stores et G0–G7 restent **NO-GO**.
+
+**Passation détaillée :** `docs/DA_PASSATION_F4J_WALLET_REVOCATION_LINEARIZATION_QA_2026-10-13.md`. **Le HEAD documentaire final doit obtenir une nouvelle triple CI verte sur le SHA exact** ; le SHA de code ci-dessus ne suffit pas pour la clôture finale.
+
+**Signature : F4J-PG-LOCAL-ATOMIC-WALLET-QA-CODE-GREEN / REAL-KEYCLOAK-LAW-NO-GO / NO-STRIPE / NO-PAYOUT / NO-PROD / NO-MERGE.**

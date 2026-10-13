@@ -19,6 +19,8 @@ on:
       - 'services/api-nest/migrations/client-commerce/20261013_010_wallet_tenant_bound_scope_qa_only.sql'
       - 'services/api-nest/migrations/client-commerce/20261013_011_partner_session_qa_only.sql'
       - 'services/api-nest/migrations/client-commerce/20261013_012_finance_authority_registry_qa_only.sql'
+      - 'services/api-nest/migrations/client-commerce/20261013_014_wallet_business_revocation_linearized_qa_only.sql'
+      - 'services/api-nest/test/merchant-courier-wallet-revocation-linearized.pg-qa.integration.cjs'
       - 'services/api-nest/src/client-commerce/merchant-courier-finance-authority.pg-qa.adapter.ts'
       - 'services/api-nest/test/merchant-courier-finance-authority-keycloak.pg-qa.integration.cjs'
       - 'services/api-nest/test/merchant-courier-wallet-tenant-scope.pg-qa.integration.cjs'

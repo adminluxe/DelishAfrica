@@ -12,6 +12,7 @@ on:
       - feat/f4f-wallet-verified-session-bridge-qa-20261013
       - feat/f4g-real-keycloak-partner-session-qa-20261013
       - feat/f4h-finance-authority-registry-qa-20261013
+      - feat/f4i-isolated-finance-attestor-qa-20261013
     paths:
       - 'services/api-nest/src/client-enrollment/**'
       - 'services/api-nest/src/client-commerce/**'
@@ -51,6 +52,10 @@ on:
       - '.github/workflows/f4g-keycloak-merchant-courier-wallet-qa.yml'
       - '.github/workflows/f4h-keycloak-finance-authority-qa.yml'
       - '.github/workflows/f4i-isolated-wallet-attestor-qa.yml'
+      - '.github/workflows/f4j-wallet-revocation-linearized-qa.yml'
+      - 'services/api-nest/migrations/client-commerce/20261013_014_wallet_business_revocation_linearized_qa_only.sql'
+      - 'services/api-nest/test/merchant-courier-wallet-revocation-linearized.pg-qa.integration.cjs'
+      - 'docs/DA_PASSATION_F4J_WALLET_REVOCATION_LINEARIZATION_QA_2026-10-13.md'
       - 'services/api-nest/migrations/client-commerce/20261013_013_separate_wallet_attestor_qa_only.sql'
       - 'services/api-nest/test/merchant-courier-wallet-isolated-attestor.setup.cjs'
       - 'services/api-nest/test/merchant-courier-wallet-isolated-attestor.pg-qa.service.cjs'
@@ -178,6 +183,25 @@ jobs:
         env:
           QA_SYNTHETIC_ONLY: 'YES'
         run: node --test services/api-nest/test/merchant-courier-wallet-release-isolation.qa.test.cjs
+      - name: F4J PostgreSQL-local revocation and forbidden legacy wallet path
+        run: |
+          node --check services/api-nest/test/merchant-courier-wallet-revocation-linearized.pg-qa.integration.cjs
+          node - <<'NODE'
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          const sql=fs.readFileSync('services/api-nest/migrations/client-commerce/20261013_014_wallet_business_revocation_linearized_qa_only.sql','utf8');
+          const bridge=fs.readFileSync('services/api-nest/src/client-commerce/merchant-courier-wallet-signed-session.pg-qa.bridge.ts','utf8');
+          const mod=fs.readFileSync('services/api-nest/src/app.module.ts','utf8');
+          assert(sql.includes('FOR SHARE'));
+          assert(sql.includes('FOR UPDATE'));
+          assert(sql.includes('REVOKE EXECUTE ON FUNCTION public.da_qa_wallet_read_attested_010'));
+          assert(sql.includes('da_qa_partner_oidc_sessions_011'));
+          assert(sql.includes('da_merchant_memberships'));
+          assert(sql.includes('da_qa_finance_courier_roster_012'));
+          assert(bridge.includes('QA_F4J_ATOMIC_SQL'));
+          assert(bridge.includes('da_qa_wallet_read_linearized_014'));
+          assert(!mod.includes('QaWalletVerifiedSessionBridge'));
+          console.log('QA_F4J_FINAL_WALLET_ACCESS_ATOMIC_QA_ONLY=PASS');
+          NODE
       - name: F4I separate private attestor and locked SQL role release protection
         run: |
           node --check services/api-nest/test/merchant-courier-wallet-isolated-attestor.setup.cjs

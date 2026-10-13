@@ -11,6 +11,7 @@
  * IMPORTANT deployment rule: the attestor login belongs ONLY in a separate
  * trusted process, not the public mobile API. No Stripe / bank / payout.
  */
+import {createHash} from 'node:crypto';
 import type {DaExternalTokenVerification} from
   '../auth/external-jwks-verifier.types';
 
@@ -221,9 +222,19 @@ export class QaWalletVerifiedSessionBridge {
           role==='merchant'?s.merchantSlug:null,
           s.organizationId,s.territory])).rows);
       if(typeof ticket.ticket!=='string'||!UUID.test(ticket.ticket))deny();
-      const row=one((await client.query(
+      const f4j=process.env.QA_F4J_ATOMIC_SQL==='YES';
+      if(f4j && process.env.QA_F4I_PRIVATE_SERVICE!=='YES')deny();
+      const readSql=f4j?
+        'SELECT public.da_qa_wallet_read_linearized_014('+
+          '$1::uuid,$2::integer,$3::text) AS report':
         'SELECT public.da_qa_wallet_read_attested_010('+
-        '$1::uuid,$2::integer) AS report',[ticket.ticket,limit])).rows);
+          '$1::uuid,$2::integer) AS report';
+      const sessionHash=f4j?createHash('sha256')
+        .update('DA-F4G-keycloak-partner-sid-jti-v1\n'+
+          [p.iss,p.sub,p.sid,p.jti].join('\n')).digest('hex'):null;
+      const row=one((await client.query(readSql,
+        f4j?[ticket.ticket,limit,sessionHash]:
+          [ticket.ticket,limit])).rows);
       const report=object(row.report);
       const summary=object(report.summary);
       const items=report.activity;
