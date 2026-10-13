@@ -273,6 +273,65 @@ Courier QA HTTP (OrdersAuthGuard + registre actif)
 
 **Frontières à corriger avant promotion :** fonctions SECURITY DEFINER avec propriétaire de laboratoire, issuer/subject/slug fournis par service applicatif sans attestation cryptographique dans la DB ; vrai JWT Merchant/Courier et membres KYB/registre actifs non intégrés au backend cible ; transports Expo et notifications non branchés ; jamais de connexion officielle Stripe TEST ni G0–G7 validés. Ne jamais appliquer 001–008 aux bases VPS en l'état.
 
+## Architecture QA F4D — FINANCE WALLET Merchant & Courier, journal équilibré 009 (13/10/2026)
+
+**Dernier code certifié QA :** `9801dc0801361e80c28a67d8478c10a462909a23` ([PG17 #38324552260](https://github.com/adminluxe/DelishAfrica/actions/runs/38324552260) et [API/apps #38324552388](https://github.com/adminluxe/DelishAfrica/actions/runs/38324552388) SUCCESS). Routes QA ajoutées en `1af2f65e116d427be63585aefd6f000dcf34db09` ([PG #38324760411](https://github.com/adminluxe/DelishAfrica/actions/runs/38324760411) et [HTTP + 3 apps #38324760436](https://github.com/adminluxe/DelishAfrica/actions/runs/38324760436) SUCCESS). Garde d'isolation en `79964cee22cb39a60b1588912e2d2199dd5b17c1`, CI **SUCCESS** [PostgreSQL17 #38324993520](https://github.com/adminluxe/DelishAfrica/actions/runs/38324993520) et [API + 3 apps #38324993516](https://github.com/adminluxe/DelishAfrica/actions/runs/38324993516).
+
+```text
+  Client commande [QA: JWT/ledger simulés en HTTP]
+              |
+  devis serveur + panier 006 immuable
+              |
+  paiement Stripe TEST synthétique VÉRIFIÉ et capturé (004)
+              |
+              v
+       FINANCE RECONCILER RÔLE QA
+       (pas d'autorisation mobile)
+              |
+       order FOR UPDATE + receipt exact + policy DB
+              |
+       009 da_qa_wallet_accrue_verified_capture(UUID)
+         - montant exact, idempotent x8
+         - policy immuable QA_FIXTURE_EUR_V1, EUR SEULEMENT
+         - signed journal immutable 4 lignes, total = ZERO
+              |
+              +-- Clearing interne  -26,90€ (PAS un compte bancaire)
+              +-- Merchant earned    +18,40€ (TEST)
+              +-- Courier reserved   +03,90€ (TEST)
+              +-- Platform retained  +04,60€ (TEST)
+              |
+      2 projections de droits calculées À LA LECTURE
+              |
+         +----+-------------------------------------+
+         |                                          |
+   Merchant membership                       Courier roster
+   issuer/subject + KYB+contrat              issuer/subject actif
+   [contrôle app QA]                          [contrôle app QA]
+         |                                          |
+   /qa-isolated/wallet/merchant/summary    /qa-isolated/wallet/courier/summary
+         |                                          |
+   capturé -> pending                       pas assigné -> aucun droit
+   ready -> available                       offert -> pending
+   refund -> held                           delivered -> available
+                                             refund -> held
+         |                                          |
+         +-----------------+------------------------+
+                           |
+                   withdrawable = 0
+                   payoutEnabled = false
+                   NO BANK / NO STRIPE PAYOUT
+```
+
+Les tables `da_qa_wallet_policy`, `da_qa_wallet_allocation`, `da_qa_wallet_posting` sont append-only et invisibles aux rôles applicatifs ; une fonction finance seule écrit. Les rôles `da_qa_merchant_commerce_app` et `da_qa_courier_commerce_app` ne peuvent appeler que leurs projections respectives. Les présentations HTTP Nest sont **strictement en lecture seule, protégées par OrdersAuthGuard et désactivées en production** ; `Cache-Control: private, no-store`, champs HTTP limités. `AppModule` ne référence pas ces composants.
+
+**Attention aux limites de confiance :** les projections SQL de ce laboratoire acceptent encore le `merchantSlug` ou `issuer/subject` passés par le service. Le rôle PostgreSQL est partagé par les requêtes du produit : il n'existe pas de liaison cryptographique **indépendante côté DB** avec la session du commerçant/livreur. En cas de compromission du service, des lectures cross-tenant restent théoriquement possibles. Il s'agit donc de **candidats QA, et pas de services bancaires sécurisés en production**. Les tests HTTP utilisent le vrai contrôleur/OrdersAuthGuard mais un `AuthService` synthétique ; les vrais JWT/SMS/KYB/rosters ne sont pas certifiés de bout en bout.
+
+**Architecture internationale future :** ledger versionné par contrat/territoire/devise dès la réservation du panier ; transactions unitaires en *minor units* strictement isolées par devise ; répartition TVA/taxes, commission, pourboires, chargebacks, remboursements partiels et solde négatif ; PSP marketplaces/Connect et retenues KYC/KYB ; preuve d'éligibilité disponible / réellement retirable / réellement viré et rapprochement des transferts. Pas de conversion FX implicite, jamais de valeur décorative présentée comme argent acquis.
+
+**Principes UI premium :** réaction instantanée à chaque événement financier **confirmé par API**, animation de mouvement associée à son UUID et à la commande, preuve visible de commission/frais, quatre catégories *en attente / éligible / bloqué / viré*, filtres par période et devise, avis intelligibles sur litiges, état offline clairement « dernière synchronisation » sans solde fictif. Pas d'animation de montant optimiste après action du téléphone.
+
+**NO-GO absolu avant intégration :** pas de Stripe TEST officiel, pas de payout, pas d'inscription dans AppModule ou apps Expo, pas de migration VPS/PG prod, pas de fusion ni Store. Valider préalablement scope cryptographique et IAM SQL, PSP TEST, conformité territoriale et G0–G7 des trois applications.
+
 ## Interventions interdites avant signature d'un passport G0–G7
 
 ```
