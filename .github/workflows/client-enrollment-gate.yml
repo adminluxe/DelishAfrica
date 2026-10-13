@@ -8,6 +8,7 @@ on:
       # the actual API and all three mobile TypeScript projects.
       - feat/client-enrollment-secure-20261011
       - feat/stripe-test-reconcile-pg-qa-20261012
+      - feat/f4e-wallet-scope-isolation-qa-20261013
     paths:
       - 'services/api-nest/src/client-enrollment/**'
       - 'services/api-nest/src/client-commerce/**'
@@ -18,6 +19,7 @@ on:
       - 'services/api-nest/test/merchant-courier-fulfillment-http.qa.test.cjs'
       - 'services/api-nest/test/merchant-courier-wallet-http.qa.test.cjs'
       - 'services/api-nest/test/merchant-courier-wallet-release-isolation.qa.test.cjs'
+      - 'services/api-nest/test/merchant-courier-wallet-signed-session.pg-qa.integration.cjs'
       - 'services/api-nest/migrations/client-commerce/20261013_010_wallet_tenant_bound_scope_qa_only.sql'
       - 'services/api-nest/test/merchant-courier-wallet-tenant-scope.pg-qa.integration.cjs'
       - 'services/api-nest/test/native-client-checkout-http.qa.test.cjs'
@@ -151,6 +153,28 @@ jobs:
         env:
           QA_SYNTHETIC_ONLY: 'YES'
         run: node --test services/api-nest/test/merchant-courier-wallet-release-isolation.qa.test.cjs
+      - name: F4F signed session to SQL wallet bridge cannot register in production
+        run: |
+          node - <<'NODE'
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          const bridge=fs.readFileSync(
+            'services/api-nest/src/client-commerce/merchant-courier-wallet-signed-session.pg-qa.bridge.ts','utf8');
+          const integration=fs.readFileSync(
+            'services/api-nest/test/merchant-courier-wallet-signed-session.pg-qa.integration.cjs','utf8');
+          const module=fs.readFileSync('services/api-nest/src/app.module.ts','utf8');
+          assert(bridge.includes('verifyToken(token)'));
+          assert(bridge.includes('checkLiveSession('));
+          assert(bridge.includes('readMerchantWalletScopes('));
+          assert(bridge.includes('readCourierWalletScope('));
+          assert(bridge.includes('da_qa_wallet_read_attested_010'));
+          assert(bridge.includes('da_qa_wallet_attest_010'));
+          assert(bridge.includes("process.env.NODE_ENV==='production'"));
+          assert(bridge.includes("process.env.QA_SYNTHETIC_ONLY!=='YES'"));
+          assert(!module.includes('QaWalletVerifiedSessionBridge'));
+          assert(!integration.includes('api.stripe.com'));
+          assert(!/\b(?:sk_live_|pk_live_|payouts\.create|transfers\.create)\b/i.test(bridge+integration));
+          console.log('QA_F4F_SIGNED_SESSION_BRIDGE_RELEASE_ISOLATION=PASS');
+          NODE
       - name: F4E wallet SQL security boundaries and unchanged production routing
         run: |
           node - <<'NODE'
