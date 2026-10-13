@@ -759,8 +759,8 @@ jobs:
           run_f4l(){
             local filename="$1" stage="$2" pick="$3"
             local env_file="$QA_DIR/f4l-worker.env"
-            if [[ "$filename" == *permissions* ]]; then env_file="$QA_DIR/f4l-access-audit.env";fi
-            docker run --rm --pull never --user 1000:3100 \
+            if [[ "$filename" == *permissions* || "$filename" == "f4l-dispatch-machine.pg-qa.integration.cjs" ]]; then env_file="$QA_DIR/f4l-access-audit.env";fi
+            docker run --rm --pull never --user 1000:3100 --group-add 3000 \
               --network "container:$KC_ID" --cap-drop ALL \
               --security-opt no-new-privileges --read-only \
               --tmpfs /tmp:rw,nosuid,nodev,size=40m \
@@ -768,6 +768,7 @@ jobs:
               -e QA_F4L_STAGE="$stage" -e QA_F4L_PICK_STAGE="$pick" \
               -e NODE_PATH=/qa-deps/node_modules \
               -v "$QA_DIR/dispatch-ipc:/qa-dispatch-ipc:ro" \
+              -v "$QA_DIR/ipc:/qa-ipc:ro" \
               -v "$QA_DIR/users:/qa-users:ro" \
               -v "$QA_DIR/tls/qa.crt:/qa-tls/qa.crt:ro" \
               -v "$QA_DIR/deps:/qa-deps:ro" \
@@ -789,6 +790,15 @@ jobs:
             -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
             node:22-alpine node /qa-tests/f4l-dispatch-courier-pickup.pg-qa.cjs
           run_f4l f4l-dispatch-pickup-replay.pg-qa.integration.cjs "" verify
+
+          # Independent denial: a SECOND, otherwise eligible Courier in the
+          # SAME organization cannot silently replace an already offered one.
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
+            -c "UPDATE public.da_qa_finance_courier_roster_012 SET organization_id='a43f867f-9f42-4573-9268-dc65a164d2c2'::uuid,territory='BE' WHERE (issuer,subject) IN (SELECT issuer,subject FROM public.da_qa_wallet_courier_scope_010 WHERE organization_id='a43f867f-9f42-4573-9268-dc65a164d2c4'::uuid)" >/dev/null
+          run_f4l f4l-dispatch-machine.pg-qa.integration.cjs reassignment ""
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
+            -c "UPDATE public.da_qa_finance_courier_roster_012 SET organization_id='a43f867f-9f42-4573-9268-dc65a164d2c4'::uuid,territory='FR' WHERE (issuer,subject) IN (SELECT issuer,subject FROM public.da_qa_wallet_courier_scope_010 WHERE organization_id='a43f867f-9f42-4573-9268-dc65a164d2c4'::uuid)" >/dev/null
+          echo "QA_F4L_SAME_ORG_COURIER_REASSIGNMENT=DENIED"
 
           # Financial holds on real captured QA authorities: one committed
           # before Dispatch, one racing while the order FOR UPDATE is held.
@@ -833,6 +843,43 @@ jobs:
             echo "QA_F4L_CONCURRENT_REFUND_POSTGRES_ORDER_LOCK=NOT_OBSERVED";exit 1
           fi
           echo "QA_F4L_CONCURRENT_REFUND_POSTGRES_ORDER_LOCK=PASS"
+          # Reverse interleaving: Dispatch holds the order FOR UPDATE and commits
+          # an immutable offer FIRST; a concurrent refund must wait and then
+          # make BOTH new Dispatch and F4K Courier acceptance fail closed.
+          run_f4l f4l-dispatch-machine.pg-qa.integration.cjs assignment-hold "" \
+            > "$QA_DIR/f4l-assign-owner.log" 2>&1 &
+          f4l_assign_pid=$!
+          ready=false
+          for i in $(seq 1 60); do
+            n="$(docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -Atc \
+              "SELECT count(*) FROM pg_stat_activity WHERE usename='da_qa_dispatch_machine_016' AND state='active' AND query LIKE '%pg_sleep(7)%'")"
+            if [[ "$n" != 0 ]]; then ready=true;break;fi
+            sleep 0.1
+          done
+          if [[ "$ready" != true ]];then
+            echo "QA_F4L_ASSIGNMENT_FIRST_LOCK_NOT_OBSERVED";exit 1
+          fi
+          f4l_after_id="$(node -e "console.log(require(process.argv[1]).assignThenRefund.authorityId)" "$QA_DIR/f4l-orders-runner.json")"
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
+            -c "SET application_name='f4l_refund_waiter'; SELECT public.da_qa_finance_record_hold('$f4l_after_id'::uuid,'re_QAF4LREFUND00006','refund')" \
+            > "$QA_DIR/f4l-refund-after-assign.log" 2>&1 &
+          f4l_refund_pid=$!
+          blocked=0
+          for i in $(seq 1 60); do
+            n="$(docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -Atc \
+              "SELECT count(*) FROM pg_stat_activity WHERE application_name='f4l_refund_waiter' AND wait_event_type='Lock'")"
+            if [[ "$n" != 0 ]]; then blocked=1;break;fi
+            sleep 0.1
+          done
+          wait "$f4l_assign_pid" || { cat "$QA_DIR/f4l-assign-owner.log";exit 1; }
+          wait "$f4l_refund_pid" || { cat "$QA_DIR/f4l-refund-after-assign.log";exit 1; }
+          if [[ "$blocked" != 1 ]]; then
+            echo "QA_F4L_REFUND_WAIT_AFTER_DISPATCH_NOT_OBSERVED";exit 1
+          fi
+          cat "$QA_DIR/f4l-assign-owner.log"
+          run_f4l f4l-dispatch-machine.pg-qa.integration.cjs assignment-refund-held ""
+          echo "QA_F4L_ASSIGNMENT_FIRST_REFUND_WAITS_COURIER_HELD=PASS"
+
           docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
             -U postgres -d postgres -c \
             "UPDATE public.da_qa_finance_courier_roster_012 SET roster_status='revoked' WHERE organization_id='a43f867f-9f42-4573-9268-dc65a164d2c2'::uuid" >/dev/null
