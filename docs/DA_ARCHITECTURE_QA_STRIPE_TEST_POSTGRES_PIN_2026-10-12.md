@@ -726,11 +726,13 @@ flowchart TD
 
 - **Authentification machine :** vrai Keycloak QA éphémère et JWT signé RS256, découverte/JWKS via TLS, contrôle `aud/azp/iss/role/scope/iat/exp/jti` et introspection active.
 - **Droits SQL :** tests de `SET ROLE` et de mutation 007/016 par Merchant/Courier refusés. Aucun retour aux anciens GRANT 007.
-- **Idempotence/concurrence :** sept affectations simultanées ⇒ **une insertion, six replays**, une seule ligne par `order_id`. Réaffectation non autorisée, ticket déjà utilisé et course déjà récupérée refusés.
+- **Idempotence/concurrence :** sept affectations simultanées ⇒ **une insertion, six replays**, une seule ligne par `order_id`. Réaffectation non autorisée (y compris un autre coursier actif de la même organisation), ticket déjà utilisé, ticket expiré après attente sur verrou et course déjà récupérée refusés.
 - **Contrats et juridictions :** Courier révoqué et Courier ayant changé d'organisation/territoire refusés malgré ses anciens identifiants ; identité machine révoquée dans PG également refusée.
-- **Finance :** demande refusée sur ordre non prêt ou sous hold. Refund simultané : attente PostgreSQL **observée** en `wait_event_type='Lock'`, puis refus après commit du refund. Captures et postes comptables fictifs.
-- **Comptabilité :** **16 allocations (dont les 3 initiales F4K), 64 postings, somme 0** ; **5 reçus Dispatch immuables F4L**, **8 reçus opérationnels F4K**. `withdrawableMinor=0` et `payoutEnabled=false` en toutes circonstances.
+- **Finance :** demande refusée sur ordre non prêt ou sous hold. **Deux ordres de concurrence sont observés en PostgreSQL 17 :** (1) refund détient le verrou, Dispatch attend puis refuse ; (2) Dispatch détient le verrou, refund attend, puis le Courier attesté F4K ne peut accepter l'offre après le hold. La date d'expiration du ticket est relue après l'attente sous verrou. Captures et postes comptables fictifs.
+- **Comptabilité :** **16 allocations (dont les 3 initiales F4K), 64 postings, somme 0** ; **6 reçus Dispatch immuables F4L**, **8 reçus opérationnels de la baseline F4K**, **35 événements opérationnels attestés cumulés F4K+F4L**. `withdrawableMinor=0` et `payoutEnabled=false` en toutes circonstances.
 - **Aucune app reliée à SQL 016**, aucune opération Stripe TEST officielle, aucun paiement réel, aucune transaction banque, aucun VPS modifié, aucun Store/EAS, aucune PR fusionnée.
+
+**Renforcement complémentaire validé :** SHA `18b1e5a327700bcc9762a98a586e4ba4ea18c7c4` avec trois CI SUCCESS ([F4L double sens du verrou #38369963924](https://github.com/adminluxe/DelishAfrica/actions/runs/38369963924), [API + apps #38369963883](https://github.com/adminluxe/DelishAfrica/actions/runs/38369963883), [PG17 historique #38369963941](https://github.com/adminluxe/DelishAfrica/actions/runs/38369963941)). Après cette étape, la vérification de la politique SQL 015 prouve **35 reçus opérationnels au total**, et la finance garantit explicitement que tout portefeuille Merchant reste non retirable avec payouts désactivés. Aucune permission applicative 007 n'est rouverte.
 
 ### Preuves et autorité de version
 
