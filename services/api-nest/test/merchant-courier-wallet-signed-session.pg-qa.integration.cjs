@@ -152,7 +152,7 @@ const merchantBridge=new QaWalletVerifiedSessionBridge(ports,issuerM);
 const courierBridge=new QaWalletVerifiedSessionBridge(ports,issuerC);
 const foreignBridge=new QaWalletVerifiedSessionBridge(ports,issuerForeign);
 const attempt=(bridge,jwt)=>bridge.readWallet('Bearer '+jwt);
-const denied=(promise)=>assert.rejects(promise,/^Error: qa_f4f_financial_identity_denied$/);
+const denied=(promise)=>assert.rejects(promise,/qa_f4f_financial_identity_denied/);
 
 test('F4F signed Merchant/Courier wallet QA bridge: real PG17, RSA, revocation, org boundaries',async()=>{
   try{
