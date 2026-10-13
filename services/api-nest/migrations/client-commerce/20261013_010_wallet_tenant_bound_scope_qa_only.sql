@@ -151,11 +151,15 @@ CREATE TABLE public.da_qa_wallet_ticket_010(
   CHECK ((owner_kind='merchant' AND merchant_slug IS NOT NULL)
       OR (owner_kind='courier' AND merchant_slug IS NULL))
 );
-ALTER TABLE public.da_qa_wallet_merchant_scope_010,
-  public.da_qa_wallet_slug_owner_010,
-  public.da_qa_wallet_courier_scope_010,
-  public.da_qa_wallet_challenge_010,
-  public.da_qa_wallet_ticket_010
+ALTER TABLE public.da_qa_wallet_merchant_scope_010
+  OWNER TO da_qa_wallet_read_owner_010;
+ALTER TABLE public.da_qa_wallet_slug_owner_010
+  OWNER TO da_qa_wallet_read_owner_010;
+ALTER TABLE public.da_qa_wallet_courier_scope_010
+  OWNER TO da_qa_wallet_read_owner_010;
+ALTER TABLE public.da_qa_wallet_challenge_010
+  OWNER TO da_qa_wallet_read_owner_010;
+ALTER TABLE public.da_qa_wallet_ticket_010
   OWNER TO da_qa_wallet_read_owner_010;
 REVOKE ALL ON TABLE
   public.da_qa_wallet_merchant_scope_010,
