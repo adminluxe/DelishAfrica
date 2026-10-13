@@ -569,3 +569,60 @@ L'ancien rôle PostgreSQL `da_qa_wallet_attestor_010` perd EXECUTE de l'attestat
 **Barrières permanentes :** aucun code F4I ajouté aux AppModule et routes publiques, aucun port ni migration VPS, aucun Stripe TEST officiel ou LIVE, aucun payout, aucune fusion, aucun EAS payant, aucune soumission Store. SQL 010 continue de révoquer les anciennes fonctions Merchant/Dispatch/Courier de mutation. G0–G7 et autorisation humaine obligatoires.
 
 **Passation :** [F4I attestateur QA](./DA_PASSATION_F4I_ATTESTOR_ISOLATION_QA_2026-10-13.md).
+
+---
+
+## F4J — Frontière de linéarisation SQL de l'autorisation financière (13 octobre 2026)
+
+**Laboratoire :** [PR #42 DRAFT](https://github.com/adminluxe/DelishAfrica/pull/42), empilée sur [F4I #41](https://github.com/adminluxe/DelishAfrica/pull/41). **Premier code SHA à triple CI SUCCESS :** `1bc1f770f83edb908a3e6b38debcce8246859d7e` — [Keycloak + PG17 F4J #38356090975](https://github.com/adminluxe/DelishAfrica/actions/runs/38356090975), [API + trois apps #38356090898](https://github.com/adminluxe/DelishAfrica/actions/runs/38356090898), [finance PG17 historique #38356091032](https://github.com/adminluxe/DelishAfrica/actions/runs/38356091032). Les commits documentaires doivent être recertifiés à leur propre SHA.
+
+```text
+Keycloak 26.4.7 REEL en réseau Docker fermé
+  (JWT signés, mais Merchant/Courier 100 % FICTIFS)
+                 |
+       Verify RS256 / JWKS / aud / azp / role
+                 |
+       Introspection Keycloak TEST active ?
+                 |
+           Attesteur F4I privé
+        Unix socket + SCRAM SQL
+                 |
+       Ticket F4E 010, lié au backend
+                 |
+         Wallet read F4J SQL 014
+         SECURITY DEFINER NOLOGIN
+                 |
+     +-----------+--------------------+
+     |           |                    |
+     v           v                    v
+Ticket 010   Session 011           Identité Merchant/Courier
+FOR SHARE    FOR SHARE             FOR UPDATE (clé identité)
+     |           |                    |
+     |           |                    +--> Merchant 5 tables F4H
+     |           |                    |    memberships + partner
+     |           |                    |    entité légale + KYB/territoire
+     |           |                    |    FOR SHARE
+     |           |                    +--> Courier registre 012
+     |           |                         + entité légale/KYC/contrat
+     |           |                         FOR SHARE
+     +-----------+--------------------+
+                 |
+     SAME PostgreSQL TRANSACTION
+                 |
+       F4E read_attested_010
+       (EXECUTE app direct RÉVOQUÉ)
+       - vérifie session backend/slug/issuer
+       - consomme ticket unique
+       - projette ledger 009 synthétique
+                 |
+       withdrawableMinor=0
+         payoutEnabled=false
+```
+
+La fonction `da_qa_wallet_read_linearized_014(uuid,integer,text)` est le **nouvel unique point d'entrée de lecture du wallet pour les rôles QA Merchant/Courier**. Elle verrouille session, identité, membership/partenaire/entité ou roster au moment de la consommation du ticket. Le service privé F4I active cette fonction avec `QA_F4J_ATOMIC_SQL=YES`; l'application mobile ne choisit jamais de sujet, slug ni hash de session. Le propriétaire `da_qa_wallet_linear_owner_014` est `NOLOGIN NOSUPERUSER`, avec SELECT et permissions de row-lock sur clés identifiantes seulement, aucune permission de modifier contrat, KYB, état du registre ou montant.
+
+**Ordres adversariaux validés :** si une mise à jour de contrat Merchant ou roster Courier verrouille la ligne et valide avant la lecture, celle-ci attend puis refuse ; si la lecture a acquis les verrous avant la modification d'un KYB ou d'une session 011, l'UPDATE concurrent attend le COMMIT. Ces ordres ont été observés en consultant `pg_stat_activity.wait_event_type = 'Lock'`, et non inférés par simples temporisations.
+
+**Ne pas confondre les domaines atomiques :** la preuve vaut **uniquement pour les tables et mutations PostgreSQL couvertes par les verrous**, pas pour un logout Keycloak externe survenant simultanément, ni pour un changement de KYB dans un service distant non répliqué et sans protocole transactionnel. Les comptes Keycloak, le catalogue Merchant, le registre Courier 012 et le ledger restent peuplés de **données fictives de QA**. Les anciennes fonctions Merchant/Dispatch/Courier d'écriture 007 restent révoquées après 010.
+
+Aucun Stripe TEST officiel ou LIVE, compte bancaire, payout, migration VPS, fusion, build EAS, publication Store ou G0–G7 n'est autorisé par F4J. **Passation :** [DA_PASSATION_F4J_WALLET_REVOCATION_LINEARIZATION_QA_2026-10-13.md](./DA_PASSATION_F4J_WALLET_REVOCATION_LINEARIZATION_QA_2026-10-13.md). Prochaine architecture F4K : mutations signées et sérialisées sous le même cadre d'autorisations, puis politiques internationales et PSP TEST officiels sous validation.
