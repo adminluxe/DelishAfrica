@@ -789,3 +789,64 @@ jobs:
             -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
             node:22-alpine node /qa-tests/f4l-dispatch-courier-pickup.pg-qa.cjs
           run_f4l f4l-dispatch-pickup-replay.pg-qa.integration.cjs "" verify
+
+          # Financial holds on real captured QA authorities: one committed
+          # before Dispatch, one racing while the order FOR UPDATE is held.
+          node - "$QA_DIR/f4l-orders-runner.json" "$QA_DIR" <<'F4LHOLDS'
+          const fs=require('node:fs'),path=require('node:path');
+          const orders=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const dir=process.argv[3];
+          const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
+          for(const [name,marker,suffix] of [
+            ['refundFirst','re_QAF4LREFUND00004','first'],
+            ['refundConcurrent','re_QAF4LREFUND00005','race']]){
+            if(!uuid.test(orders[name]?.authorityId))throw Error('QA_F4L_BAD_HOLD_UUID');
+            const statement="SELECT * FROM public.da_qa_finance_record_hold('"+
+              orders[name].authorityId+"'::uuid,'"+marker+"','refund');";
+            fs.writeFileSync(path.join(dir,'f4l-hold-'+suffix+'.sql'),
+              suffix==='first'?statement+'\n':
+                'BEGIN;\n'+statement+'\nSELECT pg_sleep(8);\nCOMMIT;\n',
+              {mode:0o600});
+          }
+          F4LHOLDS
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres < "$QA_DIR/f4l-hold-first.sql" >/dev/null
+          run_f4l f4l-dispatch-revocation-refund.pg-qa.integration.cjs refund-first ""
+          (docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres < "$QA_DIR/f4l-hold-race.sql" >/dev/null) &
+          hold_pid=$!
+          sleep 0.5
+          (run_f4l f4l-dispatch-revocation-refund.pg-qa.integration.cjs refund-race "" \
+            > "$QA_DIR/f4l-race-test.log" 2>&1) &
+          race_pid=$!
+          blocked=0
+          for i in $(seq 1 55); do
+            n="$(docker exec "$PG_ID" psql -U postgres -d postgres -Atc \
+              "SELECT count(*) FROM pg_stat_activity WHERE usename='da_qa_dispatch_machine_016' AND wait_event_type='Lock'")"
+            if [[ "$n" != 0 ]]; then blocked=1;break;fi
+            sleep 0.12
+          done
+          wait "$hold_pid"
+          wait "$race_pid"
+          cat "$QA_DIR/f4l-race-test.log"
+          if [[ "$blocked" != 1 ]]; then
+            echo "QA_F4L_CONCURRENT_REFUND_POSTGRES_ORDER_LOCK=NOT_OBSERVED";exit 1
+          fi
+          echo "QA_F4L_CONCURRENT_REFUND_POSTGRES_ORDER_LOCK=PASS"
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres -c \
+            "UPDATE public.da_qa_finance_courier_roster_012 SET roster_status='revoked' WHERE organization_id='a43f867f-9f42-4573-9268-dc65a164d2c2'::uuid" >/dev/null
+          run_f4l f4l-dispatch-revocation-refund.pg-qa.integration.cjs courier-revoked ""
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres -c \
+            "UPDATE public.da_qa_finance_courier_roster_012 SET roster_status='active',organization_id='a43f867f-9f42-4573-9268-dc65a164d2c4'::uuid,territory='FR' WHERE organization_id='a43f867f-9f42-4573-9268-dc65a164d2c2'::uuid" >/dev/null
+          run_f4l f4l-dispatch-revocation-refund.pg-qa.integration.cjs org-moved ""
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres -c \
+            "UPDATE public.da_qa_dispatch_machine_registry_016 SET grant_status='revoked'" >/dev/null
+          run_f4l f4l-dispatch-revocation-refund.pg-qa.integration.cjs machine-revoked ""
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            < services/api-nest/test/f4l-dispatch-final-accounting.pg-qa.sql
+          echo "QA_F4L_STRIPE_PROVIDER_CALLS=ZERO_PAYOUTS=ZERO"
+          echo "QA_F4L_NO_VPS_NO_STORE_NO_MERGE=PASS"
