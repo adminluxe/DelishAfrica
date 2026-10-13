@@ -79,15 +79,17 @@ F4L remplace cette étape dans son **nouveau laboratoire** par une identité de 
 | Sept affectations simultanées du même ordre | Un seul premier reçu, six replays | `QA_F4L_MACHINE_DISPATCH_ASSIGN_AND_CONCURRENCY=PASS` |
 | Commande non prête, Courier étranger, organisation/territoire étrangers | Refus | `QA_F4L_MACHINE_DISPATCH_ASSIGN_AND_CONCURRENCY=PASS` |
 | Mission déjà enlevée par Courier attesté F4K ; réaffectation | Refus | `QA_F4L_PICKED_UP_PROTECTED_AND_TICKET_SINGLE_USE=PASS` |
+| Second coursier pourtant éligible dans la même organisation | Réaffectation refusée | `QA_F4L_SAME_ORG_COURIER_REASSIGNMENT=DENIED` |
 | Deuxième consommation du même ticket sur le même backend | Refus | `QA_F4L_PICKED_UP_PROTECTED_AND_TICKET_SINGLE_USE=PASS` |
 | Remboursement validé avant nouvelle affectation | Refus | `QA_F4L_REFUND_FIRST=DENIED` |
 | Remboursement concurrent gardant l'ordre sous `FOR UPDATE` | Dispatch attend puis refuse | `QA_F4L_CONCURRENT_REFUND_POSTGRES_ORDER_LOCK=PASS` |
+| Affectation gagne le verrou avant remboursement ; refund attend, puis Courier est bloqué | Refus des nouvelles opérations sur ordre remboursé | `QA_F4L_ASSIGNMENT_FIRST_REFUND_WAITS_COURIER_HELD=PASS` |
 | Roster Courier révoqué alors que son JWT est encore signé | Refus | `QA_F4L_COURIER_REVOKED=DENIED` |
 | Courier déplacé vers une autre entité et juridiction | Refus | `QA_F4L_ORG_MOVED=DENIED` |
 | Autorisation de service machine révoquée en base | Refus | `QA_F4L_MACHINE_REVOKED=DENIED` |
-| Reçu Dispatch immuable ; ancienne ACL 007 toujours fermée | Refus des mutations directes | `QA_F4L_MACHINE_ASSIGNMENT_RECEIPTS_IMMUTABLE_5=PASS` |
+| Reçu Dispatch immuable ; ancienne ACL 007 toujours fermée | Refus des mutations directes | `QA_F4L_MACHINE_ASSIGNMENT_RECEIPTS_IMMUTABLE_6=PASS` |
 
-**Résultat financier du banc cumulatif F4K + F4L :** trois allocations synthétiques de la baseline F4K plus **treize commandes synthétiques capturées** dans F4L, soit **16 allocations** et **64 écritures signées** de somme **exactement nulle**. Le laboratoire compte **5 reçus Dispatch 016 immuables** (les commandes synthétiques non attribuées ne deviennent pas automatiquement des missions). La commission de **20 %** reste une simple fixture financière QA, sans portée contractuelle. Aucune sortie bancaire : `withdrawableMinor=0`, `payoutEnabled=false`.
+**Résultat financier du banc cumulatif F4K + F4L :** trois allocations synthétiques de la baseline F4K plus **treize commandes synthétiques capturées** dans F4L, soit **16 allocations** et **64 écritures signées** de somme **exactement nulle**. Le laboratoire compte **6 reçus Dispatch 016 immuables** (les commandes synthétiques non attribuées ne deviennent pas automatiquement des missions). La commission de **20 %** reste une simple fixture financière QA, sans portée contractuelle. Aucune sortie bancaire : `withdrawableMinor=0`, `payoutEnabled=false`.
 
 ## 5. Preuve des trois CI sur le commit de code
 
@@ -98,6 +100,9 @@ F4L remplace cette étape dans son **nouveau laboratoire** par une identité de 
 - [PostgreSQL 17 / réconciliation et concurrence historiques — run #38368706881](https://github.com/adminluxe/DelishAfrica/actions/runs/38368706881) — **SUCCESS**.
 
 Les trois exécutions portent **strictement le même SHA**. F4K est rejoué au début du workflow F4L ; les sorties confirment le parcours Merchant/Courier attesté et ses six pulses financiers avant l'introduction de SQL 016.
+
+
+**Renforcement de la preuve après le premier SHA de code :** [F4L Dispatch bidirectionnel #38369963924](https://github.com/adminluxe/DelishAfrica/actions/runs/38369963924), [API + apps #38369963883](https://github.com/adminluxe/DelishAfrica/actions/runs/38369963883) et [régression PG17 #38369963941](https://github.com/adminluxe/DelishAfrica/actions/runs/38369963941) étaient déjà trois SUCCESS sur le SHA `18b1e5a327700bcc9762a98a586e4ba4ea18c7c4` : la même organisation ne peut réattribuer une offre, la concurrence Dispatch→refund est constatée par verrous réels, et le registre contient **six** reçus immuables. Le contrôle complémentaire sur SHA `234cd66880ca8951c94462e146c8a583423df029` a également confirmé les 35 opérations F4K+F4L et l'absence de solde retirable/payout. Le SHA documentaire final est publié dans la discussion PR #44 seulement après un nouveau triplet SUCCESS.
 
 **Historique des corrections du laboratoire :** la première sonde de disponibilité cherchait le socket dans un dossier volontairement non traversable par le runner ; sonde déplacée à l'intérieur du conteneur **sans ouvrir les permissions**. L'assertion comptable initiale attendait 60 écritures pour 13 fixtures nouvelles, alors que le résultat réel était **64 écritures / somme zéro** ; seule l'assertion a été réalignée. Aucune suppression de verrou ni élévation de droits app pour contourner ces incidents.
 
