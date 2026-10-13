@@ -759,7 +759,7 @@ jobs:
           run_f4l(){
             local filename="$1" stage="$2" pick="$3"
             local env_file="$QA_DIR/f4l-worker.env"
-            if [[ "$filename" == *permissions* || "$filename" == "f4l-dispatch-machine.pg-qa.integration.cjs" ]]; then env_file="$QA_DIR/f4l-access-audit.env";fi
+            if [[ "$filename" == *permissions* ]]; then env_file="$QA_DIR/f4l-access-audit.env";fi
             docker run --rm --pull never --user 1000:3100 --group-add 3000 \
               --network "container:$KC_ID" --cap-drop ALL \
               --security-opt no-new-privileges --read-only \
