@@ -373,12 +373,12 @@ test('F4H real Keycloak+Merchant membership catalogue+independent Courier roster
     assert.equal((await read(bridge,businessB.access)).ownerRole,'merchant');
 
     await adminPg.query(
-      "UPDATE public.da_merchant_memberships SET contract_status='suspended' "+
+      "UPDATE public.da_merchant_memberships SET membership_status='suspended',contract_status='suspended' "+
       "WHERE issuer=$1 AND subject=$2 AND partner_id='qa_partner_b'",
       [ISSUER,businessB.subject]);
     await denies(read(bridge,businessB.access));
     await adminPg.query(
-      "UPDATE public.da_merchant_memberships SET contract_status='active' "+
+      "UPDATE public.da_merchant_memberships SET membership_status='active',contract_status='active' "+
       "WHERE issuer=$1 AND subject=$2 AND partner_id='qa_partner_b'",
       [ISSUER,businessB.subject]);
     assert.equal((await read(bridge,businessB.access)).ownerRole,'merchant');
