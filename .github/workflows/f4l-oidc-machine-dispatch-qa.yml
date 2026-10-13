@@ -688,3 +688,104 @@ jobs:
             node:22-alpine node /qa-tests/f4l-dispatch-oidc-machine.setup.pg-qa.cjs
           sudo install -m 0600 -o "$(id -u)" -g "$(id -g)" \
             "$QA_DIR/seed/f4l-dispatch-machine.json" "$QA_DIR/f4l-machine-private.json"
+
+          # Write ephemeral independent SQL credentials after SCRAM is enabled.
+          # Keep all secrets in runner-private 0600 files, never in logs.
+          node - "$QA_DIR" <<'F4LENV'
+          const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
+          const base=process.argv[2],read=p=>fs.readFileSync(path.join(base,p),'utf8');
+          const data=JSON.parse(read('f4l-machine-private.json'));
+          const introspection=JSON.parse(read('introspection.json'));
+          const secret=()=>crypto.randomBytes(36).toString('hex');
+          const sql=x=>"'"+String(x).replaceAll("'","''")+"'";
+          const machine=secret(),attestor=secret();
+          const org='a43f867f-9f42-4573-9268-dc65a164d2c2';
+          fs.writeFileSync(path.join(base,'f4l-roles.sql'),[
+            "SET password_encryption='scram-sha-256';",
+            "ALTER ROLE da_qa_dispatch_machine_016 PASSWORD "+sql(machine)+";",
+            "ALTER ROLE da_qa_dispatch_attestor_016 PASSWORD "+sql(attestor)+";",
+            "INSERT INTO public.da_qa_dispatch_machine_registry_016("+
+              "issuer,subject,client_id,organization_id,territory,grant_status) VALUES("+
+              [data.issuer,data.subject,data.clientId,org,'BE','active'].map(sql).join(',')+");",
+            ''
+          ].join('\n'),{mode:0o600});
+          const shared=['GITHUB_ACTIONS=true','QA_SYNTHETIC_ONLY=YES',
+            'NODE_EXTRA_CA_CERTS=/qa-tls/qa.crt'];
+          const worker=[...shared,'QA_F4L_MACHINE_WORKER=YES',
+            'QA_F4L_MACHINE_CLIENT_SECRET='+data.clientSecret,
+            'QA_F4L_MACHINE_DB_PASSWORD='+machine];
+          fs.writeFileSync(path.join(base,'f4l-worker.env'),worker.join('\n')+'\n',{mode:0o600});
+          const otherRoles=read('client.env');
+          const merchant=otherRoles.match(/^QA_MERCHANT_DB_PASSWORD=(.+)$/m)?.[1];
+          const courier=otherRoles.match(/^QA_COURIER_DB_PASSWORD=(.+)$/m)?.[1];
+          if(!merchant||!courier)throw Error('QA_F4L_MISSING_APP_FIXTURES');
+          fs.writeFileSync(path.join(base,'f4l-access-audit.env'),[
+            ...worker,'QA_MERCHANT_DB_PASSWORD='+merchant,
+            'QA_COURIER_DB_PASSWORD='+courier,''
+          ].join('\n'),{mode:0o600});
+          fs.writeFileSync(path.join(base,'f4l-attestor.env'),[
+            ...shared,'QA_F4L_PRIVATE_ATTESTOR=YES',
+            'QA_F4L_ATTESTOR_DB_PASSWORD='+attestor,
+            'QA_INTROSPECT_CLIENT_SECRET='+introspection.secret,''
+          ].join('\n'),{mode:0o600});
+          console.log('QA_F4L_MACHINE_SECRETS_SEPARATE_SQL_SCRAM=PASS');
+          F4LENV
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres < "$QA_DIR/f4l-roles.sql" >/dev/null
+          mkdir -p "$QA_DIR/dispatch-ipc"
+          sudo chown 1002:3100 "$QA_DIR/dispatch-ipc"
+          sudo chmod 0710 "$QA_DIR/dispatch-ipc"
+          F4L_ATTESTOR_ID="da-f4l-attestor-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          docker run -d --name "$F4L_ATTESTOR_ID" --pull never --user 1002:3100 \
+            --network "container:$KC_ID" --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=32m \
+            --env-file "$QA_DIR/f4l-attestor.env" -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/dispatch-ipc:/qa-dispatch-ipc:rw" \
+            -v "$QA_DIR/tls/qa.crt:/qa-tls/qa.crt:ro" \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node /qa-tests/f4l-dispatch-private-attestor.pg-qa.service.cjs >/dev/null
+          ready=false
+          for i in $(seq 1 40); do
+            if [[ -S "$QA_DIR/dispatch-ipc/dispatch-attestor.sock" ]]; then ready=true;break;fi
+            if [[ "$(docker inspect -f '{{.State.Running}}' "$F4L_ATTESTOR_ID")" != true ]]; then
+              echo "QA_F4L_ATTESTOR_EXITED";docker logs "$F4L_ATTESTOR_ID" | tail -n 12;exit 1
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then echo "QA_F4L_SOCKET_MISSING";exit 1;fi
+          echo "QA_F4L_STRONG_MACHINE_OIDC_AND_PRIVATE_SOCKET=PASS"
+          run_f4l(){
+            local filename="$1" stage="$2" pick="$3"
+            local env_file="$QA_DIR/f4l-worker.env"
+            if [[ "$filename" == *permissions* ]]; then env_file="$QA_DIR/f4l-access-audit.env";fi
+            docker run --rm --pull never --user 1000:3100 \
+              --network "container:$KC_ID" --cap-drop ALL \
+              --security-opt no-new-privileges --read-only \
+              --tmpfs /tmp:rw,nosuid,nodev,size=40m \
+              --env-file "$env_file" \
+              -e QA_F4L_STAGE="$stage" -e QA_F4L_PICK_STAGE="$pick" \
+              -e NODE_PATH=/qa-deps/node_modules \
+              -v "$QA_DIR/dispatch-ipc:/qa-dispatch-ipc:ro" \
+              -v "$QA_DIR/users:/qa-users:ro" \
+              -v "$QA_DIR/tls/qa.crt:/qa-tls/qa.crt:ro" \
+              -v "$QA_DIR/deps:/qa-deps:ro" \
+              -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+              node:22-alpine node "/qa-tests/$filename"
+          }
+          run_f4l f4l-dispatch-permissions.pg-qa.integration.cjs "" ""
+          run_f4l f4l-dispatch-token-isolation.pg-qa.integration.cjs "" ""
+          run_f4l f4l-dispatch-basic.pg-qa.integration.cjs "" ""
+          run_f4l f4l-dispatch-pickup-replay.pg-qa.integration.cjs "" create
+          # F4K Courier separately authorizes pickup with signed personal JWT.
+          docker run --rm --pull never --user 1000:3000 \
+            --network "container:$KC_ID" --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=40m \
+            --env-file "$QA_DIR/client.env" -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/ipc:/qa-ipc:ro" -v "$QA_DIR/users:/qa-users:ro" \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node /qa-tests/f4l-dispatch-courier-pickup.pg-qa.cjs
+          run_f4l f4l-dispatch-pickup-replay.pg-qa.integration.cjs "" verify
