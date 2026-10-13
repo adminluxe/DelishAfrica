@@ -2,6 +2,10 @@ name: Native Client Commerce Authority — isolated PostgreSQL and concurrency
 on:
   pull_request:
     paths:
+      - '.github/workflows/f4l-oidc-machine-dispatch-qa.yml'
+      - 'services/api-nest/migrations/client-commerce/20261013_016_oidc_machine_dispatch_authority_qa_only.sql'
+      - 'services/api-nest/test/f4l-dispatch-**'
+      - 'docs/DA_PASSATION_F4L_MACHINE_DISPATCH_QA_2026-10-13.md'
       - '.github/workflows/native-client-commerce-authority-postgres-qa.yml'
       - 'docs/DA_STRIPE_TEST_RECONCILIATION_QA_2026-10-12.md'
       - 'docs/DA_ARCHITECTURE_QA_STRIPE_TEST_POSTGRES_PIN_2026-10-12.md'

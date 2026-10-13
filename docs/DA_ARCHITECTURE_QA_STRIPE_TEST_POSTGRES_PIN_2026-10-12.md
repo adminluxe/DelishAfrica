@@ -680,3 +680,70 @@ Le propriétaire SQL da_qa_fulfillment_writer_015 est NOLOGIN/NOSUPERUSER et ne 
 **Ce qui reste NO-GO :** vrai realm/PKCE, KYB/KYC et contrats juridiquement vérifiés, registre Courier officiel, authentification machine Dispatch/annulation, sources d'autorité distribuées, choix PSP/pays/devise/taxation, Stripe TEST officiel, Stripe LIVE, banques, settlement et payouts. Les apps Expo réelles ne sont pas branchées sur 015 ; aucune migration VPS, fusion PR, EAS payant ou Store. Le logout Keycloak externe n'est pas atomique avec la transaction PostgreSQL et cette preuve ne prétend pas le contraire.
 
 **Étape F4L cible :** attestation de l'identité machine Dispatch, délégation minimale d'affectation, concurrence affectation/remboursement/livraison, identité Courier revocable, puis vrais contrats KYB/KYC et conditions internationales. Suivi : [Passation F4K](./DA_PASSATION_F4K_ATTESTED_MERCHANT_COURIER_OPERATIONS_QA_2026-10-13.md) et [roadbook financier](./DA_STRIPE_TEST_RECONCILIATION_QA_2026-10-12.md).
+
+---
+
+## PIN complémentaire F4L — Machine Dispatch sous autorité indépendante (13 octobre 2026)
+
+> **Portée : laboratoire QA éphémère UNIQUEMENT.** Cette vue **ne décrit pas** les services exécutés sur le VPS ni des apps Expo déjà branchées. Les données et les contrats/roster/KYC/KYB sont totalement synthétiques. L'ancien bloc F4K ci-dessus reste la provenance historique ; son « Dispatch fixture-only » reste vrai pour **F4K**, tandis que **F4L** possède désormais sa propre preuve machine simulant de vraies affectations.
+
+### Graphe d'identité et séparation machine / personnes
+
+```mermaid
+flowchart TD
+    K["Keycloak 26.4.7 réel — realm QA isolé"] -->|"client_credentials, RS256 JWT"| M["Service machine QA<br/>audience dédiée, scope da.dispatch.assign"]
+    H["Merchant/Courier mobiles<br/>JWT humain, identités test"] -.->|"Interdit : 007 / 016"| DENY["Refus SQL / HTTP"]
+    M -->|"challenge du backend SQL propre"| C["PG17 begin_016<br/>login Dispatch machine"]
+    M -->|"Bearer + demande, pas de secret introspection"| A["Attesteur séparé UID 1002<br/>socket Unix 0660, sans port"]
+    A -->|"TLS, JWKS RS256, issuer, aud, azp, scope, rôle"| K
+    A -->|"introspection active"| K
+    A -->|"ticket éphémère / SQL attest_016"| T["Registre machine 016<br/>login attesteur SCRAM distinct"]
+    T -->|"ticket unique lié PID/démarrage"| S["SQL assign_attested_016<br/>owner NOLOGIN"]
+    C -->|"consomme ticket sur ce même backend"| S
+    S -->|"ordre FOR UPDATE, hold 008"| F["Preuve capture / refund / dispute 004–008"]
+    S -->|"FOR SHARE/UPDATE, même transaction"| R["Partenaire actif, entité/territoire<br/>identité et roster Courier actifs 012"]
+    S -->|"propriétaire SQL dédié uniquement"| L["Ancien port SQL 007<br/>offer assign"]
+    L --> O["Une offre immuable / commande<br/>Reçu append-only 016"]
+    O -.->|"Jamais déclenché par Dispatch"| P["picked_up / delivered"]
+```
+
+**Règle d'or :** signature Keycloak seule ne suffit **jamais** à affecter. Le service doit également être actif dans le registre SQL local de délégation, porter le bon `org/territory`, obtenir une attestation indépendante puis consommer son ticket unique sur **sa propre connexion**. La base protège la commande, le contrat/l'identité du Courier, l'entité légale et l'état remboursé dans la même transaction.
+
+### Propriété, ACL et frontières
+
+| Autorité | Capacité minimale QA | Interdiction explicite |
+|---|---|---|
+| Keycloak confidentiel `da-f4l-dispatch-machine-qa` | `client_credentials`, scope `da.dispatch.assign`, rôle `da_dispatch_assign`, audience `delishafrica-dispatch-authority` | Aucune authentification d'utilisateur Mobile, aucun mot de passe humain, pas d'accès au realm de production |
+| `da_qa_dispatch_machine_016` | Demander son challenge et consommer son ticket avec `assign_attested_016` | Ni DML direct, ni 007 direct, ni création de tickets, ni lecture des reçus protégés |
+| `da_qa_dispatch_attestor_016` | Appeler seulement `attest_016` après validation cryptographique/introspection de Keycloak | N'exécute pas l'affectation, ne possède pas la clé confidentielle du service |
+| `da_qa_dispatch_owner_016` | Fonction SQL `SECURITY DEFINER`, verrouiller les lignes, exécuter 007 après tous les contrôles | Rôle **NOLOGIN**, non-superuser ; n'accueille jamais un JWT ou secret applicatif |
+| `da_qa_merchant_commerce_app` / `da_qa_courier_commerce_app` | Continuent les transactions attestées F4K selon leurs autorisations | **Aucun GRANT** de Dispatch 007, tickets/états 016 ni `SET ROLE` Dispatch |
+| Initialiseur PG temporaire GitHub Actions | Installer fixtures, mots de passe SCRAM et registry QA puis disparaître | Pas de réutilisation runtime, pas de permission transposable en production |
+
+**Anti-TOCTOU (time-of-check/time-of-use) :** ordre de verrouillage machine 016 : ticket et liaison backend, **order `FOR UPDATE` avant vérification de capture/refund**, registre machine verrouillé, partenaire/organisation/territoire verrouillés, identité et roster Courier verrouillés, offre verrouillée, 007 appelé puis reçu unique 016 enregistré et ticket consommé. La transaction sérialise l'affectation avec le refund 008 via la même ligne order, sans possibilité d'écrire `picked_up` ou `delivered` côté Dispatch.
+
+### Matrice d'isolation et invariants
+
+- **Authentification machine :** vrai Keycloak QA éphémère et JWT signé RS256, découverte/JWKS via TLS, contrôle `aud/azp/iss/role/scope/iat/exp/jti` et introspection active.
+- **Droits SQL :** tests de `SET ROLE` et de mutation 007/016 par Merchant/Courier refusés. Aucun retour aux anciens GRANT 007.
+- **Idempotence/concurrence :** sept affectations simultanées ⇒ **une insertion, six replays**, une seule ligne par `order_id`. Réaffectation non autorisée (y compris un autre coursier actif de la même organisation), ticket déjà utilisé, ticket expiré après attente sur verrou et course déjà récupérée refusés.
+- **Contrats et juridictions :** Courier révoqué et Courier ayant changé d'organisation/territoire refusés malgré ses anciens identifiants ; identité machine révoquée dans PG également refusée.
+- **Finance :** demande refusée sur ordre non prêt ou sous hold. **Deux ordres de concurrence sont observés en PostgreSQL 17 :** (1) refund détient le verrou, Dispatch attend puis refuse ; (2) Dispatch détient le verrou, refund attend, puis le Courier attesté F4K ne peut accepter l'offre après le hold. La date d'expiration du ticket est relue après l'attente sous verrou. Captures et postes comptables fictifs.
+- **Comptabilité :** **16 allocations (dont les 3 initiales F4K), 64 postings, somme 0** ; **6 reçus Dispatch immuables F4L**, **8 reçus opérationnels de la baseline F4K**, **35 événements opérationnels attestés cumulés F4K+F4L**. `withdrawableMinor=0` et `payoutEnabled=false` en toutes circonstances.
+- **Aucune app reliée à SQL 016**, aucune opération Stripe TEST officielle, aucun paiement réel, aucune transaction banque, aucun VPS modifié, aucun Store/EAS, aucune PR fusionnée.
+
+**Renforcement complémentaire validé :** SHA `18b1e5a327700bcc9762a98a586e4ba4ea18c7c4` avec trois CI SUCCESS ([F4L double sens du verrou #38369963924](https://github.com/adminluxe/DelishAfrica/actions/runs/38369963924), [API + apps #38369963883](https://github.com/adminluxe/DelishAfrica/actions/runs/38369963883), [PG17 historique #38369963941](https://github.com/adminluxe/DelishAfrica/actions/runs/38369963941)). Après cette étape, la vérification de la politique SQL 015 prouve **35 reçus opérationnels au total**, et la finance garantit explicitement que tout portefeuille Merchant reste non retirable avec payouts désactivés. Aucune permission applicative 007 n'est rouverte.
+
+### Preuves et autorité de version
+
+- [PR #43 F4K DRAFT](https://github.com/adminluxe/DelishAfrica/pull/43), SHA parental `f9f4af32692bbc2820a1987ea5d2f85ba764a71e`, trois CI SUCCESS.
+- [PR #44 F4L DRAFT](https://github.com/adminluxe/DelishAfrica/pull/44), branche `feat/f4l-oidc-machine-dispatch-assign-qa-20261013` **basée sur F4K**, pas sur main.
+- **SHA de code QA F4L** `eb077d8c5e176b74f0dbae62386319be1a4a442d` : [Keycloak + PG17 + Dispatch #38368706755](https://github.com/adminluxe/DelishAfrica/actions/runs/38368706755), [API + 3 apps #38368706742](https://github.com/adminluxe/DelishAfrica/actions/runs/38368706742), [PG17 finance historique #38368706881](https://github.com/adminluxe/DelishAfrica/actions/runs/38368706881), tous SUCCESS et même SHA.
+- **SHA documentaire final :** doit être attesté **après ce commit documentaire** par trois nouvelles CI SUCCESS et leur preuve dans la PR #44, pour éviter un hash auto-référent.
+- [Passation F4L officielle](./DA_PASSATION_F4L_MACHINE_DISPATCH_QA_2026-10-13.md) | [Roadbook financier](./DA_STRIPE_TEST_RECONCILIATION_QA_2026-10-12.md).
+
+### Frontières G0–G7 restant NO-GO
+
+La certification F4L est **technique QA**, pas un feu vert d'exploitation : absence de partenaires/KYB/KYC/rosters légalement vérifiés, absence de couplage des apps Expo réelles, révocation Keycloak↔PostgreSQL non atomique, anciennes fonctions 007 superuser-definer en environnement de test, absence de sécurité réseau de production (mTLS possible ultérieurement), politique globale pays/devise/fiscalité, chargeback réel, intégration réelle PSP/banque, règlement et distribution. Une mutation SQL 016 ne doit **jamais** être appliquée directement au VPS. Production, paiements, fusion PR, build payant et publication requièrent une validation expresse et un nouveau passport.
+
+**PIN : F4L-MACHINE-OIDC-ATTESTED-DISPATCH-QA-ONLY / PG17-ATOMIC-ORDER-LOCK / NO-MOBILE-DISPATCH / ZERO-PAYOUT / NO-PRODUCTION / DRAFT.**

@@ -14,7 +14,12 @@ on:
       - feat/f4h-finance-authority-registry-qa-20261013
       - feat/f4i-isolated-finance-attestor-qa-20261013
       - feat/f4j-wallet-revocation-linearization-qa-20261013
+      - feat/f4k-attested-merchant-courier-ops-qa-20261013
     paths:
+      - '.github/workflows/f4l-oidc-machine-dispatch-qa.yml'
+      - 'services/api-nest/migrations/client-commerce/20261013_016_oidc_machine_dispatch_authority_qa_only.sql'
+      - 'services/api-nest/test/f4l-dispatch-**'
+      - 'docs/DA_PASSATION_F4L_MACHINE_DISPATCH_QA_2026-10-13.md'
       - 'services/api-nest/src/client-enrollment/**'
       - 'services/api-nest/src/client-commerce/**'
       - 'services/api-nest/src/payments/payments.service.ts'
