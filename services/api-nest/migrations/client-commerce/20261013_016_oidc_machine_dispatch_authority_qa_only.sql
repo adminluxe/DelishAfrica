@@ -241,7 +241,7 @@ BEGIN
  WHERE e.organization_id=courier.organization_id AND e.territory=courier.territory
  FOR SHARE;
  IF NOT FOUND OR legal.legal_status<>'active' OR legal.kyb_status<>'verified'
- OR legal.revoked_at IS NOT NULL OR legal.payments_on_hold
+ OR legal.revoked_at IS NOT NULL
  OR legal.valid_from>clock_timestamp()
  OR (legal.valid_until IS NOT NULL AND legal.valid_until<=clock_timestamp())
  THEN RAISE EXCEPTION 'qa_f4l_legal_entity_denied'; END IF;
