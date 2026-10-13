@@ -39,7 +39,9 @@ jobs:
           assert(workflow.includes('--network none'));
           assert(workflow.includes('--network "container:$KC_ID"'));
           assert(workflow.includes('NODE_EXTRA_CA_CERTS'));
-          assert(!workflow.includes('docker run --publish'));
+          const dockerCommands=workflow.split('\n').filter(x=>/^\s*docker\s+run\s/.test(x));
+          assert(dockerCommands.length>=3);
+          assert(dockerCommands.every(x=>!/\s(?:-p|--publish)(?:\s|=)/.test(x)));
           assert(test.includes('ExternalJwksVerifierService'));
           assert(test.includes('QaWalletVerifiedSessionBridge'));
           assert(test.includes('token/introspect'));
