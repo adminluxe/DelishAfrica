@@ -274,6 +274,11 @@ jobs:
             node:22-alpine node \
               /qa-tests/merchant-courier-wallet-isolated-attestor.setup.cjs
           echo "QA_F4I_PRIVILEGED_QA_INITIALIZER_EXITED=YES"
+          # The initializer's protected files belong to UID 1000. Move only
+          # the confidential introspection proof into the runner-private
+          # staging area; do not relax file or directory permissions.
+          sudo install -m 0600 -o "$(id -u)" -g "$(id -g)" \
+            "$QA_DIR/seed/private-introspection.json" "$QA_DIR/introspection.json"
 
           # Only now introduce strong authentication. PG socket local
           # superuser remains inside the PG container; app shares NO socket.
@@ -294,7 +299,7 @@ jobs:
             '',
           ].join('\n'),{mode:0o600});
           const introspection=JSON.parse(fs.readFileSync(
-            path.join(dir,'seed/private-introspection.json'),'utf8'));
+            path.join(dir,'introspection.json'),'utf8'));
           const shared=['GITHUB_ACTIONS=true','QA_SYNTHETIC_ONLY=YES'];
           fs.writeFileSync(path.join(dir,'attestor.env'),[
             ...shared,'QA_F4I_PRIVATE_SERVICE=YES',
