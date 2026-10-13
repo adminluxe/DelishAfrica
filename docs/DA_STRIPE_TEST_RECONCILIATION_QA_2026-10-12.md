@@ -517,3 +517,15 @@ Tous les six tests de pulse ont émis PASS : `captured`, `merchant_ready`, `offe
 **Documents :** [Passation F4M](./DA_PASSATION_F4M_OPERATIONAL_SQL_OWNER_QA_2026-10-13.md) et [Architecture QA](./DA_ARCHITECTURE_QA_STRIPE_TEST_POSTGRES_PIN_2026-10-12.md).
 
 **Signature d'intention F4M : NOLOGIN-DOMAIN-OWNERS / 004-007-PRIVILEGE-REDUCTION / F4K-F4L-FULL-REGRESSION / QA-FICTIF / PR-DRAFT / NO-PRODUCTION / ZERO-PAYOUT.**
+
+---
+
+## F4M — Code certifié et diagnostic SQL 006 / 017, suivi documentaire (13 octobre 2026)
+
+Le premier triplet F4M est **SUCCESS sur le même commit de code** `df8fe169a67972430fe4d6f43aedde3e08a5f27b` : [Keycloak + PG17 + 017 + F4K/F4L #38388822255](https://github.com/adminluxe/DelishAfrica/actions/runs/38388822255), [API et trois apps #38388822324](https://github.com/adminluxe/DelishAfrica/actions/runs/38388822324), [PG17 financier historique #38388822365](https://github.com/adminluxe/DelishAfrica/actions/runs/38388822365). **Ce triplet signe le code, pas encore le SHA du présent roadbook.** La certification finale documentaire sera enregistrée sur [PR #45 DRAFT](https://github.com/adminluxe/DelishAfrica/pull/45) sans créer de commit supplémentaire.
+
+Le premier échec F4M a mis en lumière la relation entre migrations **004** et **006** : la fonction d'éligibilité financière 004 a été redéfinie par 006 pour joindre le snapshot serveur canonique. Lors du transfert de propriétaire vers un rôle sans superuser, cette dépendance était absente des droits `SELECT`. Un test réel PG17 a correctement refusé la transition Merchant (403). Le droit minimal `SELECT` sur **la seule table snapshot canonique** a été ajouté au propriétaire financier NOLOGIN ; aucune extension de capacité de paiement, remboursement, wallet ou registre. Le second banc réel a certifié l'ensemble F4K+F4L sous les nouveaux privilèges.
+
+Les 6 propriétaires de fonctions `SECURITY DEFINER` historiques (un prédicat, deux lecteurs et trois mutateurs) sont désormais distribués sur 3 autorités **NOLOGIN, NOSUPERUSER, NOINHERIT**, sans membres et sans pouvoir de mutation financière croisée. Toutes les ACL 007 des applications restent fermées, tandis que les mutations F4K/F4L, les deux courses de verrou Dispatch/remboursement, la comptabilité 16 allocations/64 postings de somme zéro, les 35 reçus opérationnels et 6 reçus Dispatch immuables restent valides. Toujours `withdrawableMinor=0`, `payoutEnabled=false`, aucun règlement réel. Commission 20 % fictive seulement.
+
+Les vraies entités/KYB/KYC/contrats, la production, les stores, le VPS et le Toshiba demeurent intégralement **NO-GO / non touchés**. Prochaine étape : chaîne complète de propriétaires non privilégiés pour le ledger/finance/identity et intégration backend Dispatch, chacune en laboratoire distinct.

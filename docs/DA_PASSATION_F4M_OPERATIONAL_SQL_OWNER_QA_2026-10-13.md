@@ -64,3 +64,20 @@ Script d'audit : `services/api-nest/test/f4m-nonsuperuser-operational-owners.pg-
 F4M ne certifie pas de vrais contrats, parties prenantes KYB/KYC, registre Courier, isolation réseau de production, mTLS, atomicité Keycloak externe↔PG, politique multijuridictionnelle/devise/fiscale ou intégration des véritables applications mobiles à cette autorité.
 
 **Étape suivante éventuelle :** cartographier les autres fonctions `SECURITY DEFINER` et leurs propriétaires (paiement, ledger, registre, wallets), isoler les secrets et préparer un connecteur Nest Dispatch auditant les autorisations et rejeux, puis les gates G0–G7 avant toute promotion.
+
+---
+
+## 6. Première certification du code F4M (avant commit documentaire final)
+
+**SHA testé :** `df8fe169a67972430fe4d6f43aedde3e08a5f27b`.
+
+Trois CI **SUCCESS** sur le même SHA :
+- [F4M Keycloak réel et PostgreSQL17, 017 + F4K + F4L complets — run #38388822255](https://github.com/adminluxe/DelishAfrica/actions/runs/38388822255).
+- [API Nest + Client + Merchant + Courier — run #38388822324](https://github.com/adminluxe/DelishAfrica/actions/runs/38388822324).
+- [PostgreSQL17 finance historique / réconciliation et concurrence — run #38388822365](https://github.com/adminluxe/DelishAfrica/actions/runs/38388822365).
+
+Les journaux confirment l'exécution réelle : `QA_F4M_SIX_SECURITY_DEFINERS_NOLOGIN_NOSUPERUSER=PASS`, `QA_F4M_READ_WRITE_FINANCE_ROLES_NO_MEMBERSHIP=PASS`, `QA_F4M_SQL_007_APP_BYPASS_AND_CROSS_DOMAIN_DML=DENIED`, `QA_F4M_F4K_AND_F4L_WRAPPER_GRANTS_PRESERVED=PASS`, `QA_F4M_F4K_F4L_PG17_SYNTHETIC_OPERATIONS_UNDER_NOLOGIN_OWNERS=PASS`, `QA_F4L_CONCURRENT_REFUND_POSTGRES_ORDER_LOCK=PASS`, `QA_F4L_ASSIGNMENT_FIRST_REFUND_WAITS_COURIER_HELD=PASS`, `QA_F4L_F4K_RECEIPTS_35_NO_BYPASS=PASS`, `QA_F4L_MACHINE_ASSIGNMENT_RECEIPTS_IMMUTABLE_6=PASS`, `QA_F4L_LEDGER_ZERO_SUM_64_POSTINGS=PASS`, `QA_F4L_MERCHANT_WALLET_WITHDRAWABLE_ZERO_PAYOUT_OFF=PASS`, `QA_F4I_EPHEMERAL_CLEANUP=PASS`.
+
+**Incident de durcissement découvert puis corrigé :** le premier passage retourna 403 pour Merchant car la version effective de `da_qa_commerce_order_dispatch_eligible`, renforcée en migration 006, consulte **le snapshot canonique** en plus des tables 004. L'exécution a été diagnostiquée par une sonde SQL jetable exécutée sous le propriétaire NOLOGIN dans une transaction systématiquement `ROLLBACK`, **avant** l'attestation Merchant. La seule correction SQL est un `GRANT SELECT` sur `public.da_client_commerce_order_snapshot_qa` au propriétaire financier NOLOGIN ; aucun INSERT/UPDATE/DELETE financier ni privilège superuser n'a été restauré.
+
+**Certification documentaire distincte :** le SHA du présent document diffère par définition du SHA de code ci-dessus. La signature complète doit être apposée **dans la discussion PR #45**, exclusivement après trois nouvelles CI SUCCESS sur le HEAD documentaire **sans nouveau commit après**. Le principe FAIL-CLOSED reste le même que F4K/F4L.

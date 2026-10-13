@@ -790,3 +790,15 @@ flowchart TD
 **Gates NO-GO :** fonctions financières/ledger non encore intégralement déprivilégiées, registres/KYB/KYC fictifs, autorisation mTLS et sécurité réseau de production non certifiées, identité opérateur, taxes/devise et politiques pays inconnues, client Expo non raccordé, logout Keycloak externe non atomique avec SQL. Aucun Stripe TEST officiel ou LIVE, transaction bancaire, payout, migration VPS, merge, EAS payant ou Store sans approbation explicite.
 
 **PIN : F4M-LEGACY-SECURITY-DEFINER-NOLOGIN / F4K-F4L-REGRESSION-REQUIRED / QA-SYNTHETIC-ONLY / NO-PAYOUT / NO-PROD / PR-DRAFT.**
+
+---
+
+## F4M — Preuve de l'autorité SQL 017 sans superuser (code QA)
+
+**Premier code F4M vérifié :** SHA `df8fe169a67972430fe4d6f43aedde3e08a5f27b`, trois CI SUCCESS sur exactement ce SHA : [Keycloak+PG17 #38388822255](https://github.com/adminluxe/DelishAfrica/actions/runs/38388822255), [API+3 apps #38388822324](https://github.com/adminluxe/DelishAfrica/actions/runs/38388822324), [finance historique #38388822365](https://github.com/adminluxe/DelishAfrica/actions/runs/38388822365). Le SHA du document final sera signé en [PR #45 DRAFT](https://github.com/adminluxe/DelishAfrica/pull/45) après revalidation.
+
+**Observation réelle déterminante :** l'autorité financière 004 était redéfinie par la migration 006 et demandait un SELECT du **snapshot canonique**. Le nouveau propriétaire NOLOGIN l'a refusé lors du premier test F4K. L'unique ajustement a été `GRANT SELECT ON public.da_client_commerce_order_snapshot_qa` à `da_qa_f4m_finance_gate_owner_017`. Une sonde SQL de fonction, `SET LOCAL ROLE`, transaction `ROLLBACK`, a isolé la permission manquante, puis le laboratoire avec JWT signés F4K/F4L a validé les opérations sous les droits corrigés. **Aucune élévation de pouvoir ou de privilège DML financier n'a été accordée.**
+
+**Contrats validés :** six `SECURITY DEFINER` désormais possédés par trois propriétaires dédiés NOLOGIN/NOSUPERUSER/NOBYPASSRLS ; schema `pg_temp` en dernier ; pas de membership des apps ; aucun droit SQL 007 mobile, aucun DML croisé ; les points d'entrée strictement attestés 015/016 conservés. F4K et F4L rejoués intégralement sur vrai PG17/Keycloak éphémères, 6 reçus Dispatch et 35 reçus opérationnels, 16 allocations/64 postings équilibrés, pas de retrait, pas de payout.
+
+**Cette preuve reste intégralement QA :** ne pas installer 017 sur une base persistante ni sur VPS sans revue complète et autorisation expresse. Les sujets/organisations, les moyens de paiement, les contrats, le roster et les fonds sont fictifs ; Stripe officiel, KYB/KYC réel, flux mobile, mTLS production et politique fiscale pays restent NO-GO.
