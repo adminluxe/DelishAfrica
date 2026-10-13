@@ -748,7 +748,7 @@ jobs:
             node:22-alpine node /qa-tests/f4l-dispatch-private-attestor.pg-qa.service.cjs >/dev/null
           ready=false
           for i in $(seq 1 40); do
-            if [[ -S "$QA_DIR/dispatch-ipc/dispatch-attestor.sock" ]]; then ready=true;break;fi
+            if docker exec "$F4L_ATTESTOR_ID" node -e "if (!require('node:fs').statSync('/qa-dispatch-ipc/dispatch-attestor.sock').isSocket()) process.exit(1)" >/dev/null 2>&1; then ready=true;break;fi
             if [[ "$(docker inspect -f '{{.State.Running}}' "$F4L_ATTESTOR_ID")" != true ]]; then
               echo "QA_F4L_ATTESTOR_EXITED";docker logs "$F4L_ATTESTOR_ID" | tail -n 12;exit 1
             fi
