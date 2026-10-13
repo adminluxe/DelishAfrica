@@ -81,3 +81,16 @@ Exécution CI : [workflow PG17](https://github.com/adminluxe/DelishAfrica/action
 Merchant : « capturé », « en attente », « disponible opérationnellement », « bloqué pour litige » ; commission détaillée par commande, devise et contrat. Courier : une ligne par course attribuée, gains réservés après offre, disponibles après livraison validée. Rechargement après événement **certifié par serveur** et dernière synchronisation visible hors ligne. Ne pas afficher un chiffre décoratif comme de l'argent véritable. `withdrawable=0` jusqu'au processus PSP/KYC/KYB légalement opérationnel.
 
 **Signature opérationnelle provisoire : F4E-P0-QA-CANDIDATE / NON CERTIFIED REAL OIDC / ZERO_PAYOUT / NO_PRODUCTION / NO_MERGE / NO_STORE.**
+
+---
+
+## 9. Contrôles CI réalisés et source des identités mobiles
+
+**Preuves sur le même SHA de code `f97567f3e7c89ae5f80e33261cd2da6a2045dfb8` :**
+
+- [PostgreSQL17 et tests 010 #38327215358](https://github.com/adminluxe/DelishAfrica/actions/runs/38327215358) : `SUCCESS`, journal `QA_010_SQL_ROLE_SESSION_ISSUER_ORG_TERRITORY_ADVERSARIAL=PASS` ; `QA_010_KYB_REVOCATION_AFTER_TICKET=DENIED` ; `QA_010_COURIER_ROSTER_REVOCATION_AFTER_TICKET=DENIED` ; `QA_010_STRIPE_CALLS=ZERO_PAYOUTS=ZERO`.
+- [API + Client/Merchant/Courier #38327215429](https://github.com/adminluxe/DelishAfrica/actions/runs/38327215429) : `SUCCESS`, matrice de claims partenaires et TypeScript incluse.
+
+Autre constat d'audit de code : `apps/merchant/auth/daHf16RealOidc.ts` et `apps/courier/auth/daHf16RealOidc.ts` possèdent déjà un protocole QA de connexion OIDC Authorization Code + PKCE avec audiences et authorized party spécifiques, et testent `/auth/merchant/me`, `/auth/courier/me` et barrières cross-role depuis l'application. C'est un **point de raccordement à exploiter**, non une preuve que le rôle SQL 010 reçoit déjà ces vraies identités. Les configurations clientes ciblent le realm Keycloak `https://keycloak.afritaste.delishafrica.me/realms/afritaste`; les faux realms `qa.example.invalid` utilisés en 010 n'y sont pas connectés.
+
+**Le gate F4E SQL + claim est vert ; le gate P0 d'identité complète reste rouge.** Avant la future intégration il faudra confronter la signature réelle et les audiences/azp renvoyées par Keycloak, vérifier le service de révocation des sessions Merchant/Courier et l'autorité juridique du registre, puis attester ces faits sur la même requête que la lecture SQL. Aucun service d'attestation réel n'a été activé par cette PR.
