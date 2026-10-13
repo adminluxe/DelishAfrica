@@ -346,3 +346,26 @@ Branche candidate `feat/f4g-real-keycloak-partner-session-qa-20261013` ; [PR #39
 - Les fonctions Merchant/Dispatch/Courier d'écriture historiques, volontairement révoquées après `010`, doivent être redéveloppées sous attestation avant toute application réelle.
 
 **Passation F4G détaillée :** `docs/DA_PASSATION_F4G_KEYCLOAK_PG_WALLET_QA_2026-10-13.md`. **Signature : F4G-EPHEMERAL-KEYCLOAK-PG17-SYNTHETIC-QA-CERTIFIED-ON-21cd567d / REAL-PARTNERS-NOT-ATTESTED / NO-STRIPE / ZERO-PAYOUT / NO-MERGE / NO-STORE.** Toute évolution sur un autre SHA exige ses propres CI SUCCESS.
+
+---
+
+## F4H — Autorité juridique/contractuelle Merchant et registre Courier (13 octobre 2026)
+
+**Statut : LABORATOIRE QA VALIDÉ SUR CODE `e603966d80a96afd6e9526730f9cb2e40dfcba08`. Entités juridiques et sujets toujours synthétiques.**
+
+- Nouvelle branche `feat/f4h-finance-authority-registry-qa-20261013` et [PR #40 DRAFT](https://github.com/adminluxe/DelishAfrica/pull/40), basée sur #39 F4G. Aucune fusion ni migration sur VPS.
+- [Keycloak 26.4.7 réellement exécuté en réseau Docker isolé + PostgreSQL 17 et autorisations financières F4H, CI #38331022065 SUCCESS](https://github.com/adminluxe/DelishAfrica/actions/runs/38331022065).
+- [API TypeScript, Client, Merchant, Courier, CI #38331022061 SUCCESS](https://github.com/adminluxe/DelishAfrica/actions/runs/38331022061).
+- Pré-requis déjà certifiés : F4D journal 009, F4E ticket SQL 010, F4F pont Bearer/JWT → SQL, F4G vrais JWT Keycloak éphémères et introspection.
+- Le **schéma Merchant réel du code** `da_identity_subjects / da_catalog_partners / da_merchant_memberships` devient une condition supplémentaire **concrètement interrogée dans PG17** : appartenance financière unique `owner/admin/finance`, statut actif, contrat actif, KYB vérifié, partenaire publié et période de validité.
+- Migration additive QA 012 : registre d'**entités légales synthétiques** et rattachement `partner_id`→ organisation/territoire, plus un **nouveau registre Courier SQL** relié par FK à `issuer/subject` du catalogue ; KYC/accord/roster/territoire et révocation vérifiés.
+- Login SQL dédié en lecture seule, propriétaire de table sans login ; les rôles Merchant/Courier et attestor 010 ne peuvent pas lire ce registre, et le compte de lecture n'a pas de droit de modification.
+- Le port financier F4H `merchant-courier-finance-authority.pg-qa.adapter.ts` ne prend que `issuer+subject` du vrai vérificateur JWT. Il refuse les sources divergentes ; le registre wallet 010 constitue **une deuxième barrière** : si l'organisation/territoire F4H est réassigné frauduleusement, l'attestation F4E refuse.
+- Tests rouges attendus : membership Merchant `kitchen`, contrat + membership suspendus, partenaire dépublié, double affiliation pouvant donner deux wallets, entité KYB fictif expiré, territoire réassigné, roster Courier suspendu, identité Courier révoquée, tentatives d'UPDATE par le lecteur SQL, signatures JWT falsifiées et sessions Keycloak/PG révoquées.
+- Note d'incident : la première batterie a échoué sur la contrainte métier PostgreSQL `da_merchant_memberships_active_gate_check` en essayant de suspendre le contrat tout en laissant le membership actif ; correction du **test uniquement**, qui suspend/restaure ces deux statuts atomiquement. La contrainte a été conservée. Le deuxième code SHA `e603966d` est SUCCESS.
+
+**Invariants :** données comptables et juridiques fabriquées pour le laboratoire, `withdrawableMinor=0`, `payoutEnabled=false`, aucun appel Stripe, aucun payout, aucun déploiement ou Store. Le service Courier historique actuel contient encore des réponses démo ; le registre 012 n'est pas l'onboarding officiel des coursiers. Le serveur Keycloak exécuté est réel, **ses comptes fictifs**.
+
+**Ce qui manque :** contrôle des vrais documents légaux et KYB/KYC, registre partenaires officiel multi-juridictions, service attestateur indépendant des credentials de l'API, finances multidivises/fiscalité/PSP, mutations Merchant/Dispatch/Courier réattestées, Stripe TEST officiel, G0–G7 et validation humaine explicite. Toutes les PR #35–#40 restent DRAFT et non fusionnées.
+
+**Passation :** `docs/DA_PASSATION_F4H_FINANCE_AUTHORITY_QA_2026-10-13.md`. Pour le SHA documentaire final, ne retenir la certification qu'après vérification des CI à ce SHA précis. **Signature provisoire : F4H-AUTHORITY-SQL-CODE-QA-SUCCESS / LIVE-IDENTITY-LEGAL-NO-GO / NO-PAYOUT / NO-PRODUCTION.**
