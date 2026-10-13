@@ -65,7 +65,11 @@ async function oauth(body,confidential){
         Buffer.from(confidential.id+':'+confidential.secret).toString('base64')}:{}),
     },body:new URLSearchParams(body),
   });
-  check(r,200,'real Keycloak token/introspection');
+  if(r.status!==200){
+    const failBody=await r.json().catch(()=>({}));
+    const reason=String(failBody?.error||'unknown').replace(/[^a-z_]/gi,'_').slice(0,40);
+    throw Error('QA_F4G_KEYCLOAK_OAUTH_DENIED_'+r.status+'_'+reason);
+  }
   return r.json();
 }
 async function buildKeycloak(){
@@ -125,6 +129,8 @@ async function buildKeycloak(){
     const username='f4g-'+slot.toLowerCase(),password=pw();
     await json('POST','/admin/realms/'+REALM+'/users',adminToken,{
       username,enabled:true,emailVerified:true,requiredActions:[],
+      firstName:'QA',lastName:'F4G'+slot,
+      email:username+'@example.invalid',
       credentials:[{type:'password',value:password,temporary:false}],
     },201);
     const candidates=await json('GET','/admin/realms/'+REALM+
