@@ -399,3 +399,30 @@ Propriétaires SQL `da_qa_wallet_read_owner_010` et `da_qa_wallet_write_owner_01
 Le ledger 009 ne possède pas encore de dimension juridique/territoriale propre : F4E exige un propriétaire unique du slug Merchant et interdit la multi-affectation territoriale du même Courier. Ce comportement fail-closed n'est PAS une implémentation internationale complète. Les registres 010 sont des **fixtures synthétiques**. Un attestor compromis pourrait encore tenter d'emprunter une identité active : séparation des credentials, vérification cryptographique du port de preuve et révocation temps réel restent des gates P0 absolus.
 
 **CI synthétique verte ≠ identité Keycloak réelle certifiée ≠ argent véritable.** Aucun changement VPS, Stripe TEST officiel ou LIVE, production SQL, EAS, Store, PR merge. Roadbook F4E détaillé : `docs/DA_PASSATION_F4E_WALLET_TENANT_ISOLATION_P0_QA_2026-10-13.md`.
+
+---
+
+## Architecture F4F — pont de confiance JWT / révocation / wallet SQL (13 octobre 2026)
+
+**Réalisation F4F :** [PR #38 DRAFT](https://github.com/adminluxe/DelishAfrica/pull/38), issue de F4E [PR #37 DRAFT](https://github.com/adminluxe/DelishAfrica/pull/37). [Passation dédiée](./DA_PASSATION_F4F_SIGNED_PARTNER_WALLET_QA_2026-10-13.md). Les deux CI sur **code SHA `2d7b6b250bf160244f91c85eeb80615fb6e9b4e4`** : [PG17 #38328354487](https://github.com/adminluxe/DelishAfrica/actions/runs/38328354487) et [API + 3 apps #38328354493](https://github.com/adminluxe/DelishAfrica/actions/runs/38328354493) **SUCCESS** en QA *synthétique*.
+
+```mermaid
+flowchart TD
+    A["Bearer Merchant ou Courier<br/>JWT RSA synthétique en CI"] --> B{"API Trusted RSA/JWKS verifier<br/>issuer/aud/azp/role/sub/exp"}
+    B -->|échec| Z["DENY, aucune SQL"]
+    B -->|admis| C{"Révocation sid+jti<br/>preuve indépendante fraîche"}
+    C -->|inactif/inconnu| Z
+    C -->|actif| D{"Contrat & KYB Merchant<br/>ou roster/KYC Courier<br/>org + territoire actifs"}
+    D -->|insuffisant| Z
+    D -->|admis| E["Pool PostgreSQL dédié<br/>rôle Merchant ou Courier"]
+    E --> F["F4E 010: challenge session_user<br/>backend PID + backend_start"]
+    F --> G["Attestor SQL séparé<br/>contrôle registre actif"]
+    G -->|échec| Z
+    G -->|ticket 20 s, usage unique| H["read_attested_010<br/>revérification métier au SQL"]
+    H --> I["Wallet 009 synthétique<br/>pending / available / held"]
+    I --> J["Withdrawable = 0<br/>payoutEnabled = false"]
+```
+
+Le code `merchant-courier-wallet-signed-session.pg-qa.bridge.ts` ne s'enregistre dans aucun `AppModule` ni route exposée. Il refuse les requêtes si `NODE_ENV=production`, hors CI ou sans flag QA. Aucun paramètre mobile de tenant, slug, subject, organisation, territoire ou montant n'est pris en compte par l'attestation. Le port d'attestation DOIT appartenir à un service séparé, jamais au public gateway. Le test emploie une clé privée RSA créée en mémoire, un cache JWKS de test et un registre SQL 010/registre de révocation entièrement synthétiques ; il **ne** relie **pas** à Keycloak de production. Aucune lecture bancaire n'est réalisée.
+
+**Manque avant P0 réel** : véritable Keycloak Merchant/Courier + provenance JWKS et révocation persistante, rattachement en temps réel aux contrats/KYB, organisation/territoire et registre Courier, rôles de DB dédiés à un service attestateur indépendant durci, vérification de la rotation et des replays, mutation Merchant/Dispatch/Courier attestée, ledger juridique multinational. Le gate réel n'est PAS certifié ; `Stripe TEST officiel`, `LIVE`, `payout`, VPS, merges, builds EAS et Stores restent gelés.

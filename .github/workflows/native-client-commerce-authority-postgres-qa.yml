@@ -18,6 +18,9 @@ on:
       - 'services/api-nest/migrations/client-commerce/20261013_009_merchant_courier_wallet_qa_only.sql'
       - 'services/api-nest/migrations/client-commerce/20261013_010_wallet_tenant_bound_scope_qa_only.sql'
       - 'services/api-nest/test/merchant-courier-wallet-tenant-scope.pg-qa.integration.cjs'
+      - 'services/api-nest/test/merchant-courier-wallet-signed-session.pg-qa.integration.cjs'
+      - 'services/api-nest/src/client-commerce/merchant-courier-wallet-signed-session.pg-qa.bridge.ts'
+      - 'services/api-nest/src/auth/merchant-courier-token-isolation.ts'
       - 'services/api-nest/test/merchant-courier-wallet.pg-qa.integration.cjs'
       - 'services/api-nest/src/client-commerce/merchant-courier-wallet.pg-qa.adapter.ts'
       - 'services/api-nest/test/refund-pickup-row-lock.pg-qa.integration.cjs'
@@ -113,6 +116,7 @@ jobs:
             'client-order-snapshot.pg-qa.adapter',
             'merchant-courier-fulfillment.pg-qa.adapter',
             'merchant-courier-wallet.pg-qa.adapter',
+            'merchant-courier-wallet-signed-session.pg-qa.bridge',
             'stripe-test-webhook-inbox.pg-qa.adapter',
             'stripe-test-financial-reconcile.pg-qa.adapter',
             'stripe-test-intent-create.pg-qa.adapter'
@@ -129,6 +133,19 @@ jobs:
             fs.writeFileSync(path.join(process.argv[2],name+'.js'),
               out.outputText,{mode:0o600});
           }
+          NODE
+          NODE_PATH="$QA_DIR/deps/node_modules" node - "$QA_DIR/built" <<'NODE'
+          const fs=require('node:fs'),ts=require('typescript'),path=require('node:path');
+          const file='services/api-nest/src/auth/merchant-courier-token-isolation.ts';
+          const out=ts.transpileModule(fs.readFileSync(file,'utf8'),{
+            compilerOptions:{module:ts.ModuleKind.CommonJS,
+              target:ts.ScriptTarget.ES2022,strict:true},
+            fileName:file,reportDiagnostics:true,
+          });
+          if(out.diagnostics?.some(x=>x.category===ts.DiagnosticCategory.Error))
+            throw Error('qa_partner_isolation_transpile_failed');
+          fs.writeFileSync(path.join(process.argv[2],
+            'merchant-courier-token-isolation.js'),out.outputText,{mode:0o600});
           NODE
           node - "$QA_DIR/test.env" <<'NODE'
           const fs=require('node:fs'),crypto=require('node:crypto');
@@ -148,6 +165,7 @@ jobs:
           chmod -R a+rX "$QA_DIR/deps" "$QA_DIR/built"
           chmod 600 "$QA_DIR/test.env"
           node --check services/api-nest/test/merchant-courier-wallet-tenant-scope.pg-qa.integration.cjs
+          node --check services/api-nest/test/merchant-courier-wallet-signed-session.pg-qa.integration.cjs
           node - <<'NODE'
           const fs=require('node:fs'),assert=require('node:assert/strict');
           const s=fs.readFileSync('services/api-nest/migrations/client-commerce/20261013_010_wallet_tenant_bound_scope_qa_only.sql','utf8');
@@ -418,6 +436,23 @@ jobs:
               /qa-tests/merchant-courier-wallet-tenant-scope.pg-qa.integration.cjs
           echo "QA_010_SQL_ROLE_SESSION_ISSUER_ORG_TERRITORY_ADVERSARIAL=PASS"
           echo "QA_010_REAL_KYB_OR_OIDC_ATTESTATION=NOT_YET_CONNECTED"
+          # F4F: verify the SIGNATURE of an ephemeral RSA Merchant/Courier
+          # access token, check a separate session registry and active
+          # synthetic legal scopes, and read via a backend-bound SQL ticket.
+          # Real Keycloak and production identities remain strictly NO-GO.
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$NAME" \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --read-only --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+            --env-file "$QA_DIR/test.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node --test \
+              /qa-tests/merchant-courier-wallet-signed-session.pg-qa.integration.cjs
+          echo "QA_F4F_RSA_SIGNATURE_SESSION_REGISTRY_SQL_BRIDGE=PASS_SYNTHETIC_ONLY"
+          echo "QA_F4F_PRODUCTION_OIDC_AND_LEGAL_REGISTRY=NOT_CONNECTED"
           echo "QA_COMMERCE_PG=PASS_REAL_PG_AND_8_WAY_CONCURRENCY"
           echo "STRIPE_PROVIDER_CALLS=ZERO"
           echo "PRODUCTION_IMPACT=NONE"

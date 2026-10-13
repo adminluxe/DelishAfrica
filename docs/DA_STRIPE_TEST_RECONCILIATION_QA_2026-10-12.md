@@ -292,3 +292,23 @@ Le besoin exprimé par le fondateur : Merchant et Courier doivent observer leurs
 **Prochaine barrière P0 :** intégrer l'attestor réel avec preuve JWT et révocation vérifiée, membership Merchant + contrat + KYB lié à l'organisation/territoire, roster Courier durable et preuves de séparation inter-partenaires de bout en bout ; ensuite seulement P1 Stripe TEST officiel. Le plan UX premium reste conditionné à ces preuves.
 
 **Passation complète :** `docs/DA_PASSATION_F4E_WALLET_TENANT_ISOLATION_P0_QA_2026-10-13.md`. **Signature : F4E-SQL-010-QA-CERTIFIED-ON-f97567f / REAL-OIDC-P0-NO-GO / NO-STRIPE / ZERO-PAYOUT / NO-PRODUCTION / NO-MERGE / NO-STORES**.
+
+---
+
+## DELISHAFRICA® — F4F QA : pont JWT partenaire signé → wallet PostgreSQL 17 (13/10/2026)
+
+**Source :** [passation F4F complète](./DA_PASSATION_F4F_SIGNED_PARTNER_WALLET_QA_2026-10-13.md). **PR #38 DRAFT** basée sur #37 DRAFT, jamais fusionnées. Worktree Toshiba F4D et VPS non modifiés.
+
+**Périmètre certifié :** isolation SYNTHÉTIQUE par identité avec signature RSA réellement calculée par une clé éphémère en CI, vérification du véritable code `ExternalJwksVerifierService.verifyToken` sur clé artificielle épinglée en mémoire, vérification de session ACTIVE dans un registre QA simulé, autorisations métier stockées dans SQL 010 synthétique, liaison au rôle et à la connexion PG17 réellement distincts. Ni Keycloak réel, ni révocation production, ni vraie preuve KYB, ni registre Courier officiel ne sont impliqués.
+
+**Règle critique :** le pont `QaWalletVerifiedSessionBridge` accepte seulement un Bearer JWT et la limite de lecture ; aucune entrée `merchantSlug`, `issuer`, `subject`, `organisation`, `territoire` provenant du mobile. Un vérificateur extérieur doit remettre une identité cryptographiquement vérifiée. Le bridge exige les claims `iss/sub/aud/azp/role/sid/jti/exp/iat`, une session non révoquée (preuve fraîche inférieure à 5 secondes), un seul Merchant KYB/contrat actif ou Courier en registre actif, puis un challenge et un ticket SQL F4E liés au backend et de courte durée. Refus opaque, fail-closed et aucun secret loggé.
+
+**Matrice adverse :** Merchant A vs B, Courier A vs B, issuer étranger et même sujet, altération RSA et clé étrangère, audiences/roles/azp croisés, JWT expiré, SID manquant, révocation de session signée, contrat suspendu, Courier désactivé, ticket SQL intersession, aucun payout. Les montants `1840`/ `390` minor units de test sont synthétiques. `withdrawableMinor=0`, `payoutEnabled=false`.
+
+**Premiers CI double SUCCESS sur le même SHA `2d7b6b250bf160244f91c85eeb80615fb6e9b4e4` :**
+- [PostgreSQL17 isolation PG + tests RSA / revocation QA #38328354487](https://github.com/adminluxe/DelishAfrica/actions/runs/38328354487) — SUCCESS.
+- [API + Client/Merchant/Courier + véritable code verifier JWT / signature synthétique #38328354493](https://github.com/adminluxe/DelishAfrica/actions/runs/38328354493) — SUCCESS.
+
+**Lacunes bloquantes :** la vérification RS256 contre un Keycloak réel, les clés et métadonnées JWKS d'origine authentifiée, la révocation Partner depuis une autorité persistante, les données contractuelles/KYB officielles, le registre Courier, le processus attestor isolé réellement déployé, le nouveau modèle comptable légal multi-organisation/territoire, les permissions d'écriture Courier/Dispatch/merchant sous attestation et les politiques internationales de paiement ne sont PAS certifiés. F4E ferme les fonctions d'écriture non attestées après 010. Les pipelines ne représentent **jamais** une autorisation Stripe TEST/LIVE, un virement, une fusion ou une soumission Store.
+
+**G0–G7 toujours NO-GO.** La signature F4F QA sur le HEAD documentaire final nécessite une nouvelle vérification du SHA exact. Le prochain verrou incontournable est l'intégration indépendante des véritables identités et contrats Keycloak/KYB/Courier en QA contrôlée.
