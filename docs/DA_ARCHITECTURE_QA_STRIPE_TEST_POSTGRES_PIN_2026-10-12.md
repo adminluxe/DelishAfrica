@@ -475,3 +475,46 @@ Le test d'identification utilise provisoirement `password grant` seulement dans 
 **Architecture réelle cible (toujours non activée) :** Keycloak officiel + vérification et révocation live → autorité contractuelle Merchant KYB / registre Courier commités → service attestateur indépendant sur identité juridique et pays → PG ledger global multi-entités/devise/PSP avec ligne immuable et contrôle de solde → settlement/payout autorisé séparément → UI Premium avec solde daté, commissions et retenues. G0–G7 avant fusion, production, EAS et Stores.
 
 **Référence :** [passation F4G](./DA_PASSATION_F4G_KEYCLOAK_PG_WALLET_QA_2026-10-13.md). En dehors du conteneur : Toshiba et VPS absolument inchangés, finances réelles zéro.
+
+---
+
+## F4H — Architecture épinglée de l'autorité financière Merchant/Courier (13 octobre 2026)
+
+Validation code QA e603966d80a96afd6e9526730f9cb2e40dfcba08 : [Keycloak 26.4.7 + PostgreSQL 17, CI #38331022065 SUCCESS](https://github.com/adminluxe/DelishAfrica/actions/runs/38331022065) ; [API + 3 apps, CI #38331022061 SUCCESS](https://github.com/adminluxe/DelishAfrica/actions/runs/38331022061). [PR #40 DRAFT](https://github.com/adminluxe/DelishAfrica/pull/40), empilée sur #39 F4G.
+
+~~~text
+REAL SOFTWARE / SYNTHETIC USERS : Keycloak 26.4.7, Docker --network none
+  4 sujets partenaires QA, JWT RS256, JWKS HTTPS et introspection
+                   |
+   F4F verified signed JWT : issuer, subject, role, audience, azp, exp
+                   |
+   F4G session_011 PostgreSQL17 : hash issuer/sub/sid/jti, révocation
+                   |
+   F4H finance registry reader_012 : SELECT seulement
+      +-- Merchant existing source tables:
+      |   da_identity_subjects (issuer, subject, active merchant)
+      |   da_merchant_memberships (role finance, contrat actif, KYB validé)
+      |   da_catalog_partners (published, partner_id et slug)
+      |   da_qa_finance_partner_entities_012 (org + territoire)
+      |   da_qa_finance_legal_entities_012 (statut et KYB fictifs)
+      +-- Courier NEW QA independent source:
+          da_identity_subjects (issuer, subject, active courier)
+          da_qa_finance_courier_roster_012 (KYC, accord, org, territoire)
+          da_qa_finance_legal_entities_012 (statut et KYB fictifs)
+                   |
+    F4E attestor scope 010 : role indépendant, contexte PostgreSQL
+                   | 
+    Compare issuer/sub/organization/territory with ledger scope 010
+                   |
+    One-use backend-bound read ticket; no direct foreign wallet reads
+                   |
+    Balanced immutable synthetic ledger 009
+                   |
+       withdrawableMinor=0 / payoutEnabled=false
+~~~
+
+Le nouveau compte SQL da_qa_finance_registry_reader_012 est un login réservé à la **lecture**, propriétaire des tables sans login et non superuser. Ni Merchant, ni Courier, ni attestor historique ne peuvent SELECT les nouveaux registres. Les requêtes sont paramétrées seulement avec issuer+subject issus du JWT vérifié et leur source SQL métier. Une appartenance à deux portefeuilles financiers provoque un refus (pas de sélection arbitraire). Contrat suspendu, identité Courier révoquée, KYB expiré, partenaire dépublié, roster suspendu ou organisation/territoire divergents provoquent un refus.
+
+**Précision non négociable :** le schéma Merchant est le **vrai schéma du code** de l'API, mais ses données Merchant, les pièces juridiques QA, tous les enregistrements Courier, la session 011 et le ledger restent **fictifs et éphémères**. Keycloak binaire réel ne signifie pas compte Keycloak de production. Ceci ne certifie aucune preuve de KYB/KYC légale ni onboarding Courier officiel, aucune gestion multi-juridictions, aucun paiement ni reversement effectif. Pas de connexion au domaine Keycloak public ou au VPS, pas de migration de production, pas de Store, pas de Stripe TEST officiel ni LIVE, pas de merge.
+
+Prochains travaux P0 : service attestor réellement indépendant, véritables preuves d'identité et de contrat en QA autorisée, registry Courier officiel avec audit, séparation multi-organisation; requalification des mutations Merchant/Dispatch/Courier, puis règlement international/PSP TEST/G0–G7. [Passation F4H](./DA_PASSATION_F4H_FINANCE_AUTHORITY_QA_2026-10-13.md). Vérifier les trois CI sur le SHA final documentaire avant de déclarer la PR entièrement certifiée.
