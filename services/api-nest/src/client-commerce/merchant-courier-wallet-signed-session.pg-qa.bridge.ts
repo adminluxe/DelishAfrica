@@ -65,7 +65,7 @@ const SID=/^[A-Za-z0-9_-]{8,180}$/;
 // Treat a signed Keycloak token id as an OPAQUE identifier. Bound it to
 // printable URI-safe ASCII; never interpolate or log it. It is hashed before
 // a parameterized PostgreSQL lookup, so '-' ':' '.' '/' and '+' are safe.
-const JTI=/^[A-Za-z0-9._~:+/-]{8,255}$/;
+const JTI=/^[A-Za-z0-9._~:+\/-]{8,255}$/;
 const JWT=/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 const ISSUER=/^https:\/\/[A-Za-z0-9.-]+\/realms\/[A-Za-z0-9_-]+$/;
 const ROLE_LOGIN={
