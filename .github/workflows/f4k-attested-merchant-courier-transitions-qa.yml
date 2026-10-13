@@ -564,10 +564,7 @@ jobs:
             if(!id.test(orders[x]?.orderId)||!id.test(orders[x]?.authorityId))
               throw Error('qa_f4k_invalid_order_fixture');
           }
-          const lines=['DO $q
-          echo "QA_F4I_NO_STRIPE_NO_BANK_NO_PAYOUT=PASS"
-          echo "QA_F4I_NO_PRODUCTION_NO_VPS_NO_STORE=PASS"
-,'DECLARE c record; n integer;',
+          const lines=['DO $q$','DECLARE c record; n integer;',
             'BEGIN',
             'SELECT issuer,subject INTO STRICT c FROM public.da_qa_finance_courier_roster_012',
             "WHERE organization_id='a43f867f-9f42-4573-9268-dc65a164d2c2'::uuid",
