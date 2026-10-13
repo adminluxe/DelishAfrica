@@ -94,3 +94,21 @@ Ces preuves confirment seulement les propriétés du **laboratoire synthétique 
 Merchant et Courier verront leur solde évoluer uniquement après événement financier certifié par l'API avec identifiant de commande, journal de commissions, réserve, disponibilité opérationnelle, bloqueur de litige, date de synchronisation et futur statut de versement **sans préfigurer un vrai virement**. L'information hors ligne doit être datée, jamais présentée comme un nouveau solde certain.
 
 **Statut final provisoire : F4F-NEW-QA-LAB / REAL-OIDC-NOT-WIRED / NO-STRIPE / NO-PAYOUT / NO-PROD / NO-MERGE / NO-STORE.**
+
+---
+
+## H. CI de code F4F synchronisées, à épingler
+
+**SHA exact `2d7b6b250bf160244f91c85eeb80615fb6e9b4e4` :**
+- [PostgreSQL17 QA F4F, #38328354487](https://github.com/adminluxe/DelishAfrica/actions/runs/38328354487) — **SUCCESS** ; exécute la vraie transaction PG17 et le pont à identité RSA synthétique, registre métier synthétique, session active/révoquée.
+- [API + Client + Merchant + Courier QA F4F, #38328354493](https://github.com/adminluxe/DelishAfrica/actions/runs/38328354493) — **SUCCESS** ; compile les quatre workspaces et vérifie l'implémentation réelle de `ExternalJwksVerifierService.verifyToken` avec signatures RSA synthétiques et garde d'isolation des rôles.
+
+**Précision documentaire** : le prochain SHA après documentation sera contrôlé à son tour avant de signer ce jalon comme version QA finale. La correction F4F ne signifie pas un vrai raccordement de Keycloak/KYB/Courier et ne prouve aucun flux bancaire.
+
+## I. Sécurité de fermeture
+
+- PR #38 reste DRAFT, base PR #37 DRAFT, aucun merge.
+- Ancienne branche F4D et son worktree Toshiba intacts ; aucune migration sur le VPS.
+- AppModule en production et apps Expo inchangés ; aucun endpoint wallet activé, aucun store ou build.
+- Stripe TEST officiel et Stripe LIVE intacts ; données, policy EUR, montants et événements restent **synthétiques**.
+- Objectif suivant : autorité d'identité réellement vérifiée de bout en bout et capable de révoquer avant lecture et avant paiement, avec séparation effective des credentials de l'attestor.
