@@ -31,6 +31,7 @@ REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 -- to mutate a payment, financial receipt, hold or wallet.
 GRANT SELECT ON TABLE
  public.da_client_commerce_orders_qa,
+ public.da_client_commerce_order_snapshot_qa,
  public.da_client_commerce_payment_authority_qa,
  public.da_stripe_test_financial_receipts_qa,
  public.da_stripe_test_financial_holds_qa
