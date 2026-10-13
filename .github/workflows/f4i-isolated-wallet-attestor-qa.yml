@@ -147,8 +147,16 @@ jobs:
             docker rm -f "$TLS_ID" >/dev/null 2>&1 || true
             docker rm -f "$PG_ID" >/dev/null 2>&1 || true
             docker rm -f "$KC_ID" >/dev/null 2>&1 || true
-            rm -rf "$QA_DIR"
-            echo "QA_F4I_EPHEMERAL_RESOURCES_DESTROYED=YES"
+            if [[ "$QA_DIR" == "$RUNNER_TEMP/da-f4i-$GITHUB_RUN_ID" ]]; then
+              sudo chown "$(id -u)":"$(id -g)" \
+                "$QA_DIR/seed" "$QA_DIR/users" "$QA_DIR/ipc" 2>/dev/null || true
+              rm -rf "$QA_DIR" || true
+            fi
+            if [[ -e "$QA_DIR" ]]; then
+              echo "QA_F4I_EPHEMERAL_CLEANUP=INCOMPLETE"
+            else
+              echo "QA_F4I_EPHEMERAL_CLEANUP=PASS"
+            fi
           }
           trap cleanup EXIT
           docker pull quay.io/keycloak/keycloak:26.4.7 >/dev/null
