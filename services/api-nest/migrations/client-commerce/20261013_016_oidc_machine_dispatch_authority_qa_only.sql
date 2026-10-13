@@ -17,7 +17,8 @@ REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.da_qa_dispatch_assign_offer(uuid,text,uuid)
  FROM PUBLIC,da_qa_dispatch_commerce_app,da_qa_merchant_commerce_app,
       da_qa_courier_commerce_app,da_qa_dispatch_machine_016,da_qa_dispatch_attestor_016;
-GRANT EXECUTE ON FUNCTION public.da_qa_dispatch_assign_offer(uuid,text,uuid)
+GRANT EXECUTE ON FUNCTION public.da_qa_dispatch_assign_offer(uuid,text,uuid),
+ public.da_qa_commerce_order_dispatch_eligible(uuid)
  TO da_qa_dispatch_owner_016;
 GRANT EXECUTE ON FUNCTION public.da_qa_wallet_current_backend_start_010()
  TO da_qa_dispatch_owner_016;
