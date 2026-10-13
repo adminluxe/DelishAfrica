@@ -56,8 +56,15 @@ ALTER FUNCTION public.da_qa_wallet_accrue_verified_capture(uuid)
   OWNER TO da_qa_wallet_write_owner_010;
 -- FOR UPDATE on orders and authorities requires UPDATE privilege; the
 -- NOLOGIN function owner cannot be assumed by either mobile DB role.
-GRANT SELECT,UPDATE ON TABLE
+GRANT SELECT ON TABLE
   public.da_client_commerce_orders_qa,
+  public.da_client_commerce_payment_authority_qa
+  TO da_qa_wallet_write_owner_010;
+-- SELECT ... FOR UPDATE needs UPDATE on a column. Restrict it to the
+-- immutable PK only; never grant the wallet owner mutable pricing/state.
+GRANT UPDATE (order_id) ON TABLE public.da_client_commerce_orders_qa
+  TO da_qa_wallet_write_owner_010;
+GRANT UPDATE (authority_id) ON TABLE
   public.da_client_commerce_payment_authority_qa
   TO da_qa_wallet_write_owner_010;
 GRANT SELECT ON TABLE
