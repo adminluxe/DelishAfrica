@@ -4,11 +4,11 @@ DECLARE n integer; postings bigint; total bigint; out_count integer;
 BEGIN
  SELECT count(*),coalesce(sum(signed_minor),0) INTO postings,total
  FROM public.da_qa_wallet_posting;
- IF postings<>60 OR total<>0 THEN
+ IF postings<>64 OR total<>0 THEN
   RAISE EXCEPTION 'qa_f4l_ledger_imbalance_%_%',postings,total;
  END IF;
  SELECT count(*) INTO n FROM public.da_qa_wallet_allocation;
- IF n<>15 THEN RAISE EXCEPTION 'qa_f4l_allocation_count_%',n; END IF;
+ IF n<>16 THEN RAISE EXCEPTION 'qa_f4l_allocation_count_%',n; END IF;
  SELECT count(*) INTO out_count FROM public.da_qa_dispatch_receipt_016;
  IF out_count<>5 THEN RAISE EXCEPTION 'qa_f4l_receipt_count_%',out_count; END IF;
  SELECT count(*) INTO n FROM public.da_qa_courier_offer
@@ -32,7 +32,7 @@ BEGIN
  EXCEPTION WHEN OTHERS THEN
   IF SQLERRM<>'qa_wallet_immutable_audit' THEN RAISE; END IF;
  END;
- RAISE NOTICE 'QA_F4L_LEDGER_ZERO_SUM_60_POSTINGS=PASS';
+ RAISE NOTICE 'QA_F4L_LEDGER_ZERO_SUM_64_POSTINGS=PASS';
  RAISE NOTICE 'QA_F4L_MACHINE_ASSIGNMENT_RECEIPTS_IMMUTABLE_5=PASS';
  RAISE NOTICE 'QA_F4L_NO_LEGACY_SQL_007_APP_GRANTS=PASS';
 END $qa$;
