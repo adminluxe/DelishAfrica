@@ -357,3 +357,45 @@ Stripe TEST officiel         désactivé, attente environnement QA approuvé
 **État read-only VPS après retour SSH (12/10/2026) :** API 3010/3011 HTTP 200, Keycloak/PG/API actifs ; `/opt/delishafrica/monorepo` sur `innovation/confluence-trust-current-20261001` à `e504c04`, 15 fichiers suivis modifiés ; disque 88 % utilisé, 25 Go libres. Un ancien conteneur utilise une clé au format Stripe TEST, mais la QA officielle isolée n'est pas configurée/activée et aucun secret n'a été affiché ni utilisé. Aucune opération live. Détails dans `docs/DA_STRIPE_TEST_RECONCILIATION_QA_2026-10-12.md`.
 
 **Décision :** ce document complète les anciens pins sans prétendre les modifier sur le VPS. État = **pré-production isolée, provider TEST réel et routes commerciales non certifiés**.
+
+---
+
+## Architecture addendum F4E — frontière du compte financier (13 octobre 2026)
+
+**Base F4D :** `cd0ba578401d087f9f42c4303e5501704d6bbf94`, CI [PG17 38325285489](https://github.com/adminluxe/DelishAfrica/actions/runs/38325285489) / [API et apps 38325285497](https://github.com/adminluxe/DelishAfrica/actions/runs/38325285497) SUCCESS.
+
+**Candidat F4E :** branche `feat/f4e-wallet-scope-isolation-qa-20261013`, [PR #37 DRAFT](https://github.com/adminluxe/DelishAfrica/pull/37) distincte de #36 ; tests techniques de la migration 010 et du gate OIDC passés sur le **même SHA de code** `f97567f3e7c89ae5f80e33261cd2da6a2045dfb8` : [PG17 38327215358](https://github.com/adminluxe/DelishAfrica/actions/runs/38327215358) SUCCESS et [API + trois apps 38327215429](https://github.com/adminluxe/DelishAfrica/actions/runs/38327215429) SUCCESS. Les changements documentaires ultérieurs n'emportent pas automatiquement une nouvelle certification du HEAD.
+
+```text
+Keycloak OIDC (réel) ----------------------- NON RELIÉ À L'ATTESTOR 010
+  | RSA/JWKS, issuer, aud, azp, rôle          (F4E renforce le gate claim)
+  v
+NestJS OrdersAuthGuard + contrôle de session
+  | membership/contrat/KYB/roster durable    (source réelle NON intégrée F4E)
+  v
+ATTÉSTEUR SQL DÉDIÉ : da_qa_wallet_attestor_010
+  | app login SQL / challenge lié PID + backend_start
+  | scope issuer + subject + org + territoire + marchand
+  | registre QA synthétique validé et durée courte
+  v
+Ticket SQL UUID (non forgé par app), 20 s, usage unique
+  |
+  v
+APP MERCHANT OU COURIER : read_attested_010(ticket,limit)
+  | contexte SQL = session_user + backend PID/start
+  | nouvelle vérification statut juridique et roster
+  | anciens EXECUTE directs par slug/issuer/subject RÉVOQUÉS
+  v
+NOLOGIN READ OWNER → projection historique 009 (lecture seule)
+  |    merchant: capturé → pending ; ready → available ; hold → held
+  |    courier: offert → pending ; delivered → available ; hold → held
+  v
+  withdrawableMinor = 0 / payoutEnabled = false
+  Aucun Stripe officiel / aucune banque / aucun versement
+```
+
+Propriétaires SQL `da_qa_wallet_read_owner_010` et `da_qa_wallet_write_owner_010` sont **NOLOGIN NOSUPERUSER** ; l'observation `pg_stat_activity.backend_start` est limitée à une fonction du backend courant sous troisième rôle `NOLOGIN` avec capacité exceptionnelle `pg_read_all_stats`. Cette exception doit rester confinée et être revue indépendamment. Les anciens ports de mutation Merchant/Courier/Dispatch perdent EXECUTE aux rôles applicatifs après migration 010 : **réactivation interdite** tant qu'une même attestation n'est pas réalisée sur chaque écriture.
+
+Le ledger 009 ne possède pas encore de dimension juridique/territoriale propre : F4E exige un propriétaire unique du slug Merchant et interdit la multi-affectation territoriale du même Courier. Ce comportement fail-closed n'est PAS une implémentation internationale complète. Les registres 010 sont des **fixtures synthétiques**. Un attestor compromis pourrait encore tenter d'emprunter une identité active : séparation des credentials, vérification cryptographique du port de preuve et révocation temps réel restent des gates P0 absolus.
+
+**CI synthétique verte ≠ identité Keycloak réelle certifiée ≠ argent véritable.** Aucun changement VPS, Stripe TEST officiel ou LIVE, production SQL, EAS, Store, PR merge. Roadbook F4E détaillé : `docs/DA_PASSATION_F4E_WALLET_TENANT_ISOLATION_P0_QA_2026-10-13.md`.

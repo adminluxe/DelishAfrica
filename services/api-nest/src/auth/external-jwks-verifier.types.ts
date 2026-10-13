@@ -58,6 +58,11 @@ export type DaExternalTokenVerification =
         | 'client_role_ambiguous'
         | 'client_audience_ambiguous'
         | 'client_client_privilege_detected'
+        | 'partner_audience_ambiguous'
+        | 'partner_authorized_party_mismatch'
+        | 'partner_realm_role_ambiguous'
+        | 'partner_resource_access_ambiguous'
+        | 'partner_subject_invalid'
         | 'merchant_role_missing'
         | 'courier_role_missing'
         | 'ops_role_missing';

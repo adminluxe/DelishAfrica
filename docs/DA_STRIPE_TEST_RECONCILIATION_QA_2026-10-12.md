@@ -259,3 +259,36 @@ Le besoin exprimé par le fondateur : Merchant et Courier doivent observer leurs
 - **F6 / Gouvernance** : revue IAM/Keycloak, coffre secrets, Stripe Connect et conformité ; une unique architecture/roadbook de production une fois certifiée.
 
 **État documentaire de cette version : QA PG17/Stripe simulé CERTIFIÉ sur les SHAs de code testés, cf. exécutions CI ci-dessus.** Aucun raccordement fournisseur TEST réel, aucune route publique, aucun test G0–G7 : **NO-GO**. Toute évolution ultérieure exige une nouvelle CI sur son SHA exact.
+
+---
+
+## Mise à jour 13/10/2026 — F4E P0 : wallet SQL session-bound (QA 010)
+
+**Statut : couche SQL / claims OIDC candidate certifiée en laboratoire synthétique. Identités financières Keycloak réelles = NON CERTIFIÉES.**
+
+- Origine F4D : `cd0ba578401d087f9f42c4303e5501704d6bbf94`, deux CI SUCCESS F4D, PR #35/#36 DRAFT.
+- Branche dédiée sans écraser le Toshiba : `feat/f4e-wallet-scope-isolation-qa-20261013`, [PR #37 DRAFT](https://github.com/adminluxe/DelishAfrica/pull/37), base PR #36.
+- SHA **code F4E testé** : `f97567f3e7c89ae5f80e33261cd2da6a2045dfb8`. Deux preuves vérifiées :
+  - PostgreSQL 17 déconnecté + tous les tests 001–010 + attaques interpartenaires : [CI #38327215358 — SUCCESS](https://github.com/adminluxe/DelishAfrica/actions/runs/38327215358).
+  - API TypeScript + Client/Merchant/Courier + matrice OIDC Merchant/Courier : [CI #38327215429 — SUCCESS](https://github.com/adminluxe/DelishAfrica/actions/runs/38327215429).
+- Rappels d'échecs corrigés : PG17 `38326871118` et `38327037757` ont correctement refusé d'émettre des tickets lorsque l'heure de début de session PostgreSQL était indisponible au propriétaire non privilégié. Une fonction étroitement limitée et un rôle observateur `NOLOGIN INHERIT` ont permis les contrôles sans superuser. Les deux échecs restent dans l'historique, ne sont pas masqués.
+
+### F4E livré techniquement en QA
+
+1. Migration additive `20261013_010_wallet_tenant_bound_scope_qa_only.sql` avec révocation des anciennes fonctions financières par `merchantSlug/issuer/subject`, et fermeture des mutations Merchant/Courier/Dispatch non attestées. Aucune fonction de payout ajoutée.
+2. Propriétaires distincts et sans login pour les lectures et écritures wallet, droit UPDATE limité aux clés primaires nécessaires pour les row locks ; impossibilité de SELECT direct par les rôles applicatifs.
+3. Attestation SQL par rôle séparé, challenge lié au backend + ticket à durée courte/usage unique, autorisation de lecture adossée à organisation/territoire et à la révocation des droits au moment de la lecture.
+4. Test adverse réel PG17 : Merchant A ≠ Merchant B, Courier A ≠ Courier B, même sujet et issuer différent, mauvaise organisation/territoire, vol de ticket dans une autre connexion, replays, contrat/KYB/roster révoqués ; preuves de refus dans la CI.
+5. Filtrage supplémentaire des tokens partenaires **après signature RSA** : audience propre à l'app, `azp`, interdiction de mélange de rôles/applications et de sujet malformé ; tests de claims synthétiques dans la CI API.
+
+### Non obtenu, à bloquer pour la suite
+
+- La mise en relation **effective** entre les vrais JWT Merchant/Courier, la révocation de leurs sessions, les memberships/KYB et le registre Courier durable d'un côté, et le rôle SQL attestateur de l'autre, n'existe pas encore. Le laboratoire emploie des fixtures.
+- Aucun contrôle contractuel international complet : entités juridiques, devise, TVA, taxes, PSP, FX, remboursements partiels, disputes ni autorisation réglementaire de payout ne sont prouvés.
+- Aucune mutation Merchant/Courier QA post-010 autorisée pour les logins applicatifs avant réécriture sous attestations indépendantes.
+- Aucune migration PG sur VPS, aucune modification du runtime ou des trois apps installées, aucun Stripe officiel TEST/LIVE, fusion, build, publication ni soumission Store.
+- `withdrawableMinor=0`, `payoutEnabled=false` demeurent invariants. Montants 18,40 € et 3,90 € des tests = synthétiques.
+
+**Prochaine barrière P0 :** intégrer l'attestor réel avec preuve JWT et révocation vérifiée, membership Merchant + contrat + KYB lié à l'organisation/territoire, roster Courier durable et preuves de séparation inter-partenaires de bout en bout ; ensuite seulement P1 Stripe TEST officiel. Le plan UX premium reste conditionné à ces preuves.
+
+**Passation complète :** `docs/DA_PASSATION_F4E_WALLET_TENANT_ISOLATION_P0_QA_2026-10-13.md`. **Signature : F4E-SQL-010-QA-CERTIFIED-ON-f97567f / REAL-OIDC-P0-NO-GO / NO-STRIPE / ZERO-PAYOUT / NO-PRODUCTION / NO-MERGE / NO-STORES**.
