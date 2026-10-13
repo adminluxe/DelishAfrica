@@ -464,3 +464,30 @@ Tous les six tests de pulse ont émis PASS : `captured`, `merchant_ready`, `offe
 **Documents :** `docs/DA_PASSATION_F4K_ATTESTED_MERCHANT_COURIER_OPERATIONS_QA_2026-10-13.md`. Prochain jalon **F4L : Dispatch officiel signé et affectation sous contrôle de paiement**, puis intégration des autorités réelles et tests G0–G7.
 
 **Attention au SHA :** les résultats ci-dessus signent le code avant mise à jour du présent document. Confirmer trois SUCCESS sur le HEAD documentaire final avant clôture formelle de la PR #43. **Signature provisoire : F4K-CODE-3CI-SUCCESS / REAL-AUTHORITY-NO-GO / ZERO-PAYOUT / NO-MERGE / NO-PROD.**
+
+---
+
+## Mise à jour officielle F4L — 13 octobre 2026 : Dispatch machine attesté (QA seulement)
+
+**Statut vérifié :** premier jalon de code F4L validé sur le SHA `eb077d8c5e176b74f0dbae62386319be1a4a442d`, avec **trois GitHub CI SUCCESS sur ce SHA** : [Keycloak machine et PostgreSQL 17 #38368706755](https://github.com/adminluxe/DelishAfrica/actions/runs/38368706755), [API + trois apps #38368706742](https://github.com/adminluxe/DelishAfrica/actions/runs/38368706742), [finance PostgreSQL historique #38368706881](https://github.com/adminluxe/DelishAfrica/actions/runs/38368706881). La preuve du SHA documentaire final sera consignée dans les commentaires de [PR #44](https://github.com/adminluxe/DelishAfrica/pull/44) **après nouvelle triple CI**.
+
+**Branche isolée :** `feat/f4l-oidc-machine-dispatch-assign-qa-20261013`, empilée sur F4K [PR #43](https://github.com/adminluxe/DelishAfrica/pull/43) au commit `f9f4af32692bbc2820a1987ea5d2f85ba764a71e`. PR #44 **DRAFT non fusionnée**. Pas de migration VPS/Toshiba.
+
+**Transition majeure :** F4K utilisait un superuser PostgreSQL éphémère pour créer les deux offres Dispatch synthétiques. F4L ajoute un **nouvel exercice réellement attesté** : Keycloak 26.4.7 de test, client confidentiel `client_credentials`, `scope=da.dispatch.assign`, audience machine, rôle restreint, signature JWKS RS256 et introspection. L'attesteur et l'exécutant SQL sont deux processus distincts et deux logins SCRAM indépendants ; seul le propriétaire SQL 016 **NOLOGIN** exécute le port 007 historique. Aucun GRANT direct 007/016 aux apps Merchant/Courier.
+
+**Matrice P0 PASS / DENY vérifiée :**
+- Merchant/Courier ne peuvent ni sélectionner eux-mêmes une course ni emprunter le rôle Dispatch ; faux JWT, scope, audience, identité ou ticket rejoué refusés.
+- Sept affectations parallèles d'une même commande : **1 première mutation, 6 replays idempotents** ; un seul reçu immutable pour cette commande.
+- Courier étranger, autre organisation/pays, Courier désactivé ou déplacé, contrat/entité inéligible, commande non prête : **refus**.
+- Course déjà récupérée via identité Courier F4K : **réaffectation refusée** ; une réaffectation légitime nécessitera plus tard un protocole dédié et auditable.
+- Refund avant Dispatch : refus ; remboursement concurrent : l'ordre `FOR UPDATE` impose l'attente, **observation réelle de `wait_event_type=Lock`**, puis refus de l'offre.
+- Révocation du compte de service dans la registry PostgreSQL : **refus malgré l'ancien JWT signé**.
+- Aucune mutation automatique `picked_up`/`delivered` depuis le rôle machine.
+
+**Journal financier :** F4K conserve les 3 allocations / 12 postings déjà certifiés. F4L ajoute **13 captures intégralement synthétiques**, soit **16 allocations et 64 postings** sur toute la base éphémère, somme exactement **0**. Cinq reçus d'affectation F4L append-only et toujours huit reçus opérationnels F4K (sans recompter les écritures comme des reçus). La politique QA de commission **20 %** reste une fixture non contractuelle, `withdrawableMinor=0`, `payoutEnabled=false`. **Aucun mouvement bancaire ou Stripe TEST officiel.**
+
+**Limites maintenues :** les apps Expo exécutées sur VPS n'utilisent pas le nouveau code ; les personnes, entreprises, montants, KYB/KYC, roster et commandes ne sont pas des identités/comptes authentiques. Aucun mTLS de production, clé de règlement, gestion de payout, policy multi-pays fiscale, déploiement, fusion, rebuild EAS ou soumission Store. La révocation SQL locale est sérialisée, pas la révocation Keycloak externe. Les anciennes fonctions SQL 007 restent impropres à une promotion directe sans revue de leurs propriétaires et privilèges.
+
+**Documents épinglés :** [Passation F4L](./DA_PASSATION_F4L_MACHINE_DISPATCH_QA_2026-10-13.md) ; [Architecture QA](./DA_ARCHITECTURE_QA_STRIPE_TEST_POSTGRES_PIN_2026-10-12.md). La partie F4K ci-dessus est conservée comme historique exact ; la mention « F4L prochain laboratoire » est désormais **supplantée par cette mise à jour**, sans effacer la chronologie.
+
+**Signature de code : F4L-MACHINE-DISPATCH-KEYCLOAK26-PG17-SCRAM-SQL016-3CI-SUCCESS / QA-FICTIF / NO-PAYOUT / NO-PROD / PR-DRAFT. Validation documentaire finale : preuves à consigner sur le HEAD final de #44.**
