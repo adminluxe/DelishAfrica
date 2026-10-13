@@ -569,6 +569,27 @@ jobs:
             docker logs "$MUT_ID" | tail -n 10; exit 1
           fi
           echo "QA_F4K_PRIVATE_MUTATION_SOCKET=PASS"
+          # F4M disposable ACL probe: SET ROLE is available ONLY to the
+          # in-container QA superuser. Every attempted mutation is rolled
+          # back before the signed F4K test; no app receives role membership.
+          node - "$QA_DIR/f4k-orders-runner.json" "$QA_DIR/f4m-probe.sql" <<'F4MPROBE'
+          const fs=require('node:fs');
+          const orders=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const order=orders.deliver?.orderId;
+          if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(order))
+            throw Error('qa_f4m_merchant_probe_bad_fixture');
+          fs.writeFileSync(process.argv[3],[
+            'BEGIN;',
+            'SET LOCAL ROLE da_qa_f4m_ops_writer_owner_017;',
+            "SELECT public.da_qa_merchant_transition('"+order+
+              "'::uuid,'qa-restaurant'::varchar,'accepted');",
+            'ROLLBACK;',
+            ''
+          ].join('\n'),{mode:0o600});
+          F4MPROBE
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres < "$QA_DIR/f4m-probe.sql"
+          echo "QA_F4M_LEGACY_OWNER_FUNCTION_WORKS_WITHOUT_SUPERUSER=PASS"
           run_ops(){
             local stage="$1"
             docker run --rm --pull never --user 1000:3000 \
