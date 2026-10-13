@@ -122,6 +122,11 @@ jobs:
         env:
           TS_NODE_PROJECT: services/api-nest/tsconfig.json
         run: node -r ts-node/register/transpile-only --test services/api-nest/test/native-client-nest-commerce.guard.test.cjs
+      - name: Real legacy Orders and Payments guards plus Native Client admission - isolated HTTP
+        env:
+          TS_NODE_PROJECT: services/api-nest/tsconfig.json
+          QA_SYNTHETIC_ONLY: 'YES'
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/native-client-real-guards-http-bridge.qa.test.cjs
       - name: Actual Orders and Payments Nest routes - no side effects before Client admission
         env:
           TS_NODE_PROJECT: services/api-nest/tsconfig.json

@@ -38,6 +38,9 @@ export type NativeClientAdmissionPrincipal = Readonly<{
   role: 'client';
   authSource: 'external';
   ownershipEligible: true;
+  /** Derived only from the already cryptographically verified access-token. */
+  expiresAt: string;
+  email: string;
 }>;
 export type NativeClientAdmittedHttpRequest = {
   headers?: Record<string, unknown>;
@@ -130,6 +133,8 @@ export class NativeClientNestCommerceGuard implements CanActivate {
       role: 'client' as const,
       authSource: 'external' as const,
       ownershipEligible: true as const,
+      expiresAt: new Date(Number(verified.evidence.claims.exp) * 1000).toISOString(),
+      email: String(verified.evidence.claims.email),
     });
     // This grants ONLY the wrapped route. Ownership, prices, idempotency,
     // business authorization and Stripe gating require separate checks.
