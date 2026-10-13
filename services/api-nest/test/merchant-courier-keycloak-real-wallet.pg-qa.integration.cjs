@@ -282,6 +282,17 @@ test('F4G Keycloak 26 real local HTTPS RSA/JWKS and PG17 authorization',async()=
       assert.equal(v.payload.iss,ISSUER);
       assert.equal(v.payload.authSource,'external');
       assert.ok(v.payload.sid&&v.payload.jti,'real signed sid jti');
+      console.log('QA_F4G_CLAIM_SHAPE_'+u.role+'='+
+        JSON.stringify({
+          sidBound:/^[A-Za-z0-9_-]{8,180}$/.test(v.payload.sid),
+          jtiBound:/^(?:tr:)?[A-Za-z0-9_-]{8,180}$/.test(v.payload.jti),
+          jtiTrPrefix:v.payload.jti.startsWith('tr:'),
+          ttlSeconds:v.payload.exp-v.payload.iat,
+          issuerPinned:v.payload.iss===ISSUER,
+          audienceOwn:(typeof v.payload.aud==='string'?
+            [v.payload.aud]:v.payload.aud).includes(
+              u.role==='merchant'?MA:CA),
+        }));
       const p=await introspect(u.access,fixture.attestorClient);
       assert.equal(p.active,true);
       assert.equal(p.sub,u.subject);
