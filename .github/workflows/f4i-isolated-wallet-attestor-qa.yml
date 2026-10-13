@@ -274,6 +274,10 @@ jobs:
             node:22-alpine node \
               /qa-tests/merchant-courier-wallet-isolated-attestor.setup.cjs
           echo "QA_F4I_PRIVILEGED_QA_INITIALIZER_EXITED=YES"
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            < "$MIG/20261013_013_separate_wallet_attestor_qa_only.sql" >/dev/null
+          echo "QA_F4I_SQL_EXCLUSIVE_ATTESTOR_ROLE_013=INSTALLED"
           # The initializer's protected files belong to UID 1000. Move only
           # the confidential introspection proof into the runner-private
           # staging area; do not relax file or directory permissions.
