@@ -43,7 +43,7 @@ jobs:
           assert(test.includes('ExternalJwksVerifierService'));
           assert(test.includes('QaWalletVerifiedSessionBridge'));
           assert(test.includes('token/introspect'));
-          assert(test.includes('keycloak.adminToken'));
+          assert(test.includes('fixture.adminToken'));
           assert(test.includes('real Keycloak')||test.includes('Keycloak'));
           assert(test.includes('QA_F4G_STRIPE_CALLS=ZERO_PAYOUTS=ZERO'));
           assert(migration.includes('REVOKE ALL ON TABLE'));
