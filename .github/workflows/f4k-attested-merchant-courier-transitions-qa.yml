@@ -9,6 +9,7 @@ on:
       - 'services/api-nest/migrations/client-commerce/20261013_014_wallet_business_revocation_linearized_qa_only.sql'
       - 'services/api-nest/migrations/client-commerce/20261013_015_attested_merchant_courier_transitions_qa_only.sql'
       - 'services/api-nest/test/merchant-courier-attested-transition-order-seed.pg-qa.cjs'
+      - 'services/api-nest/test/merchant-courier-attested-financial-pulse.pg-qa.sql'
       - 'services/api-nest/test/merchant-courier-attested-transition-client.pg-qa.integration.cjs'
       - 'services/api-nest/test/merchant-courier-attested-transition-private.pg-qa.service.cjs'
       - 'docs/DA_PASSATION_F4K_ATTESTED_MERCHANT_COURIER_OPERATIONS_QA_2026-10-13.md'
@@ -56,6 +57,10 @@ jobs:
           const f4j=fs.readFileSync('services/api-nest/migrations/client-commerce/20261013_014_wallet_business_revocation_linearized_qa_only.sql','utf8');
           const f4k=fs.readFileSync('services/api-nest/migrations/client-commerce/20261013_015_attested_merchant_courier_transitions_qa_only.sql','utf8');
           const mutation=fs.readFileSync('services/api-nest/test/merchant-courier-attested-transition-private.pg-qa.service.cjs','utf8');
+          const pulse=fs.readFileSync('services/api-nest/test/merchant-courier-attested-financial-pulse.pg-qa.sql','utf8');
+          assert(pulse.includes('qa_f4k_financial_pulse_stage_mismatch'));
+          assert(pulse.includes('qa_f4k_posting_balance_or_synthetic_commission_mismatch'));
+          assert(pulse.includes('qa_wallet_immutable_audit'));
           assert(f4k.includes('da_qa_partner_transition_attested_015'));
           assert(f4k.includes('da_qa_wallet_read_linearized_014'));
           assert(f4k.includes('da_qa_fulfillment_receipt_015'));
@@ -500,6 +505,12 @@ jobs:
           docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
             -U postgres -d postgres < "$QA_DIR/f4k-finance.sql" >/dev/null
           echo "QA_F4K_TWO_SYNTHETIC_CAPTURED_JOURNALS=PASS"
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            < services/api-nest/test/merchant-courier-attested-financial-pulse.pg-qa.sql >/dev/null
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            -c "SELECT public.da_qa_f4k_assert_pulse('captured')" >/dev/null
           sudo install -m 0400 -o 1000 -g 3000 \
             "$QA_DIR/seed/f4k-orders.json" "$QA_DIR/users/f4k-orders.json"
           sudo install -m 0600 -o "$(id -u)" -g "$(id -g)" \
@@ -556,6 +567,9 @@ jobs:
                 /qa-tests/merchant-courier-attested-transition-client.pg-qa.integration.cjs
           }
           run_ops merchant
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            -c "SELECT public.da_qa_f4k_assert_pulse('merchant_ready')" >/dev/null
           node - "$QA_DIR/f4k-orders-runner.json" "$QA_DIR/f4k-dispatch.sql" "$QA_DIR/f4k-hold.sql" <<'NODE'
           const fs=require('node:fs');
           const orders=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
@@ -587,11 +601,20 @@ jobs:
             -U postgres -d postgres \
             < "$QA_DIR/f4k-dispatch.sql" >/dev/null
           echo "QA_F4K_SYSTEM_DISPATCH=FIXTURE_ONLY_NO_APP_GRANT"
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            -c "SELECT public.da_qa_f4k_assert_pulse('offered')" >/dev/null
           run_ops courier
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            -c "SELECT public.da_qa_f4k_assert_pulse('courier_progress')" >/dev/null
           docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
             -U postgres -d postgres \
             < "$QA_DIR/f4k-hold.sql" >/dev/null
           run_ops held
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            -c "SELECT public.da_qa_f4k_assert_pulse('refund_held')" >/dev/null
 
           # Revoke merchant contract and courier roster. Real JWTs remain
           # signed and active, but both operations must now DENY.
@@ -599,6 +622,9 @@ jobs:
             -U postgres -d postgres -c \
             "UPDATE public.da_merchant_memberships SET membership_status='suspended',contract_status='suspended' WHERE partner_id='qa_partner_a'; UPDATE public.da_qa_finance_courier_roster_012 SET roster_status='suspended' WHERE organization_id='a43f867f-9f42-4573-9268-dc65a164d2c2'::uuid" >/dev/null
           run_ops revoked
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            -c "SELECT public.da_qa_f4k_assert_pulse('revoked')" >/dev/null
           docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
             -U postgres -d postgres -c \
             "DO \$q\$ DECLARE n integer; BEGIN SELECT count(*) INTO n FROM public.da_qa_fulfillment_receipt_015; IF n<>8 THEN RAISE EXCEPTION 'qa_f4k_receipts_expected_8_got_%',n; END IF; END \$q\$;" >/dev/null
