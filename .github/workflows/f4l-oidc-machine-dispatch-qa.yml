@@ -639,3 +639,52 @@ jobs:
 
           echo "QA_F4I_NO_STRIPE_NO_BANK_NO_PAYOUT=PASS"
           echo "QA_F4I_NO_PRODUCTION_NO_VPS_NO_STORE=PASS"
+
+          # F4L runs only after the exact prior F4K Keycloak and ledger lab.
+          echo "QA_F4L_F4K_SIGNED_OPERATIONS_PRECONDITION=PASS"
+          for f in services/api-nest/test/f4l-dispatch-*.cjs; do node --check "$f"; done
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres \
+            < "$MIG/20261013_016_oidc_machine_dispatch_authority_qa_only.sql" >/dev/null
+          echo "QA_F4L_SQL_MACHINE_DISPATCH_016=INSTALLED"
+          # F4K deliberately suspended these QA synthetic identities as its
+          # last assertion. Reset only the ephemeral rows for fresh QA orders.
+          docker exec "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres -c \
+            "UPDATE public.da_merchant_memberships SET membership_status='active',contract_status='active' WHERE partner_id='qa_partner_a'; UPDATE public.da_qa_finance_courier_roster_012 SET roster_status='active' WHERE organization_id='a43f867f-9f42-4573-9268-dc65a164d2c2'::uuid" >/dev/null
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$KC_ID" --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=40m \
+            --env-file "$QA_DIR/order-fixture.env" -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/seed:/qa-seed:rw" -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node /qa-tests/f4l-dispatch-order-seed.pg-qa.cjs
+          sudo install -m 0600 -o "$(id -u)" -g "$(id -g)" \
+            "$QA_DIR/seed/f4l-finance.sql" "$QA_DIR/f4l-finance.sql"
+          docker exec -i "$PG_ID" psql -v ON_ERROR_STOP=1 \
+            -U postgres -d postgres < "$QA_DIR/f4l-finance.sql" >/dev/null
+          sudo install -m 0400 -o 1000 -g 3000 \
+            "$QA_DIR/seed/f4l-orders.json" "$QA_DIR/users/f4l-orders.json"
+          sudo install -m 0600 -o "$(id -u)" -g "$(id -g)" \
+            "$QA_DIR/seed/f4l-orders.json" "$QA_DIR/f4l-orders-runner.json"
+          docker run --rm --pull never --user 1000:3000 \
+            --network "container:$KC_ID" --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=40m \
+            --env-file "$QA_DIR/client.env" -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/ipc:/qa-ipc:ro" -v "$QA_DIR/users:/qa-users:ro" \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node /qa-tests/f4l-dispatch-merchant-prepare.pg-qa.cjs
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$KC_ID" --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=40m \
+            --env-file "$QA_DIR/test.env" \
+            -v "$QA_DIR/seed:/qa-seed:rw" -v "$QA_DIR/tls:/qa-tls:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node /qa-tests/f4l-dispatch-oidc-machine.setup.pg-qa.cjs
+          sudo install -m 0600 -o "$(id -u)" -g "$(id -g)" \
+            "$QA_DIR/seed/f4l-dispatch-machine.json" "$QA_DIR/f4l-machine-private.json"
