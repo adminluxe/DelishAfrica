@@ -252,6 +252,17 @@ test('single PG17 trace: durable order -> signed inbox -> provider capture -> ou
     assert.equal(events.filter(x=>x.duplicate).length,7);
     assert.ok(events.every(x=>x.authorityId===intent.authorityId));
     assert.equal(await getCount('inbox',null,intent.authorityId),1);
+    // Same event ID with a newly signed *different* body must never replay.
+    const changed=Buffer.from(JSON.stringify({
+      ...payload,type:'payment_intent.payment_failed',
+    }));
+    const changedSig='t='+t+',v1='+crypto.createHmac('sha256',
+      process.env.QA_WEBHOOK_TEST_SECRET)
+      .update(String(t)).update('.').update(changed).digest('hex');
+    await assert.rejects(
+      ()=>inboxA.receiveSignedTestWebhook(changed,changedSig),
+      /qa_stripe_event_id_payload_collision_rejected/);
+    assert.equal(await getCount('inbox',null,intent.authorityId),1);
     assert.equal(await getCount('outbox',null,intent.authorityId),0);
     assert.equal((await readReceipt(order.orderId)).financialStatus,'awaiting_payment');
     assert.equal((await reconA.reconcileAuthority(intent.authorityId,webhookId)).outcome,
@@ -307,6 +318,35 @@ test('single PG17 trace: durable order -> signed inbox -> provider capture -> ou
     const offers=await commerce.courierOffers(courier,roster);
     assert.equal(offers.find(x=>x.orderId===order.orderId).actionEligible,true);
     console.log('P0_FINALITY_MERCHANT_COURIER_ELIGIBLE_ONLY_AFTER_CAPTURE=PASS');
+
+    // Prove transaction rollback atomically removes the finance HOLD
+    // and its generated outbox event (no partial journal on worker crash).
+    const transient=await financePoolA.connect();
+    let open=false;
+    try{
+      await transient.query('BEGIN');
+      open=true;
+      await transient.query(
+        'SELECT * FROM public.da_qa_finance_record_hold('+
+          '$1::uuid,$2::text,$3::text)',
+        [intent.authorityId,'re_QAP0ROLLBACK20261014','refund']);
+      const uncommitted=await transient.query(
+        'SELECT count(*)::int AS n FROM public.da_qa_financial_outbox_018 '+
+          'WHERE authority_id=$1::uuid',[intent.authorityId]);
+      assert.equal(uncommitted.rows[0].n,2);
+      // Another role cannot see the uncommitted hold/outbox.
+      assert.equal(await getCount('hold',null,intent.authorityId),0);
+      assert.equal(await getCount('outbox',null,intent.authorityId),1);
+      await transient.query('ROLLBACK');
+      open=false;
+    }finally{
+      if(open)await transient.query('ROLLBACK').catch(()=>{});
+      transient.release();
+    }
+    assert.equal(await getCount('hold',null,intent.authorityId),0);
+    assert.equal(await getCount('outbox',null,intent.authorityId),1);
+    assert.equal((await readReceipt(order.orderId)).dispatchEligible,true);
+    console.log('P0_FINALITY_ROLLBACK_REMOVES_UNCOMMITTED_HOLD_AND_OUTBOX=PASS');
 
     // Refund arrives AFTER successful capture; fake Stripe confirms it
     // independently (no HTTP POST refund/capture: GET-only reconciler).
