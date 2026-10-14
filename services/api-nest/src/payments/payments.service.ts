@@ -249,6 +249,8 @@ export class PaymentsService {
       disputeAwareOrderCommit: true,
       paymentAuthorityStore: 'runtime_atomic_file_v1',
       mockOrderCommitAllowed: false,
+      checkoutIntentCreation: 'blocked_pending_durable_order_reservation',
+      checkoutIntentCreationEnabled: false,
     };
   }
 
@@ -261,8 +263,8 @@ export class PaymentsService {
           label: 'Stripe',
           provider: 'stripe',
           role: 'card_acquiring_bridge',
-          status: this.hasStripeSecret() ? 'configured' : 'mock_ready',
-          userVisible: true,
+          status: 'checkout_blocked',
+          userVisible: false,
         },
       ],
     };
@@ -349,11 +351,31 @@ export class PaymentsService {
     return record.quote;
   }
 
+  /**
+   * P0 fail-closed: the current order path relies on a JSON file whose write
+   * failures are swallowed and which has no transactional reservation shared
+   * with Stripe. Neither an environment switch nor a Stripe TEST key is
+   * evidence of durable order authority. This candidate intentionally blocks
+   * ALL new PaymentIntents (including mocks) before quotes, network or state
+   * mutations, until a separately reviewed transactional precommit replaces
+   * this legacy path. Existing paid-order reconciliation is not altered.
+   */
+  private assertDurableCheckoutAuthority(): never {
+    throw new ServiceUnavailableException({
+      ok: false,
+      code: 'checkout_durable_order_authority_not_certified',
+      message: 'La validation bancaire est temporairement suspendue pendant la sécurisation des commandes. Aucun paiement ne sera initié.',
+      retryable: false,
+      paymentInitiated: false,
+    });
+  }
+
   async createPaymentIntent(
     input: CreatePaymentIntentInput = {},
     idempotencyHeader: string | undefined,
     principal: DaAuthPrincipal,
   ) {
+    this.assertDurableCheckoutAuthority();
     const quote = await this.orderPolicy.quote(input);
     const amount = quote.total;
     const currency = quote.currency;
