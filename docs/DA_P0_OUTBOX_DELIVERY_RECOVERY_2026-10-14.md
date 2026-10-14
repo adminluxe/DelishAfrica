@@ -25,4 +25,19 @@ Les données sources sont immuables. L'état livré / pending / leased / dead es
 
 Le driver QA n'est pas branché dans AppModule et n'est pas un daemon opérationnel. Pas de service mobile, pas de délivrance SMS, pas de véritable bus, aucun paiement ni payout. Reste à approuver l'identité machine, alertes, SLO, politique de réparation DLQ, HA, sauvegarde/restauration et traçage de provenance Store. Aucune migration persistante, merge, déploiement, transaction LIVE, build payant ni soumission sans autorisation spécifique.
 
-Parent : PR #51 DRAFT, SHA certifié c81e824e09d40862681358c52708990e60a970e6, CI push #38634130095 et PR #38634138624 SUCCESS. Le présent candidat 020 nécessite un nouveau SHA exact et une nouvelle CI avant de pouvoir être annoncé PASS.
+Parent : PR #51 DRAFT, SHA certifié c81e824e09d40862681358c52708990e60a970e6, CI push #38634130095 et PR #38634138624 SUCCESS. Le candidat QA 020 a obtenu sa première CI SUCCESS sur SHA `7a10ea3de7cc766036edade66aab2d3a61afa5b8`, [GitHub Actions #38636532599](https://github.com/adminluxe/DelishAfrica/actions/runs/38636532599). La version finale doit encore passer sur son SHA documentaire exact.
+
+
+## Première certification confirmée — matrice CI 020
+
+- [CI push #38636532599](https://github.com/adminluxe/DelishAfrica/actions/runs/38636532599), résultat SUCCESS, SHA exact 7a10ea3de7cc766036edade66aab2d3a61afa5b8.
+- TypeScript API PASS ; trois anciennes suites de PG-first, HTTP signé et finalité 018/019 PASS inchangées ; **quatrième suite QA 020 PASS**, au total **4 tests d'intégration PASS / 0 FAIL**.
+- Deux workers SQL en concurrence, avec possibilité de premier claim vide pendant l'initialisation concurrente : reprise contrôlée, attribution disjointe sous SKIP LOCKED et fencing.
+- Effet consommateur simulé commité avant ACK, crash fictif, expiration, deuxième worker : effet durable unique, nouveau claim et ACK sûr.
+- Trois pannes du consommateur simulé : backoff puis état dead, sans nouvelle livraison.
+- Troisième lease expirée : fermeture dead par scan, sans événement perdu en état leased.
+- ACL restreintes : les rôles worker, consommateur et Client ne peuvent ni lire/éditer les tables source, ni modifier librement le registre de livraison ; aucune erreur brute enregistrée.
+- Références de rejet QA conservées : une CI précédente a détecté des noms de worker d'essai trop courts, une autre une ambiguïté PL/pgSQL sur event_id, puis une prétention excessive à deux claims simultanés pendant l'initialisation à froid. Corrections minimales réalisées **sans changer les critères de sécurité**. La CI SUCCESS fait foi, pas ces exécutions antérieures.
+- Après le test, Docker supprime uniquement ses ressources éphémères propres au runner GitHub Actions, jamais les conteneurs VPS.
+
+**Limites importantes** : quatre tests intégrés PASS ne certifient ni débit, ni continuité réseau, ni bus externe, ni HA multi-région, ni plan d'exploitation DLQ. La table consommateur est dans le même PostgreSQL **QA**, ce qui prouve le mécanisme de déduplication local, pas un effet exactly-once dans un système distant. Aucune opération LIVE n'est homologuée.
