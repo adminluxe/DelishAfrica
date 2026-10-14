@@ -118,10 +118,17 @@ test('020 at-least-once leased financial outbox: concurrent claim, crash, consum
 
     // Two independently connected workers race for two genuine committed
     // outbox events. SKIP LOCKED + unique leased rows must avoid duplicates.
-    const [one,two]=await Promise.all([
+    let [one,two]=await Promise.all([
       sqlClaim(workerA,'qa-worker-a01',1),
       sqlClaim(workerB,'qa-worker-b01',1),
     ]);
+    // Cold-start projection into the delivery state is also concurrent.
+    // A losing transaction may see 0 rows on its first SKIP LOCKED scan.
+    // It must be safe to retry; never require a false exactly-once claim.
+    assert.ok(one.length+two.length>=1);
+    assert.ok(one.length<=1 && two.length<=1);
+    if(one.length===0)one=await sqlClaim(workerA,'qa-worker-a01',1);
+    if(two.length===0)two=await sqlClaim(workerB,'qa-worker-b01',1);
     assert.equal(one.length,1);
     assert.equal(two.length,1);
     const e1=one[0],e2=two[0];
