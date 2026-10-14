@@ -69,3 +69,12 @@ test('QA-only server remains absent from production AppModule',()=>{
   assert.match(controller,/private, no-store/);
   assert.doesNotMatch(controller,/@Post\(|@Put\(|@Patch\(|@Delete\(|stripe\.|sk_live_|DROP TABLE|TRUNCATE/);
 });
+
+
+test('finance home navigation is invisible in signed builds',()=>{
+  for(const role of ['merchant','courier']){
+    const home=fs.readFileSync(path.join(ROOT,'apps',role,'app/index.tsx'),'utf8');
+    assert.match(home,/FINANCE_QA_VISIBLE = __DEV__ && process\.env\.EXPO_PUBLIC_DA_FINANCE_QA_ONLY === "YES"/);
+    assert.match(home,/ROUTES\.filter\(\(item\) => item\.path !== "\/finances" \|\| FINANCE_QA_VISIBLE\)/);
+  }
+});
