@@ -1,0 +1,99 @@
+name: P0 Checkout no new Stripe intents — QA fail-closed
+
+on:
+  push:
+    branches:
+      - security/p0-checkout-stripe-failclosed-20261014
+    paths:
+      - '.github/workflows/p0-checkout-stripe-failclosed-qa.yml'
+      - 'services/api-nest/src/payments/payments.service.ts'
+      - 'apps/client/app/checkout-preflight.tsx'
+      - 'services/api-nest/test/p0-checkout-stripe-failclosed.qa.cjs'
+  pull_request:
+    branches:
+      - feat/p0-partner-finance-readonly-bridge-20261014
+    paths:
+      - '.github/workflows/p0-checkout-stripe-failclosed-qa.yml'
+      - 'services/api-nest/src/payments/payments.service.ts'
+      - 'apps/client/app/checkout-preflight.tsx'
+      - 'services/api-nest/test/p0-checkout-stripe-failclosed.qa.cjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p0-checkout-hardstop-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  checkout-no-stripe-authority:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      QA_SYNTHETIC_ONLY: 'YES'
+      TS_NODE_PROJECT: services/api-nest/tsconfig.json
+    steps:
+      - name: Immutable exact-head checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Prove exact SHA and no live endpoints in test
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          echo "QA_EXACT_SHA=$EXPECTED_SHA"
+          node --check services/api-nest/test/p0-checkout-stripe-failclosed.qa.cjs
+          node - <<'NODE'
+          const fs = require('node:fs'),assert=require('node:assert/strict');
+          const t=fs.readFileSync('services/api-nest/test/p0-checkout-stripe-failclosed.qa.cjs','utf8');
+          assert(t.includes("NO_NETWORK_ALLOWED"));
+          assert(t.includes("GITHUB_ACTIONS !== 'true'"));
+          assert(t.includes("QA_SYNTHETIC_ONLY !== 'YES'"));
+          assert(!t.includes('https://api.stripe.com/'));
+          assert(!t.includes('194.164.72.250'));
+          assert(!/continue-on-error|audit fix --force/i.test(t));
+          const api=fs.readFileSync('services/api-nest/src/payments/payments.service.ts','utf8');
+          assert(api.includes('this.assertDurableCheckoutAuthority();'));
+          assert(api.includes('checkout_durable_order_authority_not_certified'));
+          assert(api.includes('checkoutIntentCreationEnabled: false'));
+          const module=fs.readFileSync('services/api-nest/src/app.module.ts','utf8');
+          assert(!module.includes('NativeClientCheckoutQaController'));
+          console.log('QA_STATIC_PAYMENTS_HARDSTOP=PASS');
+          NODE
+      - name: Install supported Node and pnpm
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Activate pinned pnpm
+        run: corepack enable && corepack prepare pnpm@9.15.4 --activate
+      - name: Use F4M certified workspace scope without modifying tracked files
+        shell: bash
+        run: |
+          cat > pnpm-workspace.yaml <<'YAML'
+          packages:
+            - apps/client
+            - apps/merchant
+            - apps/courier
+            - services/api-nest
+            - packages/*
+          YAML
+      - name: Exact frozen dependency installation
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: API and Client TypeScript compile with no emit
+        run: |
+          set -Eeuo pipefail
+          pnpm exec tsc --noEmit -p services/api-nest/tsconfig.json
+          pnpm exec tsc --noEmit -p apps/client/tsconfig.json
+          echo "QA_API_CLIENT_TYPESCRIPT=PASS"
+      - name: Actual PaymentsService and controller synthetic negative tests
+        run: |
+          set -Eeuo pipefail
+          node --test --test-reporter=spec services/api-nest/test/p0-checkout-stripe-failclosed.qa.cjs
+          echo "QA_NO_STRIPE_INTENT_HARDSTOP=PASS"
+          echo "NEW_PAYMENT_INTENTS=BLOCKED"
+          echo "PRODUCTION_MODIFIED=NO"
+          echo "EXISTING_PAID_COMMIT_RECONCILIATION=CODE_UNCHANGED"
