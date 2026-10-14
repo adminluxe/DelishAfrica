@@ -107,20 +107,20 @@ test('020 at-least-once leased financial outbox: concurrent claim, crash, consum
       ()=>client.query('SELECT * FROM public.da_qa_delivery_claim_020($1,$2,$3)',
         ['qa-worker-clientfake',1,30]),/permission denied/);
     await assert.rejects(
-      ()=>sqlClaim(workerA,'qa-worker-a1',26),/qa_delivery_claim_parameters_invalid/);
+      ()=>sqlClaim(workerA,'qa-worker-a01',26),/qa_delivery_claim_parameters_invalid/);
     await assert.rejects(
       ()=>sqlClaim(workerA,'unauthorized-worker',1),/qa_delivery_claim_parameters_invalid/);
     await assert.rejects(
       ()=>consumerConn.query('SELECT public.da_qa_delivery_ack_020($1,$2,$3)',
-        ['00000000-0000-4000-8000-000000000001','qa-worker-a1',
+        ['00000000-0000-4000-8000-000000000001','qa-worker-a01',
          '00000000-0000-4000-8000-000000000002']),/permission denied/);
     console.log('P0_OUTBOX_020_ROLES_SEPARATED_AND_BOUNDED=PASS');
 
     // Two independently connected workers race for two genuine committed
     // outbox events. SKIP LOCKED + unique leased rows must avoid duplicates.
     const [one,two]=await Promise.all([
-      sqlClaim(workerA,'qa-worker-a1',1),
-      sqlClaim(workerB,'qa-worker-b1',1),
+      sqlClaim(workerA,'qa-worker-a01',1),
+      sqlClaim(workerB,'qa-worker-b01',1),
     ]);
     assert.equal(one.length,1);
     assert.equal(two.length,1);
@@ -128,16 +128,16 @@ test('020 at-least-once leased financial outbox: concurrent claim, crash, consum
     assert.notEqual(e1.event_id,e2.event_id);
     assert.equal(e1.attempts||e1.attempt,1);
     assert.equal(e2.attempts||e2.attempt,1);
-    assert.equal((await sqlClaim(workerB,'qa-worker-b1',1)).length,0);
+    assert.equal((await sqlClaim(workerB,'qa-worker-b01',1)).length,0);
     await assert.rejects(
-      ()=>sqlAck(workerA,e1.event_id,'qa-worker-b1',e1.lease_token),
+      ()=>sqlAck(workerA,e1.event_id,'qa-worker-b01',e1.lease_token),
       /qa_delivery_stale_or_foreign_lease/);
     await assert.rejects(
-      ()=>sqlAck(workerA,e1.event_id,'qa-worker-a1',
+      ()=>sqlAck(workerA,e1.event_id,'qa-worker-a01',
         '00000000-0000-4000-8000-000000000001'),
       /qa_delivery_stale_or_foreign_lease/);
     await assert.rejects(
-      ()=>sqlFail(workerA,e1.event_id,'qa-worker-a1',e1.lease_token,
+      ()=>sqlFail(workerA,e1.event_id,'qa-worker-a01',e1.lease_token,
         'RAW_EXCEPTION_OR_CREDENTIAL_NOT_ALLOWED'),
       /qa_delivery_error_code_invalid/);
     console.log('P0_OUTBOX_020_TWO_WORKERS_SKP_LOCKED_FENCING=PASS');
@@ -147,13 +147,13 @@ test('020 at-least-once leased financial outbox: concurrent claim, crash, consum
       eventId:e1.event_id,orderId:e1.order_id,
       eventKind:e1.event_kind,sourceId:e1.source_id,
     });
-    assert.equal(await sqlAck(workerA,e1.event_id,'qa-worker-a1',
+    assert.equal(await sqlAck(workerA,e1.event_id,'qa-worker-a01',
       e1.lease_token),true);
     assert.equal((await effects()).length,1);
     await assert.rejects(
-      ()=>sqlAck(workerA,e1.event_id,'qa-worker-a1',e1.lease_token),
+      ()=>sqlAck(workerA,e1.event_id,'qa-worker-a01',e1.lease_token),
       /qa_delivery_stale_or_foreign_lease/);
-    assert.equal((await sqlClaim(workerA,'qa-worker-a1',1)).length,0);
+    assert.equal((await sqlClaim(workerA,'qa-worker-a01',1)).length,0);
     console.log('P0_OUTBOX_020_FENCED_ACK_ONE_CONSUMER_EFFECT=PASS');
 
     // Event 2: consumer commits, but ACK is lost due to simulated crash.
@@ -166,7 +166,7 @@ test('020 at-least-once leased financial outbox: concurrent claim, crash, consum
     assert.equal((await effects()).length,2);
     await forceLeaseExpiry(e2.event_id);
     await assert.rejects(
-      ()=>sqlAck(workerB,e2.event_id,'qa-worker-b1',e2.lease_token),
+      ()=>sqlAck(workerB,e2.event_id,'qa-worker-b01',e2.lease_token),
       /qa_delivery_stale_or_foreign_lease/);
     const recovering=new QaIsolatedFinanceOutboxWorker(
       workerA,realSyntheticConsumer,'qa-worker-recovery',30);
@@ -207,7 +207,7 @@ test('020 at-least-once leased financial outbox: concurrent claim, crash, consum
       assert.equal(row.state,n<3?'pending':'dead');
       assert.equal(row.last_error_code,'consumer_timeout');
     }
-    assert.equal((await sqlClaim(workerA,'qa-worker-a1',10)).length,0);
+    assert.equal((await sqlClaim(workerA,'qa-worker-a01',10)).length,0);
     assert.equal((await effects()).length,2);
     assert.equal((await source()).length,3);
     console.log('P0_OUTBOX_020_3_FAILS_RETRY_BACKOFF_TO_DLQ=PASS');
