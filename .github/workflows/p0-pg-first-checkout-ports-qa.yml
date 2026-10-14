@@ -13,6 +13,7 @@ on:
       - 'services/api-nest/test/p0-pg-first-signed-http.pg-qa.integration.cjs'
       - 'services/api-nest/test/p0-financial-finality-outbox.pg-qa.integration.cjs'
       - 'services/api-nest/migrations/client-commerce/20261014_018_financial_finality_outbox_qa_only.sql'
+      - 'services/api-nest/migrations/client-commerce/20261014_019_webhook_postcapture_exact_replay_qa_only.sql'
       - 'docs/DA_P0_POSTGRES_FIRST_PORTS_2026-10-14.md'
       - 'docs/DA_P0_SIGNED_HTTP_POSTGRES_STRIPE_QA_2026-10-14.md'
       - 'docs/DA_P0_FINALITY_OUTBOX_SINGLE_TRACE_2026-10-14.md'
@@ -28,6 +29,7 @@ on:
       - 'services/api-nest/test/p0-pg-first-signed-http.pg-qa.integration.cjs'
       - 'services/api-nest/test/p0-financial-finality-outbox.pg-qa.integration.cjs'
       - 'services/api-nest/migrations/client-commerce/20261014_018_financial_finality_outbox_qa_only.sql'
+      - 'services/api-nest/migrations/client-commerce/20261014_019_webhook_postcapture_exact_replay_qa_only.sql'
       - 'docs/DA_P0_POSTGRES_FIRST_PORTS_2026-10-14.md'
       - 'docs/DA_P0_SIGNED_HTTP_POSTGRES_STRIPE_QA_2026-10-14.md'
       - 'docs/DA_P0_FINALITY_OUTBOX_SINGLE_TRACE_2026-10-14.md'
@@ -97,6 +99,13 @@ jobs:
           assert(migration.includes('AFTER INSERT ON public.da_stripe_test_financial_receipts_qa'));
           assert(migration.includes('AFTER INSERT ON public.da_stripe_test_financial_holds_qa'));
           assert(migration.includes('da_qa_financial_outbox_read_018'));
+          const replaySql=fs.readFileSync('services/api-nest/migrations/client-commerce/20261014_019_webhook_postcapture_exact_replay_qa_only.sql','utf8');
+          assert(replaySql.includes('CREATE OR REPLACE FUNCTION public.da_qa_record_signed_test_webhook'));
+          assert(replaySql.includes("state IN ('intent_created','succeeded')"));
+          assert(replaySql.includes("AND state='intent_created'"));
+          assert(!/\b(?:GRANT|DROP|TRUNCATE|ALTER TABLE)\b/i.test(replaySql));
+          assert(finality.includes('P0_WEBHOOK_POSTCAPTURE_EXACT_8_REPLAYS_ACK_NO_NEW_EVENTS=PASS'));
+          assert(finality.includes('P0_WEBHOOK_POSTREFUND_EXACT_REPLAY_NEVER_REOPENS_DISPATCH=PASS'));
           assert(!/\b(?:DROP|TRUNCATE)\s+TABLE\b|\bDELETE\s+FROM\b|\bCREATE\s+EXTENSION\b/i.test(migration));
           assert(!/sk_live_|pk_live_|194\.164\.72\.250|continue-on-error/i.test(finality));
           console.log('P0_STATIC_ISOLATION=PASS');
@@ -300,7 +309,8 @@ jobs:
           for name in \
             20261013_007_merchant_courier_fulfillment_qa_only.sql \
             20261013_008_refund_dispatch_row_lock_qa_only.sql \
-            20261014_018_financial_finality_outbox_qa_only.sql
+            20261014_018_financial_finality_outbox_qa_only.sql \
+            20261014_019_webhook_postcapture_exact_replay_qa_only.sql
           do
             docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
               -h 127.0.0.1 -U postgres -d postgres \
