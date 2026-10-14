@@ -1,0 +1,53 @@
+name: DelishAfrica P0 API and 3 apps TypeScript
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p0-typecheck-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  p0-api-three-apps-typescript:
+    name: p0-api-three-apps-typescript
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact commit without persisted credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Setup Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+
+      - name: Activate pinned pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+          pnpm --version
+
+      - name: Install lockfile without lifecycle scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: API Nest TypeScript
+        run: pnpm --dir services/api-nest exec tsc --noEmit
+
+      - name: Client TypeScript
+        run: pnpm --dir apps/client exec tsc --noEmit
+
+      - name: Merchant TypeScript
+        run: pnpm --dir apps/merchant exec tsc --noEmit
+
+      - name: Courier TypeScript
+        run: pnpm --dir apps/courier exec tsc --noEmit
