@@ -1,8 +1,24 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-// Compiled NestJS controller contract. No HTTP server, provider request,
-// environment secret, live payment, database or deployment is needed.
+// Test the compiled NestJS controller, but isolate its unrelated constructor
+// dependencies. The real PaymentsService imports a private PG runtime vendor
+// path; loading it would need a database driver even though health has no DB.
+const Module = require('node:module');
+function stubCompiledModule(relative, exports) {
+  const filename = require.resolve(relative);
+  const stub = new Module(filename);
+  stub.filename = filename;
+  stub.loaded = true;
+  stub.exports = exports;
+  require.cache[filename] = stub;
+}
+stubCompiledModule('../dist/payments/payments.service.js', {
+  PaymentsService: class PaymentsService {},
+});
+stubCompiledModule('../dist/payments/payments.auth.guard.js', {
+  PaymentsAuthGuard: class PaymentsAuthGuard {},
+});
 const { PaymentsController } = require('../dist/payments/payments.controller.js');
 
 test('anonymous payment health exposes liveness only', () => {
