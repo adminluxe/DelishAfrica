@@ -304,6 +304,33 @@ test('single PG17 trace: durable order -> signed inbox -> provider capture -> ou
     assert.equal(paymentPosts,1);
     console.log('P0_FINALITY_VERIFIED_CAPTURE_8_WAY_ONE_RECEIPT_ONE_OUTBOX=PASS');
 
+    // Late webhook retries are legitimate after a captured authority leaves
+    // intent_created; the exact signed inbox event is ACKed, never reinserted.
+    const lateReplays=await Promise.all(Array.from({length:8},(_,i)=>
+      (i%2===0?inboxA:inboxB).receiveSignedTestWebhook(raw,signature)));
+    assert.ok(lateReplays.every(x=>x.duplicate===true &&
+      x.eventId===webhookId && x.authorityId===intent.authorityId));
+    assert.equal(await getCount('inbox',null,intent.authorityId),1);
+    assert.equal(await getCount('outbox',null,intent.authorityId),1);
+    assert.equal(await getCount('capture',null,intent.authorityId),1);
+    // Even a correctly signed new event after capture is not a replay.
+    const fresh=Buffer.from(JSON.stringify({
+      ...payload,id:'evt_QAP0POSTCAPTURENEW20261014',
+    }));
+    const freshSignature='t='+t+',v1='+crypto.createHmac('sha256',
+      process.env.QA_WEBHOOK_TEST_SECRET)
+      .update(String(t)).update('.').update(fresh).digest('hex');
+    await assert.rejects(
+      ()=>inboxA.receiveSignedTestWebhook(fresh,freshSignature),
+      /qa_stripe_payment_intent_not_reserved_or_active/);
+    // The identical event ID with different raw signed payload remains a
+    // collision after capture. Never allow identity poisoning in the inbox.
+    await assert.rejects(
+      ()=>inboxB.receiveSignedTestWebhook(changed,changedSig),
+      /qa_stripe_event_id_payload_collision_rejected/);
+    assert.equal(await getCount('inbox',null,intent.authorityId),1);
+    console.log('P0_WEBHOOK_POSTCAPTURE_EXACT_8_REPLAYS_ACK_NO_NEW_EVENTS=PASS');
+
     assert.equal(await commerce.merchantTransition(
       merchant,membership,order.orderId,'accepted'),'accepted');
     assert.equal(await commerce.merchantTransition(
@@ -382,6 +409,17 @@ test('single PG17 trace: durable order -> signed inbox -> provider capture -> ou
     assert.equal(paymentPosts,1);
     assert.ok(providerReads>=2);
     console.log('P0_FINALITY_REFUND_ONE_HOLD_OUTBOX_COURIER_PICKUP_DENIED=PASS');
+
+    // Replayed original webhook after a refund hold is a pure acknowledgement,
+    // never a release of funds or dispatch eligibility.
+    const afterHoldReplay=await inboxA.receiveSignedTestWebhook(raw,signature);
+    assert.equal(afterHoldReplay.duplicate,true);
+    assert.equal(await getCount('inbox',null,intent.authorityId),1);
+    assert.equal(await getCount('capture',null,intent.authorityId),1);
+    assert.equal(await getCount('hold',null,intent.authorityId),1);
+    assert.equal(await getCount('outbox',null,intent.authorityId),2);
+    assert.equal((await readReceipt(order.orderId)).dispatchEligible,false);
+    console.log('P0_WEBHOOK_POSTREFUND_EXACT_REPLAY_NEVER_REOPENS_DISPATCH=PASS');
 
     // Outbox events cannot be deleted/changed, even by SQL owner.
     await assert.rejects(
