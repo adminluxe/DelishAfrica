@@ -85,7 +85,7 @@ BEGIN
       WHERE d.event_id=q.event_id)
     ORDER BY q.recorded_at,q.event_id
     LIMIT 1000
-  ON CONFLICT(event_id) DO NOTHING;
+  ON CONFLICT ON CONSTRAINT da_qa_financial_delivery_state_020_pkey DO NOTHING;
 
   -- Last attempt crashed and its lease expired: terminal DLQ, not limbo.
   UPDATE public.da_qa_financial_delivery_state_020 d
