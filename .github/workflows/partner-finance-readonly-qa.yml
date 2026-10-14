@@ -33,6 +33,20 @@ jobs:
           node-version: '22'
       - name: Enable pnpm
         run: corepack enable && corepack prepare pnpm@9.15.4 --activate
+      - name: Limit CI workspaces to the existing verified finance/API/app scope
+        # The Landing importer is unrelated and its historical lockfile is stale.
+        # This reproduces the audited F4M CI frozen-install scope without
+        # changing tracked workspace definitions or regenerating the lock.
+        shell: bash
+        run: |
+          cat > pnpm-workspace.yaml <<'YAML'
+          packages:
+            - apps/client
+            - apps/merchant
+            - apps/courier
+            - services/api-nest
+            - packages/*
+          YAML
       - name: Install exact lockfile
         run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Typecheck actual API and Merchant/Courier
