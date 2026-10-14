@@ -36,6 +36,7 @@ const ROUTES: RouteCard[] = [
   { eyebrow: "INTELLIGENCE", title: "Assistant de trajet", body: "ETA, score terrain et acceptation authentifiée.", path: "/route-oracle" },
   { eyebrow: "NAVIGATION", title: "Carte en temps réel", body: "Retrait, itinéraire et progression de la mission.", path: "/courier-real-map" },
   { eyebrow: "PRÉSENCE", title: "Mon espace", body: "Disponibilité, zone active, confiance et profil terrain.", path: "/courier-space" },
+  { eyebrow: "GAINS", title: "Mon portefeuille", body: "Statut financier sécurisé de mes livraisons — aucun retrait.", path: "/finances" },
 ];
 
 function extractOrders(payload: any): any[] {
