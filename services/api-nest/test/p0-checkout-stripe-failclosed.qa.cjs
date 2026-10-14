@@ -133,3 +133,83 @@ test('legacy API reconciliation remains declared; synthetic controllers not prom
   assert.ok(!module.includes('PartnerFinanceReadonlyQaController'));
   console.log('QA_PASS=LEGACY_RECONCILIATION_NOT_REMOVED');
 });
+
+
+const os = require('node:os');
+function syntheticStore(run) {
+  const folder=fs.mkdtempSync(path.join(os.tmpdir(),'da-orders-durable-p0-'));
+  const file=path.join(folder,'orders-qa.json');
+  const previous=process.env.DA_DEMO_ORDERS_STORE_FILE;
+  const modulePath=require.resolve('../src/orders/orders.demo.store.ts');
+  process.env.DA_DEMO_ORDERS_STORE_FILE=file;
+  delete require.cache[modulePath];
+  try {
+    const store=require(modulePath);
+    return run({store,file,folder});
+  } finally {
+    delete require.cache[modulePath];
+    if(previous===undefined) delete process.env.DA_DEMO_ORDERS_STORE_FILE;
+    else process.env.DA_DEMO_ORDERS_STORE_FILE=previous;
+    fs.rmSync(folder,{recursive:true,force:true});
+  }
+}
+
+test('VPS-matching order store JSON persists and rereads synthetic order',()=>{
+  syntheticStore(({store,file,folder})=>{
+    assert.equal(fs.existsSync(file),false);
+    const created=store.createDemoOrder({
+      id:'QA_ORDER_PERSISTED',
+      partnerSlug:'qa-partner',
+      items:[{id:'qa-item',name:'Synthetic QA only',quantity:1,price:1}],
+      total:1,
+    });
+    assert.equal(created.id,'QA_ORDER_PERSISTED');
+    assert.equal(fs.existsSync(file),true);
+    const stat=fs.statSync(file);
+    assert.equal(stat.mode&0o777,0o600);
+    assert.equal(store.getDemoOrder('QA_ORDER_PERSISTED').id,created.id);
+    const onDisk=JSON.parse(fs.readFileSync(file,'utf8'));
+    assert.equal(onDisk.orders.length,1);
+    assert.equal(onDisk.orders[0].id,created.id);
+    assert.equal(fs.readdirSync(folder).filter(name=>name.endsWith('.tmp')).length,0);
+    console.log('QA_PASS=ORDER_JSON_WRITE_READBACK');
+  });
+});
+
+test('corrupted on-disk order store is NEVER misread as empty',()=>{
+  syntheticStore(({store,file})=>{
+    fs.writeFileSync(file,'{not_json',{mode:0o600});
+    assert.throws(()=>store.listDemoOrders(),/orders_persistence_unavailable:/);
+    assert.throws(()=>store.createDemoOrder({id:'QA_SHOULD_FAIL'}),/orders_persistence_unavailable:/);
+    console.log('QA_PASS=CORRUPTED_ORDER_STORE_FAILS_CLOSED');
+  });
+});
+
+test('disk write failure raises and never returns success or phantom order',()=>{
+  syntheticStore(({store,file})=>{
+    const realWrite=fs.writeFileSync;
+    let deniedWrites=0;
+    fs.writeFileSync=function(target,...args){
+      const dest=String(target);
+      if(dest.startsWith(file+'.')&&dest.endsWith('.tmp')){
+        deniedWrites++;
+        const err=new Error('qa_simulated_disk_full');
+        err.code='ENOSPC';
+        throw err;
+      }
+      return realWrite.call(this,target,...args);
+    };
+    try {
+      assert.throws(
+        ()=>store.createDemoOrder({id:'QA_MUST_NOT_CONFIRM',items:[{id:'qa',name:'Only QA',quantity:1,price:1}]}),
+        /qa_simulated_disk_full/
+      );
+    } finally {
+      fs.writeFileSync=realWrite;
+    }
+    assert.equal(deniedWrites,1);
+    assert.equal(fs.existsSync(file),false);
+    assert.equal(store.listDemoOrders().length,0);
+    console.log('QA_PASS=ENOSPC_ORDER_WRITE_FAILS_CLOSED');
+  });
+});
