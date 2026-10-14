@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/p0-checkout-stripe-failclosed-qa.yml'
       - 'services/api-nest/src/payments/payments.service.ts'
+      - 'services/api-nest/src/orders/orders.demo.store.ts'
       - 'apps/client/app/checkout-preflight.tsx'
       - 'services/api-nest/test/p0-checkout-stripe-failclosed.qa.cjs'
   pull_request:
@@ -15,6 +16,7 @@ on:
     paths:
       - '.github/workflows/p0-checkout-stripe-failclosed-qa.yml'
       - 'services/api-nest/src/payments/payments.service.ts'
+      - 'services/api-nest/src/orders/orders.demo.store.ts'
       - 'apps/client/app/checkout-preflight.tsx'
       - 'services/api-nest/test/p0-checkout-stripe-failclosed.qa.cjs'
   workflow_dispatch:
@@ -60,6 +62,12 @@ jobs:
           assert(api.includes('this.assertDurableCheckoutAuthority();'));
           assert(api.includes('checkout_durable_order_authority_not_certified'));
           assert(api.includes('checkoutIntentCreationEnabled: false'));
+          const orders=fs.readFileSync('services/api-nest/src/orders/orders.demo.store.ts','utf8');
+          assert(orders.includes("orders_persistence_unavailable:"));
+          assert(orders.includes('fs.fsyncSync(descriptor)'));
+          assert(orders.includes('fs.renameSync(temporary, STORE_FILE)'));
+          assert(!orders.includes('Never break the API flow because persistence failed'));
+          console.log('QA_ORDER_STORE_FAILCLOSED_STATIC=PASS');
           const module=fs.readFileSync('services/api-nest/src/app.module.ts','utf8');
           assert(!module.includes('NativeClientCheckoutQaController'));
           console.log('QA_STATIC_PAYMENTS_HARDSTOP=PASS');
