@@ -36,34 +36,41 @@ function ensureDir(filePath: string): void {
 }
 
 function safeRead(): AnyOrder[] {
+  if (!fs.existsSync(STORE_FILE)) return [];
+
   try {
-    if (!fs.existsSync(STORE_FILE)) return [];
     const raw = fs.readFileSync(STORE_FILE, 'utf8');
-    if (!raw.trim()) return [];
+    if (!raw.trim()) throw new Error('orders_store_empty');
     const parsed = JSON.parse(raw);
 
     if (Array.isArray(parsed)) return parsed;
     if (parsed && Array.isArray(parsed.orders)) return parsed.orders;
 
-    return [];
-  } catch {
-    return [];
+    throw new Error('orders_store_invalid_shape');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'orders_store_read_failed';
+    throw new Error(`orders_persistence_unavailable:${message}`);
   }
 }
 
 function safeWrite(nextOrders: AnyOrder[]): void {
-  try {
-    ensureDir(STORE_FILE);
-    const payload = {
-      version: STORE_VERSION,
-      updatedAt: nowIso(),
-      count: nextOrders.length,
-      orders: nextOrders,
-    };
-    fs.writeFileSync(STORE_FILE, JSON.stringify(payload, null, 2), 'utf8');
-  } catch {
-    // Never break the API flow because persistence failed.
-  }
+  ensureDir(STORE_FILE);
+  const payload = {
+    version: STORE_VERSION,
+    updatedAt: nowIso(),
+    count: nextOrders.length,
+    orders: nextOrders,
+  };
+  const temporary = `${STORE_FILE}.${process.pid}.${Date.now()}.tmp`;
+  fs.writeFileSync(temporary, JSON.stringify(payload, null, 2), {
+    encoding: 'utf8',
+    mode: 0o600,
+  });
+  const descriptor = fs.openSync(temporary, 'r');
+  fs.fsyncSync(descriptor);
+  fs.closeSync(descriptor);
+  fs.renameSync(temporary, STORE_FILE);
+  fs.chmodSync(STORE_FILE, 0o600);
 }
 
 function boot(): void {
