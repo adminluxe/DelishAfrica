@@ -1,0 +1,65 @@
+name: Partner financial read-only QA — signed identity boundary
+on:
+  pull_request:
+    branches:
+      - feat/f4m-nonsuperuser-operational-sql-qa-20261013
+    paths:
+      - '.github/workflows/partner-finance-readonly-qa.yml'
+      - 'docs/DA_P0_PARTNER_FINANCE_STAGING_2026-10-14.md'
+      - 'docs/DA_ARCHITECTURE_PIN_PARTNER_FINANCE_READONLY_2026-10-14.md'
+      - 'apps/merchant/app/finances.tsx'
+      - 'apps/merchant/app/index.tsx'
+      - 'apps/merchant/utils/daFinanceReadOnly.ts'
+      - 'apps/courier/app/finances.tsx'
+      - 'apps/courier/app/index.tsx'
+      - 'apps/courier/utils/daFinanceReadOnly.ts'
+      - 'services/api-nest/src/client-commerce/partner-finance-readonly.qa.controller.ts'
+      - 'services/api-nest/test/partner-finance-readonly.contract.test.mjs'
+      - 'services/api-nest/test/partner-finance-readonly.http.qa.test.cjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract-and-typecheck:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout immutable reviewed source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Setup pinned Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Enable pnpm
+        run: corepack enable && corepack prepare pnpm@9.15.4 --activate
+      - name: Limit CI workspaces to the existing verified finance/API/app scope
+        # The Landing importer is unrelated and its historical lockfile is stale.
+        # This reproduces the audited F4M CI frozen-install scope without
+        # changing tracked workspace definitions or regenerating the lock.
+        shell: bash
+        run: |
+          cat > pnpm-workspace.yaml <<'YAML'
+          packages:
+            - apps/client
+            - apps/merchant
+            - apps/courier
+            - services/api-nest
+            - packages/*
+          YAML
+      - name: Install exact lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Typecheck actual API and Merchant/Courier
+        run: |
+          pnpm exec tsc --noEmit -p services/api-nest/tsconfig.json
+          pnpm exec tsc --noEmit -p apps/merchant/tsconfig.json
+          pnpm exec tsc --noEmit -p apps/courier/tsconfig.json
+      - name: Run strict synthetic money, cross-role and production boundary assertions
+        run: node --experimental-strip-types --test services/api-nest/test/partner-finance-readonly.contract.test.mjs
+      - name: Real Nest HTTP summary adapter negative tests (synthetic mock, no wallets)
+        env:
+          TS_NODE_PROJECT: services/api-nest/tsconfig.json
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/partner-finance-readonly.http.qa.test.cjs

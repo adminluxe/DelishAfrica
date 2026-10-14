@@ -33,6 +33,8 @@ type Ownership = {
   error?: string;
 };
 
+const FINANCE_QA_VISIBLE = __DEV__ && process.env.EXPO_PUBLIC_DA_FINANCE_QA_ONLY === "YES";
+
 type RouteCard = {
   eyebrow: string;
   title: string;
@@ -44,6 +46,7 @@ const ROUTES: RouteCard[] = [
   { eyebrow: "COMMANDES", title: "Décider", body: "Accepter, préparer, marquer prête et suivre le service.", path: "/orders" },
   { eyebrow: "CUISINE", title: "Rythme en cuisine", body: "Cadence, priorités et lecture opérationnelle du service.", path: "/kitchen-pulse" },
   { eyebrow: "ÉTABLISSEMENT", title: "Mon espace", body: "Présence, confiance, territoire et disponibilité.", path: "/partner-space" },
+  { eyebrow: "FINANCES", title: "Mon portefeuille", body: "Statut financier et lecture vérifiée — aucun retrait.", path: "/finances" },
   { eyebrow: "PILOTAGE", title: "Tableau de bord", body: "Vision synthétique des signaux utiles au restaurant.", path: "/ops-dashboard" },
 ];
 
@@ -279,7 +282,7 @@ export default function MerchantSurfaceHome() {
 
         <Text style={styles.sectionLabel}>POSTES DE TRAVAIL</Text>
         <View style={styles.grid}>
-          {ROUTES.map((item) => (
+          {ROUTES.filter((item) => item.path !== "/finances" || FINANCE_QA_VISIBLE).map((item) => (
             <Pressable
               key={item.path}
               onPress={() => go(item.path)}

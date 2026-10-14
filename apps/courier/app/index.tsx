@@ -29,6 +29,8 @@ const API = RAW_API.replace(/\/$/, "").endsWith("/api/v1")
   ? RAW_API.replace(/\/$/, "")
   : `${RAW_API.replace(/\/$/, "")}/api/v1`;
 
+const FINANCE_QA_VISIBLE = __DEV__ && process.env.EXPO_PUBLIC_DA_FINANCE_QA_ONLY === "YES";
+
 type RouteCard = { eyebrow: string; title: string; body: string; path: string };
 
 const ROUTES: RouteCard[] = [
@@ -36,6 +38,7 @@ const ROUTES: RouteCard[] = [
   { eyebrow: "INTELLIGENCE", title: "Assistant de trajet", body: "ETA, score terrain et acceptation authentifiée.", path: "/route-oracle" },
   { eyebrow: "NAVIGATION", title: "Carte en temps réel", body: "Retrait, itinéraire et progression de la mission.", path: "/courier-real-map" },
   { eyebrow: "PRÉSENCE", title: "Mon espace", body: "Disponibilité, zone active, confiance et profil terrain.", path: "/courier-space" },
+  { eyebrow: "GAINS", title: "Mon portefeuille", body: "Statut financier sécurisé de mes livraisons — aucun retrait.", path: "/finances" },
 ];
 
 function extractOrders(payload: any): any[] {
@@ -235,7 +238,7 @@ export default function CourierSurfaceHome() {
 
         <Text style={styles.sectionLabel}>OUTILS TERRAIN</Text>
         <View style={styles.grid}>
-          {ROUTES.map((item) => (
+          {ROUTES.filter((item) => item.path !== "/finances" || FINANCE_QA_VISIBLE).map((item) => (
             <Pressable
               key={item.path}
               onPress={() => go(item.path)}
