@@ -5,6 +5,8 @@ on:
       - feat/f4m-nonsuperuser-operational-sql-qa-20261013
     paths:
       - '.github/workflows/partner-finance-readonly-qa.yml'
+      - 'docs/DA_P0_PARTNER_FINANCE_STAGING_2026-10-14.md'
+      - 'docs/DA_ARCHITECTURE_PIN_PARTNER_FINANCE_READONLY_2026-10-14.md'
       - 'apps/merchant/app/finances.tsx'
       - 'apps/merchant/app/index.tsx'
       - 'apps/merchant/utils/daFinanceReadOnly.ts'
