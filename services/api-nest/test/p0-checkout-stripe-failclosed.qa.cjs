@@ -12,8 +12,26 @@ if (process.env.GITHUB_ACTIONS !== 'true' || process.env.QA_SYNTHETIC_ONLY !== '
 }
 require('reflect-metadata');
 require('ts-node/register/transpile-only');
-const { PaymentsService } = require('../src/payments/payments.service.ts');
-const { PaymentsController } = require('../src/payments/payments.controller.ts');
+// The P0 checkout guard is exercised through the real PaymentsService, but
+// its CatalogOrderPolicyService DI metadata must not bootstrap PostgreSQL.
+// Return a synthetic injectable class ONLY for that one metadata import.
+const Module = require('node:module');
+const originalLoader = Module._load;
+let PaymentsService, PaymentsController;
+class SyntheticCatalogPolicyQaOnly {}
+try {
+  Module._load = function (name, parent, isMain) {
+    if (name === '../order-policy/catalog-order-policy.service' &&
+        parent?.filename?.endsWith('/payments/payments.service.ts')) {
+      return { CatalogOrderPolicyService: SyntheticCatalogPolicyQaOnly };
+    }
+    return originalLoader.call(this, name, parent, isMain);
+  };
+  ({ PaymentsService } = require('../src/payments/payments.service.ts'));
+  ({ PaymentsController } = require('../src/payments/payments.controller.ts'));
+} finally {
+  Module._load = originalLoader;
+}
 const { ServiceUnavailableException } = require('@nestjs/common');
 
 const ROOT = path.resolve(__dirname, '..');
