@@ -5,24 +5,34 @@ on:
     branches:
       - security/p0-postgres-first-qa-ports-20261014
       - security/p0-pg-first-signed-http-qa-20261014
+      - security/p0-financial-finality-outbox-qa-20261014
     paths:
       - '.github/workflows/p0-pg-first-checkout-ports-qa.yml'
       - 'services/api-nest/src/client-commerce/native-client-checkout-pg-first.qa.ports.ts'
       - 'services/api-nest/test/p0-pg-first-ports.pg-qa.integration.cjs'
       - 'services/api-nest/test/p0-pg-first-signed-http.pg-qa.integration.cjs'
+      - 'services/api-nest/test/p0-financial-finality-outbox.pg-qa.integration.cjs'
+      - 'services/api-nest/migrations/client-commerce/20261014_018_financial_finality_outbox_qa_only.sql'
+      - 'services/api-nest/migrations/client-commerce/20261014_019_webhook_postcapture_exact_replay_qa_only.sql'
       - 'docs/DA_P0_POSTGRES_FIRST_PORTS_2026-10-14.md'
       - 'docs/DA_P0_SIGNED_HTTP_POSTGRES_STRIPE_QA_2026-10-14.md'
+      - 'docs/DA_P0_FINALITY_OUTBOX_SINGLE_TRACE_2026-10-14.md'
   pull_request:
     branches:
       - security/p0-checkout-stripe-failclosed-20261014
       - security/p0-postgres-first-qa-ports-20261014
+      - security/p0-pg-first-signed-http-qa-20261014
     paths:
       - '.github/workflows/p0-pg-first-checkout-ports-qa.yml'
       - 'services/api-nest/src/client-commerce/native-client-checkout-pg-first.qa.ports.ts'
       - 'services/api-nest/test/p0-pg-first-ports.pg-qa.integration.cjs'
       - 'services/api-nest/test/p0-pg-first-signed-http.pg-qa.integration.cjs'
+      - 'services/api-nest/test/p0-financial-finality-outbox.pg-qa.integration.cjs'
+      - 'services/api-nest/migrations/client-commerce/20261014_018_financial_finality_outbox_qa_only.sql'
+      - 'services/api-nest/migrations/client-commerce/20261014_019_webhook_postcapture_exact_replay_qa_only.sql'
       - 'docs/DA_P0_POSTGRES_FIRST_PORTS_2026-10-14.md'
       - 'docs/DA_P0_SIGNED_HTTP_POSTGRES_STRIPE_QA_2026-10-14.md'
+      - 'docs/DA_P0_FINALITY_OUTBOX_SINGLE_TRACE_2026-10-14.md'
   workflow_dispatch:
 
 permissions:
@@ -54,6 +64,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
           node --check services/api-nest/test/p0-pg-first-ports.pg-qa.integration.cjs
           node --check services/api-nest/test/p0-pg-first-signed-http.pg-qa.integration.cjs
+          node --check services/api-nest/test/p0-financial-finality-outbox.pg-qa.integration.cjs
           node - <<'NODE'
           const fs=require('node:fs'),assert=require('node:assert/strict');
           const src=fs.readFileSync(
@@ -81,6 +92,22 @@ jobs:
           assert(testSrc.includes("process.env.GITHUB_ACTIONS !== 'true'"));
           assert(!testSrc.includes('194.164.72.250'));
           assert(!/sk_live_|pk_live_|whsec_live|continue-on-error|audit fix --force/i.test(testSrc));
+          const finality=fs.readFileSync('services/api-nest/test/p0-financial-finality-outbox.pg-qa.integration.cjs','utf8');
+          const migration=fs.readFileSync('services/api-nest/migrations/client-commerce/20261014_018_financial_finality_outbox_qa_only.sql','utf8');
+          assert(finality.includes('P0_FINANCIAL_FINALITY_SINGLE_TRACE_QA=PASS_NO_LIVE'));
+          assert(finality.includes('QA_SYNTHETIC_ONLY'));
+          assert(migration.includes('AFTER INSERT ON public.da_stripe_test_financial_receipts_qa'));
+          assert(migration.includes('AFTER INSERT ON public.da_stripe_test_financial_holds_qa'));
+          assert(migration.includes('da_qa_financial_outbox_read_018'));
+          const replaySql=fs.readFileSync('services/api-nest/migrations/client-commerce/20261014_019_webhook_postcapture_exact_replay_qa_only.sql','utf8');
+          assert(replaySql.includes('CREATE OR REPLACE FUNCTION public.da_qa_record_signed_test_webhook'));
+          assert(replaySql.includes("state IN ('intent_created','succeeded')"));
+          assert(replaySql.includes("AND state='intent_created'"));
+          assert(!/\b(?:GRANT|DROP|TRUNCATE|ALTER TABLE)\b/i.test(replaySql));
+          assert(finality.includes('P0_WEBHOOK_POSTCAPTURE_EXACT_8_REPLAYS_ACK_NO_NEW_EVENTS=PASS'));
+          assert(finality.includes('P0_WEBHOOK_POSTREFUND_EXACT_REPLAY_NEVER_REOPENS_DISPATCH=PASS'));
+          assert(!/\b(?:DROP|TRUNCATE)\s+TABLE\b|\bDELETE\s+FROM\b|\bCREATE\s+EXTENSION\b/i.test(migration));
+          assert(!/sk_live_|pk_live_|194\.164\.72\.250|continue-on-error/i.test(finality));
           console.log('P0_STATIC_ISOLATION=PASS');
           NODE
           echo "P0_EXACT_SHA=$EXPECTED_SHA"
@@ -123,6 +150,9 @@ jobs:
             'stripe-test-intent-create.pg-qa.adapter',
             'client-order-receipt.pg-qa.adapter',
             'native-client-checkout-pg-first.qa.ports',
+            'stripe-test-webhook-inbox.pg-qa.adapter',
+            'stripe-test-financial-reconcile.pg-qa.adapter',
+            'merchant-courier-fulfillment.pg-qa.adapter',
           ];
           for(const name of names){
             const f='services/api-nest/src/client-commerce/'+name+'.ts';
@@ -187,6 +217,8 @@ jobs:
             'QA_COMMERCE_DB_HOST=127.0.0.1',
             'QA_COMMERCE_DB_NAME=postgres',
             'QA_COMMERCE_HMAC_KEY='+crypto.randomBytes(32).toString('hex'),
+            'QA_WEBHOOK_TEST_SECRET=whsec_'+crypto.randomBytes(32).toString('hex'),
+            'QA_FINANCE_HMAC_KEY='+crypto.randomBytes(32).toString('hex'),
             '',
           ].join('\n'),{mode:0o600});
           console.log('P0_EPHEMERAL_HMAC=GENERATED_NOT_PRINTED');
@@ -271,6 +303,32 @@ jobs:
             node:22-alpine node --test \
               /qa-tests/p0-pg-first-signed-http.pg-qa.integration.cjs
           echo "P0_SIGNED_HTTP_PG_FIRST_REAL_NEST=PASS_SYNTHETIC_ONLY"
+          # Migrations 007 / 008 add the pre-certified restricted fulfillment
+          # and shared refund/pickup order-row lock. Migration 018 is new QA
+          # only, applied exclusively after the existing tests complete.
+          for name in \
+            20261013_007_merchant_courier_fulfillment_qa_only.sql \
+            20261013_008_refund_dispatch_row_lock_qa_only.sql \
+            20261014_018_financial_finality_outbox_qa_only.sql \
+            20261014_019_webhook_postcapture_exact_replay_qa_only.sql
+          do
+            docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
+              -h 127.0.0.1 -U postgres -d postgres \
+              < "services/api-nest/migrations/client-commerce/$name" >/dev/null
+          done
+          echo "P0_QA_PG17_FULFILLMENT_REFUND_OUTBOX=CREATED_EPHEMERAL_ONLY"
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$NAME" --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+            --env-file "$QA_DIR/qa.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node --test \
+              /qa-tests/p0-financial-finality-outbox.pg-qa.integration.cjs
+          echo "P0_FINALITY_OUTBOX_TRACED=PASS_SYNTHETIC_PG17_ONLY"
           echo "P0_STRIPE_LIVE_REQUESTS=ZERO"
           echo "P0_VPS_RUNTIME_MUTATIONS=ZERO"
           echo "P0_PROVIDER_NETWORK=FAKE_ONLY"
