@@ -13,6 +13,7 @@ on:
       - 'apps/courier/utils/daFinanceReadOnly.ts'
       - 'services/api-nest/src/client-commerce/partner-finance-readonly.qa.controller.ts'
       - 'services/api-nest/test/partner-finance-readonly.contract.test.mjs'
+      - 'services/api-nest/test/partner-finance-readonly.http.qa.test.cjs'
   workflow_dispatch:
 
 permissions:
@@ -56,3 +57,7 @@ jobs:
           pnpm exec tsc --noEmit -p apps/courier/tsconfig.json
       - name: Run strict synthetic money, cross-role and production boundary assertions
         run: node --experimental-strip-types --test services/api-nest/test/partner-finance-readonly.contract.test.mjs
+      - name: Real Nest HTTP summary adapter negative tests (synthetic mock, no wallets)
+        env:
+          TS_NODE_PROJECT: services/api-nest/tsconfig.json
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/partner-finance-readonly.http.qa.test.cjs
