@@ -38,6 +38,16 @@ jobs:
           set -Eeuo pipefail
           corepack enable
           corepack prepare pnpm@9.15.4 --activate
+          # Match the already-certified API-only QA workspace: the landing
+          # importer's lockfile is independently stale on main.
+          cat > pnpm-workspace.yaml <<'YAML'
+          packages:
+            - apps/client
+            - apps/merchant
+            - apps/courier
+            - services/api-nest
+            - packages/*
+          YAML
           pnpm install --frozen-lockfile --ignore-scripts
       - name: Build API only
         run: pnpm --dir services/api-nest run build
