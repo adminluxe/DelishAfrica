@@ -18,7 +18,10 @@ export class PaymentsController {
 
   @Get('health')
   health() {
-    return this.payments.health();
+    // Public liveness contract: do not reveal PSP configuration, webhook
+    // state, storage backends or financial implementation to anonymous users.
+    const status = this.payments.health();
+    return { ok: status.ok, service: status.service };
   }
 
   @Get('providers')
