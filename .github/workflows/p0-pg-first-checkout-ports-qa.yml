@@ -1,0 +1,194 @@
+name: P0 PG-first checkout ports — isolated DB + fake Stripe
+
+on:
+  push:
+    branches:
+      - security/p0-postgres-first-qa-ports-20261014
+    paths:
+      - '.github/workflows/p0-pg-first-checkout-ports-qa.yml'
+      - 'services/api-nest/src/client-commerce/native-client-checkout-pg-first.qa.ports.ts'
+      - 'services/api-nest/test/p0-pg-first-ports.pg-qa.integration.cjs'
+      - 'docs/DA_P0_POSTGRES_FIRST_PORTS_2026-10-14.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p0-pg-first-checkout-ports-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  isolated-composition:
+    name: Exact SHA — TypeScript + PG17 atomic order + fake provider replays
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    env:
+      QA_SYNTHETIC_ONLY: 'YES'
+      DA_QA_ISOLATED_CLIENT_COMMERCE_ENABLED: 'YES'
+    steps:
+      - name: Checkout exact head, no reusable credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Verify immutable SHA and production disconnection
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          node --check services/api-nest/test/p0-pg-first-ports.pg-qa.integration.cjs
+          node - <<'NODE'
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          const src=fs.readFileSync(
+            'services/api-nest/src/client-commerce/native-client-checkout-pg-first.qa.ports.ts','utf8');
+          const testSrc=fs.readFileSync(
+            'services/api-nest/test/p0-pg-first-ports.pg-qa.integration.cjs','utf8');
+          const app=fs.readFileSync('services/api-nest/src/app.module.ts','utf8');
+          const payments=fs.readFileSync('services/api-nest/src/payments/payments.service.ts','utf8');
+          assert(!app.includes('QaIsolatedClientCommerceController'));
+          assert(!app.includes('createQaPgFirstCheckoutPorts'));
+          assert(!app.includes('native-client-checkout-pg-first.qa.ports'));
+          assert(payments.includes('this.assertDurableCheckoutAuthority();'));
+          assert(src.includes('QaCanonicalOrderSnapshotPgAdapter'));
+          assert(src.includes('QaStripeTestIntentCreator'));
+          assert(src.includes('QaClientOwnedOrderReceiptReader'));
+          assert(src.includes("process.env.NODE_ENV === 'production'"));
+          assert(src.includes('qa_pg_first_ports_disconnected_ci_only'));
+          assert(src.includes('syntheticOnly !== true'));
+          assert(testSrc.includes('P0_PG_FIRST_COMPOSITE=PASS_SYNTHETIC_PG17_NO_LIVE'));
+          assert(testSrc.includes("process.env.GITHUB_ACTIONS !== 'true'"));
+          assert(!testSrc.includes('194.164.72.250'));
+          assert(!/sk_live_|pk_live_|whsec_live|continue-on-error|audit fix --force/i.test(testSrc));
+          console.log('P0_STATIC_ISOLATION=PASS');
+          NODE
+          echo "P0_EXACT_SHA=$EXPECTED_SHA"
+      - name: Node 22 LTS for frozen workspace TypeScript
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Reuse certified F4M workspace-only install recipe
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+          cat > pnpm-workspace.yaml <<'YAML'
+          packages:
+            - apps/client
+            - apps/merchant
+            - apps/courier
+            - services/api-nest
+            - packages/*
+          YAML
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm exec tsc --noEmit -p services/api-nest/tsconfig.json
+          echo "P0_API_TYPESCRIPT=PASS"
+      - name: Compile only pre-existing candidate adapters into disposable QA runtime
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          umask 077
+          QA_DIR="$RUNNER_TEMP/da-p0-pgfirst-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          mkdir -p "$QA_DIR/deps" "$QA_DIR/built"
+          npm --prefix "$QA_DIR/deps" install --no-audit --no-fund --ignore-scripts \
+            --no-save pg@8.16.3 typescript@5.9.3 >/dev/null
+          NODE_PATH="$QA_DIR/deps/node_modules" node - "$QA_DIR/built" <<'NODE'
+          const fs=require('node:fs'),ts=require('typescript'),path=require('node:path');
+          const names=[
+            'client-commerce-canonical-quote.pg-qa.adapter',
+            'client-commerce.pg-qa.adapter',
+            'client-order-snapshot.pg-qa.adapter',
+            'stripe-test-intent-create.pg-qa.adapter',
+            'client-order-receipt.pg-qa.adapter',
+            'native-client-checkout-pg-first.qa.ports',
+          ];
+          for(const name of names){
+            const f='services/api-nest/src/client-commerce/'+name+'.ts';
+            const out=ts.transpileModule(fs.readFileSync(f,'utf8'),{
+              fileName:f,reportDiagnostics:true,
+              compilerOptions:{module:ts.ModuleKind.CommonJS,
+                target:ts.ScriptTarget.ES2022,esModuleInterop:true,strict:true},
+            });
+            if(out.diagnostics?.some(x=>x.category===ts.DiagnosticCategory.Error))
+              throw Error('P0_ADAPTER_TRANSPILE_FAILED');
+            fs.writeFileSync(path.join(process.argv[2],name+'.js'),
+              out.outputText,{mode:0o600});
+          }
+          console.log('P0_REUSED_ADAPTERS_TRANSPILE=PASS');
+          NODE
+          node - "$QA_DIR/qa.env" <<'NODE'
+          const fs=require('node:fs'),crypto=require('node:crypto');
+          fs.writeFileSync(process.argv[2],[
+            'GITHUB_ACTIONS=true',
+            'QA_SYNTHETIC_ONLY=YES',
+            'DA_QA_ISOLATED_CLIENT_COMMERCE_ENABLED=YES',
+            'QA_COMMERCE_DB_HOST=127.0.0.1',
+            'QA_COMMERCE_DB_NAME=postgres',
+            'QA_COMMERCE_HMAC_KEY='+crypto.randomBytes(32).toString('hex'),
+            '',
+          ].join('\n'),{mode:0o600});
+          console.log('P0_EPHEMERAL_HMAC=GENERATED_NOT_PRINTED');
+          NODE
+          chmod 755 "$QA_DIR" "$QA_DIR/deps" "$QA_DIR/built"
+          chmod -R a+rX "$QA_DIR/deps" "$QA_DIR/built"
+          chmod 600 "$QA_DIR/qa.env"
+      - name: PG17 network-none, actual SQL reservation, fake Stripe, fault injection
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          NAME="da-p0-checkout-pg-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          QA_DIR="$RUNNER_TEMP/da-p0-pgfirst-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          cleanup() {
+            docker rm -f "$NAME" >/dev/null 2>&1 || true
+            rm -rf "$QA_DIR"
+            echo "P0_ONLY_EPHEMERAL_RESOURCES_CLEANED=YES"
+          }
+          trap cleanup EXIT
+          docker pull postgres:17-alpine >/dev/null
+          docker pull node:22-alpine >/dev/null
+          docker run -d --rm --name "$NAME" --pull never \
+            --network none --user 70:70 --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 150 --memory 768m \
+            --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev,size=320m,uid=70,gid=70,mode=0700 \
+            --tmpfs /var/run/postgresql:rw,nosuid,nodev,size=16m,uid=70,gid=70,mode=0770 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=64m,uid=70,gid=70,mode=1777 \
+            -e POSTGRES_HOST_AUTH_METHOD=trust \
+            postgres:17-alpine -c listen_addresses=127.0.0.1 >/dev/null
+          ready=false
+          for attempt in $(seq 1 90); do
+            if docker exec "$NAME" pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; then
+              ready=true; break
+            fi
+            sleep 1
+          done
+          test "$ready" = true
+          echo "P0_PG17_NETWORK_NONE_READY=YES"
+          for name in \
+            20261012_001_client_commerce_authority_qa_only.sql \
+            20261012_002_client_commerce_least_privilege_qa_only.sql \
+            20261012_003_stripe_test_webhook_inbox_qa_only.sql \
+            20261012_004_stripe_test_financial_reconciliation_qa_only.sql \
+            20261012_005_client_order_receipt_read_qa_only.sql \
+            20261013_006_canonical_order_snapshot_qa_only.sql
+          do
+            docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
+              -h 127.0.0.1 -U postgres -d postgres \
+              < "services/api-nest/migrations/client-commerce/$name" >/dev/null
+          done
+          echo "P0_EXISTING_QA_SQL_001_TO_006=LOADED_EPHEMERAL_ONLY"
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$NAME" --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+            --env-file "$QA_DIR/qa.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node --test \
+              /qa-tests/p0-pg-first-ports.pg-qa.integration.cjs
+          echo "P0_STRIPE_LIVE_REQUESTS=ZERO"
+          echo "P0_VPS_RUNTIME_MUTATIONS=ZERO"
+          echo "P0_PROVIDER_NETWORK=FAKE_ONLY"
