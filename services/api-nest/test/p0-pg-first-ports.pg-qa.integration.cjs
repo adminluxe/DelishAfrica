@@ -189,7 +189,7 @@ test('P0 actual PG-first ports: durable order, failure, replay, ownership, no LI
 
     // A failing snapshot within BEGIN must roll back the order UUID.
     const injected = {
-      ...app,
+      query: (sql, params) => app.query(sql, params),
       connect: async () => {
         const actual = await app.connect();
         return {
