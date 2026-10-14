@@ -11,6 +11,7 @@ on:
       - 'services/api-nest/test/p0-pg-first-ports.pg-qa.integration.cjs'
       - 'services/api-nest/test/p0-pg-first-signed-http.pg-qa.integration.cjs'
       - 'docs/DA_P0_POSTGRES_FIRST_PORTS_2026-10-14.md'
+      - 'docs/DA_P0_SIGNED_HTTP_POSTGRES_STRIPE_QA_2026-10-14.md'
   pull_request:
     branches:
       - security/p0-checkout-stripe-failclosed-20261014
@@ -21,6 +22,7 @@ on:
       - 'services/api-nest/test/p0-pg-first-ports.pg-qa.integration.cjs'
       - 'services/api-nest/test/p0-pg-first-signed-http.pg-qa.integration.cjs'
       - 'docs/DA_P0_POSTGRES_FIRST_PORTS_2026-10-14.md'
+      - 'docs/DA_P0_SIGNED_HTTP_POSTGRES_STRIPE_QA_2026-10-14.md'
   workflow_dispatch:
 
 permissions:
