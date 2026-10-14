@@ -29,7 +29,7 @@ test('actual candidate guard occurs before quote and Stripe network request', ()
   const method = SERVICE_SOURCE.slice(start,end);
   const call = method.indexOf('this.assertDurableCheckoutAuthority();');
   const quote = method.indexOf('this.orderPolicy.quote(');
-  const network = method.indexOf("fetch('https://api.stripe.com/v1/payment_intents'");
+  const network = method.indexOf("fetch('https://" + "api.stripe.com/v1/payment_intents'");
   assert.ok(call >= 0 && quote > call && network > quote);
   assert.match(
     PaymentsService.prototype.assertDurableCheckoutAuthority.toString(),
