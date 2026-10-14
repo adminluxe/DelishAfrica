@@ -31,6 +31,18 @@ export type QaVerifiedClient = Readonly<{
   ownershipEligible: true;
 }>;
 
+export type QaCanonicalFulfillmentSnapshot = Readonly<{
+  subtotalMinor: number;
+  deliveryFeeMinor: number;
+  lines: ReadonlyArray<Readonly<{
+    sku: string;
+    name: string;
+    category: string;
+    quantity: number;
+    unitAmountMinor: number;
+    lineAmountMinor: number;
+  }>>;
+}>;
 export type QaServerQuote = Readonly<{
   source: 'server-canonical-catalog';
   quoteFingerprint: string;
@@ -38,6 +50,9 @@ export type QaServerQuote = Readonly<{
   merchantSlug: string;
   totalMinor: number;
   currency: string;
+  // Present only for the NEW atomic reservation route in disconnected QA.
+  // Existing synthetic finance tests do not require merchant fulfillment.
+  fulfillment?: QaCanonicalFulfillmentSnapshot;
 }>;
 
 export interface QaOrderReservation {

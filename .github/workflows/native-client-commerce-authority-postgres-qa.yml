@@ -3,11 +3,33 @@ on:
   pull_request:
     paths:
       - '.github/workflows/native-client-commerce-authority-postgres-qa.yml'
+      - 'docs/DA_STRIPE_TEST_RECONCILIATION_QA_2026-10-12.md'
+      - 'docs/DA_ARCHITECTURE_QA_STRIPE_TEST_POSTGRES_PIN_2026-10-12.md'
       - 'services/api-nest/migrations/client-commerce/20261012_001_client_commerce_authority_qa_only.sql'
       - 'services/api-nest/migrations/client-commerce/20261012_002_client_commerce_least_privilege_qa_only.sql'
       - 'services/api-nest/migrations/client-commerce/20261012_003_stripe_test_webhook_inbox_qa_only.sql'
       - 'services/api-nest/src/client-commerce/stripe-test-webhook-inbox.pg-qa.adapter.ts'
       - 'services/api-nest/test/stripe-test-webhook-inbox.pg-qa.integration.cjs'
+      - 'services/api-nest/migrations/client-commerce/20261012_004_stripe_test_financial_reconciliation_qa_only.sql'
+      - 'services/api-nest/migrations/client-commerce/20261012_005_client_order_receipt_read_qa_only.sql'
+      - 'services/api-nest/migrations/client-commerce/20261013_006_canonical_order_snapshot_qa_only.sql'
+      - 'services/api-nest/migrations/client-commerce/20261013_007_merchant_courier_fulfillment_qa_only.sql'
+      - 'services/api-nest/migrations/client-commerce/20261013_008_refund_dispatch_row_lock_qa_only.sql'
+      - 'services/api-nest/migrations/client-commerce/20261013_009_merchant_courier_wallet_qa_only.sql'
+      - 'services/api-nest/test/merchant-courier-wallet.pg-qa.integration.cjs'
+      - 'services/api-nest/src/client-commerce/merchant-courier-wallet.pg-qa.adapter.ts'
+      - 'services/api-nest/test/refund-pickup-row-lock.pg-qa.integration.cjs'
+      - 'services/api-nest/test/native-merchant-courier-fulfillment.pg-qa.sql'
+      - 'services/api-nest/test/merchant-courier-fulfillment.pg-qa.integration.cjs'
+      - 'services/api-nest/src/client-commerce/merchant-courier-fulfillment.pg-qa.adapter.ts'
+      - 'services/api-nest/test/native-client-order-snapshot.pg-qa.sql'
+      - 'services/api-nest/src/client-commerce/client-order-snapshot.pg-qa.adapter.ts'
+      - 'services/api-nest/src/client-commerce/client-order-receipt.pg-qa.adapter.ts'
+      - 'services/api-nest/test/native-client-order-receipt.pg-qa.sql'
+      - 'services/api-nest/src/client-commerce/stripe-test-financial-reconcile.pg-qa.adapter.ts'
+      - 'services/api-nest/test/stripe-test-financial-reconciliation.pg-qa.integration.cjs'
+      - 'services/api-nest/src/client-commerce/stripe-test-intent-create.pg-qa.adapter.ts'
+      - 'services/api-nest/test/stripe-test-intent-create.pg-qa.integration.cjs'
       - 'services/api-nest/test/native-client-commerce-authority.qa.sql'
       - 'services/api-nest/src/client-commerce/client-commerce.pg-qa.adapter.ts'
       - 'services/api-nest/test/client-commerce.pg-qa.integration.cjs'
@@ -86,7 +108,12 @@ jobs:
           const fs=require('node:fs'),ts=require('typescript'),path=require('node:path');
           for(const name of [
             'client-commerce.pg-qa.adapter',
-            'stripe-test-webhook-inbox.pg-qa.adapter'
+            'client-order-snapshot.pg-qa.adapter',
+            'merchant-courier-fulfillment.pg-qa.adapter',
+            'merchant-courier-wallet.pg-qa.adapter',
+            'stripe-test-webhook-inbox.pg-qa.adapter',
+            'stripe-test-financial-reconcile.pg-qa.adapter',
+            'stripe-test-intent-create.pg-qa.adapter'
           ]){
             const file='services/api-nest/src/client-commerce/'+name+'.ts';
             const source=fs.readFileSync(file,'utf8');
@@ -110,7 +137,8 @@ jobs:
             'QA_COMMERCE_DB_NAME=postgres',
             'QA_COMMERCE_DB_USER=postgres',
             'QA_COMMERCE_HMAC_KEY='+secret,
-            'QA_WEBHOOK_TEST_SECRET=whsec_'+crypto.randomBytes(32).toString('hex'),'',
+            'QA_WEBHOOK_TEST_SECRET=whsec_'+crypto.randomBytes(32).toString('hex'),
+            'QA_FINANCE_HMAC_KEY='+crypto.randomBytes(32).toString('hex'),'',
           ].join('\n'),{mode:0o600});
           console.log('QA_COMMERCE_EPHEMERAL_HMAC=GENERATED_NOT_LOGGED');
           NODE
@@ -119,6 +147,8 @@ jobs:
           chmod 600 "$QA_DIR/test.env"
           node --check services/api-nest/test/client-commerce.pg-qa.integration.cjs
           node --check services/api-nest/test/stripe-test-webhook-inbox.pg-qa.integration.cjs
+          node --check services/api-nest/test/stripe-test-financial-reconciliation.pg-qa.integration.cjs
+          node --check services/api-nest/test/stripe-test-intent-create.pg-qa.integration.cjs
           echo "QA_COMMERCE_ADAPTER_BUILD=EPHEMERAL_ONLY"
 
       - name: Run PostgreSQL 17 under disconnected ephemeral container
@@ -167,12 +197,24 @@ jobs:
           docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
             -h 127.0.0.1 -U postgres -d postgres \
             < services/api-nest/migrations/client-commerce/20261012_003_stripe_test_webhook_inbox_qa_only.sql
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/migrations/client-commerce/20261012_004_stripe_test_financial_reconciliation_qa_only.sql
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/migrations/client-commerce/20261012_005_client_order_receipt_read_qa_only.sql
+          echo "QA_CLIENT_OWNED_ORDER_RECEIPT_SCHEMA=CREATED_ONLY_EPHEMERAL"
+          echo "QA_STRIPE_TEST_FINANCIAL_SCHEMA=CREATED_ONLY_EPHEMERAL"
           echo "QA_STRIPE_TEST_WEBHOOK_INBOX=CREATED_ONLY_EPHEMERAL"
           echo "QA_COMMERCE_LEAST_PRIVILEGE_ROLES=CREATED_EPHEMERAL_ONLY"
           echo "QA_COMMERCE_SCHEMA_CANDIDATE=CREATED_EPHEMERAL_ONLY"
           docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres \
             < services/api-nest/test/native-client-commerce-authority.qa.sql
           echo "QA_COMMERCE_SEQUENTIAL=PASS_SYNTHETIC_ONLY"
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/test/native-client-order-receipt.pg-qa.sql
+          echo "QA_CLIENT_ORDER_RECEIPT_FINANCIAL_HOLD_AND_OWNERSHIP=PASS"
           # Eight simultaneous sessions must return one and the same order_id.
           SQL="SELECT order_id FROM public.da_qa_reserve_client_order('https://qa.example.invalid/realms/da-client','a63f867f-9f42-4573-9268-dc65a164d2c1'::uuid,'mutation-qa-concurrent',repeat('a',64)::char(64),repeat('b',64)::char(64),'qa-merchant',1200::bigint,'EUR'::char(3));"
           RESULT="$RUNNER_TEMP/da-commerce-concurrent-$GITHUB_RUN_ID.txt"
@@ -232,6 +274,118 @@ jobs:
             node:22-alpine node --test \
               /qa-tests/stripe-test-webhook-inbox.pg-qa.integration.cjs
           echo "QA_STRIPE_WEBHOOK_INBOX_PG_REAL=PASS_SYNTHETIC_NO_STRIPE"
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$NAME" \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --read-only --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+            --env-file "$QA_DIR/test.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node --test \
+              /qa-tests/stripe-test-financial-reconciliation.pg-qa.integration.cjs
+          echo "QA_STRIPE_TEST_FINANCE_PG_REAL=PASS_SYNTHETIC_NO_STRIPE"
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$NAME" \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --read-only --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+            --env-file "$QA_DIR/test.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node --test \
+              /qa-tests/stripe-test-intent-create.pg-qa.integration.cjs
+          echo "QA_STRIPE_TEST_INTENT_CREATE_PG_REAL=PASS_SYNTHETIC_NO_STRIPE"
+          # Migrate 006 only AFTER all existing 001..005 SQL/Node tests.
+          # From this point, payment reservation REQUIRES an immutable basket.
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/migrations/client-commerce/20261013_006_canonical_order_snapshot_qa_only.sql
+          echo "QA_POSTGRES_ORDER_SNAPSHOT_006=CREATED_EPHEMERAL_ONLY"
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/test/native-client-order-snapshot.pg-qa.sql
+          echo "QA_CANONICAL_MERCHANT_SNAPSHOT_AND_DISPATCH_GATE=PASS_PG17_ONLY"
+          # Real Node adapter, two low-privilege connection pools and actual
+          # PG17 transactions in the SAME network-none namespace as the SQL gate.
+          # No Stripe, external service, host published port or production write.
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$NAME" \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --read-only --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+            --env-file "$QA_DIR/test.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node --test \
+              /qa-tests/client-order-snapshot.pg-qa.integration.cjs
+          echo "QA_REAL_PG17_NODE_SNAPSHOT_8_WAY_AND_ROLLBACK=PASS"
+          # Existing 001-006 tests MUST precede the additive 007 QA schema.
+          # Roles represent separate low-privilege Merchant/Courier/Dispatcher
+          # sessions, no host ports, no Stripe, no VPS.
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/migrations/client-commerce/20261013_007_merchant_courier_fulfillment_qa_only.sql
+          echo "QA_MERCHANT_COURIER_FULFILLMENT_007_SCHEMA=CREATED_EPHEMERAL_ONLY"
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/test/native-merchant-courier-fulfillment.pg-qa.sql
+          echo "QA_007_MERCHANT_COURIER_ROLE_ISOLATION_PAID_AND_REFUND_HOLD=PASS"
+          # REAL TypeScript adapter, THREE distinct unprivileged PG roles,
+          # positive delivery and refund-after-acceptance proof.
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$NAME" \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --read-only --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+            --env-file "$QA_DIR/test.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node --test \
+              /qa-tests/merchant-courier-fulfillment.pg-qa.integration.cjs
+          echo "QA_007_REAL_NODE_PG_THREE_ROLES_AND_FULL_DELIVERY=PASS"
+          # Migration 008 serializes finance refund and physical Courier
+          # transitions using the same per-order row lock. Certified with
+          # opposite PG transaction interleavings against real distinct roles.
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/migrations/client-commerce/20261013_008_refund_dispatch_row_lock_qa_only.sql
+          echo "QA_008_REFUND_DISPATCH_ORDER_LOCK=INSTALLED_EPHEMERAL_ONLY"
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$NAME" \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --read-only --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+            --env-file "$QA_DIR/test.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node --test \
+              /qa-tests/refund-pickup-row-lock.pg-qa.integration.cjs
+          echo "QA_008_PG17_FINANCE_HOLD_PICKUP_INTERLEAVING=PASS"
+          # Fake-policy, zero-sum PostgreSQL wallet journal, and
+          # read-only beneficiary projections: no Stripe/cashout APIs.
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/migrations/client-commerce/20261013_009_merchant_courier_wallet_qa_only.sql
+          echo "QA_009_WALLET_JOURNAL_SCHEMA=CREATED_DISCONNECTED_ONLY"
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$NAME" \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --read-only --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+            --env-file "$QA_DIR/test.env" \
+            -e NODE_PATH=/qa-deps/node_modules \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node --test \
+              /qa-tests/merchant-courier-wallet.pg-qa.integration.cjs
+          echo "QA_009_WALLET_MERCHANT_COURIER_REAL_PG17=PASS"
+          echo "QA_009_REAL_PAYOUTS=ZERO"
           echo "QA_COMMERCE_PG=PASS_REAL_PG_AND_8_WAY_CONCURRENCY"
           echo "STRIPE_PROVIDER_CALLS=ZERO"
           echo "PRODUCTION_IMPACT=NONE"
