@@ -296,6 +296,9 @@ function checkoutApiError(json: any, status: number): string {
   if (code === "minimum_order_not_met") {
     return "Le minimum de commande n’est plus atteint. Revenez au panier pour ajuster votre sélection.";
   }
+  if (code === "checkout_durable_order_authority_not_certified") {
+    return "Le paiement est temporairement indisponible pendant la sécurisation des commandes. Aucun débit n’a été initié. Votre panier est conservé : vous pourrez reprendre plus tard.";
+  }
   if (code === "payment_not_succeeded") {
     return "La confirmation bancaire est encore en cours. Aucun nouveau débit ne sera lancé : réessayez la réconciliation dans quelques instants.";
   }
