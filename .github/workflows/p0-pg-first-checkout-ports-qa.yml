@@ -4,18 +4,22 @@ on:
   push:
     branches:
       - security/p0-postgres-first-qa-ports-20261014
+      - security/p0-pg-first-signed-http-qa-20261014
     paths:
       - '.github/workflows/p0-pg-first-checkout-ports-qa.yml'
       - 'services/api-nest/src/client-commerce/native-client-checkout-pg-first.qa.ports.ts'
       - 'services/api-nest/test/p0-pg-first-ports.pg-qa.integration.cjs'
+      - 'services/api-nest/test/p0-pg-first-signed-http.pg-qa.integration.cjs'
       - 'docs/DA_P0_POSTGRES_FIRST_PORTS_2026-10-14.md'
   pull_request:
     branches:
       - security/p0-checkout-stripe-failclosed-20261014
+      - security/p0-postgres-first-qa-ports-20261014
     paths:
       - '.github/workflows/p0-pg-first-checkout-ports-qa.yml'
       - 'services/api-nest/src/client-commerce/native-client-checkout-pg-first.qa.ports.ts'
       - 'services/api-nest/test/p0-pg-first-ports.pg-qa.integration.cjs'
+      - 'services/api-nest/test/p0-pg-first-signed-http.pg-qa.integration.cjs'
       - 'docs/DA_P0_POSTGRES_FIRST_PORTS_2026-10-14.md'
   workflow_dispatch:
 
@@ -47,6 +51,7 @@ jobs:
           set -Eeuo pipefail
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
           node --check services/api-nest/test/p0-pg-first-ports.pg-qa.integration.cjs
+          node --check services/api-nest/test/p0-pg-first-signed-http.pg-qa.integration.cjs
           node - <<'NODE'
           const fs=require('node:fs'),assert=require('node:assert/strict');
           const src=fs.readFileSync(
@@ -66,6 +71,11 @@ jobs:
           assert(src.includes('qa_pg_first_ports_disconnected_ci_only'));
           assert(src.includes('syntheticOnly !== true'));
           assert(testSrc.includes('P0_PG_FIRST_COMPOSITE=PASS_SYNTHETIC_PG17_NO_LIVE'));
+          const signed=fs.readFileSync('services/api-nest/test/p0-pg-first-signed-http.pg-qa.integration.cjs','utf8');
+          assert(signed.includes('QA_SIGNED_HTTP_PG_FIRST_E2E_SYNTHETIC=PASS'));
+          assert(signed.includes("process.env.GITHUB_ACTIONS !== 'true'"));
+          assert(signed.includes('createQaPgFirstCheckoutPorts'));
+          assert(!/sk_live_|pk_live_|194\.164\.72\.250|continue-on-error/i.test(signed));
           assert(testSrc.includes("process.env.GITHUB_ACTIONS !== 'true'"));
           assert(!testSrc.includes('194.164.72.250'));
           assert(!/sk_live_|pk_live_|whsec_live|continue-on-error|audit fix --force/i.test(testSrc));
@@ -125,6 +135,46 @@ jobs:
               out.outputText,{mode:0o600});
           }
           console.log('P0_REUSED_ADAPTERS_TRANSPILE=PASS');
+          NODE
+          # Build a mirrored source tree so controller/guard relative imports
+          # resolve to the same QA modules. No AppModule or production imports.
+          NODE_PATH="$QA_DIR/deps/node_modules" node - "$QA_DIR/built" <<'NODE'
+          const fs=require('node:fs'),ts=require('typescript'),path=require('node:path');
+          const dirs={
+            'auth':[
+              'native-client-jwt-verifier',
+              'native-client-commerce.policy',
+              'native-client-nest-commerce.guard',
+            ],
+            'client-commerce':[
+              'client-commerce-canonical-quote.pg-qa.adapter',
+              'client-commerce.pg-qa.adapter',
+              'client-order-snapshot.pg-qa.adapter',
+              'stripe-test-intent-create.pg-qa.adapter',
+              'client-order-receipt.pg-qa.adapter',
+              'native-client-checkout-pg-first.qa.ports',
+              'native-client-checkout.qa.controller',
+            ],
+          };
+          for(const [dir,names] of Object.entries(dirs)){
+            const outDir=path.join(process.argv[2],'src',dir);
+            fs.mkdirSync(outDir,{recursive:true,mode:0o755});
+            for(const name of names){
+              const file='services/api-nest/src/'+dir+'/'+name+'.ts';
+              const out=ts.transpileModule(fs.readFileSync(file,'utf8'),{
+                fileName:file,reportDiagnostics:true,
+                compilerOptions:{
+                  module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,
+                  esModuleInterop:true,strict:true,
+                  experimentalDecorators:true,emitDecoratorMetadata:true,
+                },
+              });
+              if(out.diagnostics?.some(x=>x.category===ts.DiagnosticCategory.Error))
+                throw Error('P0_SIGNED_HTTP_NEST_TRANSPILE_FAILED');
+              fs.writeFileSync(path.join(outDir,name+'.js'),out.outputText,{mode:0o600});
+            }
+          }
+          console.log('P0_REAL_NEST_HTTP_JWT_ADAPTERS_TRANSPILE=PASS');
           NODE
           node - "$QA_DIR/qa.env" <<'NODE'
           const fs=require('node:fs'),crypto=require('node:crypto');
@@ -186,6 +236,11 @@ jobs:
               < "services/api-nest/migrations/client-commerce/$name" >/dev/null
           done
           echo "P0_EXISTING_QA_SQL_001_TO_006=LOADED_EPHEMERAL_ONLY"
+          # Existing durable Client admission ledger, only in ephemeral PG17.
+          docker exec -i "$NAME" psql -v ON_ERROR_STOP=1 \
+            -h 127.0.0.1 -U postgres -d postgres \
+            < services/api-nest/migrations/client-enrollment/20261012_002_native_client_admission_qa_only.sql >/dev/null
+          echo "P0_NATIVE_CLIENT_ADMISSION_SCHEMA=EPHEMERAL_ONLY"
           docker run --rm --pull never --user 1000:1000 \
             --network "container:$NAME" --cap-drop ALL \
             --security-opt no-new-privileges --read-only \
@@ -197,6 +252,23 @@ jobs:
             -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
             node:22-alpine node --test \
               /qa-tests/p0-pg-first-ports.pg-qa.integration.cjs
+          echo "P0_PG_FIRST_PORTS_LIVE_MUTATIONS=ZERO"
+          # Run real Nest HTTP routes, RSA signature verification and
+          # admission SELECT from the same isolated PostgreSQL 17 namespace.
+          # The workspace is mounted READ-ONLY for frozen NestJS dependencies.
+          docker run --rm --pull never --user 1000:1000 \
+            --network "container:$NAME" --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=64m \
+            --env-file "$QA_DIR/qa.env" \
+            -e NODE_PATH=/qa-deps/node_modules:/qa-workspace/services/api-nest/node_modules:/qa-workspace/node_modules \
+            -v "$QA_DIR/deps:/qa-deps:ro" \
+            -v "$QA_DIR/built:/qa-built:ro" \
+            -v "$GITHUB_WORKSPACE:/qa-workspace:ro" \
+            -v "$GITHUB_WORKSPACE/services/api-nest/test:/qa-tests:ro" \
+            node:22-alpine node --test \
+              /qa-tests/p0-pg-first-signed-http.pg-qa.integration.cjs
+          echo "P0_SIGNED_HTTP_PG_FIRST_REAL_NEST=PASS_SYNTHETIC_ONLY"
           echo "P0_STRIPE_LIVE_REQUESTS=ZERO"
           echo "P0_VPS_RUNTIME_MUTATIONS=ZERO"
           echo "P0_PROVIDER_NETWORK=FAKE_ONLY"
