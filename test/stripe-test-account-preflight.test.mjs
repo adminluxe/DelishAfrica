@@ -124,3 +124,17 @@ test('fails closed for HTTP failure, invalid JSON and network errors', async () 
     env, request: async () => { throw new Error('network'); },
   })).code, 4);
 });
+
+test('direct CLI invocation exits NO-GO before accessing any network', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const { fileURLToPath } = await import('node:url');
+  const script = fileURLToPath(new URL('../scripts/security/stripe-test-account-preflight.mjs', import.meta.url));
+  const child = spawnSync(process.execPath, [script], {
+    encoding: 'utf8',
+    timeout: 10000,
+    env: { PATH: process.env.PATH || '', HOME: process.env.HOME || '' },
+  });
+  assert.equal(child.status, 2);
+  assert.match(child.stdout, /NO_GO_EXPECTED_ACCOUNT_ID_REQUIRED/);
+  assert.equal(child.stderr, '');
+});
