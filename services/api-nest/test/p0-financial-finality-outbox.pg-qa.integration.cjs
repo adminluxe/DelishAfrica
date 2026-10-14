@@ -330,11 +330,8 @@ test('single PG17 trace: durable order -> signed inbox -> provider capture -> ou
         'SELECT * FROM public.da_qa_finance_record_hold('+
           '$1::uuid,$2::text,$3::text)',
         [intent.authorityId,'re_QAP0ROLLBACK20261014','refund']);
-      const uncommitted=await transient.query(
-        'SELECT count(*)::int AS n FROM public.da_qa_financial_outbox_018 '+
-          'WHERE authority_id=$1::uuid',[intent.authorityId]);
-      assert.equal(uncommitted.rows[0].n,2);
-      // Another role cannot see the uncommitted hold/outbox.
+      // The financial reconciler deliberately has NO direct SELECT on the
+      // outbox table; verify invisibility using an independent audit session.
       assert.equal(await getCount('hold',null,intent.authorityId),0);
       assert.equal(await getCount('outbox',null,intent.authorityId),1);
       await transient.query('ROLLBACK');
