@@ -84,3 +84,17 @@ Le rôle Merchant/Courier et leurs appartenances sont des fixtures QA des adapta
 **NO-GO impératif :** pas de merge, migration persistante, déploiement, changement IAM, Stripe LIVE, payout, soumission Store, OTA, ou build payant. La PR #48 fail-closed reste distincte et non déployable seule.
 
 **Prochaine décision:** QA de livraison outbox et recovery, puis rapprochement App Store Connect / EAS / SHA des trois apps ; plan de passage en production seulement après approbation explicite et certificats complets.
+
+## Correctif QA 019 — rejeu webhook identique après capture
+
+Au cours de l'audit complémentaire, une condition de reprise a été identifiée dans la migration QA 003 : sa fonction inbox exigeait `state='intent_created'` avant toute déduplication. Dès la capture vérifiée, l'autorité devient `succeeded` ; une rediffusion pourtant authentique et strictement identique de l'événement initial échouait. Ce comportement ne modifiait pas les comptes, mais perturbait les acquittements tardifs et risquait de générer des retries inutiles.
+
+Le **fichier complet de migration QA 019**, `services/api-nest/migrations/client-commerce/20261014_019_webhook_postcapture_exact_replay_qa_only.sql`, remplace chirurgicalement une seule fonction PostgreSQL de la migration 003, sous les mêmes privilèges et le même schéma. L'inbox cherche d'abord l'événement déjà conservé ; il n'est acquitté que si l'autorité, le PaymentIntent, le type d'événement et le SHA-256 du corps sont strictement identiques et si le mode reste TEST. **Aucune nouvelle entrée, aucun statut financier ni aucun droit SQL supplémentaire** n'est accordé à ce chemin de rejeu.
+
+Un **nouvel événement non connu** reste soumis à la règle initiale : autorité `intent_created` obligatoire. Après `succeeded`, tout événement nouvellement identifié est refusé, même avec une signature correcte. Les collisions d'un même ID avec un autre corps, les signatures invalides et les paiements LIVE restent refusés.
+
+Les assertions ajoutées au test E2E QA vérifient : huit rejeux authentifiés après capture → huit accusés duplicate, **zéro nouvel événement** ; nouveau ID signé après capture → refus ; même ID avec corps modifié → refus ; rejeu identique après remboursement → aucune réactivation de Dispatch, un seul reçu/hold/outbox. La CI doit appliquer la 019 **après** les migrations 001–008 et 018, uniquement dans PostgreSQL 17 éphémère sans réseau. **Ne pas appliquer cette migration sur le VPS**.
+
+La première série de CI sur SHA `75e32567597135e596e43751999e346029503190` était PASS avant ce nouveau cas limite. Les CI antérieures en échec sur les assertions rollback sont conservées comme preuve de détection, puis corrigées sans réattribuer des privilèges. **La promotion de la 019 dépend d'une nouvelle CI SUCCESS du SHA final contenant code, migration, test et documentation ; aucun certificat sur un SHA antérieur ne s'y substitue.**
+
+**Frontière toujours NO-GO :** Stripe réel, livraison outbox par un worker, contrats d'ACK/lease/dead-letter, production Keycloak, migration persistante, paiement LIVE, payout, merge, App Store.
