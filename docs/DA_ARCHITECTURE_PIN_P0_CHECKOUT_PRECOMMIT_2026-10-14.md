@@ -72,3 +72,11 @@ En parallèle, les anciennes méthodes de rapprochement d'intentions et de webho
 ## Décision de gouvernance
 
 **Le verrou candidat est protecteur mais non prêt à être déployé seul.** Maintenir PR DRAFT, ne pas autoriser Stripe LIVE, payout, migration ni merge. Préserver le HEAD VPS, les 15 modifications suivies et la parité historique AfriPay 33/132/33 PASS sans nouvel audit.
+
+## Scellement VPS → PR QA : même blob de persistance, garde bancaire distinct
+
+Le `orders.demo.store.ts` local VPS est un changement Git non commité parmi les 15 modifications protégées. Son correctif de refus JSON invalide / écriture temporaire synchronisée est désormais copié uniquement dans la PR DRAFT, avec **blob Git strictement identique** `06699469c4502a8eae7e91047a953da83b1017a2`. Le serveur et les modifications locales ne sont pas modifiés.
+
+**[CI #38620518970](https://github.com/adminluxe/DelishAfrica/actions/runs/38620518970), code SHA `9129a7d9c3bcbc1aa8938a6f0b8103c0d91fb94b` : SUCCESS 9/9** (dont refus ENOSPC, JSON corrompu, relecture 0600), TypeScript PASS.
+
+Cette résistance à la panne de fichier ne rend **pas** une commande transactionnelle ni un paiement sûr de bout en bout. La chaîne cible obligatoire reste réservation PostgreSQL confirmée avant Stripe → PaymentIntent TEST idempotent → webhook vérifié/reconciliation → commande durable + outbox → dispatch. La PR reste NO-GO déploiement.

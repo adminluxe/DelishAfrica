@@ -34,3 +34,13 @@ Ce patch, s'il était promu seul, **suspendrait tous les nouveaux paiements**, y
 Le VPS canonique /opt/delishafrica/monorepo n'a pas été touché ; ne pas écraser les 15 fichiers locaux modifiés ni leur diff SHA-256 7b07d120f99adba3666547860b4f43b579e804e3de5a0983705762da3433b3c5. La parité AfriPay janvier 33/132/33 reste PASS précédemment certifié, non rejouée.
 
 **VERDICT : STOP pré-paiement = PASS QA. Exploitation Stripe / commandes réelles / Store = NO-GO.**
+
+## 14 octobre — second scellement P0 : parité exacte du correctif VPS, 9/9 tests PASS
+
+Les sources du VPS ont été relues sans aucune écriture : HEAD e504c0434db43e6d15d041154176d23ee00c1347 ; **15 fichiers suivis modifiés, 0 staged, diff SHA-256 identique** 7b07d120f99adba3666547860b4f43b579e804e3de5a0983705762da3433b3c5 ; 13 conteneurs actifs. Le fichier `services/api-nest/src/orders/orders.demo.store.ts` fait partie des 15 modifications locales. Il rejette le JSON invalide et écrit via fichier temporaire mode 0600, `fsync` puis `rename` ; SHA-256 VPS d8d2179ccc96cd63d4edacd77a924cbbbb7762b5eae648ae75e2580305d1e396.
+
+Cette modification a été copiée textuellement dans la PR DRAFT seulement : **blob Git identique** `06699469c4502a8eae7e91047a953da83b1017a2`. Le fichier original du VPS et les 14 autres modifications restent inchangés. Son `payments.service.ts` (SHA-256 fe11789620f8662c5f8cb2e390f125c64527ea49ba3b256c08a47b07e9b2fb00) ne contient pas le nouveau garde pré-paiement ; aucun runtime Node live n'a été certifié par cette lecture du source.
+
+**CI exacte du correctif code/test SHA `9129a7d9c3bcbc1aa8938a6f0b8103c0d91fb94b` :** [GitHub Actions 38620518970](https://github.com/adminluxe/DelishAfrica/actions/runs/38620518970), job 116046668157, **SUCCESS**, TypeScript API + Client PASS, **9 tests / 9 PASS, 0 FAIL**. Trois nouveaux tests : écriture/relecture synthétique mode 0600 sans fichier temporaire résiduel, JSON corrompu rejeté, panne ENOSPC simulée sans retour de succès ni commande fantôme. Les six tests de refus Stripe TEST/LIVE/sans clé et zéro réseau restent PASS.
+
+**Limites :** QA synthétique hors production. Une écriture fichier plus sûre ne crée pas une autorité transactionnelle de commande reliée à Stripe. Avant toute release : réservation PostgreSQL idempotente avant PSP, inbox/outbox, réconciliation et tests d'arrêt multi-instance. Le hardstop 503 reste DRAFT et, déployé seul, suspendrait les paiements légitimes. Aucun nouveau build, merge, paiement LIVE ou changement VPS.
