@@ -1,0 +1,49 @@
+name: P0 payments public health redaction QA
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - services/api-nest/src/payments/payments.controller.ts
+      - services/api-nest/test/payments-health-redaction.contract.test.cjs
+      - .github/workflows/p0-payments-public-health-redaction.yml
+  push:
+    branches:
+      - security/p0-payments-public-health-redaction-20261015
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-payment-health-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  public-health:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact head, credentials disabled
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install frozen monorepo dependencies with no lifecycle scripts
+        run: |
+          set -Eeuo pipefail
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+          pnpm install --frozen-lockfile --ignore-scripts
+      - name: Build API only
+        run: pnpm --dir services/api-nest run build
+      - name: Verify no financial metadata crosses public health boundary
+        run: node --test services/api-nest/test/payments-health-redaction.contract.test.cjs
+      - name: Confirm exact commit
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
