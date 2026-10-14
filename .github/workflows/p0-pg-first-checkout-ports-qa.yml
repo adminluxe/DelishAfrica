@@ -9,6 +9,14 @@ on:
       - 'services/api-nest/src/client-commerce/native-client-checkout-pg-first.qa.ports.ts'
       - 'services/api-nest/test/p0-pg-first-ports.pg-qa.integration.cjs'
       - 'docs/DA_P0_POSTGRES_FIRST_PORTS_2026-10-14.md'
+  pull_request:
+    branches:
+      - security/p0-checkout-stripe-failclosed-20261014
+    paths:
+      - '.github/workflows/p0-pg-first-checkout-ports-qa.yml'
+      - 'services/api-nest/src/client-commerce/native-client-checkout-pg-first.qa.ports.ts'
+      - 'services/api-nest/test/p0-pg-first-ports.pg-qa.integration.cjs'
+      - 'docs/DA_P0_POSTGRES_FIRST_PORTS_2026-10-14.md'
   workflow_dispatch:
 
 permissions:
