@@ -1,0 +1,33 @@
+name: DelishAfrica P0 main integrity
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: main-integrity-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository-integrity:
+    name: repository-integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout exact commit without stored credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify immutable guard syntax
+        run: node --check scripts/security/p0-main-integrity.mjs
+      - name: Reject committed environment and signing artifacts
+        run: node scripts/security/p0-main-integrity.mjs
+      - name: Verify whitespace and merge markers
+        run: git diff --check
