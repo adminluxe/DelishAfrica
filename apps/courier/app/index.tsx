@@ -29,6 +29,8 @@ const API = RAW_API.replace(/\/$/, "").endsWith("/api/v1")
   ? RAW_API.replace(/\/$/, "")
   : `${RAW_API.replace(/\/$/, "")}/api/v1`;
 
+const FINANCE_QA_VISIBLE = __DEV__ && process.env.EXPO_PUBLIC_DA_FINANCE_QA_ONLY === "YES";
+
 type RouteCard = { eyebrow: string; title: string; body: string; path: string };
 
 const ROUTES: RouteCard[] = [
@@ -236,7 +238,7 @@ export default function CourierSurfaceHome() {
 
         <Text style={styles.sectionLabel}>OUTILS TERRAIN</Text>
         <View style={styles.grid}>
-          {ROUTES.map((item) => (
+          {ROUTES.filter((item) => item.path !== "/finances" || FINANCE_QA_VISIBLE).map((item) => (
             <Pressable
               key={item.path}
               onPress={() => go(item.path)}
