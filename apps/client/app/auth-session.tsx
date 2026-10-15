@@ -1,1 +1,1 @@
-export { default } from './secure-session';
+export { default } from './onboarding';
