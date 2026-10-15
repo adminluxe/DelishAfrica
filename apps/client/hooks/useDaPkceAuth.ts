@@ -71,13 +71,15 @@ export function useDaPkceAuth() {
   }, [pushTrace]);
 
   const redirectUri = useMemo(
-    () => AuthSession.makeRedirectUri({ native: DA_OIDC_CONFIG.redirectUri }),
+    () => DA_OIDC_CONFIG.redirectUri
+      ? AuthSession.makeRedirectUri({ native: DA_OIDC_CONFIG.redirectUri })
+      : '',
     [],
   );
 
-  const signIn = useCallback(async () => {
+  const signIn = useCallback(async (intent: 'register' | 'login' = 'login') => {
     if (busy || loginInFlight.current) return session;
-    if (!discovery) {
+    if (!discovery || !redirectUri) {
       const next = failed('discovery_not_ready');
       setLastError(next.reason || 'discovery_not_ready');
       setSession(next);
@@ -98,7 +100,7 @@ export function useDaPkceAuth() {
         scopes: [...DA_OIDC_CONFIG.scopes],
         usePKCE: true,
         codeChallengeMethod: AuthSession.CodeChallengeMethod.S256,
-        extraParams: { nonce: attemptNonce },
+        extraParams: { nonce: attemptNonce, prompt: intent === 'register' ? 'create' : 'login' },
       });
 
       const result = await authRequest.promptAsync(discovery);
@@ -183,8 +185,8 @@ export function useDaPkceAuth() {
 
   return {
     session, busy, lastError, trace,
-    discoveryReady: Boolean(discovery),
-    requestReady: Boolean(discovery),
+    discoveryReady: Boolean(discovery && redirectUri),
+    requestReady: Boolean(discovery && redirectUri),
     redirectUri, signIn, restore, refresh, logout,
   };
 }
