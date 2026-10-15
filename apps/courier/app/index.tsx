@@ -266,8 +266,8 @@ export default function CourierSurfaceHome() {
           accessibilityRole="button"
         >
           <View style={{ flex: 1 }}>
-            <Text style={styles.legacyEyebrow}>SURFACE ÉTENDUE</Text>
-            <Text style={styles.legacyTitle}>Ouvrir la vue Terrain étendue</Text>
+            <Text style={styles.legacyEyebrow}>DÉMONSTRATION VISUELLE</Text>
+            <Text style={styles.legacyTitle}>Explorer une vue Terrain illustrative</Text>
           </View>
           <Text style={styles.legacyArrow}>→</Text>
         </Pressable>
