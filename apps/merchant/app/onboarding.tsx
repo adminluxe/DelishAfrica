@@ -10,8 +10,7 @@ import { useEffect, useMemo } from 'react';
 type EntryIntent = 'register' | 'login';
 const ACCENT = '#F5B477';
 const BG = '#1E100A';
-const ROLE = 'MERCHANT';
-const NEXT_ALLOWED = new Set(['/partner-space', '/ops-dashboard', '/orders', '/checkout-preflight', '/live-tracking']);
+const NEXT_ALLOWED = new Set(['/partner-space', '/orders', '/ops-dashboard']);
 
 function friendlyFailure(value: unknown): string {
   const raw = String(value || '').toLowerCase();
@@ -33,19 +32,20 @@ export default function DelishOnboardingV2() {
   const [notice, setNotice] = useState('');
   const [oidc, setOidc] = useState<MerchantOidcSession | null>(null);
   const [busy, setBusy] = useState(false);
+  const [restoring, setRestoring] = useState(true);
   const runtime = useMemo(() => daMerchantOidcRuntimeStatus(), []);
   useEffect(() => {
     let active = true;
     void daMerchantOidcSession().then((current) => { if (active) setOidc(current); }).catch(() => {
       if (active) setNotice('Votre session doit être connectée pour continuer.');
-    });
+    }).finally(() => { if (active) setRestoring(false); });
     return () => { active = false; };
   }, []);
   const verified = Boolean(oidc?.authenticated);
   const identityName = oidc?.user?.name || oidc?.user?.email || '';
   const ready = runtime.ready && Boolean(runtime.redirectUri);
   const accessStatus = verified ? 'IDENTITÉ VÉRIFIÉE' : 'IDENTITÉ À CONNECTER';
-  const canOpen = ready && !busy;
+  const canOpen = ready && !busy && !restoring;
   async function begin(intent: EntryIntent) {
     if (!canOpen) return;
     setNotice('');
