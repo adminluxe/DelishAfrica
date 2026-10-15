@@ -4,9 +4,9 @@ import { router } from "expo-router";
 
 const APP_LABEL = `Merchant`;
 const SCREEN_TITLE = `Terrain OS · Master Control`;
-const KICKER = `LIVE SERVICE CONTROL TOWER`;
-const HEADLINE = `La cuisine voit la prochaine fenêtre avant le rush.`;
-const SUBTITLE = `Préparation, fenêtre coursier, pression de service et sortie convergent dans une seule lecture.`;
+const KICKER = `DÉMONSTRATION · ESPACE CUISINE`;
+const HEADLINE = `La cuisine anticipe grâce à des informations vérifiées.`;
+const SUBTITLE = `Maquette illustrative : cet écran ne charge aucune commande, ETA ou métrique opérationnelle réelle.`;
 const PROMISE = `Promesse cuisine`;
 const PROMISE_TEXT = `Préparer juste. Sortir chaud. Servir sans panique.`;
 const CTA_LABEL = `Retour cockpit cuisine`;
@@ -68,10 +68,10 @@ return (
 </View>
 
 <View style={styles.grid}>
-<Metric label="ETA prédite" value="31 min" hint="Préparation + route" />
-<Metric label="Confiance" value="92%" hint="Terrain stable" />
-<Metric label="Rythme" value="Fluide" hint="Fenêtre maîtrisée" />
-<Metric label="Signal" value="Live" hint="Sans stress" />
+<Metric label="ETA prédite" value="—" hint="Non calculée" />
+<Metric label="Confiance" value="—" hint="Non mesurée" />
+<Metric label="Rythme" value="—" hint="Non mesuré" />
+<Metric label="Signal" value="DÉMO" hint="Illustration" />
 </View>
 
 <View style={styles.lightCard}>

@@ -7,6 +7,9 @@
  * development client remains usable until the dedicated rebuild is installed.
  */
 
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+
 type ExpoAuthSessionModule = typeof import('expo-auth-session');
 type ExpoCryptoModule = typeof import('expo-crypto');
 type ExpoWebBrowserModule = typeof import('expo-web-browser');
@@ -56,8 +59,31 @@ export type MerchantOidcRuntimeStatus = {
 
 const ISSUER = 'https://keycloak.afritaste.delishafrica.me/realms/afritaste';
 const CLIENT_ID = 'delishafrica-merchant';
-const REDIRECT_URI = 'delishafricamerchant://auth/callback';
-const LOGOUT_REDIRECT_URI = 'delishafricamerchant://auth/logout';
+// Native callback must be consistent with the actual installed iOS/Android binary.
+const configuredScheme = Constants.expoConfig?.scheme;
+const permittedSchemes = ['delishafricamerchant', 'delishafricamerchantdev'] as const;
+const candidateScheme = typeof configuredScheme === 'string'
+  ? configuredScheme
+  : Array.isArray(configuredScheme)
+    ? configuredScheme.find((value) => permittedSchemes.includes(value as (typeof permittedSchemes)[number]))
+    : undefined;
+// The URI must also correspond to the native application ID for this platform.
+const configuredPackage = Platform.OS === 'ios'
+  ? Constants.expoConfig?.ios?.bundleIdentifier
+  : Platform.OS === 'android'
+    ? Constants.expoConfig?.android?.package
+    : undefined;
+const expectedPackage = candidateScheme === 'delishafricamerchantdev'
+  ? 'com.delishafrica.merchant.dev'
+  : candidateScheme === 'delishafricamerchant'
+    ? 'com.delishafrica.merchant'
+    : '';
+const activeScheme = candidateScheme && permittedSchemes.includes(candidateScheme as (typeof permittedSchemes)[number])
+  && expectedPackage && configuredPackage === expectedPackage
+  ? candidateScheme
+  : '';
+const REDIRECT_URI = activeScheme ? `${activeScheme}://auth/callback` : '';
+const LOGOUT_REDIRECT_URI = activeScheme ? `${activeScheme}://auth/logout` : '';
 const SCOPES = ['openid', 'profile', 'email'];
 
 const ACCESS_KEY = 'da_merchant_oidc_access_token_v1';
@@ -257,8 +283,8 @@ export function daMerchantOidcRuntimeStatus(): MerchantOidcRuntimeStatus {
   try {
     loadModules();
     return {
-      ready: true,
-      rebuildRequired: false,
+      ready: Boolean(REDIRECT_URI),
+      rebuildRequired: !REDIRECT_URI,
       issuer: ISSUER,
       clientId: CLIENT_ID,
       redirectUri: REDIRECT_URI,
@@ -277,7 +303,8 @@ export function daMerchantOidcRuntimeStatus(): MerchantOidcRuntimeStatus {
   }
 }
 
-export async function daMerchantOidcLogin(): Promise<MerchantOidcSession> {
+export async function daMerchantOidcLogin(intent: 'register' | 'login' = 'login'): Promise<MerchantOidcSession> {
+  if (!REDIRECT_URI) throw new Error('oidc_app_redirect_scheme_unavailable');
   const { AuthSession, Crypto, WebBrowser, SecureStore } = loadModules();
   WebBrowser.maybeCompleteAuthSession();
 
@@ -290,9 +317,9 @@ export async function daMerchantOidcLogin(): Promise<MerchantOidcSession> {
     scopes: SCOPES,
     usePKCE: true,
     codeChallengeMethod: AuthSession.CodeChallengeMethod.S256,
-    prompt: (AuthSession as any).Prompt.Login,
     extraParams: {
       nonce,
+      prompt: intent === 'register' ? 'create' : 'login',
     },
   });
 

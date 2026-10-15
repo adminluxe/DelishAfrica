@@ -208,7 +208,7 @@ load();
 >
 <View style={styles.hero}>
 <Text style={styles.brand}>DELISHAFRICA® · MASTER CONTROL</Text>
-<Text style={styles.kicker}>KITCHEN PULSE · LIVE</Text>
+<Text style={styles.kicker}>RYTHME DE CUISINE · APERÇU</Text>
 <Text style={styles.title}>Le rythme cuisine devient un signal exploitable.</Text>
 <Text style={styles.subtitle}>
 File active, pression de service et priorités cuisine sans action risquée.
@@ -232,7 +232,7 @@ File active, pression de service et priorités cuisine sans action risquée.
 </View>
 
 <Text style={styles.pulseHint}>
-Lecture cuisine basée sur les commandes existantes. Aucun statut n’est modifié ici.
+Aperçu des commandes accessibles dans votre session ; priorités à confirmer. Aucun statut n’est modifié ici.
 </Text>
 </View>
 
