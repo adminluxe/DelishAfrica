@@ -43,7 +43,7 @@ type RouteCard = {
 const ROUTES: RouteCard[] = [
   { eyebrow: "COMMANDES", title: "Décider", body: "Accepter, préparer, marquer prête et suivre le service.", path: "/orders" },
   { eyebrow: "CUISINE", title: "Kitchen Pulse", body: "Cadence, priorités et lecture opérationnelle du service.", path: "/kitchen-pulse" },
-  { eyebrow: "ÉTABLISSEMENT", title: "Mon espace", body: "Présence, confiance, territoire et disponibilité.", path: "/partner-space" },
+  { eyebrow: "ÉTABLISSEMENT", title: "Mon accès", body: "Créer un compte puis rattacher mon établissement sécurisé.", path: "/onboarding" },
   { eyebrow: "PILOTAGE", title: "Ops Dashboard", body: "Vision synthétique des signaux utiles au restaurant.", path: "/ops-dashboard" },
 ];
 
@@ -226,7 +226,7 @@ export default function MerchantSurfaceHome() {
             <Text style={styles.role}>RESTAURATEUR · CUISINE ET COMMANDES</Text>
           </View>
           <Pressable
-            onPress={() => go("/partner-space")}
+            onPress={() => go("/onboarding")}
             style={styles.avatarButton}
             hitSlop={8}
             accessibilityRole="button"
@@ -280,7 +280,7 @@ export default function MerchantSurfaceHome() {
         </View>
 
         <Pressable
-          onPress={() => go(ownership.ready ? "/orders" : "/auth-session")}
+          onPress={() => go(ownership.ready ? "/orders" : "/onboarding")}
           style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
           accessibilityRole="button"
         >
