@@ -1,0 +1,123 @@
+/* DelishAfrica® — identity gateway skin (Keycloak parent templates unchanged).
+ * UI only. No OAuth, anti-CSRF, login input, registration or logout behavior overridden.
+ * Activate only after staging QA, realm review, rollback and explicit authorization.
+ */
+:root {
+  --da-ivory: #fff9ee;
+  --da-ink: #11231d;
+  --da-muted: #566b5f;
+  --da-gold: #e7b85f;
+  --da-aqua: #6bdfb7;
+  --da-deep: #061b16;
+}
+html,
+body.login-pf {
+  min-height: 100%;
+  background:
+    radial-gradient(ellipse 87% 49% at 12% -8%, rgba(103, 222, 179, 0.21), transparent 76%),
+    radial-gradient(ellipse 60% 55% at 113% 94%, rgba(231, 184, 95, 0.15), transparent 74%),
+    linear-gradient(149deg, #071d19 0%, #04100f 58%, #151a14 100%) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+}
+.login-pf body { background: none !important; }
+#kc-header-wrapper {
+  color: #f8f4e8;
+  font-size: clamp(22px, 4.4vw, 42px);
+  font-weight: 850;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  text-align: center;
+  text-shadow: 0 4px 25px rgba(0, 0, 0, 0.35);
+}
+.login-pf-page .card-pf,
+.pf-c-login__main,
+#kc-content-wrapper {
+  color: var(--da-ink);
+}
+.login-pf-page .card-pf {
+  border: 1px solid rgba(231, 184, 95, 0.28);
+  border-radius: 27px;
+  background: rgba(255, 251, 243, 0.985);
+  box-shadow: 0 22px 76px rgba(1, 8, 6, 0.36);
+  max-width: 470px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 22px 27px 28px;
+}
+#kc-page-title {
+  color: #19382a;
+  font-size: clamp(23px, 5vw, 32px);
+  font-weight: 850;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+}
+#kc-form-login label,
+#kc-register-form label,
+.pf-c-form__label-text {
+  color: #244a3a;
+  font-weight: 740;
+  font-size: 13px;
+}
+#kc-form-login input:not([type="checkbox"]),
+#kc-register-form input:not([type="checkbox"]),
+.pf-c-form-control {
+  min-height: 47px;
+  border-radius: 12px;
+  border: 1px solid #99b7a7;
+  color: var(--da-ink);
+  background: #ffffff;
+  box-shadow: none;
+}
+#kc-form-login input:focus,
+#kc-register-form input:focus,
+.pf-c-form-control:focus,
+#kc-form-login button:focus-visible,
+#kc-register-form button:focus-visible,
+a:focus-visible {
+  outline: 3px solid #ba7c16;
+  outline-offset: 2px;
+  border-color: #ba7c16;
+}
+#kc-login,
+#kc-register,
+.pf-c-button.pf-m-primary,
+input[type="submit"].pf-c-button.pf-m-primary {
+  min-height: 46px;
+  border: 0;
+  border-radius: 12px;
+  background: #0d4b35;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 760;
+}
+#kc-login:hover,
+#kc-register:hover,
+.pf-c-button.pf-m-primary:hover {
+  background: #086443;
+  color: #ffffff;
+}
+#kc-registration a,
+#kc-reset-password a,
+#kc-info a,
+.login-pf-page a {
+  color: #0b6346;
+  font-weight: 700;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+#kc-feedback-wrapper,
+.pf-c-alert {
+  border-radius: 12px;
+  line-height: 1.48;
+}
+@media (max-width: 600px) {
+  #kc-header-wrapper { padding: 0 16px; }
+  .login-pf-page .card-pf { margin: 16px 14px 28px; padding: 20px 17px 23px; }
+  #kc-page-title { line-height: 1.2; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-pf-page *, .login-pf-page *::before, .login-pf-page *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
