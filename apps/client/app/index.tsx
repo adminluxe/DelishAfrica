@@ -48,9 +48,9 @@ const ROUTES: RouteCard[] = [
   },
   {
     eyebrow: "IDENTITÉ",
-    title: "Mon espace",
-    body: "Profil, confiance, territoire et préférences du compte.",
-    path: "/client-space",
+    title: "Mon compte", 
+    body: "Créer mon compte, me connecter et préparer mes livraisons.",
+    path: "/onboarding",
   },
 ];
 
@@ -160,11 +160,11 @@ export default function ClientSurfaceHome() {
             <Text style={styles.role}>CLIENT · CUISINES ET DÉCOUVERTES</Text>
           </View>
           <Pressable
-            onPress={() => go("/client-space")}
+            onPress={() => go("/onboarding")}
             style={styles.avatarButton}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Ouvrir Mon espace Client"
+            accessibilityLabel="Ouvrir mon compte DelishAfrica"
           >
             <Text style={styles.avatarText}>MOI</Text>
           </Pressable>
