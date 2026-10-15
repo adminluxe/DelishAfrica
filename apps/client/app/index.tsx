@@ -48,9 +48,9 @@ const ROUTES: RouteCard[] = [
   },
   {
     eyebrow: "IDENTITÉ",
-    title: "Mon espace",
-    body: "Profil, confiance, territoire et préférences du compte.",
-    path: "/client-space",
+    title: "Mon compte", 
+    body: "Créer mon compte, me connecter et préparer mes livraisons.",
+    path: "/onboarding",
   },
 ];
 
@@ -157,14 +157,14 @@ export default function ClientSurfaceHome() {
         <View style={styles.topline}>
           <View style={styles.toplineCopy}>
             <Text style={styles.brand}>DELISHAFRICA®</Text>
-            <Text style={styles.role}>CLIENT · DISCOVERY OCEAN</Text>
+            <Text style={styles.role}>CLIENT · CUISINES ET DÉCOUVERTES</Text>
           </View>
           <Pressable
-            onPress={() => go("/client-space")}
+            onPress={() => go("/onboarding")}
             style={styles.avatarButton}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Ouvrir Mon espace Client"
+            accessibilityLabel="Ouvrir mon compte DelishAfrica"
           >
             <Text style={styles.avatarText}>MOI</Text>
           </Pressable>
@@ -173,19 +173,19 @@ export default function ClientSurfaceHome() {
         <WaterIntelRail
           tone="client"
           mode="radar"
-          label="RADAR · DISCOVERY OCEAN"
+          label="RADAR · DÉCOUVERTE"
           title="Le marché vient à vous."
-          body="Cuisines ouvertes, signaux culturels et parcours en cours remontent dans un même courant, sans noyer votre choix."
+          body="Découvrez cuisines et restaurants. La disponibilité de chaque table se confirme avant toute commande."
           status="PRÊT"
           signalClass="estimated"
-          evidence="Tables ouvertes, menus et parcours se mettent à jour à mesure que vous explorez."
+          evidence="Informations indicatives : confirmez la disponibilité avant de commander."
           freshnessLabel="Les informations détaillées sont actualisées à l’ouverture de chaque table."
           reduceMotion={reduceMotion}
           onPress={() => go("/live-market")}
-          accessibilityLabel="Ouvrir DelishAfrica Radar et le marché vivant"
+          accessibilityLabel="Explorer les cuisines et restaurants dans le Radar"
         />
 
-        <Text style={styles.kicker}>AFRICA · LIVE · À PORTÉE DE GESTE</Text>
+        <Text style={styles.kicker}>CUISINES D’AFRIQUE · À VOTRE PORTÉE</Text>
         <Text style={styles.hero}>Choisissez une table.{`\n`}Le reste se met en mouvement.</Text>
         <Text style={styles.subtitle}>
           Découvrez, commandez et suivez chaque étape depuis un parcours continu, pensé pour rester simple
@@ -200,7 +200,7 @@ export default function ClientSurfaceHome() {
           <View style={styles.primaryCopy}>
             <Text style={styles.primaryEyebrow}>POUR VOUS · MAINTENANT</Text>
             <Text style={styles.primaryTitle}>Commander maintenant</Text>
-            <Text style={styles.primaryBody}>Tables actives, menus, panier et paiement.</Text>
+            <Text style={styles.primaryBody}>Restaurants, menus, panier et confirmation avant paiement.</Text>
           </View>
           <Text style={styles.primaryArrow}>→</Text>
         </Pressable>
@@ -234,7 +234,7 @@ export default function ClientSurfaceHome() {
           accessibilityRole="button"
         >
           <View>
-            <Text style={styles.legacyEyebrow}>LIVE MARKET · SURFACE ÉTENDUE</Text>
+            <Text style={styles.legacyEyebrow}>EXPLORATION · VUE D’ENSEMBLE</Text>
             <Text style={styles.legacyTitle}>Ouvrir l’expérience marketplace complète</Text>
           </View>
           <Text style={styles.legacyArrow}>→</Text>

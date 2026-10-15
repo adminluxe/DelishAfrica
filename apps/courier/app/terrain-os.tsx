@@ -53,24 +53,24 @@ export default function TerrainOSScreen() {
           <Text style={styles.brand}>DELISHAFRICA® COURIER</Text>
           <Text style={styles.heroTitle}>Terrain en 3 secondes.</Text>
           <Text style={styles.heroText}>
-            Une mission claire, une route lisible, une action unique. Le coursier sent la précision avant de démarrer.
+            Écran illustratif : aucune mission, ETA ou rémunération réelle n’est chargée ici. Ouvrez Missions pour lire vos propositions serveur.
           </Text>
 
           <View style={styles.nextBox}>
-            <Text style={styles.nextLabel}>PROCHAINE ACTION</Text>
+            <Text style={styles.nextLabel}>EXEMPLE DE PARCOURS</Text>
             <Text style={styles.nextValue}>Suivre la mission</Text>
           </View>
         </View>
 
         <View style={styles.missionCard}>
-          <Text style={styles.missionLabel}>MISSION PRIORITAIRE</Text>
-          <Text style={styles.missionTitle}>Rice and Peace</Text>
-          <Text style={styles.missionMeta}>DA-9P3QH0 · En route · 21,90 €</Text>
+          <Text style={styles.missionLabel}>DÉMONSTRATION · AUCUNE MISSION ATTRIBUÉE</Text>
+          <Text style={styles.missionTitle}>Livraison illustrative</Text>
+          <Text style={styles.missionMeta}>Sans commande attribuée · aucun revenu calculé</Text>
 
           <View style={styles.metricRow}>
-            <MetricTile value="A+" label="CLARTÉ" />
-            <MetricTile value="15 min" label="ETA" />
-            <MetricTile value="Guidé" label="MODE" />
+            <MetricTile value="—" label="CLARTÉ" />
+            <MetricTile value="—" label="ETA" />
+            <MetricTile value="DÉMO" label="MODE" />
           </View>
         </View>
 
@@ -78,7 +78,7 @@ export default function TerrainOSScreen() {
         <ActionCard title="ETA mission" body="Lire le temps, la distance et la précision terrain." to="/courier-eta" />
         <ActionCard title="Missions" body="Revenir au cockpit opérationnel du coursier." to="/orders" />
 
-        <Text style={styles.footer}>Terrain clair · ETA lisible · action maîtrisée.</Text>
+        <Text style={styles.footer}>Vue illustrative · missions et estimations réelles dans votre espace sécurisé.</Text>
       </ScrollView>
     </SafeAreaView>
   );
