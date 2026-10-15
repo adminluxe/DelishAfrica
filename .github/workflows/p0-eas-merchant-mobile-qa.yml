@@ -1,0 +1,72 @@
+name: P0 EAS Merchant mobile QA
+
+on:
+  push:
+    branches:
+      - release/p0-ios-merchant-ux-candidate-20261015
+  pull_request:
+    branches:
+      - release/p0-ios-merchant-eas-baseline-20261015
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p0-eas-merchant-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qa-mobile:
+    name: typecheck-and-authentic-ios-android-hermes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: "1"
+      EXPO_NO_TELEMETRY: "1"
+      APP_VARIANT: development
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - name: Checkout immutable candidate without credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+      - name: Activate pnpm 9.15.4
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+          test "$(pnpm --version)" = "9.15.4"
+      - name: Frozen installation with lifecycle scripts disabled
+        run: pnpm install --frozen-lockfile --ignore-scripts --filter merchant
+      - name: merchant TypeScript
+        run: pnpm --dir apps/merchant exec tsc --noEmit
+      - name: Export JavaScript only - no EAS native build, OTA or Store push
+        run: |
+          unset EXPO_NO_METRO_WORKSPACE_ROOT
+          (cd apps/merchant && pnpm exec expo export --platform ios --output-dir "$RUNNER_TEMP/da-merchant-ios")
+          (cd apps/merchant && pnpm exec expo export --platform android --output-dir "$RUNNER_TEMP/da-merchant-android")
+      - name: Fail closed if Expo outputs generic Router shell instead of real app
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const apps = ["merchant"];
+          for (const app of apps) {
+            for (const platform of ['ios', 'android']) {
+              const root = path.join(process.env.RUNNER_TEMP, 'da-' + app + '-' + platform);
+              const metadata = JSON.parse(fs.readFileSync(path.join(root,'metadata.json'),'utf8'));
+              const assets = metadata.fileMetadata?.[platform]?.assets || [];
+              const dir = path.join(root,'_expo/static/js',platform);
+              const names = fs.readdirSync(dir).filter(n => n.endsWith('.hbc'));
+              if (names.length !== 1 || assets.length < 28) throw new Error(app+'/'+platform+': incomplete export');
+              const code = fs.readFileSync(path.join(dir,names[0]));
+              if (code.length < 2800000 || !code.includes(Buffer.from('DELISHAFRICA')) ||
+                  !code.includes(Buffer.from(app+'-h2o'))) throw new Error(app+'/'+platform+': wrong app or missing premium assets');
+              console.log('PASS '+app+'/'+platform+': '+code.length+' HBC bytes, '+assets.length+' asset references');
+            }
+          }
+          NODE
