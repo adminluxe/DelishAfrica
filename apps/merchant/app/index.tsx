@@ -223,14 +223,14 @@ export default function MerchantSurfaceHome() {
         <View style={styles.topline}>
           <View style={styles.toplineCopy}>
             <Text style={styles.brand}>DELISHAFRICA®</Text>
-            <Text style={styles.role}>MERCHANT · KITCHEN TIDE · S10N</Text>
+            <Text style={styles.role}>RESTAURATEUR · CUISINE ET COMMANDES</Text>
           </View>
           <Pressable
             onPress={() => go("/partner-space")}
             style={styles.avatarButton}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Ouvrir Mon espace Merchant"
+            accessibilityLabel="Ouvrir mon espace restaurateur"
           >
             <Text style={styles.avatarText}>PRO</Text>
           </Pressable>
@@ -239,34 +239,34 @@ export default function MerchantSurfaceHome() {
         <View style={[styles.authority, ownership.ready ? styles.authorityReady : styles.authorityPending]}>
           <View style={[styles.authorityDot, ownership.ready && styles.authorityDotReady]} />
           <View style={styles.authorityCopy}>
-            <Text style={styles.authorityLabel}>BUSINESS AUTHORITY</Text>
+            <Text style={styles.authorityLabel}>ACCÈS À L’ÉTABLISSEMENT</Text>
             <Text style={styles.authorityText}>
               {loading
                 ? "Vérification de votre établissement…"
                 : ownership.ready
                   ? `${ownership.partner} · rôle ${ownership.role}`
-                  : "Identité Merchant reconnue · rattachement établissement à finaliser"}
+                  : "Compte reconnu · établissement à associer"}
             </Text>
           </View>
-          {loading ? <ActivityIndicator size="small" /> : <Text style={styles.authorityState}>{ownership.ready ? "LIÉ" : "GATE"}</Text>}
+          {loading ? <ActivityIndicator size="small" /> : <Text style={styles.authorityState}>{ownership.ready ? "LIÉ" : "À LIER"}</Text>}
         </View>
 
         <WaterIntelRail
           tone="merchant"
           mode="pulse"
-          label="PULSE · KITCHEN TIDE"
+          label="SERVICE · RYTHME DE CUISINE"
           title={stats.pending > 0 ? `${stats.pending} décision${stats.pending > 1 ? "s" : ""} remonte${stats.pending > 1 ? "nt" : ""} à la surface.` : "Le service respire."}
           body={`${stats.kitchen} en cuisine · ${stats.ready} prête${stats.ready > 1 ? "s" : ""} · la priorité reste lisible et la décision reste humaine.`}
-          status={loading ? "SYNC" : ordersSynced ? "LIVE" : "À ACTUALISER"}
-          signalClass={loading ? "estimated" : ordersSynced ? "confirmed" : "stale"}
-          evidence={ordersSynced ? "Comptages issus de /orders/demo/list pour votre session Merchant." : "Le rail conserve uniquement le dernier état local disponible."}
+          status={loading ? "SYNCHRO" : ordersSynced ? "APERÇU" : "À ACTUALISER"}
+          signalClass={loading ? "estimated" : ordersSynced ? "estimated" : "stale"}
+          evidence={ordersSynced ? "Commandes issues du flux de démonstration ; aucun encaissement bancaire certifié." : "Le rail conserve uniquement le dernier état local disponible."}
           freshnessLabel={ordersFreshnessLabel}
           reduceMotion={reduceMotion}
           onPress={() => go("/operations-live")}
-          accessibilityLabel="Ouvrir Kitchen Tide et la vue opérationnelle temps réel"
+          accessibilityLabel="Ouvrir l’activité de la cuisine et les commandes"
         />
 
-        <Text style={styles.kicker}>CUISINE · SERVICE · REMISE · LIVE</Text>
+        <Text style={styles.kicker}>CUISINE · COMMANDES · SERVICE</Text>
         <Text style={styles.hero}>Une décision claire.{`\n`}Le service avance.</Text>
         <Text style={styles.subtitle}>
           Le cockpit rassemble commandes, cuisine, présence et pilotage dans une lecture immédiate,
@@ -285,7 +285,7 @@ export default function MerchantSurfaceHome() {
           accessibilityRole="button"
         >
           <View style={styles.primaryCopy}>
-            <Text style={styles.primaryEyebrow}>{ownership.ready ? "SERVICE ACTIF" : "IDENTITÉ D’ABORD"}</Text>
+            <Text style={styles.primaryEyebrow}>{ownership.ready ? "ÉTABLISSEMENT LIÉ" : "IDENTITÉ D’ABORD"}</Text>
             <Text style={styles.primaryTitle}>{ownership.ready ? "Ouvrir les commandes" : "Sécuriser mon accès"}</Text>
             <Text style={styles.primaryBody}>
               {ownership.ready ? "Votre établissement est lié à cette identité Merchant." : "Reconnectez l’identité Merchant si nécessaire."}
