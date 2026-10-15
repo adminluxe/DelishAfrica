@@ -46,6 +46,30 @@ jobs:
         run: pnpm --dir apps/client exec tsc --noEmit
       - name: courier TypeScript
         run: pnpm --dir apps/courier exec tsc --noEmit
+      - name: Guard onboarding V2 paths against legacy enrollment and fake identities
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          for (const role of ["client","courier"]) {
+            const read = (f) => fs.readFileSync(path.join('apps',role,f),'utf8');
+            const home = read('app/index.tsx');
+            const page = read('app/onboarding.tsx');
+            const files = role === 'merchant' ? ['utils/daMerchantOidc.ts','app/auth/login.tsx'] : ['hooks/useDaPkceAuth.ts','auth/daOidcConfig.ts'];
+            const lib = files.map(read).join('\n');
+            if (!home.includes('/onboarding') || !page.includes('Créer mon compte') || !page.includes('J’ai déjà un compte') || !page.includes("begin('register')")) throw Error(role + ': onboarding not reachable');
+            if (!lib.includes('Constants.expoConfig?.scheme') || !lib.includes('prompt:')) throw Error(role + ': no native callback or registration intent');
+            if (lib.includes('DEV_TOKEN') || lib.includes('dev:${')) throw Error(role+': fake identity remains reachable');
+            if (!read('app/auth-session.tsx').includes("'./onboarding'")) throw Error(role+': stale authentication entry');
+            if (role === 'merchant' && !read('app/auth/login.tsx').includes("'../onboarding'")) throw Error('Merchant legacy fake login not retired');
+            if (role === 'client' && !read('app/secure-session.tsx').includes("'./onboarding'")) throw Error('Client checkout gateway not upgraded');
+            console.log('PASS ONBOARDING_V2 '+role);
+          }
+          NODE
+      - name: Assert DEV native deep-link scheme matches the actual Expo manifest
+        run: |
+          (cd apps/client && APP_VARIANT=development pnpm exec expo config --json) | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{const x=JSON.parse(s);const role="client";const scheme="delishafrica"+role+"dev";const id="com.delishafrica."+role+".dev";if(x.scheme!==scheme || x.ios?.bundleIdentifier!==id)throw Error("INVALID_DEV_CALLBACK_SCHEME "+role);console.log("PASS DEV_CALLBACK "+role);})'
+          (cd apps/courier && APP_VARIANT=development pnpm exec expo config --json) | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{const x=JSON.parse(s);const role="courier";const scheme="delishafrica"+role+"dev";const id="com.delishafrica."+role+".dev";if(x.scheme!==scheme || x.ios?.bundleIdentifier!==id)throw Error("INVALID_DEV_CALLBACK_SCHEME "+role);console.log("PASS DEV_CALLBACK "+role);})'
       - name: Export JavaScript only - no EAS native build, OTA or Store push
         run: |
           unset EXPO_NO_METRO_WORKSPACE_ROOT
