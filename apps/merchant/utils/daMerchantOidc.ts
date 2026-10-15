@@ -8,6 +8,7 @@
  */
 
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 type ExpoAuthSessionModule = typeof import('expo-auth-session');
 type ExpoCryptoModule = typeof import('expo-crypto');
@@ -66,7 +67,19 @@ const candidateScheme = typeof configuredScheme === 'string'
   : Array.isArray(configuredScheme)
     ? configuredScheme.find((value) => permittedSchemes.includes(value as (typeof permittedSchemes)[number]))
     : undefined;
+// The URI must also correspond to the native application ID for this platform.
+const configuredPackage = Platform.OS === 'ios'
+  ? Constants.expoConfig?.ios?.bundleIdentifier
+  : Platform.OS === 'android'
+    ? Constants.expoConfig?.android?.package
+    : undefined;
+const expectedPackage = candidateScheme === 'delishafricamerchantdev'
+  ? 'com.delishafrica.merchant.dev'
+  : candidateScheme === 'delishafricamerchant'
+    ? 'com.delishafrica.merchant'
+    : '';
 const activeScheme = candidateScheme && permittedSchemes.includes(candidateScheme as (typeof permittedSchemes)[number])
+  && expectedPackage && configuredPackage === expectedPackage
   ? candidateScheme
   : '';
 const REDIRECT_URI = activeScheme ? `${activeScheme}://auth/callback` : '';
