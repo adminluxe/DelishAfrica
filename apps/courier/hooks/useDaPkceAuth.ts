@@ -100,7 +100,6 @@ export function useDaPkceAuth() {
         scopes: [...DA_OIDC_CONFIG.scopes],
         usePKCE: true,
         codeChallengeMethod: AuthSession.CodeChallengeMethod.S256,
-        prompt: (AuthSession as any).Prompt?.Login || 'login',
         extraParams: { nonce: attemptNonce, prompt: intent === 'register' ? 'create' : 'login' },
       });
 
