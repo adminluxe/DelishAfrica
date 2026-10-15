@@ -9,7 +9,6 @@ import { useDaPkceAuth } from '../hooks/useDaPkceAuth';
 type EntryIntent = 'register' | 'login';
 const ACCENT = '#E7B85F';
 const BG = '#051A13';
-const ROLE = 'CLIENT';
 const NEXT_ALLOWED = new Set(['/client-space', '/restaurants', '/orders', '/checkout-preflight', '/live-tracking']);
 
 function friendlyFailure(value: unknown): string {
@@ -36,7 +35,7 @@ export default function DelishOnboardingV2() {
   const ready = auth.requestReady && Boolean(auth.redirectUri);
   const identityName = auth.session.displayName || auth.session.email || '';
   const accessStatus = verified ? 'IDENTITÉ VÉRIFIÉE' : 'IDENTITÉ À CONNECTER';
-  const canOpen = ready && !busy;
+  const canOpen = ready && !busy && !(auth.session.status === 'anonymous' && auth.session.reason === 'initializing');
   async function begin(intent: EntryIntent) {
     if (!canOpen) return;
     setNotice('');
