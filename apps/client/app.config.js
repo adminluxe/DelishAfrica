@@ -17,8 +17,6 @@ const CLIENT_IOS_BUNDLE_ID = IS_DEV ? "com.delishafrica.client.dev" : "com.delis
 const CLIENT_ANDROID_PACKAGE = IS_DEV ? "com.delishafrica.client.dev" : "com.delishafrica.client";
 
 const CLIENT_BOOT_BACKGROUND = "#051411";
-const CLIENT_CAMERA_PURPOSE =
-  "DelishAfrica utilise l’appareil photo uniquement si vous choisissez de scanner une carte de paiement pour renseigner plus rapidement ses informations. Aucune image n’est conservée par DelishAfrica.";
 const CLIENT_LOCATION_PURPOSE =
   "DelishAfrica utilise votre position uniquement si vous choisissez de détecter votre zone de livraison et de faciliter la saisie de votre adresse.";
 
