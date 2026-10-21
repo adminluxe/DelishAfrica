@@ -85,6 +85,12 @@ jobs:
           grep -q "DA_INVITATION_ENCRYPTION_KEY_FILE" services/api-nest/src/identity-lifecycle/identity-lifecycle.crypto.ts
           grep -q "identity_lifecycle_secret_unavailable" services/api-nest/src/identity-lifecycle/identity-lifecycle.crypto.ts
           grep -q "identity_fingerprint" services/api-nest/migrations/identity-lifecycle/20261021_001_account_deletion.sql
+          grep -q "verifyRegistrationAuthorization" services/api-nest/src/auth/auth.service.ts
+          grep -q "verifyRegistrationAuthorization" services/api-nest/src/identity-lifecycle/identity-lifecycle.service.ts
+          if grep -q "resolvePrincipalFromAuthorization" services/api-nest/src/identity-lifecycle/identity-lifecycle.service.ts; then
+            echo "Account deletion must support verified pending identities without professional role admission"
+            exit 1
+          fi
 
       - name: Production manifest invariants 3 apps
         run: |

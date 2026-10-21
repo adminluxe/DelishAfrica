@@ -124,6 +124,43 @@ export class AuthService {
     };
   }
 
+  async verifyRegistrationAuthorization(input: {
+    application?: unknown;
+    authorization?: string;
+  }) {
+    const token = this.extractBearer(input.authorization);
+    if (!token) {
+      return { ok: false as const, reason: 'missing_bearer_token' as const };
+    }
+
+    const identity = await this.verifyRegistrationIdentity({
+      application: input.application,
+      token,
+    });
+    if (identity.ok !== true) {
+      return {
+        ok: false as const,
+        reason:
+          'reason' in identity
+            ? String(identity.reason || 'registration_request_invalid')
+            : 'registration_request_invalid',
+      };
+    }
+
+    return {
+      ok: true as const,
+      identityVerified: true as const,
+      emailVerified: true as const,
+      application: String(input.application || '').trim(),
+      subject: identity.subject,
+      email: identity.email,
+      professionalAccessGranted: false as const,
+      issuer: this.trustedIdentityHealth().issuer,
+      authSource: 'external' as const,
+      ownershipEligible: true as const,
+    };
+  }
+
   async meFromAuthorization(authorization?: string) {
     const resolution = await this.resolvePrincipalFromAuthorization(authorization);
 

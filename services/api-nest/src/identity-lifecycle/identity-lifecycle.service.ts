@@ -1,13 +1,11 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { AuthService } from '../auth/auth.service';
-import type { DaAuthPrincipalResolution } from '../auth/auth.types';
 import {
   idempotencyFingerprint,
   identityFingerprint,
@@ -42,7 +40,7 @@ export class IdentityLifecycleService {
     body?: unknown;
   }) {
     const application = this.application(input.application);
-    const principal = await this.principal(application, input.authorization);
+    const identity = await this.registrationIdentity(application, input.authorization);
     const body = this.body(input.body);
     if (
       body.confirmation !== DELETE_CONFIRMATION ||
@@ -63,9 +61,9 @@ export class IdentityLifecycleService {
     }
 
     const fingerprint = identityFingerprint({
-      issuer: principal.principal.issuer,
-      subject: principal.principal.subject,
-      role: principal.principal.role,
+      issuer: identity.issuer,
+      subject: identity.subject,
+      role: application,
     });
     const keyHash = idempotencyFingerprint(key);
     const now = new Date();
@@ -113,11 +111,11 @@ export class IdentityLifecycleService {
 
   async mine(input: { application: string; authorization?: string }) {
     const application = this.application(input.application);
-    const principal = await this.principal(application, input.authorization);
+    const identity = await this.registrationIdentity(application, input.authorization);
     const fingerprint = identityFingerprint({
-      issuer: principal.principal.issuer,
-      subject: principal.principal.subject,
-      role: principal.principal.role,
+      issuer: identity.issuer,
+      subject: identity.subject,
+      role: application,
     });
     const requests = await this.repository.listForIdentity(application, fingerprint);
     return {
@@ -164,33 +162,21 @@ export class IdentityLifecycleService {
     return body;
   }
 
-  private async principal(
+  private async registrationIdentity(
     application: AccountDeletionApplication,
     authorization?: string,
-  ): Promise<Extract<DaAuthPrincipalResolution, { ok: true }>> {
-    const resolution = await this.auth.resolvePrincipalFromAuthorization(authorization);
-    if ('reason' in resolution) {
+  ) {
+    const identity = await this.auth.verifyRegistrationAuthorization({
+      application,
+      authorization,
+    });
+    if (!identity.ok) {
       throw new UnauthorizedException({
         ok: false,
         code: 'account_deletion_auth_required',
-        reason: resolution.reason,
+        reason: identity.reason,
       });
     }
-    if (
-      resolution.principal.authSource !== 'external' ||
-      resolution.principal.ownershipEligible !== true
-    ) {
-      throw new ForbiddenException({
-        ok: false,
-        code: 'account_deletion_external_identity_required',
-      });
-    }
-    if (resolution.principal.role !== application) {
-      throw new ForbiddenException({
-        ok: false,
-        code: 'account_deletion_role_mismatch',
-      });
-    }
-    return resolution;
+    return identity;
   }
 }
