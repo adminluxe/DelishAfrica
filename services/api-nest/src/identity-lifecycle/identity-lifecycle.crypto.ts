@@ -3,16 +3,31 @@ import * as fs from 'fs';
 
 const PURPOSE = 'delishafrica|identity-lifecycle|v1';
 
+function decodeKey(encoded: string): Buffer {
+  try {
+    const decoded = Buffer.from(encoded.trim(), 'base64url');
+    if (decoded.length === 32) return decoded;
+  } catch {
+    // Fail closed below.
+  }
+  throw new Error('identity_lifecycle_secret_invalid');
+}
+
 function rootSecret(): Buffer {
-  const explicit = String(process.env.DA_AUTH_SECRET || '').trim();
-  if (explicit) return Buffer.from(explicit, 'utf8');
+  const explicit = String(process.env.DA_IDENTITY_LIFECYCLE_SECRET || '').trim();
+  if (explicit) return decodeKey(explicit);
 
   const filePath = String(
-    process.env.DA_AUTH_SECRET_FILE || '/run/secrets/delishafrica-auth-secret',
+    process.env.DA_IDENTITY_LIFECYCLE_SECRET_FILE ||
+      process.env.DA_INVITATION_ENCRYPTION_KEY_FILE ||
+      '/run/secrets/da-invitation-encryption-v1',
   ).trim();
-  const value = fs.readFileSync(filePath, 'utf8').trim();
-  if (!value) throw new Error('identity_lifecycle_secret_unavailable');
-  return Buffer.from(value, 'utf8');
+
+  try {
+    return decodeKey(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    throw new Error('identity_lifecycle_secret_unavailable');
+  }
 }
 
 function lifecycleKey(): Buffer {
