@@ -116,7 +116,7 @@
       "ws@7.5.10": "7.5.11",
       "ws@8.17.1": "8.21.0",
       "ws@8.18.3": "8.21.0",
-      "node-forge": "file:vendor/pog-security/node-forge-1.4.0-orchidpay-b7.2.tgz",
+      "node-forge": "file:vendor/pog-security/node-forge-1.4.0-pog-r3b-rebuilt-QA-ONLY.tgz",
       "braces": "file:vendor/pog-security/braces-3.0.3-orchidpay-b7.2.tgz"
     },
     "patchedDependencies": {

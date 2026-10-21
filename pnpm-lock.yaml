@@ -35,7 +35,7 @@ overrides:
   ws@7.5.10: 7.5.11
   ws@8.17.1: 8.21.0
   ws@8.18.3: 8.21.0
-  node-forge: file:vendor/pog-security/node-forge-1.4.0-orchidpay-b7.2.tgz
+  node-forge: file:vendor/pog-security/node-forge-1.4.0-pog-r3b-rebuilt-QA-ONLY.tgz
   braces: file:vendor/pog-security/braces-3.0.3-orchidpay-b7.2.tgz
 
 patchedDependencies:
@@ -5887,8 +5887,8 @@ packages:
       encoding:
         optional: true
 
-  node-forge@file:vendor/pog-security/node-forge-1.4.0-orchidpay-b7.2.tgz:
-    resolution: {integrity: sha512-UP/a/hgwjZHplsQQq/7MAPCksjTU/16kFJL2SX5xoomuUrrAnzgV6iJvI8El9IuW95iThAn2vpjOY+X3Z6ClTQ==, tarball: file:vendor/pog-security/node-forge-1.4.0-orchidpay-b7.2.tgz}
+  node-forge@file:vendor/pog-security/node-forge-1.4.0-pog-r3b-rebuilt-QA-ONLY.tgz:
+    resolution: {integrity: sha512-0IVdGM38fjCq7ZUAfTNjTt+DGgqMFe/M2+iI4I3RdntC48DIN4qcGenMcgintucw2De7qchzG0N8w/lMr13B6g==, tarball: file:vendor/pog-security/node-forge-1.4.0-pog-r3b-rebuilt-QA-ONLY.tgz}
     version: 1.4.0
     engines: {node: '>= 6.13.0'}
 
@@ -8950,7 +8950,7 @@ snapshots:
       glob: 13.0.0
       lan-network: 0.2.1
       minimatch: 9.0.7
-      node-forge: file:vendor/pog-security/node-forge-1.4.0-orchidpay-b7.2.tgz
+      node-forge: file:vendor/pog-security/node-forge-1.4.0-pog-r3b-rebuilt-QA-ONLY.tgz
       npm-package-arg: 11.0.3
       ora: 3.4.0
       picomatch: 4.0.7
@@ -8986,7 +8986,7 @@ snapshots:
 
   '@expo/code-signing-certificates@0.0.6':
     dependencies:
-      node-forge: file:vendor/pog-security/node-forge-1.4.0-orchidpay-b7.2.tgz
+      node-forge: file:vendor/pog-security/node-forge-1.4.0-pog-r3b-rebuilt-QA-ONLY.tgz
 
   '@expo/config-plugins@54.0.5':
     dependencies:
@@ -14014,7 +14014,7 @@ snapshots:
     dependencies:
       whatwg-url: 5.0.0
 
-  node-forge@file:vendor/pog-security/node-forge-1.4.0-orchidpay-b7.2.tgz: {}
+  node-forge@file:vendor/pog-security/node-forge-1.4.0-pog-r3b-rebuilt-QA-ONLY.tgz: {}
 
   node-int64@0.4.0: {}
 
