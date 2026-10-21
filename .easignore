@@ -127,3 +127,10 @@ backups/**
 **/backups
 **/backups/**
 # END DELISHAFRICA EAS SECURITY PATCH V1B
+
+# QA-only exception for exactly two SHA-verified POG backport libraries.
+# Keep broad archive deny above; do not include arbitrary .tgz files.
+!vendor/
+!vendor/pog-security/
+!vendor/pog-security/braces-3.0.3-orchidpay-b7.2.tgz
+!vendor/pog-security/node-forge-1.4.0-orchidpay-b7.2.tgz

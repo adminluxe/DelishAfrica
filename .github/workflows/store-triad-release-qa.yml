@@ -12,6 +12,8 @@ on:
       - "services/api-nest/**"
       - "scripts/da_store_candidate_contract_tests.cjs"
       - "scripts/da_store_bundle_dependency_attestation.cjs"
+      - "scripts/qa_pog_security_backports.cjs"
+      - "vendor/pog-security/**"
       - "patches/**"
       - ".easignore"
       - "package.json"
@@ -78,6 +80,9 @@ jobs:
 
       - name: Client cart catalog zone and map regression contracts
         run: node scripts/da_store_candidate_contract_tests.cjs
+
+      - name: POG private security backports provenance and adversarial checks
+        run: node scripts/qa_pog_security_backports.cjs
 
       - name: Internal auth fail-closed contract
         run: |
@@ -241,3 +246,7 @@ jobs:
             exit 1
           fi
           exit "$code"
+
+      - name: Private backport release admission — explicit NO-GO
+        if: always()
+        run: node scripts/qa_pog_security_backports.cjs --release-gate
