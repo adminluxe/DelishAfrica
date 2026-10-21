@@ -61,6 +61,18 @@ jobs:
       - name: Nest API build
         run: pnpm --dir services/api-nest run build
 
+      - name: Identity lifecycle contract
+        run: |
+          test -f services/api-nest/src/identity-lifecycle/identity-lifecycle.module.ts
+          test -f services/api-nest/src/identity-lifecycle/identity-lifecycle.controller.ts
+          test -f services/api-nest/src/identity-lifecycle/identity-lifecycle.service.ts
+          test -f services/api-nest/src/identity-lifecycle/identity-lifecycle.repository.ts
+          test -f services/api-nest/migrations/identity-lifecycle/20261021_001_account_deletion.sql
+          grep -q "IdentityLifecycleModule" services/api-nest/src/app.module.ts
+          grep -q "account-deletion" services/api-nest/src/identity-lifecycle/identity-lifecycle.controller.ts
+          grep -q "DA_AUTH_SECRET_FILE" services/api-nest/src/identity-lifecycle/identity-lifecycle.crypto.ts
+          grep -q "identity_fingerprint" services/api-nest/migrations/identity-lifecycle/20261021_001_account_deletion.sql
+
       - name: Production manifest invariants 3 apps
         run: |
           for app in client merchant courier; do
