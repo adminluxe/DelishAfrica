@@ -7,6 +7,7 @@ import * as path from 'node:path';
 import type { DaAuthTokenPayload } from './auth.types';
 import type {
   DaExternalTokenVerification,
+  DaRegistrationIdentityVerification,
   DaTrustedIdentityConfig,
   DaTrustedIdentityHealth,
 } from './external-jwks-verifier.types';
@@ -79,6 +80,58 @@ export class ExternalJwksVerifierService
       ownershipEligibleRole: 'merchant',
       devLoginAccepted: false,
     };
+  }
+
+  async verifyRegistrationToken(
+    token: string,
+    expectedClientId: 'delishafrica-client' | 'delishafrica-merchant' | 'delishafrica-courier',
+  ): Promise<DaRegistrationIdentityVerification> {
+    const parts = String(token || '').split('.');
+    if (parts.length !== 3) return { ok: false, reason: 'malformed_token' };
+    const [encodedHeader, encodedPayload, encodedSignature] = parts;
+    const header = this.decodeJson(encodedHeader);
+    const claims = this.decodeJson(encodedPayload);
+    if (!header || !claims) return { ok: false, reason: 'malformed_token' };
+    if (header.alg !== 'RS256') return { ok: false, reason: 'unsupported_algorithm' };
+    if (header.typ !== undefined && header.typ !== 'JWT' && header.typ !== 'at+jwt') {
+      return { ok: false, reason: 'malformed_token' };
+    }
+    const kid = typeof header.kid === 'string' ? header.kid.trim() : '';
+    if (!kid) return { ok: false, reason: 'unknown_signing_key' };
+    if (!this.ready || this.keys.size === 0) await this.refreshKeys();
+    let cached = this.keys.get(kid);
+    if (!cached) { await this.refreshKeys(); cached = this.keys.get(kid); }
+    if (!this.ready) return { ok: false, reason: 'trusted_identity_not_ready' };
+    if (!cached) return { ok: false, reason: 'unknown_signing_key' };
+    let signature: Buffer;
+    try { signature = Buffer.from(encodedSignature, 'base64url'); }
+    catch { return { ok: false, reason: 'malformed_token' }; }
+    const verified = crypto.verify(
+      'RSA-SHA256',
+      Buffer.from(`${encodedHeader}.${encodedPayload}`, 'ascii'),
+      cached.key,
+      signature,
+    );
+    if (!verified) return { ok: false, reason: 'invalid_signature' };
+    if (claims.iss !== this.config.issuer) return { ok: false, reason: 'issuer_mismatch' };
+    if (!this.audienceIncludes(claims.aud, expectedClientId)) {
+      return { ok: false, reason: 'audience_mismatch' };
+    }
+    if (claims.azp !== expectedClientId) return { ok: false, reason: 'authorized_party_mismatch' };
+    const now = Math.floor(Date.now() / 1000);
+    const skew = this.config.clockSkewSeconds;
+    const exp = this.numericDate(claims.exp);
+    const iat = this.numericDate(claims.iat);
+    const nbf = claims.nbf === undefined ? null : this.numericDate(claims.nbf);
+    if (exp === null || exp <= now - skew) return { ok: false, reason: 'token_expired' };
+    if (iat === null || iat > now + skew) return { ok: false, reason: 'issued_in_future' };
+    if (nbf !== null && nbf > now + skew) return { ok: false, reason: 'token_not_active' };
+    const subject = typeof claims.sub === 'string' ? claims.sub.trim() : '';
+    if (!subject) return { ok: false, reason: 'subject_missing' };
+    const email = typeof claims.email === 'string' ? claims.email.trim().toLowerCase() : '';
+    if (!email) return { ok: false, reason: 'email_missing' };
+    if (claims.email_verified !== true) return { ok: false, reason: 'email_not_verified' };
+    return { ok: true, subject, email, clientId: expectedClientId, emailVerified: true };
   }
 
   async verifyToken(token: string): Promise<DaExternalTokenVerification> {

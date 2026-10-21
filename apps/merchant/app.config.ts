@@ -2,6 +2,14 @@ import { ConfigContext, ExpoConfig } from "expo/config";
 
 // DA_DEV_VARIANT_SIDE_BY_SIDE_V3 — DEV binary coexists with Store/TestFlight.
 const IS_DEV = process.env.APP_VARIANT === "development";
+// Preview stays blocked until a real isolated QA API and IAM are approved.
+const DA_PREVIEW_REQUESTED =
+  process.env.EAS_BUILD_PROFILE === "preview" ||
+  process.env.APP_VARIANT === "preview";
+if (DA_PREVIEW_REQUESTED) {
+  throw new Error("DA_PREVIEW_QA_API_ISOLATION_REQUIRED");
+}
+
 const MERCHANT_APP_NAME = IS_DEV ? "DelishAfrica Merchant DEV" : "DelishAfrica Merchant";
 const MERCHANT_DISPLAY_NAME = IS_DEV ? "DA Merchant DEV" : "DelishAfrica Merchant";
 const MERCHANT_SCHEME = IS_DEV ? "delishafricamerchantdev" : "delishafricamerchant";
@@ -22,7 +30,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: "delishafrica-merchant",
   owner: "delishafrica",
   scheme: MERCHANT_SCHEME,
-  version: "3.0.0",
+  version: IS_DEV ? "3.0.0" : "3.0.2",
   orientation: "portrait",
   userInterfaceStyle: "dark",
   backgroundColor: MERCHANT_BOOT_BACKGROUND,

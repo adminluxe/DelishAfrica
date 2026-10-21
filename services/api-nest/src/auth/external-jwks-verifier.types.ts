@@ -34,6 +34,33 @@ export type DaTrustedIdentityHealth = {
   devLoginAccepted: false;
 };
 
+export type DaRegistrationIdentityVerification =
+  | {
+      ok: true;
+      subject: string;
+      email: string;
+      clientId: 'delishafrica-client' | 'delishafrica-merchant' | 'delishafrica-courier';
+      emailVerified: true;
+    }
+  | {
+      ok: false;
+      reason:
+        | 'trusted_identity_not_ready'
+        | 'malformed_token'
+        | 'unsupported_algorithm'
+        | 'unknown_signing_key'
+        | 'invalid_signature'
+        | 'issuer_mismatch'
+        | 'audience_mismatch'
+        | 'authorized_party_mismatch'
+        | 'token_expired'
+        | 'token_not_active'
+        | 'issued_in_future'
+        | 'subject_missing'
+        | 'email_missing'
+        | 'email_not_verified';
+    };
+
 export type DaExternalTokenVerification =
   | {
       ok: true;

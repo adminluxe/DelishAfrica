@@ -71,6 +71,19 @@ export class AuthController {
     return this.auth.verify(body || {});
   }
 
+  @Post('registration/verify')
+  async verifyRegistration(@Body() body: any) {
+    const result = await this.auth.verifyRegistrationIdentity(body || {});
+    if ('reason' in result) {
+      throw new UnauthorizedException({
+        ok: false,
+        identityVerified: false,
+        code: result.reason,
+      });
+    }
+    return result;
+  }
+
   private async externalRoleMe(role: ExternalAppRole, authorization?: string) {
     const resolution = await this.auth.resolvePrincipalFromAuthorization(authorization);
     if ('reason' in resolution) this.throwRoleResolution(role, resolution.reason);

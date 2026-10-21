@@ -1,4 +1,6 @@
 import * as SecureStore from "expo-secure-store";
+import { loadOidcSession } from "../auth/daOidcSession";
+import { readCourierProfessionalTruth } from "./daCourierProfessional";
 import { daAccountScopeId, daAccountStorageKey, daOrdersFetch } from "./daOrdersApi";
 
 const CACHE_KEY = "__DELISHAFRICA_COURIER_PROFILE_LITE_V1__";
@@ -8,14 +10,26 @@ const API_BASE_URL = RAW_API.replace(/\/$/, "").endsWith("/api/v1") ? RAW_API.re
 const memory = new Map<string, object>();
 let activeScope: string | null = null;
 
+// Presence sync is NOT a submitted or professionally approved courier profile.
+export type CourierPresenceSaveReceipt = {
+  localSaved: boolean;
+  presenceSynced: boolean;
+  professionalApproved: false;
+  checkedAt: string;
+};
+const receipts = new Map<string, CourierPresenceSaveReceipt>();
+
+export function readCourierPresenceSaveReceipt(): CourierPresenceSaveReceipt | null {
+  return activeScope ? receipts.get(activeScope) || null : null;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 export function readCourierPresenceCache<T extends object>(): T | null {
-  if (!activeScope) return null;
-  const value = memory.get(activeScope);
-  return isRecord(value) ? (value as T) : null;
+  // Until the current sub OIDC is resolved asynchronously, never expose a previous user's cache.
+  return null;
 }
 
 function writeCourierPresenceCache<T extends object>(scope: string, profile: T | null) {
@@ -27,7 +41,12 @@ function writeCourierPresenceCache<T extends object>(scope: string, profile: T |
 }
 
 export async function loadCourierPresence<T extends object>(): Promise<T | null> {
-  const scope = await daAccountScopeId();
+  let scope: string;
+  try {
+    scope = await daAccountScopeId();
+  } catch {
+    return null;
+  }
   const cached = memory.get(scope) as T | undefined;
   try {
     if (!(await SecureStore.isAvailableAsync())) return cached || null;
@@ -45,6 +64,13 @@ export async function loadCourierPresence<T extends object>(): Promise<T | null>
 
 export async function syncCourierPresence<T extends object>(profile: T): Promise<Record<string, any>> {
   const value = profile as Record<string, any>;
+  // No server presence mutation (even OFF) for an unapproved candidate.
+  const session = await loadOidcSession();
+  if (session.status !== "authenticated" || !session.subject) {
+    throw new Error("courier_oidc_session_required");
+  }
+  const decision = await readCourierProfessionalTruth(session.subject);
+  if (!decision.approved) throw new Error("courier_professional_approval_required");
   const response = await daOrdersFetch(`${API_BASE_URL}/orders/demo/courier/presence`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -73,21 +99,39 @@ export async function saveCourierPresence<T extends object>(profile: T): Promise
   let scopedKey: string | null = null;
   let previousRaw: string | null = null;
   writeCourierPresenceCache(scope, profile);
+  receipts.set(scope, {
+    localSaved: false, presenceSynced: false, professionalApproved: false,
+    checkedAt: new Date().toISOString(),
+  });
   try {
     if (!(await SecureStore.isAvailableAsync())) throw new Error("Le stockage sécurisé de l’appareil est indisponible.");
     scopedKey = await daAccountStorageKey(SECURE_KEY);
     previousRaw = await SecureStore.getItemAsync(scopedKey);
     await SecureStore.setItemAsync(scopedKey, JSON.stringify(profile));
-    const previousAvailable = Boolean((previous as any)?.available);
+    receipts.set(scope, {
+      localSaved: true, presenceSynced: false, professionalApproved: false,
+      checkedAt: new Date().toISOString(),
+    });
     const nextAvailable = Boolean((profile as any)?.available);
     try {
       await syncCourierPresence(profile);
+      receipts.set(scope, {
+        localSaved: true, presenceSynced: true, professionalApproved: false,
+        checkedAt: new Date().toISOString(),
+      });
     } catch (error) {
-      if (previousAvailable !== nextAvailable || nextAvailable) throw error;
+      // An OFF draft remains local, even if the previous profile was online.
+      // Never report presenceSynced when the server refused the operation.
+      // A requested ON transition is still an error and rolls back locally.
+      if (nextAvailable) throw error;
     }
     return profile;
   } catch (error) {
     writeCourierPresenceCache(scope, previous || null);
+    receipts.set(scope, {
+      localSaved: false, presenceSynced: false, professionalApproved: false,
+      checkedAt: new Date().toISOString(),
+    });
     if (scopedKey) {
       try {
         if (previousRaw === null) await SecureStore.deleteItemAsync(scopedKey);
@@ -103,6 +147,7 @@ export async function saveCourierPresence<T extends object>(profile: T): Promise
 export async function clearCourierPresence() {
   const scope = await daAccountScopeId();
   writeCourierPresenceCache(scope, null);
+  receipts.delete(scope);
   try {
     if (await SecureStore.isAvailableAsync()) {
       const scopedKey = await daAccountStorageKey(SECURE_KEY);

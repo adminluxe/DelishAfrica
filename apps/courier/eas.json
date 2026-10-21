@@ -23,13 +23,38 @@
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production"
+      "distribution": "store",
+      "channel": "production",
+      "corepack": true,
+      "pnpm": "9.15.4",
+      "ios": {
+        "image": "macos-sequoia-15.6-xcode-26.0"
+      },
+      "env": {
+        "APP_VARIANT": "production"
+      },
+      "android": {
+        "image": "ubuntu-24.04-jdk-17-ndk-r27b"
+      }
     },
     "preview": {
-      "channel": "preview"
+      "distribution": "internal",
+      "channel": "preview",
+      "corepack": true,
+      "pnpm": "9.15.4",
+      "ios": {
+        "image": "sdk-54"
+      },
+      "env": {
+        "APP_VARIANT": "preview"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6807372575"
+      }
+    }
   }
 }

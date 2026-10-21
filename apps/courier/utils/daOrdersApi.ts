@@ -158,13 +158,14 @@ async function ensurePrincipal(force = false): Promise<PrincipalState> {
 }
 
 async function subjectForStorage(): Promise<string> {
-  try {
-    return (await ensurePrincipal(false)).subject;
-  } catch {
-    const marker = await readPrincipalMarker();
-    if (marker?.subject) return marker.subject;
-    return await identityHint();
+  // No device marker or cached previous account may own new profile writes.
+  const session = await loadOidcSession();
+  if (session.status !== 'authenticated' || !session.subject) {
+    principalCache = null;
+    throw new Error('courier_oidc_session_required');
   }
+  if (principalCache && principalCache.subject !== session.subject) principalCache = null;
+  return session.subject;
 }
 
 async function bindActiveScope(scope: string): Promise<void> {
@@ -213,7 +214,26 @@ export async function daAccountStorageKey(base: string): Promise<string> {
 }
 
 export async function daOrdersFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  const current = await loadOidcSession();
+  if (current.status !== 'authenticated' || !current.subject) {
+    principalCache = null;
+    throw new Error('courier_oidc_session_required');
+  }
+  const accessToken = await getValidOidcAccessToken();
+  if (!accessToken) {
+    principalCache = null;
+    throw new Error('courier_access_token_required');
+  }
+  if (principalCache && (principalCache.subject !== current.subject || principalCache.token !== accessToken)) {
+    principalCache = null;
+  }
   const send = async (principal: PrincipalState) => {
+    const now = await loadOidcSession();
+    const nowToken = await getValidOidcAccessToken();
+    if (now.status !== 'authenticated' || now.subject !== principal.subject || nowToken !== principal.token) {
+      principalCache = null;
+      throw new Error('courier_account_session_changed');
+    }
     const headers = new Headers(init.headers || {});
     headers.set('Authorization', `Bearer ${principal.token}`);
     if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');

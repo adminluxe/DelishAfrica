@@ -4,12 +4,14 @@ import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
 import { DA_OIDC_CONFIG } from '../auth/daOidcConfig';
 import {
+  currentOidcSessionEpoch,
   establishOidcSession,
   loadOidcSession,
   logoutOidcSession,
   refreshOidcSession,
 } from '../auth/daOidcSession';
 import type { DaOidcSession } from '../auth/daOidcTypes';
+import { daPurgeOrdersAccountState } from '../utils/daOrdersApi';
 
 // DA_SHARED_MERCHANT_PROVEN_PKCE_ENGINE_V1
 WebBrowser.maybeCompleteAuthSession();
@@ -86,6 +88,9 @@ export function useDaPkceAuth() {
       return next;
     }
 
+    // Capture the session epoch at the START of native PKCE. Late results
+    // from an auth browser dismissed by logout must not log back in.
+    const attemptEpoch = currentOidcSessionEpoch();
     loginInFlight.current = true;
     setBusy(true);
     setLastError(null);
@@ -104,6 +109,7 @@ export function useDaPkceAuth() {
       });
 
       const result = await authRequest.promptAsync(discovery);
+      if (attemptEpoch !== currentOidcSessionEpoch()) return anonymous('logged_out');
       if (result.type === 'cancel' || result.type === 'dismiss') return session;
       if (result.type !== 'success') {
         const next = failed(`authorization_${String(result.type || 'failed')}`);
@@ -137,12 +143,15 @@ export function useDaPkceAuth() {
         discovery,
       );
 
-      const next = await establishOidcSession(tokenResponse, attemptNonce);
+      if (attemptEpoch !== currentOidcSessionEpoch()) return anonymous('logged_out');
+      const next = await establishOidcSession(tokenResponse, attemptNonce, attemptEpoch);
+      if (attemptEpoch !== currentOidcSessionEpoch()) return anonymous('logged_out');
       setSession(next);
       setLastError(next.status === 'error' ? next.reason || 'oidc_session_failed' : null);
       pushTrace(next.status === 'authenticated' ? 'Session Courier validée' : 'Session non confirmée');
       return next;
     } catch (error) {
+      if (attemptEpoch !== currentOidcSessionEpoch()) return anonymous('logged_out');
       const code = safeErrorCode(error);
       const next = failed(code);
       setLastError(code);
@@ -178,6 +187,8 @@ export function useDaPkceAuth() {
     setBusy(true); setLastError(null);
     try {
       const next = await logoutOidcSession();
+      // Wipe in-memory bearer and account marker, not per-sub SecureStore drafts.
+      await daPurgeOrdersAccountState();
       setSession(next);
       return next;
     } finally { setBusy(false); }

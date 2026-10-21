@@ -1,4 +1,4 @@
-/* DA_J8UX_S1A_S2A_SETTINGS_CANONICAL_PILOT */
+/* DA_J8UX_S1A_S2A_SETTINGS_CANONICAL_PILOT — RELEASE-CANDIDATE WORDING */
 import React from "react";
 import { View } from "react-native";
 import { router } from "expo-router";
@@ -31,17 +31,16 @@ export default function SettingsScreen() {
       <DAInlineNotice
         app={APP}
         kind="info"
-        title="Accès vérifiés"
-        body="Seules les fonctions reliées à un écran ou service réel sont actionnables."
+        title="Accès à votre espace"
+        body="Consultez votre dossier et votre session. Les missions exigent une habilitation professionnelle confirmée par le serveur."
       />
 
       <View style={{ gap: t.space.x3, marginTop: t.space.x4 }}>
         <DAListItem
           app={APP}
           title="Profil coursier"
-          subtitle="Identité, disponibilité et informations du compte."
+          subtitle="Identité et dossier de candidature. L'accès aux missions dépend de la décision professionnelle."
           onPress={() => go("/courier-space")}
-          right={<StatusPill app={APP} status="ONLINE" label="Actif" />}
         />
 
         <DAListItem
@@ -55,8 +54,8 @@ export default function SettingsScreen() {
         <DAListItem
           app={APP}
           title="Véhicule"
-          subtitle="Les informations véhicule seront activées avec leur contrat métier réel."
-          right={<StatusPill app={APP} status="WARN" label="À venir" />}
+          subtitle="Renseigner votre moyen de transport dans le dossier coursier."
+          onPress={() => go("/courier-space")}
         />
 
         <DAListItem

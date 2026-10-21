@@ -8,7 +8,6 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
@@ -16,7 +15,7 @@ import {
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { daInspectProfileTrust, DaProfileTrustResult } from '../utils/daProfileTrust';
-import { loadCourierPresence, readCourierPresenceCache, saveCourierPresence } from '../utils/daPresenceStore';
+import { loadCourierPresence, readCourierPresenceCache, readCourierPresenceSaveReceipt, saveCourierPresence } from '../utils/daPresenceStore';
 import {
   DaIdentityChannel,
   DaIdentityProof,
@@ -58,7 +57,6 @@ export default function CourierSpaceScreen() {
   const [capacity, setCapacity] = useState(existing?.capacity || '');
   const [emergencyContact, setEmergencyContact] = useState(existing?.emergencyContact || '');
   const [notes, setNotes] = useState(existing?.notes || '');
-  const [available, setAvailable] = useState(existing?.available ?? false);
   const [territory, setTerritory] = useState<DaTerritoryContext | null>(
     existing?.territory && existing?.territoryEvidence
       ? {
@@ -150,7 +148,6 @@ async function persistActivationDraft(patch: Partial<CourierProfileLite> = {}) {
       setCapacity(profile.capacity || '');
       setEmergencyContact(profile.emergencyContact || '');
       setNotes(profile.notes || '');
-      setAvailable(Boolean(profile.available));
       setTerritory(profile.territory && profile.territoryEvidence ? {
         ok: true,
         detected: true,
@@ -209,7 +206,6 @@ async function persistActivationDraft(patch: Partial<CourierProfileLite> = {}) {
     setPhoneAttemptExpiresAt('');
     setPhoneAlternateAvailable(false);
     setPhoneProvider('');
-    setAvailable(false);
     invalidate();
   };
   const changeEmail = (value: string) => {
@@ -220,7 +216,6 @@ async function persistActivationDraft(patch: Partial<CourierProfileLite> = {}) {
     setEmailAttemptToken('');
     setEmailClientRequestId('');
     setEmailAttemptExpiresAt('');
-    setAvailable(false);
     invalidate();
   };
 
@@ -253,8 +248,7 @@ async function persistActivationDraft(patch: Partial<CourierProfileLite> = {}) {
       });
       setTerritory(context);
       setActiveZone(nextZone);
-      setAvailable(false);
-      Alert.alert('Terrain confirmé', `${context.territory.city} · ${context.territory.country}`);
+        Alert.alert('Terrain confirmé', `${context.territory.city} · ${context.territory.country}`);
     } catch (error: any) {
       Alert.alert('Terrain indisponible', error?.message || 'Réessayez dans un instant.');
     } finally {
@@ -429,21 +423,9 @@ Utilisez uniquement le code le plus récent.`,
     }
   }
 
-  function toggleAvailable(value: boolean) {
-    if (value && !activationReady) {
-      Alert.alert('Mise en ligne verrouillée', 'Confirmez le terrain, le téléphone et l’email.');
-      return;
-    }
-    setAvailable(value);
-  }
-
   async function save() {
     if (basics.length) {
       Alert.alert('Profil à compléter', basics.join('\n'));
-      return;
-    }
-    if (available && !activationReady) {
-      Alert.alert('Mise en ligne verrouillée', 'Les trois preuves sont obligatoires.');
       return;
     }
     setChecking(true);
@@ -459,7 +441,7 @@ Utilisez uniquement le code le plus récent.`,
         riderName: clean(riderName), phone: result.normalized.phone, email: result.normalized.email,
         activeZone: clean(activeZone), vehicle: clean(vehicle), capacity: clean(capacity),
         emergencyContact: clean(emergencyContact), notes: clean(notes),
-        available: activationReady ? available : false,
+        available: false,
         territory: territory!.territory,
         territoryEvidence: {
           latitude: territory!.coordinates.latitude,
@@ -473,7 +455,13 @@ Utilisez uniquement le code le plus récent.`,
       };
       await saveCourierPresence(profile);
       setProfileId(profile.id);
-      Alert.alert('Profil terrain enregistré', activationReady ? 'Le coursier peut passer en ligne.' : 'La mise en ligne reste verrouillée.', [{ text: 'Retour au terrain', onPress: () => router.replace('/') }]);
+      const receipt = readCourierPresenceSaveReceipt();
+      const detail = receipt?.presenceSynced
+        ? 'Brouillon conservé sur cet appareil et présence technique synchronisée. Votre dossier professionnel n’est ni soumis ni approuvé.'
+        : 'Brouillon conservé sur cet appareil. Synchronisation serveur non confirmée. Votre dossier professionnel n’est ni soumis ni approuvé.';
+      Alert.alert('Brouillon terrain enregistré', detail, [
+        { text: 'Voir mon parcours', onPress: () => router.replace('/onboarding' as any) },
+      ]);
     } catch (error: any) {
       const reason = String(error?.message || error || '');
       if (reason.includes('courier_oidc_session_required') || reason.includes('Session courier indisponible')) {
@@ -500,10 +488,10 @@ Utilisez uniquement le code le plus récent.`,
         <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
           <Text style={styles.brand}>DELISHAFRICA® · COURIER</Text>
           <Text style={styles.title}>Mon terrain</Text>
-          <Text style={styles.subtitle}>Être identifié. Être localisé. Passer en ligne d’un geste.</Text>
+          <Text style={styles.subtitle}>Préparez votre dossier terrain. L’accès aux missions nécessite une validation professionnelle côté serveur.</Text>
 
           <View style={[styles.truthCard, truthCount === 3 && styles.truthReady]}>
-            <Text style={styles.truthKicker}>ACTIVATION TERRAIN</Text>
+            <Text style={styles.truthKicker}>PREPARATION DU DOSSIER</Text>
             <Text style={[styles.truthTitle, truthCount === 3 && styles.truthTitleReady]}>{truthCount}/3 preuves</Text>
             <Text style={[styles.truthText, truthCount === 3 && styles.truthTextReady]}>Terrain {territoryVerified ? '✓' : '·'} · SMS {phoneVerified ? '✓' : '·'} · Email {emailVerified ? '✓' : '·'}</Text>
           </View>
@@ -542,9 +530,9 @@ Utilisez uniquement le code le plus récent.`,
             <Text style={styles.label}>Note terrain</Text><TextInput value={notes} onChangeText={setNotes} placeholder="Informations utiles" placeholderTextColor="#6C9078" style={[styles.input, styles.multiline]} multiline />
           </View>
 
-          <View style={styles.toggle}><View style={styles.toggleCopy}><Text style={styles.toggleTitle}>En ligne</Text><Text style={styles.toggleText}>{activationReady ? 'Prêt à recevoir des missions.' : 'Verrouillé jusqu’aux trois preuves.'}</Text></View><Switch value={available} onValueChange={toggleAvailable} /></View>
+          <View style={styles.toggle}><View style={styles.toggleCopy}><Text style={styles.toggleTitle}>Habilitation professionnelle</Text><Text style={styles.toggleText}>{activationReady ? 'Coordonnées vérifiées sur cet appareil. Validation administrative toujours requise.' : 'Complétez les trois vérifications du dossier avant examen.'}</Text></View></View>
           <Pressable disabled={checking} onPress={save} style={[styles.primary, checking && styles.disabled]}>{checking ? <ActivityIndicator color="#00160D" /> : <Text style={styles.primaryText}>Enregistrer le terrain</Text>}</Pressable>
-          <Pressable onPress={() => router.push('/orders' as any)} style={styles.secondary}><Text style={styles.secondaryText}>Voir les missions</Text></Pressable>
+          <Pressable onPress={() => router.push('/onboarding' as any)} style={styles.secondary}><Text style={styles.secondaryText}>Voir mon parcours</Text></Pressable>
           <Pressable onPress={() => router.replace('/')} style={styles.back}><Text style={styles.backText}>Retour au terrain</Text></Pressable>
           <Text style={styles.note}>{trust?.issues?.[0]?.message || 'La zone détectée limite les missions au territoire réel sans fermer les futures zones mondiales.'}</Text>
         </ScrollView>

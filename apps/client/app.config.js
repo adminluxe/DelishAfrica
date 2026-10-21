@@ -2,6 +2,14 @@ const fs = require("fs");
 
 // DA_DEV_VARIANT_SIDE_BY_SIDE_V3 — DEV binary coexists with Store/TestFlight.
 const IS_DEV = process.env.APP_VARIANT === "development";
+// Preview stays blocked until a real isolated QA API and IAM are approved.
+const DA_PREVIEW_REQUESTED =
+  process.env.EAS_BUILD_PROFILE === "preview" ||
+  process.env.APP_VARIANT === "preview";
+if (DA_PREVIEW_REQUESTED) {
+  throw new Error("DA_PREVIEW_QA_API_ISOLATION_REQUIRED");
+}
+
 const CLIENT_APP_NAME = IS_DEV ? "DelishAfrica Client DEV" : "DelishAfrica Client";
 const CLIENT_DISPLAY_NAME = IS_DEV ? "DA Client DEV" : "DelishAfrica Client";
 const CLIENT_SCHEME = IS_DEV ? "delishafricaclientdev" : "delishafricaclient";
@@ -33,7 +41,7 @@ module.exports = ({ config }) => {
     slug: "delishafrica-client",
     owner: "delishafrica",
     scheme: CLIENT_SCHEME,
-    version: config.version || "3.0.0",
+    version: IS_DEV ? (config.version || "3.0.0") : "3.0.2",
     orientation: config.orientation || "portrait",
     userInterfaceStyle: "dark",
     backgroundColor: CLIENT_BOOT_BACKGROUND,

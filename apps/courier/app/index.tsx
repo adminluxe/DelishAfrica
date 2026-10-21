@@ -23,6 +23,8 @@ const COURIER_H2O_RASTER = require("../assets/h2o/courier-h2o-premium-v1.png");
 const COURIER_RAIN_TILE = require("../assets/h2o/courier-rain-streak-tile-v3.png");
 const COURIER_GLASS_RIVULETS = require("../assets/h2o/courier-glass-rivulets-v3.png");
 import { daOrdersFetch } from "../utils/daOrdersApi";
+import { loadOidcSession } from "../auth/daOidcSession";
+import { readCourierProfessionalTruth } from "../utils/daCourierProfessional";
 
 const RAW_API = process.env.EXPO_PUBLIC_API_URL || "https://api.delishafrica.me/api/v1";
 const API = RAW_API.replace(/\/$/, "").endsWith("/api/v1")
@@ -56,6 +58,8 @@ export default function CourierSurfaceHome() {
   const [offers, setOffers] = useState<any[]>([]);
   const [offersObservedAt, setOffersObservedAt] = useState<string>("");
   const [authReady, setAuthReady] = useState(false);
+  const [accessGate, setAccessGate] = useState<'identity_required' | 'approval_required' | 'unavailable' | 'approved'>('unavailable');
+  const latestRequest = useRef(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const rainPhase = useRef(new Animated.Value(0)).current;
@@ -93,8 +97,24 @@ export default function CourierSurfaceHome() {
   }, [rainPhase, reduceMotion]);
 
   const load = useCallback(async (refresh = false) => {
+    const sequence = ++latestRequest.current;
     refresh ? setRefreshing(true) : setLoading(true);
+    setOffers([]);
+    setOffersObservedAt("");
+    setAuthReady(false);
     try {
+      const session = await loadOidcSession();
+      if (session.status !== 'authenticated' || !session.subject) {
+        if (sequence === latestRequest.current) setAccessGate('identity_required');
+        return;
+      }
+      const eligibility = await readCourierProfessionalTruth(session.subject);
+      if (!eligibility.approved) {
+        if (sequence === latestRequest.current) {
+          setAccessGate(eligibility.status === 'unavailable' ? 'unavailable' : 'approval_required');
+        }
+        return;
+      }
       const response = await daOrdersFetch(`${API}/orders/demo/courier/offers`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -102,21 +122,30 @@ export default function CourierSurfaceHome() {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(String(body?.code || `HTTP ${response.status}`));
+      const latest = await loadOidcSession();
+      if (sequence !== latestRequest.current || latest.status !== 'authenticated' || latest.subject !== session.subject) return;
       setOffers(extractOrders(body));
       setOffersObservedAt(new Date().toISOString());
+      setAccessGate('approved');
       setAuthReady(true);
     } catch {
-      setOffers([]);
-      setAuthReady(false);
+      if (sequence === latestRequest.current) {
+        setAccessGate('unavailable');
+        setOffers([]);
+        setAuthReady(false);
+      }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (sequence === latestRequest.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       void load(false);
+      return () => { latestRequest.current += 1; };
     }, [load]),
   );
 
@@ -149,6 +178,15 @@ export default function CourierSurfaceHome() {
     inputRange: [0, 0.5, 1],
     outputRange: [-2, 2, -2],
   });
+
+  const blockedMessage = accessGate === 'identity_required'
+    ? 'Connectez votre identité Courier pour poursuivre.'
+    : accessGate === 'approval_required'
+      ? 'Identité connectée. La validation professionnelle reste obligatoire.'
+      : 'Statut professionnel indisponible. Les missions restent verrouillées.';
+  const blockedAction = accessGate === 'identity_required'
+    ? 'Me connecter'
+    : 'Suivre ma validation';
 
   return (
     <CourierAquaticSignature reduceMotion={reduceMotion}>
@@ -187,27 +225,27 @@ export default function CourierSurfaceHome() {
         <View style={[styles.identity, authReady ? styles.identityReady : styles.identityPending]}>
           <View style={[styles.identityDot, authReady && styles.identityDotReady]} />
           <View style={styles.identityCopy}>
-            <Text style={styles.identityLabel}>ACCÈS LIVREUR</Text>
+            <Text style={styles.identityLabel}>ADMISSIBILITÉ AUX MISSIONS</Text>
             <Text style={styles.identityText}>
               {loading
-                ? "Synchronisation de votre identité terrain…"
+                ? "Vérification de votre identité et habilitation…"
                 : authReady
-                  ? "Accès aux missions chargé · propositions liées à votre compte"
-                  : "Connectez votre compte livreur pour consulter vos missions"}
+                  ? "Agrément serveur confirmé · consultation des offres autorisées"
+                  : blockedMessage}
             </Text>
           </View>
-          {loading ? <ActivityIndicator size="small" /> : <Text style={styles.identityState}>{authReady ? "OFFRES" : "ACCÈS"}</Text>}
+          {loading ? <ActivityIndicator size="small" /> : <Text style={styles.identityState}>{authReady ? "OFFRES" : accessGate === 'approval_required' ? 'VALIDATION' : 'ACCÈS'}</Text>}
         </View>
 
         <WaterIntelRail
           tone="courier"
           mode="oracle"
           label="ASSISTANCE · ITINÉRAIRE"
-          title={authReady ? `${stats.proposed + stats.accepted} signal${stats.proposed + stats.accepted > 1 ? "s" : ""} terrain en lecture.` : "Le terrain attend votre identité."}
+          title={authReady ? `${stats.proposed + stats.accepted} signal${stats.proposed + stats.accepted > 1 ? "s" : ""} terrain en lecture.` : "Vos missions attendent votre habilitation."}
           body="ETA, offres, présence et progression se lisent dans un même courant. Oracle recommande ; vous décidez."
           status={loading ? "SYNCHRO" : authReady ? "OFFRES" : "ACCÈS"}
           signalClass={loading ? "estimated" : authReady ? "confirmed" : "offline"}
-          evidence={authReady ? "Offres issues du service de démonstration ; revenus et versements non certifiés." : "Aucune offre serveur n’est présentée sans session Courier valide."}
+          evidence={authReady ? "Agrément et offres serveur vérifiés ; revenus et versements non certifiés." : "Aucune mission n’est consultée sans accord professionnel confirmé par le serveur."}
           freshnessLabel={offersFreshnessLabel}
           reduceMotion={reduceMotion}
           onPress={() => go(authReady ? "/terrain-live" : "/onboarding")}
@@ -233,10 +271,10 @@ export default function CourierSurfaceHome() {
           accessibilityRole="button"
         >
           <View style={styles.primaryCopy}>
-            <Text style={styles.primaryEyebrow}>{authReady ? "ESPACE MISSIONS" : "IDENTITÉ D’ABORD"}</Text>
-            <Text style={styles.primaryTitle}>{authReady ? "Voir mes missions" : "Se connecter comme livreur"}</Text>
+            <Text style={styles.primaryEyebrow}>{authReady ? "ESPACE MISSIONS" : "PARCOURS PROFESSIONNEL"}</Text>
+            <Text style={styles.primaryTitle}>{authReady ? "Voir mes missions" : blockedAction}</Text>
             <Text style={styles.primaryBody}>
-              {authReady ? "Seules les offres rattachées à votre sujet Courier sont visibles." : "Une session OIDC Courier est nécessaire."}
+              {authReady ? "Seules les offres rattachées à votre sujet Courier sont visibles." : blockedMessage}
             </Text>
           </View>
           <Text style={styles.primaryArrow}>→</Text>
@@ -247,7 +285,7 @@ export default function CourierSurfaceHome() {
           {ROUTES.map((item) => (
             <Pressable
               key={item.path}
-              onPress={() => go(item.path)}
+              onPress={() => go(authReady || item.path === '/onboarding' ? item.path : '/onboarding')}
               style={({ pressed }) => [styles.card, pressed && styles.pressed]}
               accessibilityRole="button"
               accessibilityLabel={`${item.title}. ${item.body}`}

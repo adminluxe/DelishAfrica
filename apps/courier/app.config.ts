@@ -11,6 +11,17 @@ const COURIER_ANDROID_PACKAGE = IS_DEV ? "com.delishafrica.courier.dev" : "com.d
 const COURIER_BOOT_BACKGROUND = "#00140B";
 const SPLASH_IMAGE = "./assets/splash.png";
 
+// Preview must remain blocked until an independent review pins the QA services.
+// An arbitrary URL supplied through EAS environment variables is not evidence of isolation.
+const IS_QA_PREVIEW =
+  process.env.EAS_BUILD_PROFILE === "preview" ||
+  process.env.APP_VARIANT === "preview";
+if (IS_QA_PREVIEW) {
+  throw new Error(
+    "DA_COURIER_PREVIEW_NO_GO: isolated QA API and IAM origins require review before Preview builds or updates."
+  );
+}
+
 const API_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
   process.env.EXPO_PUBLIC_API_URL ||
@@ -27,7 +38,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: "delishafrica-courier",
   owner: "delishafrica",
   scheme: COURIER_SCHEME,
-  version: "3.0.0",
+  version: IS_DEV ? "3.0.0" : "3.0.2",
   orientation: "portrait",
   userInterfaceStyle: "dark",
   backgroundColor: COURIER_BOOT_BACKGROUND,
@@ -56,6 +67,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     ...config.android,
     package: COURIER_ANDROID_PACKAGE,
+    // Least-privilege: Courier does not use all-files/media-library access.
+    // Android system document pickers do not require the legacy storage grants.
+    // Verify effective merged native AndroidManifest inside signed AAB before stores.
+    blockedPermissions: [
+      ...(config.android?.blockedPermissions ?? []),
+      "android.permission.READ_EXTERNAL_STORAGE",
+      "android.permission.WRITE_EXTERNAL_STORAGE",
+    ],
     config: {
       ...(config.android?.config ?? {}),
       ...(ANDROID_GOOGLE_MAPS_API_KEY

@@ -89,6 +89,34 @@ export class AuthService {
     };
   }
 
+  async verifyRegistrationIdentity(input: {
+    application?: unknown;
+    token?: unknown;
+  }) {
+    const application = String(input?.application || '').trim();
+    const token = String(input?.token || '').trim();
+    const clientByApplication = {
+      client: 'delishafrica-client',
+      merchant: 'delishafrica-merchant',
+      courier: 'delishafrica-courier',
+    } as const;
+    const clientId = clientByApplication[application as keyof typeof clientByApplication];
+    if (!clientId || !token || token.length > 16384) {
+      return { ok: false as const, reason: 'registration_request_invalid' };
+    }
+    const result = await this.trustedIdentity.verifyRegistrationToken(token, clientId);
+    if (!result.ok) return result;
+    return {
+      ok: true as const,
+      identityVerified: true as const,
+      emailVerified: true as const,
+      application,
+      subject: result.subject,
+      email: result.email,
+      professionalAccessGranted: false as const,
+    };
+  }
+
   async meFromAuthorization(authorization?: string) {
     const resolution = await this.resolvePrincipalFromAuthorization(authorization);
 
