@@ -19,22 +19,47 @@ latitude: number;
 longitude: number;
 };
 
+type GeoPointInput = {
+latitude?: number | string;
+longitude?: number | string;
+lat?: number | string;
+lng?: number | string;
+lon?: number | string;
+};
+
+type LocationEntity = {
+name?: string;
+address?: string;
+city?: string;
+location?: GeoPointInput;
+};
+
 type DemoOrder = {
 id?: string;
 orderId?: string;
 publicId?: string;
 status?: string;
-restaurant?: string;
+restaurant?: string | LocationEntity;
 restaurantName?: string;
+merchant?: LocationEntity;
 merchantName?: string;
 partnerName?: string;
 client?: string;
 customerName?: string;
-customer?: {
-name?: string;
-address?: string;
-city?: string;
-};
+customer?: LocationEntity;
+pickupAddress?: string;
+restaurantAddress?: string;
+merchantAddress?: string;
+pickupLocation?: GeoPointInput;
+restaurantLocation?: GeoPointInput;
+merchantLocation?: GeoPointInput;
+pickup?: GeoPointInput;
+pickupCoordinates?: GeoPointInput;
+deliveryLocation?: GeoPointInput;
+dropoffLocation?: GeoPointInput;
+destination?: GeoPointInput;
+dropoff?: GeoPointInput;
+deliveryCoordinates?: GeoPointInput;
 deliveryAddress?: string;
 customerAddress?: string;
 total?: number;
@@ -105,16 +130,6 @@ process.env.EXPO_PUBLIC_API_URL ||
 "https://api.delishafrica.me/api/v1"
 );
 
-const THIEYP_POINT: GeoPoint = {
-latitude: 50.8359,
-longitude: 4.3717,
-};
-
-const DEFAULT_CLIENT_POINT: GeoPoint = {
-latitude: 50.8195,
-longitude: 4.4302,
-};
-
 const AVG_CITY_SPEED_KMH = 18;
 const PICKUP_BUFFER_MIN = 4;
 
@@ -169,16 +184,87 @@ return String(firstItem?.name || firstItem?.title || "Mission DelishAfrica®");
 }
 
 function restaurantOf(order: DemoOrder) {
-return String(order.restaurantName || order.restaurant || order.merchantName || order.partnerName || "Thieyp");
+const restaurant =
+typeof order.restaurant === "string"
+? order.restaurant
+: order.restaurant?.name;
+return String(
+order.restaurantName ||
+restaurant ||
+order.merchantName ||
+order.partnerName ||
+"Partenaire à confirmer"
+);
 }
 
 function clientOf(order: DemoOrder) {
-return String(order.customerName || order.customer?.name || order.client || "Client DelishAfrica®");
+return String(
+order.customerName ||
+order.customer?.name ||
+order.client ||
+"Client à confirmer"
+);
+}
+
+function restaurantAddressOf(order: DemoOrder) {
+const restaurant =
+typeof order.restaurant === "object" ? order.restaurant : undefined;
+return String(
+order.pickupAddress ||
+order.restaurantAddress ||
+order.merchantAddress ||
+restaurant?.address ||
+order.merchant?.address ||
+"Adresse de retrait à confirmer sur la mission"
+);
 }
 
 function clientAddressOf(order: DemoOrder) {
 const nested = [order.customer?.address, order.customer?.city].filter(Boolean).join(", ");
 return String(order.deliveryAddress || order.customerAddress || nested || "Adresse client à confirmer sur la mission");
+}
+
+function coordinateFrom(value: unknown): GeoPoint | null {
+if (!value || typeof value !== "object") return null;
+const point = value as GeoPointInput;
+const latitude = Number(point.latitude ?? point.lat);
+const longitude = Number(point.longitude ?? point.lng ?? point.lon);
+if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return null;
+return { latitude, longitude };
+}
+
+function firstCoordinate(candidates: unknown[]): GeoPoint | null {
+for (const candidate of candidates) {
+const coordinate = coordinateFrom(candidate);
+if (coordinate) return coordinate;
+}
+return null;
+}
+
+function restaurantPointOf(order: DemoOrder): GeoPoint | null {
+const restaurant =
+typeof order.restaurant === "object" ? order.restaurant : undefined;
+return firstCoordinate([
+order.pickupLocation,
+order.restaurantLocation,
+order.merchantLocation,
+restaurant?.location,
+order.pickup,
+order.merchant?.location,
+order.pickupCoordinates,
+]);
+}
+
+function clientPointOf(order: DemoOrder): GeoPoint | null {
+return firstCoordinate([
+order.deliveryLocation,
+order.dropoffLocation,
+order.customer?.location,
+order.destination,
+order.dropoff,
+order.deliveryCoordinates,
+]);
 }
 
 function normalizeOrdersPayload(payload: any): DemoOrder[] {
@@ -218,7 +304,11 @@ if (s === "pending") return 4;
 return 99;
 }
 
-function missionFromOrder(order: DemoOrder): Mission {
+function missionFromOrder(order: DemoOrder): Mission | null {
+const restaurantPoint = restaurantPointOf(order);
+const clientPoint = clientPointOf(order);
+if (!restaurantPoint || !clientPoint) return null;
+
 return {
 id: String(order.id || order.orderId || order.publicId || publicIdOf(order)),
 publicId: publicIdOf(order),
@@ -226,10 +316,10 @@ status: normalizeStatus(order.status),
 title: titleOf(order),
 restaurantName: restaurantOf(order),
 clientName: clientOf(order),
-restaurantAddress: "Rue Longue Vie 46, Ixelles",
+restaurantAddress: restaurantAddressOf(order),
 clientAddress: clientAddressOf(order),
-restaurantPoint: THIEYP_POINT,
-clientPoint: DEFAULT_CLIENT_POINT,
+restaurantPoint,
+clientPoint,
 updatedAt: order.updatedAt,
 createdAt: order.createdAt,
 };
@@ -367,6 +457,12 @@ const completedOrders = orders
 
 const selectedActive = activeOrders[0] ? missionFromOrder(activeOrders[0]) : null;
 const selectedCompleted = completedOrders[0] ? missionFromOrder(completedOrders[0]) : null;
+
+if (activeOrders[0] && !selectedActive) {
+setMissionError(
+"Mission active reçue, mais les coordonnées de retrait et de livraison ne sont pas encore confirmées. L’ETA reste désactivée pour éviter toute estimation inventée."
+);
+}
 
 setMissionState({
 activeMission: selectedActive,

@@ -97,7 +97,7 @@ return "Suivi";
 function buildAlert(order: DemoOrder): ClientAlert {
 const status = String(order.status || "pending");
 const id = publicId(order);
-const restaurant = textFrom(order.restaurantName || order.restaurant, "Thieyp");
+const restaurant = textFrom(order.restaurantName || order.restaurant, "Partenaire à confirmer");
 const item = firstItem(order);
 
 if (status === "pending") {
@@ -286,7 +286,7 @@ Un centre clair pour suivre paiement, cuisine, livraison et commandes terminées
 </Pressable>
 
 <Pressable style={styles.secondaryButton} onPress={() => router.push("/checkout-preflight" as any)}>
-<Text style={styles.secondaryButtonText}>Commander Thieyp</Text>
+<Text style={styles.secondaryButtonText}>Commander</Text>
 </Pressable>
 </View>
 

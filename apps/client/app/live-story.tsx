@@ -116,7 +116,7 @@ return `${id.slice(0, 10)}…${id.slice(-4)}`;
 }
 
 function restaurantOf(order?: DemoOrder): string {
-return String(order?.restaurantName || order?.merchantName || order?.restaurant || "Thieyp");
+return String(order?.restaurantName || order?.merchantName || order?.restaurant || "Partenaire à confirmer");
 }
 
 function itemOf(order?: DemoOrder): string {
@@ -141,21 +141,20 @@ return `${euros.toFixed(2).replace(".", ",")} €`;
 
 function etaOf(order?: DemoOrder): string {
 const s = statusOf(order);
-if (s === "pending") return "38 min";
-if (s === "accepted") return "34 min";
-if (s === "ready") return "22 min";
-if (s === "picked_up") return "12 min";
+if (s === "pending") return "Reçue";
+if (s === "accepted") return "Préparation";
+if (s === "ready") return "Prête";
+if (s === "picked_up") return "En route";
 if (s === "delivered") return "Livrée";
 return "En cours";
 }
 
-function etaUnit(order?: DemoOrder): string {
- return statusOf(order) === "delivered" ? "livrée" : "min";
+function etaUnit(_order?: DemoOrder): string {
+return "statut";
 }
 
 function etaValueOnly(order?: DemoOrder): string {
- const value = etaOf(order);
- return value.replace(/\s*min$/i, "").trim();
+return etaOf(order);
 }
 
 function storyPulse(order?: DemoOrder): string {

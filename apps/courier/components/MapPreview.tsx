@@ -15,10 +15,10 @@ type MapPreviewProps = {
 export function MapPreview({
   title = "Apercu mission",
   subtitle = "Itinéraire de mission",
-  from = "Restaurant Thieyp",
-  to = "Client DelishAfrica",
-  eta = "12 min",
-  distance = "3.4 km",
+  from = "Point de retrait à confirmer",
+  to = "Destination à confirmer",
+  eta = "—",
+  distance = "—",
   style,
 }: MapPreviewProps) {
   return (

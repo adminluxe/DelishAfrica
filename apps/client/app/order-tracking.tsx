@@ -439,7 +439,7 @@ export default function OrderTrackingScreen() {
                 <View style={styles.infoBlock}>
                   <Text style={styles.infoLabel}>Restaurant</Text>
                   <Text style={styles.infoValue}>
-                    {safeText(selectedOrder.restaurantName || selectedOrder.restaurant, "Thieyp")}
+                    {safeText(selectedOrder.restaurantName || selectedOrder.restaurant, "Partenaire à confirmer")}
                   </Text>
                 </View>
 

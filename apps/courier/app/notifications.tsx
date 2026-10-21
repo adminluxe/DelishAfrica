@@ -96,8 +96,8 @@ function statusLabel(status?: OrderStatus): string {
 function buildAlert(order: DemoOrder): CourierAlert {
   const status = String(order.status || "pending");
   const id = publicId(order);
-  const restaurant = textFrom(order.restaurantName || order.restaurant, "Thieyp");
-  const customer = textFrom(order.customerName || order.customer, "Client DelishAfrica®");
+  const restaurant = textFrom(order.restaurantName || order.restaurant, "Partenaire à confirmer");
+  const customer = textFrom(order.customerName || order.customer, "Client à confirmer");
   const item = firstItem(order);
 
   if (status === "ready") {

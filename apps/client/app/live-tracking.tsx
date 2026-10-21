@@ -146,7 +146,7 @@ return `${id.slice(0, 10)}…${id.slice(-6)}`;
 }
 
 function restaurantOf(order?: DemoOrder) {
-return String(order?.restaurantName || order?.merchantName || order?.restaurant || "Thieyp");
+return String(order?.restaurantName || order?.merchantName || order?.restaurant || "Partenaire à confirmer");
 }
 
 function clientOf(order?: DemoOrder) {

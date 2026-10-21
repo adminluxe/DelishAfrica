@@ -74,16 +74,6 @@ const API_BASE_URL = RAW_API.replace(/\/$/, "").endsWith("/api/v1")
 
 const LIVE_LOCATION_ENDPOINT = `${API_BASE_URL}/orders/demo/location`;
 
-const THIEYP_FALLBACK: LatLng = {
-  latitude: 50.8359,
-  longitude: 4.3717,
-};
-
-const CLIENT_FALLBACK: LatLng = {
-  latitude: 50.8195,
-  longitude: 4.4302,
-};
-
 const INITIAL_REGION = {
   latitude: 50.8282,
   longitude: 4.4009,
@@ -160,7 +150,7 @@ function customerName(order?: Order | null) {
     order?.customer?.name ||
       order?.customerName ||
       order?.clientName ||
-      "Client DelishAfrica",
+      "Client à confirmer",
   );
 }
 
@@ -230,53 +220,27 @@ function firstCoordinate(candidates: any[]): LatLng | null {
   return null;
 }
 
-function pickupCoordinate(order?: Order | null): LatLng {
-  return (
-    firstCoordinate([
-      order?.pickupLocation,
-      order?.restaurantLocation,
-      order?.merchantLocation,
-      order?.restaurant?.location,
-      order?.pickup,
-      order?.merchant?.location,
-      order?.pickupCoordinates,
-    ]) || THIEYP_FALLBACK
-  );
+function pickupCoordinate(order?: Order | null): LatLng | null {
+  return firstCoordinate([
+    order?.pickupLocation,
+    order?.restaurantLocation,
+    order?.merchantLocation,
+    order?.restaurant?.location,
+    order?.pickup,
+    order?.merchant?.location,
+    order?.pickupCoordinates,
+  ]);
 }
 
-function destinationCoordinate(order?: Order | null): LatLng {
-  return (
-    firstCoordinate([
-      order?.deliveryLocation,
-      order?.dropoffLocation,
-      order?.customer?.location,
-      order?.destination,
-      order?.dropoff,
-      order?.deliveryCoordinates,
-    ]) || CLIENT_FALLBACK
-  );
-}
-
-function usesFallbackCoordinate(order?: Order | null) {
-  return (
-    !firstCoordinate([
-      order?.pickupLocation,
-      order?.restaurantLocation,
-      order?.merchantLocation,
-      order?.restaurant?.location,
-      order?.pickup,
-      order?.merchant?.location,
-      order?.pickupCoordinates,
-    ]) ||
-    !firstCoordinate([
-      order?.deliveryLocation,
-      order?.dropoffLocation,
-      order?.customer?.location,
-      order?.destination,
-      order?.dropoff,
-      order?.deliveryCoordinates,
-    ])
-  );
+function destinationCoordinate(order?: Order | null): LatLng | null {
+  return firstCoordinate([
+    order?.deliveryLocation,
+    order?.dropoffLocation,
+    order?.customer?.location,
+    order?.destination,
+    order?.dropoff,
+    order?.deliveryCoordinates,
+  ]);
 }
 
 function missionPhase(status: string): MissionPhase {
@@ -603,26 +567,28 @@ export default function CourierIntegratedMapScreen() {
   const pickup = useMemo(() => pickupCoordinate(mission), [mission]);
   const destination = useMemo(() => destinationCoordinate(mission), [mission]);
   const phase = useMemo(() => missionPhase(statusOf(mission)), [mission]);
-  const fallbackCoordinates = useMemo(() => usesFallbackCoordinate(mission), [mission]);
+  const coordinatesReady = Boolean(pickup && destination);
   const activeTarget = phase.key === "delivery" ? destination : pickup;
   const activeTargetLabel = phase.key === "delivery" ? customerName(mission) : restaurantName(mission);
   const directDistance = useMemo(
-    () => (locationFix ? distanceKm(locationFix.coordinate, activeTarget) : null),
+    () => (locationFix && activeTarget ? distanceKm(locationFix.coordinate, activeTarget) : null),
     [activeTarget, locationFix],
   );
   const activeDistance = routePreview?.distanceMeters
     ? routePreview.distanceMeters / 1000
     : directDistance;
   const activeEta = routePreview?.etaMinutes ?? estimateEtaMinutes(directDistance, phase);
-  const routeTruthLabel = routePreview
-    ? routePreview.fallback
-      ? "ROUTE ESTIMÉE"
-      : routePreview.meta?.trafficAware
-        ? "TRAFIC LIVE"
-        : "ROUTE RÉELLE"
-    : routeBusy
-      ? "ROUTE…"
-      : "TRAJET DIRECT";
+  const routeTruthLabel = !activeTarget
+    ? "COORDONNÉES À CONFIRMER"
+    : routePreview
+      ? routePreview.fallback
+        ? "ROUTE ESTIMÉE"
+        : routePreview.meta?.trafficAware
+          ? "TRAFIC LIVE"
+          : "ROUTE RÉELLE"
+      : routeBusy
+        ? "ROUTE…"
+        : "TRAJET DIRECT";
   const routeDeviationMeters = useMemo(() => {
     if (!locationFix || routeCoordinates.length < 3) return null;
     return nearestRoutePointDistanceMeters(locationFix.coordinate, routeCoordinates);
@@ -641,21 +607,26 @@ export default function CourierIntegratedMapScreen() {
         provider: true,
       }
     : {
-        glyph: "↑",
-        title: `Continuez vers ${activeTargetLabel || "la prochaine cible"}`,
-        detail: routePreview?.fallback
-          ? "Cap local · GPS routier disponible"
-          : routeBusy
-            ? "Calcul du prochain geste…"
-            : "Cap mission",
+        glyph: activeTarget ? "↑" : "·",
+        title: activeTarget
+          ? `Continuez vers ${activeTargetLabel || "la prochaine cible"}`
+          : "Coordonnées mission à confirmer",
+        detail: !activeTarget
+          ? "Aucun trajet n’est calculé sans point serveur confirmé."
+          : routePreview?.fallback
+            ? "Cap local · GPS routier disponible"
+            : routeBusy
+              ? "Calcul du prochain geste…"
+              : "Cap mission",
         provider: false,
       };
-  const courierHeading = locationFix
-    ? locationFix.heading ?? bearingDegrees(locationFix.coordinate, activeTarget)
-    : 0;
+  const courierHeading =
+    locationFix && activeTarget
+      ? locationFix.heading ?? bearingDegrees(locationFix.coordinate, activeTarget)
+      : locationFix?.heading ?? 0;
   const arrivalRadiusMeters = phase.key === "delivery" ? 120 : 160;
   const atTarget =
-    !fallbackCoordinates &&
+    coordinatesReady &&
     directDistance !== null &&
     directDistance * 1000 <= arrivalRadiusMeters &&
     (locationFix?.accuracy === null ||
@@ -678,6 +649,7 @@ export default function CourierIntegratedMapScreen() {
   }, []);
 
   const fitMission = useCallback(() => {
+    if (!pickup || !destination) return;
     requestAnimationFrame(() => {
       mapRef.current?.fitToCoordinates([pickup, destination], {
         edgePadding: { top: 90, right: 46, bottom: 96, left: 46 },
@@ -690,9 +662,12 @@ export default function CourierIntegratedMapScreen() {
     const coordinates =
       routeCoordinates.length >= 2
         ? routeCoordinates
-        : locationFix
+        : locationFix && activeTarget
           ? [locationFix.coordinate, activeTarget]
-          : [pickup, destination];
+          : pickup && destination
+            ? [pickup, destination]
+            : [];
+    if (coordinates.length < 2) return;
     requestAnimationFrame(() => {
       mapRef.current?.fitToCoordinates(coordinates, {
         edgePadding: { top: 110, right: 50, bottom: 126, left: 50 },
@@ -746,21 +721,23 @@ export default function CourierIntegratedMapScreen() {
       });
       applyLocation(firstLocation);
 
-      requestAnimationFrame(() => {
-        mapRef.current?.fitToCoordinates(
-          [
+      if (activeTarget) {
+        requestAnimationFrame(() => {
+          mapRef.current?.fitToCoordinates(
+            [
+              {
+                latitude: firstLocation.coords.latitude,
+                longitude: firstLocation.coords.longitude,
+              },
+              activeTarget,
+            ],
             {
-              latitude: firstLocation.coords.latitude,
-              longitude: firstLocation.coords.longitude,
+              edgePadding: { top: 94, right: 48, bottom: 100, left: 48 },
+              animated: true,
             },
-            activeTarget,
-          ],
-          {
-            edgePadding: { top: 94, right: 48, bottom: 100, left: 48 },
-            animated: true,
-          },
-        );
-      });
+          );
+        });
+      }
 
       const subscription = await Location.watchPositionAsync(
         {
@@ -821,7 +798,7 @@ export default function CourierIntegratedMapScreen() {
 
   const refreshRoadRoute = useCallback(
     async (force = false) => {
-      if (!mission || !locationFix) return;
+      if (!mission || !locationFix || !activeTarget) return;
       const now = Date.now();
       const previousOrigin = lastRouteOriginRef.current;
       const movedMeters = previousOrigin
@@ -937,12 +914,12 @@ export default function CourierIntegratedMapScreen() {
     setRouteProgressMeters(0);
     setRoutePreview(null);
     setRouteCoordinates([]);
-    if (locationFix && mission) void refreshRoadRoute(true);
+    if (locationFix && mission && activeTarget) void refreshRoadRoute(true);
   }, [
     mission ? orderId(mission) : "",
     phase.key,
-    activeTarget.latitude,
-    activeTarget.longitude,
+    activeTarget?.latitude ?? null,
+    activeTarget?.longitude ?? null,
   ]);
 
   useEffect(() => {
@@ -960,7 +937,9 @@ export default function CourierIntegratedMapScreen() {
   useEffect(() => {
     if (!locationFix || !followMode) return;
     const heading =
-      locationFix.heading ?? bearingDegrees(locationFix.coordinate, activeTarget);
+      activeTarget
+        ? locationFix.heading ?? bearingDegrees(locationFix.coordinate, activeTarget)
+        : locationFix.heading ?? 0;
     const zoom =
       directDistance !== null && directDistance < 0.35
         ? 17.8
@@ -1157,39 +1136,43 @@ export default function CourierIntegratedMapScreen() {
             showsScale
             accessibilityLabel="Carte de guidage Courier vers le prochain repère"
           >
-            <Marker
-              coordinate={pickup}
-              title={mission ? restaurantName(mission) : "Restaurant"}
-              description="Point de retrait"
-              anchor={{ x: 0.5, y: 0.5 }}
-            >
-              <View
-                style={[
-                  styles.missionMarker,
-                  { borderColor: "#8EF0B3" },
-                  phase.key !== "delivery" && styles.missionMarkerActive,
-                ]}
+            {pickup ? (
+              <Marker
+                coordinate={pickup}
+                title={mission ? restaurantName(mission) : "Restaurant"}
+                description="Point de retrait"
+                anchor={{ x: 0.5, y: 0.5 }}
               >
-                <Text style={[styles.missionMarkerText, { color: "#8EF0B3" }]}>R</Text>
-              </View>
-            </Marker>
-            <Marker
-              coordinate={destination}
-              title={mission ? customerName(mission) : "Destination"}
-              description={mission ? deliveryAddress(mission) : "Point de livraison"}
-              anchor={{ x: 0.5, y: 0.5 }}
-            >
-              <View
-                style={[
-                  styles.missionMarker,
-                  { borderColor: "#D9A928" },
-                  phase.key === "delivery" && styles.missionMarkerActive,
-                ]}
+                <View
+                  style={[
+                    styles.missionMarker,
+                    { borderColor: "#8EF0B3" },
+                    phase.key !== "delivery" && styles.missionMarkerActive,
+                  ]}
+                >
+                  <Text style={[styles.missionMarkerText, { color: "#8EF0B3" }]}>R</Text>
+                </View>
+              </Marker>
+            ) : null}
+            {destination ? (
+              <Marker
+                coordinate={destination}
+                title={mission ? customerName(mission) : "Destination"}
+                description={mission ? deliveryAddress(mission) : "Point de livraison"}
+                anchor={{ x: 0.5, y: 0.5 }}
               >
-                <Text style={[styles.missionMarkerText, { color: "#D9A928" }]}>C</Text>
-              </View>
-            </Marker>
-            {mission && !fallbackCoordinates ? (
+                <View
+                  style={[
+                    styles.missionMarker,
+                    { borderColor: "#D9A928" },
+                    phase.key === "delivery" && styles.missionMarkerActive,
+                  ]}
+                >
+                  <Text style={[styles.missionMarkerText, { color: "#D9A928" }]}>C</Text>
+                </View>
+              </Marker>
+            ) : null}
+            {mission && activeTarget && coordinatesReady ? (
               <Circle
                 center={activeTarget}
                 radius={arrivalRadiusMeters}
@@ -1198,12 +1181,14 @@ export default function CourierIntegratedMapScreen() {
                 strokeWidth={1.5}
               />
             ) : null}
-            <Polyline
-              coordinates={[pickup, destination]}
-              strokeColor="rgba(142,240,179,0.16)"
-              strokeWidth={4}
-              lineDashPattern={[10, 10]}
-            />
+            {pickup && destination ? (
+              <Polyline
+                coordinates={[pickup, destination]}
+                strokeColor="rgba(142,240,179,0.16)"
+                strokeWidth={4}
+                lineDashPattern={[10, 10]}
+              />
+            ) : null}
             {locationFix ? (
               <>
                 <Circle
@@ -1227,24 +1212,28 @@ export default function CourierIntegratedMapScreen() {
                     </View>
                   </View>
                 </Marker>
-                <Polyline
-                  coordinates={
-                    routeCoordinates.length >= 2
-                      ? routeCoordinates
-                      : [locationFix.coordinate, activeTarget]
-                  }
-                  strokeColor={phase.key === "delivery" ? "rgba(217,169,40,0.24)" : "rgba(142,240,179,0.24)"}
-                  strokeWidth={14}
-                />
-                <Polyline
-                  coordinates={
-                    routeCoordinates.length >= 2
-                      ? routeCoordinates
-                      : [locationFix.coordinate, activeTarget]
-                  }
-                  strokeColor={phase.accent}
-                  strokeWidth={6}
-                />
+                {routeCoordinates.length >= 2 || activeTarget ? (
+                  <>
+                    <Polyline
+                      coordinates={
+                        routeCoordinates.length >= 2
+                          ? routeCoordinates
+                          : [locationFix.coordinate, activeTarget!]
+                      }
+                      strokeColor={phase.key === "delivery" ? "rgba(217,169,40,0.24)" : "rgba(142,240,179,0.24)"}
+                      strokeWidth={14}
+                    />
+                    <Polyline
+                      coordinates={
+                        routeCoordinates.length >= 2
+                          ? routeCoordinates
+                          : [locationFix.coordinate, activeTarget!]
+                      }
+                      strokeColor={phase.accent}
+                      strokeWidth={6}
+                    />
+                  </>
+                ) : null}
               </>
             ) : null}
           </MapView>
@@ -1300,12 +1289,26 @@ export default function CourierIntegratedMapScreen() {
               </Text>
             </Pressable>
             <Pressable
-              style={({ pressed }) => [styles.mapAction, pressed && styles.pressed]}
-              onPress={() => void openNativeGuidance(activeTarget)}
+              disabled={!activeTarget}
+              style={({ pressed }) => [
+                styles.mapAction,
+                !activeTarget && styles.nextActionDisabled,
+                pressed && activeTarget && styles.pressed,
+              ]}
+              onPress={() => {
+                if (activeTarget) void openNativeGuidance(activeTarget);
+              }}
               accessibilityRole="button"
-              accessibilityLabel="Ouvrir le guidage routier vers la cible"
+              accessibilityState={{ disabled: !activeTarget }}
+              accessibilityLabel={
+                activeTarget
+                  ? "Ouvrir le guidage routier vers la cible"
+                  : "Guidage indisponible tant que les coordonnées mission ne sont pas confirmées"
+              }
             >
-              <Text style={styles.mapActionText}>GPS ROUTIER ↗</Text>
+              <Text style={styles.mapActionText}>
+                {activeTarget ? "GPS ROUTIER ↗" : "GPS EN ATTENTE"}
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -1318,7 +1321,7 @@ export default function CourierIntegratedMapScreen() {
             {routeDeviationMeters !== null && routeDeviationMeters > OFF_ROUTE_THRESHOLD_METERS
               ? " · Écart au corridor détecté, recalcul en cours."
               : ""}
-            {fallbackCoordinates ? " · Coordonnées de sécurité utilisées." : ""}
+            {!coordinatesReady ? " · Coordonnées mission à confirmer : aucun trajet n’est inventé." : ""}
           </Text>
         </View>
 
