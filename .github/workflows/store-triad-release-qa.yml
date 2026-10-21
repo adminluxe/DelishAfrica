@@ -9,6 +9,9 @@ on:
       - "apps/client/**"
       - "apps/merchant/**"
       - "apps/courier/**"
+      - "services/api-nest/**"
+      - "scripts/da_store_candidate_contract_tests.cjs"
+      - "package.json"
       - "pnpm-lock.yaml"
       - ".github/workflows/store-triad-release-qa.yml"
 
@@ -60,6 +63,9 @@ jobs:
 
       - name: Nest API build
         run: pnpm --dir services/api-nest run build
+
+      - name: Client cart catalog zone and map regression contracts
+        run: node scripts/da_store_candidate_contract_tests.cjs
 
       - name: Internal auth fail-closed contract
         run: |
@@ -208,7 +214,7 @@ jobs:
       - name: Runtime dependency audit high or critical
         run: |
           set +e
-          NODE_OPTIONS=--max-old-space-size=8192 timeout 300s pnpm audit --prod --audit-level high
+          NODE_OPTIONS=--max-old-space-size=4096 timeout 300s pnpm audit --prod --audit-level high
           code=$?
           set -e
           if [ "$code" -eq 124 ]; then

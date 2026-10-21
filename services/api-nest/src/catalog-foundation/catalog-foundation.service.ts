@@ -14,6 +14,12 @@ export class CatalogFoundationService {
 
   constructor(private readonly repository: CatalogFoundationRepository) {}
 
+  private isPublicPartner(partner: CatalogPartner | null | undefined): partner is CatalogPartner {
+    if (!partner) return false;
+    const status = String(partner.status || '').trim().toLowerCase();
+    return !['placeholder', 'demo', 'test', 'draft', 'internal'].includes(status);
+  }
+
   async initialize(seedPartners: CatalogPartner[]): Promise<void> {
     if (this.initialized) return;
     await this.repository.initialize(seedPartners);
@@ -21,11 +27,15 @@ export class CatalogFoundationService {
   }
 
   async listPublished(staticFallback: CatalogPartner[]): Promise<CatalogPartner[]> {
+    const safeFallback = staticFallback.filter((partner) => this.isPublicPartner(partner));
+
     try {
-      const persisted = await this.repository.listPublished();
-      return persisted.length > 0 ? persisted : staticFallback;
+      const persisted = (await this.repository.listPublished()).filter((partner) =>
+        this.isPublicPartner(partner),
+      );
+      return persisted.length > 0 ? persisted : safeFallback;
     } catch {
-      return staticFallback;
+      return safeFallback;
     }
   }
 
@@ -35,12 +45,16 @@ export class CatalogFoundationService {
   ): Promise<CatalogPartner | null> {
     try {
       const persisted = await this.repository.findPublishedBySlug(slug);
-      if (persisted) return persisted;
+      if (this.isPublicPartner(persisted)) return persisted;
     } catch {
       // Preserve the current Client catalogue during any database incident.
     }
 
-    return staticFallback.find((partner) => partner.slug === slug) || null;
+    return (
+      staticFallback.find(
+        (partner) => partner.slug === slug && this.isPublicPartner(partner),
+      ) || null
+    );
   }
 
   async listOwnedBySubject(

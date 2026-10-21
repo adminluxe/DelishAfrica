@@ -89,7 +89,7 @@ function restaurantName(order: Order) {
   return String(order.restaurantName || order.restaurant || order.merchantName || "Établissement partenaire");
 }
 function customerName(order: Order) {
-  return String(order.customer?.name || order.customerName || order.clientName || "Client DelishAfrica");
+  return String(order.customer?.name || order.customerName || order.clientName || "Client à confirmer");
 }
 function firstItem(order: Order) {
   const items = Array.isArray(order.items) ? order.items : [];
@@ -120,7 +120,10 @@ function safetySignals(order: Order) {
   };
 }
 function money(order: Order) {
-  const raw = Number(order.total ?? order.amount ?? 0);
+  const source = order.total ?? order.amount;
+  if (source === undefined || source === null) return "—";
+  const raw = Number(source);
+  if (!Number.isFinite(raw)) return "—";
   const euros = Math.abs(raw) >= 100 ? raw / 100 : raw;
   return `${euros.toFixed(2).replace(".", ",")} €`;
 }

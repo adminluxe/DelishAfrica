@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -33,8 +32,6 @@ import {
   restaurantToCartRestaurant,
 } from "../utils/daRestaurantCatalog";
 
-declare const require: any;
-
 const DELISHAFRICA_RESTAURANT_CONTEXT_TRUTH_V1 = true;
 const DELISHAFRICA_TASTE_PORTRAITS_V1 = true;
 
@@ -48,27 +45,13 @@ function categoryOf(item: DAApiMenuItem): string {
 
 function restaurantCity(restaurant: DARestaurant | null): string {
   const value = restaurant as any;
-  return String(value?.city || value?.area || value?.country || "Réseau DelishAfrica");
+  return String(value?.city || value?.area || value?.country || "Localisation à confirmer");
 }
 
 function restaurantCuisine(restaurant: DARestaurant | null): string {
   const value = restaurant as any;
-  return String(value?.cuisine || value?.cuisines?.[0] || "Cuisine africaine");
+  return String(value?.cuisine || value?.cuisines?.[0] || "Cuisine à confirmer");
 }
-
-const THIEYP_IMAGES = {
-  chicken: require("../assets/partners/thieyp/thieyp-chicken.jpg"),
-  rice: require("../assets/partners/thieyp/thieyp-rice.jpg"),
-  menu: require("../assets/partners/thieyp/thieyp-menu-board.jpg"),
-};
-
-const LBB_IMAGES = {
-  hero: require("../assets/partners/la-boule-bleue/la-boule-bleue-hero.png"),
-  cover: require("../assets/partners/la-boule-bleue/la-boule-bleue-cover.png"),
-  fish: require("../assets/partners/la-boule-bleue/la-boule-bleue-grilled-fish.png"),
-  chicken: require("../assets/partners/la-boule-bleue/la-boule-bleue-chicken.png"),
-  mafe: require("../assets/partners/la-boule-bleue/la-boule-bleue-mafe.png"),
-};
 
 const WEEKDAYS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
 
@@ -99,26 +82,6 @@ function currentBrusselsDay(): string {
 function isThieyp(restaurant: DARestaurant | null, slug: string): boolean {
   const value = restaurant as any;
   return String(value?.slug || slug || "").toLowerCase() === "thieyp" || String(value?.name || "").toLowerCase() === "thieyp";
-}
-
-function thieypImageFor(item?: DAApiMenuItem) {
-  const text = `${String(item?.name || "")} ${String(item?.description || "")}`.toLowerCase();
-  return /(poulet|chicken|yassa|atti[eé]k[eé])/.test(text) ? THIEYP_IMAGES.chicken : THIEYP_IMAGES.rice;
-}
-
-function isLaBouleBleue(restaurant: DARestaurant | null, slug: string): boolean {
-  const value = restaurant as any;
-  const identity = String(value?.slug || slug || "").toLowerCase();
-  const name = String(value?.name || "").toLowerCase();
-  return identity === "la-boule-bleue" || name === "la boule bleue";
-}
-
-function laBouleBleueImageFor(item?: DAApiMenuItem) {
-  const text = `${String(item?.name || "")} ${String(item?.description || "")} ${String(item?.category || "")}`.toLowerCase();
-  if (/(tilapia|malangwa|thompson|poisson)/.test(text)) return LBB_IMAGES.fish;
-  if (/(poulet|chicken|yassa)/.test(text)) return LBB_IMAGES.chicken;
-  if (/(arachide|mafé|mafe|mouamb)/.test(text)) return LBB_IMAGES.mafe;
-  return LBB_IMAGES.cover;
 }
 
 export default function MenuScreen() {
@@ -310,21 +273,15 @@ export default function MenuScreen() {
           </View>
         </View>
 
-        {isThieyp(restaurant, slug) ? (
-          <Image source={THIEYP_IMAGES.menu} style={styles.heroImage} resizeMode="cover" accessibilityLabel="Menu officiel Thieyp" />
-        ) : isLaBouleBleue(restaurant, slug) ? (
-          <Image source={LBB_IMAGES.hero} style={styles.heroImage} resizeMode="cover" accessibilityLabel="La Boule Bleue · Cuisine Belgo-Africaine" />
-        ) : (
-          <TastePortrait
-            name={heroTitle}
-            category={restaurantCuisine(restaurant)}
-            description={heroDescription}
-            seed={restaurantSeed}
-            size={112}
-            showCode
-            style={styles.heroPortrait}
-          />
-        )}
+        <TastePortrait
+          name={heroTitle}
+          category={restaurantCuisine(restaurant)}
+          description={heroDescription}
+          seed={restaurantSeed}
+          size={112}
+          showCode
+          style={styles.heroPortrait}
+        />
       </View>
 
       {restaurant && isThieyp(restaurant, slug) ? (
@@ -363,20 +320,14 @@ export default function MenuScreen() {
                   accessibilityState={{ disabled: !itemOrderable }}
                   accessibilityLabel={itemOrderable ? `Ajouter ${item.name || "ce plat"}` : `${item.name || "Plat"}, ${menuAvailabilityLabel(item)}`}
                 >
-                  {isThieyp(restaurant, slug) ? (
-                    <Image source={thieypImageFor(item)} style={styles.tasteReelImage} resizeMode="cover" />
-                  ) : isLaBouleBleue(restaurant, slug) ? (
-                    <Image source={laBouleBleueImageFor(item)} style={styles.tasteReelImage} resizeMode="cover" />
-                  ) : (
-                    <TastePortrait
-                      name={item.name}
-                      category={item.category}
-                      description={item.description}
-                      seed={restaurantSeed}
-                      size={132}
-                      style={styles.tasteReelPortrait}
-                    />
-                  )}
+                  <TastePortrait
+                    name={item.name}
+                    category={item.category}
+                    description={item.description}
+                    seed={restaurantSeed}
+                    size={132}
+                    style={styles.tasteReelPortrait}
+                  />
                   <Text style={styles.tasteReelName} numberOfLines={2}>{item.name || "Plat DelishAfrica"}</Text>
                   <Text style={[styles.tasteReelMeta, !itemOrderable && styles.unavailableText]}>{menuAvailabilityLabel(item)} · {formatCartEuro(menuItemAmount(item))}</Text>
                 </Pressable>
@@ -416,20 +367,14 @@ export default function MenuScreen() {
             const itemOrderable = orderable && isMenuItemOrderableToday(item, today);
             return (
               <View key={id} style={[styles.itemCard, !itemOrderable && styles.unavailableCard]}>
-                {isThieyp(restaurant, slug) ? (
-                  <Image source={thieypImageFor(item)} style={styles.itemImage} resizeMode="cover" />
-                ) : isLaBouleBleue(restaurant, slug) ? (
-                  <Image source={laBouleBleueImageFor(item)} style={styles.itemImage} resizeMode="cover" />
-                ) : (
-                  <TastePortrait
-                    name={item.name}
-                    category={item.category}
-                    description={item.description}
-                    seed={restaurantSeed}
-                    size={92}
-                    compact
-                  />
-                )}
+                <TastePortrait
+                  name={item.name}
+                  category={item.category}
+                  description={item.description}
+                  seed={restaurantSeed}
+                  size={92}
+                  compact
+                />
 
                 <View style={styles.itemCopy}>
                   <Text style={styles.itemTitle}>{item.name || "Plat DelishAfrica"}</Text>

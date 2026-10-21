@@ -169,17 +169,20 @@ const rawMenu = Array.isArray(raw?.menuItems)
 : [];
 
 const status = String(raw?.status || "placeholder").toLowerCase();
+const deliveryEnabled = delivery.enabled === true;
+const serviceAreaConfirmed = Boolean(String(delivery.serviceAreaLabel || "").trim());
 const acceptingOrders =
-Boolean(raw?.acceptingOrders) ||
-(status === "active" && delivery.enabled !== false && rawMenu.length > 0);
+raw?.acceptingOrders === false
+? false
+: status === "active" && deliveryEnabled && serviceAreaConfirmed && rawMenu.length > 0;
 
 return {
 id,
 slug,
-name: String(raw?.name || "Restaurant DelishAfrica"),
-city: String(raw?.city || "Bruxelles"),
+name: String(raw?.name || "Partenaire à confirmer"),
+city: raw?.city ? String(raw.city) : "",
 area: raw?.area ? String(raw.area) : undefined,
-country: raw?.country ? String(raw.country) : "Belgique",
+country: raw?.country ? String(raw.country) : undefined,
 cuisine: raw?.cuisine ? String(raw.cuisine) : undefined,
 cuisines: Array.isArray(raw?.cuisines) ? raw.cuisines.map(String) : raw?.cuisine ? [String(raw.cuisine)] : [],
 rating: raw?.rating === undefined ? undefined : numberOr(raw.rating, 0),
@@ -193,12 +196,18 @@ status,
 featured: Boolean(raw?.featured),
 acceptingOrders,
 delivery: {
-enabled: delivery.enabled !== false,
-prepTimeMinutes: delivery.prepTimeMinutes === undefined ? undefined : numberOr(delivery.prepTimeMinutes, 20),
-serviceAreaLabel: delivery.serviceAreaLabel ? String(delivery.serviceAreaLabel) : "Bruxelles",
+enabled: deliveryEnabled,
+prepTimeMinutes:
+delivery.prepTimeMinutes === undefined || !Number.isFinite(Number(delivery.prepTimeMinutes))
+? undefined
+: Number(delivery.prepTimeMinutes),
+serviceAreaLabel: delivery.serviceAreaLabel ? String(delivery.serviceAreaLabel) : undefined,
 minimumOrderAmount: numberOr(delivery.minimumOrderAmount ?? raw?.minimumOrderAmount ?? 0, 0),
 deliveryFee: numberOr(delivery.deliveryFee ?? raw?.deliveryFee ?? 0, 0),
-deliveryRadiusKm: delivery.deliveryRadiusKm === undefined ? undefined : numberOr(delivery.deliveryRadiusKm, 0),
+deliveryRadiusKm:
+delivery.deliveryRadiusKm === undefined || !Number.isFinite(Number(delivery.deliveryRadiusKm))
+? undefined
+: Number(delivery.deliveryRadiusKm),
 },
 menuItems: rawMenu.map(normalizeMenuItem),
 };
@@ -222,7 +231,7 @@ restaurantId: restaurant.slug || restaurant.id,
 restaurantSlug: restaurant.slug || restaurant.id,
 restaurantName: restaurant.name,
 minimumOrderAmount: restaurant.delivery.minimumOrderAmount || 0,
-serviceAreaLabel: restaurant.delivery.serviceAreaLabel || "Bruxelles",
+serviceAreaLabel: restaurant.delivery.serviceAreaLabel || "",
 };
 }
 
@@ -235,6 +244,7 @@ const json = await response.json();
 const items = Array.isArray(json) ? json : Array.isArray(json?.items) ? json.items : Array.isArray(json?.data) ? json.data : [];
 return items
 .map(normalizeRestaurant)
+.filter((restaurant) => !["placeholder", "demo", "test", "draft", "internal"].includes(restaurant.status))
 .sort((a, b) => {
 if (a.status === "active" && b.status !== "active") return -1;
 if (a.status !== "active" && b.status === "active") return 1;
@@ -245,14 +255,22 @@ return a.name.localeCompare(b.name);
 }
 
 export async function fetchRestaurantBySlug(slug: string): Promise<DARestaurant> {
-const normalizedSlug = slugify(slug || "thieyp");
+const requested = String(slug || "").trim();
+if (!requested) {
+throw new Error("Sélectionnez un restaurant réel depuis la marketplace.");
+}
+
+const normalizedSlug = slugify(requested);
 const restaurants = await fetchRestaurants();
 const found = restaurants.find((restaurant) => restaurant.slug === normalizedSlug || restaurant.id === normalizedSlug);
 if (found) return found;
 
-if (normalizedSlug === "thieyp") {
-const response = await fetch(`${DA_API_BASE_URL}/partners/thieyp`);
-if (response.ok) return normalizeRestaurant(await response.json());
+const response = await fetch(`${DA_API_BASE_URL}/partners/${encodeURIComponent(normalizedSlug)}`);
+if (response.ok) {
+const restaurant = normalizeRestaurant(await response.json());
+if (!["placeholder", "demo", "test", "draft", "internal"].includes(restaurant.status)) {
+return restaurant;
+}
 }
 
 throw new Error("Restaurant introuvable dans le catalogue DelishAfrica.");

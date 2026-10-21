@@ -105,6 +105,13 @@ export class CatalogFoundationRepository implements OnModuleDestroy {
       `SELECT published_payload
          FROM da_catalog_partners
         WHERE lifecycle_status = 'published'
+          AND COALESCE(LOWER(published_payload->>'status'), '') NOT IN (
+            'placeholder',
+            'demo',
+            'test',
+            'draft',
+            'internal'
+          )
         ORDER BY display_order ASC, slug ASC`,
     );
 
@@ -119,6 +126,13 @@ export class CatalogFoundationRepository implements OnModuleDestroy {
          FROM da_catalog_partners
         WHERE slug = $1
           AND lifecycle_status = 'published'
+          AND COALESCE(LOWER(published_payload->>'status'), '') NOT IN (
+            'placeholder',
+            'demo',
+            'test',
+            'draft',
+            'internal'
+          )
         LIMIT 1`,
       [slug],
     );
@@ -514,6 +528,11 @@ export class CatalogFoundationRepository implements OnModuleDestroy {
   ): Promise<void> {
     for (let index = 0; index < partners.length; index += 1) {
       const partner = partners[index];
+      const status = String(partner?.status || '').trim().toLowerCase();
+      if (['placeholder', 'demo', 'test', 'draft', 'internal'].includes(status)) {
+        continue;
+      }
+
       await client.query(
         `INSERT INTO da_catalog_partners(
            partner_id,

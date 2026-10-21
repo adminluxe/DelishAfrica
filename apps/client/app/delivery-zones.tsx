@@ -12,15 +12,15 @@ return (
 <Text style={styles.kicker}>DELISHAFRICA® DELIVERY ZONES</Text>
 <Text style={styles.title}>Zones de livraison</Text>
 <Text style={styles.subtitle}>
-Une première couche simple et sûre avant Google Maps natif : on valide les zones par ville, adresse et cohérence restaurant.
+La disponibilité dépend de l’adresse de livraison, des partenaires actifs et des zones de service confirmées.
 </Text>
 </View>
 
 <View style={styles.cardGold}>
-<Text style={styles.cardLabel}>Zone active V1</Text>
+<Text style={styles.cardLabel}>Zone de service</Text>
 <Text style={styles.big}>{DELIVERY_ZONES_V1_LABEL}</Text>
 <Text style={styles.cardTextGold}>
-Thieyp reste le restaurant actif. Les nouveaux partenaires sont visibles, mais leurs livraisons seront ouvertes après validation.
+Seuls les partenaires validés et réellement disponibles dans cette zone peuvent recevoir une commande.
 </Text>
 </View>
 
@@ -34,14 +34,14 @@ Une commande reste liée à un seul restaurant. Cela protège la cuisine, le cou
 <View style={styles.card}>
 <Text style={styles.cardTitle}>Règle checkout</Text>
 <Text style={styles.cardText}>
-Avant le paiement, DelishAfrica vérifie que la ville ou l’adresse correspond à Bruxelles ou aux communes proches.
+Avant le paiement, DelishAfrica vérifie que l’adresse appartient à une zone de service active pour le restaurant choisi.
 </Text>
 </View>
 
 <View style={styles.card}>
 <Text style={styles.cardTitle}>Guidage intelligent</Text>
 <Text style={styles.cardText}>
-DelishAfrica prépare un guidage cartographique sécurisé. Aujourd’hui, la zone est validée simplement pour garder une commande claire, fiable et livrable.
+DelishAfrica s’appuie sur les données de service confirmées pour garder une commande claire, fiable et réellement livrable.
 </Text>
 </View>
 

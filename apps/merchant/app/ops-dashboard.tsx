@@ -97,7 +97,7 @@ return (
 order.customer?.name ||
 order.customerName ||
 order.clientName ||
-"Client DelishAfrica"
+"Client à confirmer"
 );
 }
 
@@ -106,14 +106,17 @@ return order.restaurantName || order.merchantName || "Restaurant partenaire";
 }
 
 function amountLabel(order: DemoOrder): string {
-const raw = Number(order.total ?? order.amount ?? 0);
+const source = order.total ?? order.amount;
+if (source === undefined || source === null) return "—";
+const raw = Number(source);
+if (!Number.isFinite(raw)) return "—";
 const euros = raw > 100 ? raw / 100 : raw;
 return `${euros.toFixed(2).replace(".", ",")} €`;
 }
 
 function firstItem(order: DemoOrder): string {
 const item = Array.isArray(order.items) ? order.items[0] : null;
-if (!item) return "1× Thieboudienne royal";
+if (!item) return "Article non reçu";
 const qty = item.quantity || item.qty || 1;
 const name = item.name || item.title || "Plat signature";
 return `${qty}× ${name}`;

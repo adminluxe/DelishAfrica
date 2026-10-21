@@ -80,11 +80,11 @@ export default function RestaurantDetailScreen() {
             </View>
             <View style={styles.infoBlock}>
               <Text style={styles.infoLabel}>Adresse</Text>
-              <Text style={styles.infoValue}>{restaurant.address || [restaurant.area, restaurant.city].filter(Boolean).join(" · ") || "Bruxelles"}</Text>
+              <Text style={styles.infoValue}>{restaurant.address || [restaurant.area, restaurant.city].filter(Boolean).join(" · ") || "Adresse à confirmer"}</Text>
             </View>
             <View style={styles.infoBlock}>
               <Text style={styles.infoLabel}>Zone de livraison</Text>
-              <Text style={styles.infoValue}>{restaurant.delivery.serviceAreaLabel || "Bruxelles"}</Text>
+              <Text style={styles.infoValue}>{restaurant.delivery.serviceAreaLabel || "Zone de livraison à confirmer"}</Text>
             </View>
             {restaurant.phone ? (
               <View style={styles.infoBlock}>

@@ -62,7 +62,7 @@ function orderTitle(order?: OrderLike): string {
 }
 
 function orderAmount(order?: OrderLike): string {
-  return normalizeMoney(order?.totalAmount ?? order?.total ?? order?.amount ?? 2190);
+  return normalizeMoney(order?.totalAmount ?? order?.total ?? order?.amount);
 }
 
 function orderItem(order?: OrderLike): string {
@@ -194,7 +194,7 @@ body: JSON.stringify({}),
         <View style={styles.singleCard}>
           <Text style={styles.singleLabel}>Signal</Text>
           <Text style={styles.singleTitle}>{liveSignal}</Text>
-          <Text style={styles.singleBody}>{activeCount > 0 ? 'Réponse /orders/demo/list reçue.' : 'Aucune donnée exploitable reçue.'}</Text>
+          <Text style={styles.singleBody}>{activeCount > 0 ? 'Synchronisation serveur reçue.' : 'Aucune donnée exploitable reçue.'}</Text>
         </View>
 
         <ConfluenceOracleLens
