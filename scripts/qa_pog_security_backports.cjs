@@ -8,8 +8,13 @@ const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const cp = require("node:child_process");
+const { createRequire } = require("node:module");
 const assert = require("node:assert/strict");
 const root = path.resolve(__dirname, "..");
+if (process.argv.includes("--release-gate")) {
+  console.error("STORE_NO_GO: private cryptographic/build backports have no independent release admission");
+  process.exit(10);
+}
 const vendor = path.join(root, "vendor/pog-security");
 const meta = JSON.parse(fs.readFileSync(path.join(vendor, "B7_PACKAGE_MANIFEST.json"), "utf8"));
 const project = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
@@ -65,15 +70,41 @@ if (!fs.existsSync(store)) {
   if (process.env.CI) throw new Error("CI install missing: cannot assert package runtime");
   console.log("QA_PROVENANCE_ONLY: no installed packages in isolated worktree");
 } else {
-  const folders = fs.readdirSync(store);
-  const libDirs = {};
+  // Verify the actual dependency loaded by Expo signing tools and Metro,
+  // not an implementation-dependent virtual-store directory name.
+  function installedPackagePath(moduleFile, expected) {
+    let dir = path.dirname(fs.realpathSync(moduleFile));
+    while (dir !== path.dirname(dir)) {
+      const manifest = path.join(dir, "package.json");
+      if (fs.existsSync(manifest)) {
+        const parsed = JSON.parse(fs.readFileSync(manifest, "utf8"));
+        if (parsed.name === expected) return dir;
+      }
+      dir = path.dirname(dir);
+    }
+    throw new Error("Unable to locate installed package: " + expected);
+  }
+  const metroFileMap = require.resolve("metro-file-map");
+  const micromatchModule = createRequire(metroFileMap).resolve("micromatch");
+  const braceModule = createRequire(micromatchModule).resolve("braces");
+  const signingTool = require.resolve("@expo/code-signing-certificates");
+  const forgeModule = createRequire(signingTool).resolve("node-forge");
+  const libDirs = {
+    braces: installedPackagePath(braceModule, "braces"),
+    "node-forge": installedPackagePath(forgeModule, "node-forge"),
+  };
   for (const name of names) {
-    const entry = folders.find(x => x.startsWith(name + "@file+vendor+"));
-    assert.ok(entry, name + " patched local tarball not installed");
-    libDirs[name] = path.join(store, entry, "node_modules", name);
-    assert.ok(fs.existsSync(path.join(libDirs[name], "package.json")));
-    const actual = JSON.parse(fs.readFileSync(path.join(libDirs[name], "package.json"), "utf8"));
+    const actual = JSON.parse(
+      fs.readFileSync(path.join(libDirs[name], "package.json"), "utf8")
+    );
     assert.equal(actual.version, meta.packages[name].version);
+    for (const [relative, item] of Object.entries(meta.packages[name].files)) {
+      const installed = fs.readFileSync(path.join(libDirs[name], relative));
+      assert.equal(digest(installed, "sha256"), item.sha256,
+        "Active Expo/Metro consumer loaded unexpected " + name + "/" + relative);
+    }
+    console.log("PASS_ACTIVE_CONSUMER " + name + " checked_files="
+      + Object.keys(meta.packages[name].files).length);
   }
   const braces = require(libDirs.braces);
   let matches = 0;
@@ -134,7 +165,3 @@ if (!fs.existsSync(store)) {
 }
 console.log("POG_BACKPORT_QA=PASS_TARGETED_NOT_EXTERNAL_CERTIFICATION");
 console.log("RELEASE_APPROVED=false SECURITY_REVIEW_REQUIRED=true");
-if (process.argv.includes("--release-gate")) {
-  console.error("STORE_NO_GO: private cryptographic/build backports have no independent release admission");
-  process.exitCode = 10;
-}
