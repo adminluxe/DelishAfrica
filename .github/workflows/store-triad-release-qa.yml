@@ -1,0 +1,152 @@
+name: Store Triad Release QA
+
+on:
+  push:
+    branches:
+      - release/store-triad-signup-20261021
+  pull_request:
+    paths:
+      - "apps/client/**"
+      - "apps/merchant/**"
+      - "apps/courier/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/store-triad-release-qa.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: store-triad-release-qa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  triad:
+    name: typecheck-config-hermes-security
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CI: "1"
+      EXPO_NO_TELEMETRY: "1"
+      NODE_OPTIONS: --max-old-space-size=4096
+
+    steps:
+      - name: Checkout immutable candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+
+      - name: pnpm 9.15.4
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+          test "$(pnpm --version)" = "9.15.4"
+
+      - name: Frozen install without lifecycle scripts
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts \
+            --filter client --filter merchant --filter courier
+
+      - name: TypeScript 3 apps
+        run: |
+          pnpm --dir apps/client exec tsc --noEmit --pretty false
+          pnpm --dir apps/merchant exec tsc --noEmit --pretty false
+          pnpm --dir apps/courier exec tsc --noEmit --pretty false
+
+      - name: Production manifest invariants 3 apps
+        run: |
+          for app in client merchant courier; do
+            (cd "apps/$app" && APP_VARIANT=production pnpm exec expo config --json) > "$RUNNER_TEMP/$app-production.json"
+          done
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const roles = ['client','merchant','courier'];
+          for (const role of roles) {
+            const x = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/' + role + '-production.json','utf8'));
+            const id = 'com.delishafrica.' + role;
+            const scheme = 'delishafrica' + role;
+            if (x.version !== '3.0.2') throw new Error(role + ': wrong version ' + x.version);
+            if (x.ios?.bundleIdentifier !== id || x.android?.package !== id) throw new Error(role + ': wrong package id');
+            if (!(x.scheme === scheme || Array.isArray(x.scheme) && x.scheme.includes(scheme))) throw new Error(role + ': wrong scheme');
+            if (x.extra?.daEnrollment) throw new Error(role + ': QA enrollment leaked into Store manifest');
+            if (x.android?.allowBackup !== false) throw new Error(role + ': Android backup must be disabled');
+            const blocked = new Set(x.android?.blockedPermissions || []);
+            for (const p of [
+              'android.permission.SYSTEM_ALERT_WINDOW',
+              'android.permission.READ_EXTERNAL_STORAGE',
+              'android.permission.WRITE_EXTERNAL_STORAGE',
+            ]) {
+              if (!blocked.has(p)) throw new Error(role + ': missing blocked permission ' + p);
+            }
+            console.log('PASS STORE_MANIFEST ' + role);
+          }
+          NODE
+
+      - name: Development manifests remain isolated
+        run: |
+          for app in client merchant courier; do
+            (cd "apps/$app" && APP_VARIANT=development pnpm exec expo config --json) > "$RUNNER_TEMP/$app-development.json"
+          done
+          node - <<'NODE'
+          const fs = require('node:fs');
+          for (const role of ['client','merchant','courier']) {
+            const x = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/' + role + '-development.json','utf8'));
+            const id = 'com.delishafrica.' + role + '.dev';
+            const scheme = 'delishafrica' + role + 'dev';
+            if (x.ios?.bundleIdentifier !== id || x.android?.package !== id) throw new Error(role + ': DEV package isolation failed');
+            if (!(x.scheme === scheme || Array.isArray(x.scheme) && x.scheme.includes(scheme))) throw new Error(role + ': DEV scheme isolation failed');
+            console.log('PASS DEV_ISOLATION ' + role);
+          }
+          NODE
+
+      - name: Account deletion contract is wired 3 apps
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          for (const role of ['client','merchant','courier']) {
+            const p = 'apps/' + role + '/app/account-deletion.tsx';
+            const s = fs.readFileSync(p,'utf8');
+            for (const needle of [
+              '/account-deletion/requests/',
+              'DELETE_MY_DELISHAFRICA_ACCOUNT',
+              'Idempotency-Key',
+              'acknowledgeRetention: true',
+              'status !== 202',
+              'keycloak.afritaste.delishafrica.me',
+              'account-delete-open',
+            ]) {
+              if (!s.includes(needle)) throw new Error(role + ': missing deletion guard ' + needle);
+            }
+            if (s.includes('Linking.openURL(ACCOUNT_CONSOLE)')) throw new Error(role + ': direct IAM deletion bypass reintroduced');
+            console.log('PASS ACCOUNT_DELETION ' + role);
+          }
+          NODE
+
+      - name: No obvious production secrets in app sources
+        run: |
+          if grep -RInE --exclude-dir=node_modules --exclude-dir=.git \
+            'sk_live_[A-Za-z0-9]{16,}|rk_live_[A-Za-z0-9]{16,}|whsec_[A-Za-z0-9]{16,}|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' \
+            apps/client apps/merchant apps/courier; then
+            echo "Potential secret detected"
+            exit 1
+          fi
+
+      - name: Production Hermes exports 6 of 6
+        run: |
+          unset EXPO_NO_METRO_WORKSPACE_ROOT
+          for app in client merchant courier; do
+            for platform in ios android; do
+              out="$RUNNER_TEMP/da-$app-$platform"
+              (cd "apps/$app" && APP_VARIANT=production pnpm exec expo export --platform "$platform" --max-workers 2 --output-dir "$out")
+              test -f "$out/metadata.json"
+              test "$(find "$out/_expo/static/js/$platform" -name '*.hbc' | wc -l)" -eq 1
+            done
+          done
+
+      - name: Runtime dependency audit high or critical
+        run: pnpm audit --prod --audit-level high
