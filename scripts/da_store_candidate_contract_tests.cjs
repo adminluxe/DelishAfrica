@@ -209,6 +209,11 @@ async function run() {
     assert.deepEqual([imageSize(pixel).width, imageSize(pixel).height], [1, 1]);
     const shellQuote = require("shell-quote");
     assert.throws(() => shellQuote.quote(["echo", "ok", { comment: "x" }, "a\nid;#"]), TypeError);
+    const metroAssets = fs.readFileSync(
+      path.join(ROOT, "node_modules/metro/src/Assets.js"), "utf8"
+    );
+    assert.match(metroAssets, /typeof isImageInput === "string"/,
+      "Metro must convert its asset paths into bytes for secure image-size v2");
   });
 
   console.log("STORE_CANDIDATE_CONTRACTS=" + passed + "/11 PASS");

@@ -11,6 +11,8 @@ on:
       - "apps/courier/**"
       - "services/api-nest/**"
       - "scripts/da_store_candidate_contract_tests.cjs"
+      - "patches/**"
+      - ".easignore"
       - "package.json"
       - "pnpm-lock.yaml"
       - ".github/workflows/store-triad-release-qa.yml"
@@ -194,7 +196,7 @@ jobs:
         run: |
           if grep -RInE --exclude-dir=node_modules --exclude-dir=.git \
             'sk_live_[A-Za-z0-9]{16,}|rk_live_[A-Za-z0-9]{16,}|whsec_[A-Za-z0-9]{16,}|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' \
-            apps/client apps/merchant apps/courier; then
+            apps/client apps/merchant apps/courier services/api-nest/src patches; then
             echo "Potential secret detected"
             exit 1
           fi

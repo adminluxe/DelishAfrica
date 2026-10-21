@@ -37,6 +37,11 @@ overrides:
   ws@8.17.1: 8.21.0
   ws@8.18.3: 8.21.0
 
+patchedDependencies:
+  metro@0.83.3:
+    hash: gsmne47mwjs4c3thychlwuof54
+    path: patches/metro@0.83.3.patch
+
 importers:
 
   .:
@@ -405,7 +410,7 @@ importers:
         version: 5.2.1
       metro:
         specifier: ^0.83.3
-        version: 0.83.3
+        version: 0.83.3(patch_hash=gsmne47mwjs4c3thychlwuof54)
       metro-config:
         specifier: ^0.83.3
         version: 0.83.3
@@ -9126,7 +9131,7 @@ snapshots:
 
   '@expo/metro@54.2.0':
     dependencies:
-      metro: 0.83.3
+      metro: 0.83.3(patch_hash=gsmne47mwjs4c3thychlwuof54)
       metro-babel-transformer: 0.83.3
       metro-cache: 0.83.3
       metro-cache-key: 0.83.3
@@ -9915,7 +9920,7 @@ snapshots:
       '@react-native/dev-middleware': 0.81.5
       debug: 4.4.3
       invariant: 2.2.4
-      metro: 0.83.3
+      metro: 0.83.3(patch_hash=gsmne47mwjs4c3thychlwuof54)
       metro-config: 0.83.3
       metro-core: 0.83.3
       semver: 7.7.3
@@ -13719,7 +13724,7 @@ snapshots:
       connect: 3.7.0
       flow-enums-runtime: 0.0.6
       jest-validate: 29.7.0
-      metro: 0.83.3
+      metro: 0.83.3(patch_hash=gsmne47mwjs4c3thychlwuof54)
       metro-cache: 0.83.3
       metro-core: 0.83.3
       metro-runtime: 0.83.3
@@ -13807,7 +13812,7 @@ snapshots:
       '@babel/parser': 7.28.5
       '@babel/types': 7.28.5
       flow-enums-runtime: 0.0.6
-      metro: 0.83.3
+      metro: 0.83.3(patch_hash=gsmne47mwjs4c3thychlwuof54)
       metro-babel-transformer: 0.83.3
       metro-cache: 0.83.3
       metro-cache-key: 0.83.3
@@ -13820,7 +13825,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  metro@0.83.3:
+  metro@0.83.3(patch_hash=gsmne47mwjs4c3thychlwuof54):
     dependencies:
       '@babel/code-frame': 7.27.1
       '@babel/core': 7.28.5

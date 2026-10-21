@@ -117,6 +117,9 @@
       "ws@7.5.10": "7.5.11",
       "ws@8.17.1": "8.21.0",
       "ws@8.18.3": "8.21.0"
+    },
+    "patchedDependencies": {
+      "metro@0.83.3": "patches/metro@0.83.3.patch"
     }
   },
   "workspaces": [
