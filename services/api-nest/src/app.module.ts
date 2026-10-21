@@ -22,9 +22,11 @@ import { ConfluenceAiModule } from './confluence-ai/confluence-ai.module';
 import { AtmosphereModule } from './atmosphere/atmosphere.module';
 
 import { LegalModule } from './legal/legal.module';
+import { IdentityLifecycleModule } from './identity-lifecycle/identity-lifecycle.module';
 // DA_J7B_LEGAL_MODULE
 @Module({
   imports: [
+    IdentityLifecycleModule,
     LegalModule,
     AssignmentIntelligenceModule,
     RoutesPreviewModule,
