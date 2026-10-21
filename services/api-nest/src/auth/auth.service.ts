@@ -50,7 +50,11 @@ export class AuthService {
     return {
       ok: true,
       service: 'auth',
-      mode: 'progressive_nonblocking',
+      mode: 'external_oidc_primary',
+      internalAuth: {
+        enabled: this.internalAuthEnabled(),
+        failClosedByDefault: true,
+      },
       roles: ['client', 'merchant', 'courier', 'ops'],
       required: false,
       ownershipEligibleSources: ['external'],
@@ -70,6 +74,9 @@ export class AuthService {
   }
 
   devLogin(input: DevLoginInput = {}) {
+    if (!this.internalAuthEnabled()) {
+      throw new Error('internal_auth_disabled');
+    }
     const user = this.makeUser(input);
     const token = this.signUser(user, 'dev-login');
     const payload = this.verifyInternalToken(token);
@@ -182,14 +189,16 @@ export class AuthService {
   }
 
   async resolveToken(token: string): Promise<DaAuthPrincipalResolution> {
-    const internalPayload = this.verifyInternalToken(token);
-    if (internalPayload) {
-      return {
-        ok: true,
-        authenticated: true,
-        principal: this.payloadToPrincipal(internalPayload),
-        payload: internalPayload,
-      };
+    if (this.internalAuthEnabled()) {
+      const internalPayload = this.verifyInternalToken(token);
+      if (internalPayload) {
+        return {
+          ok: true,
+          authenticated: true,
+          principal: this.payloadToPrincipal(internalPayload),
+          payload: internalPayload,
+        };
+      }
     }
 
     const external = await this.trustedIdentity.verifyToken(token);
@@ -619,6 +628,10 @@ export class AuthService {
     }
   }
 
+  private internalAuthEnabled(): boolean {
+    return String(process.env.DA_INTERNAL_AUTH_ENABLED || '').trim().toLowerCase() === 'true';
+  }
+
   private secret(): string {
     const explicit = String(process.env.DA_AUTH_SECRET || '').trim();
     if (explicit) return explicit;
@@ -631,15 +644,9 @@ export class AuthService {
       const fileSecret = fs.readFileSync(filePath, 'utf8').trim();
       if (fileSecret) return fileSecret;
     } catch {
-      // Progressive fallback below.
+      // Fail closed below.
     }
 
-    const host = String(process.env.HOSTNAME || 'local');
-    return crypto
-      .createHash('sha256')
-      .update(path.resolve(process.cwd()))
-      .update('|')
-      .update(host)
-      .digest('hex');
+    throw new Error('auth_secret_unavailable');
   }
 }
