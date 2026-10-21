@@ -114,29 +114,36 @@ async function ensurePrincipal(force = false): Promise<PrincipalState> {
 }
 
 async function subjectForStorage(): Promise<string> {
-  try { return (await ensurePrincipal(false)).subject; }
-  catch {
-    const marker = await readPrincipalMarker();
-    if (marker?.subject) return marker.subject;
-    return 'merchant_thieyp';
-  }
+  // Real Merchant data must always be scoped to the currently authenticated
+  // external OIDC subject. Never fall back to a previous marker or a legacy
+  // restaurant identity when no active session is present.
+  return (await requireExternalMerchantPrincipal(false)).subject;
 }
 
 async function canMigrateLegacyValues(subject: string): Promise<boolean> {
   const owner = await SecureStore.getItemAsync(LEGACY_MIGRATION_OWNER_KEY);
   if (owner) return owner === subject;
-  if (subject === 'merchant_thieyp') {
-    await SecureStore.setItemAsync(LEGACY_MIGRATION_OWNER_KEY, subject);
-    return true;
-  }
+
+  // Legacy Merchant data may migrate only after the authenticated OIDC subject
+  // can be matched to a stable identifier contained in the legacy profile.
+  // No hard-coded restaurant identity is trusted.
   try {
     const raw = await SecureStore.getItemAsync(PROFILE_BASE);
     if (!raw) return false;
     const profile = JSON.parse(raw) as Record<string, unknown>;
-    const stable = String(profile.id || profile.merchantSlug || profile.email || '').trim().toLowerCase();
+    const stable = String(
+      profile.id || profile.merchantSlug || profile.email || '',
+    ).trim().toLowerCase();
     if (!stable) return false;
-    const candidates = new Set([stable, `merchant_${stable}`, `merchant_account_${hashScope(stable)}`]);
-    if (!candidates.has(subject.toLowerCase())) return false;
+
+    const normalizedSubject = subject.toLowerCase();
+    const candidates = new Set([
+      stable,
+      `merchant_${stable}`,
+      `merchant_account_${hashScope(stable)}`,
+    ]);
+    if (!candidates.has(normalizedSubject)) return false;
+
     await SecureStore.setItemAsync(LEGACY_MIGRATION_OWNER_KEY, subject);
     return true;
   } catch {
@@ -158,7 +165,6 @@ async function migrateValue(base: string, target: string, subject: string): Prom
     if (await SecureStore.getItemAsync(target)) return;
     const candidates = [`${base}.${hashScope(subject)}`];
     if (await canMigrateLegacyValues(subject)) {
-      if (subject === 'merchant_thieyp') candidates.push(`${base}.${hashScope('merchant_thieyp')}`);
       candidates.push(base);
     }
     for (const candidate of candidates) {
