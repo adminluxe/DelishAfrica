@@ -74,7 +74,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       ...(config.android?.blockedPermissions ?? []),
       "android.permission.READ_EXTERNAL_STORAGE",
       "android.permission.WRITE_EXTERNAL_STORAGE",
+      ...(!IS_DEV ? ["android.permission.SYSTEM_ALERT_WINDOW"] : []),
     ],
+    ...(!IS_DEV
+      ? {
+          // Delivery identity/session state is sensitive and server-backed.
+          // Disable Android backup/restore for Store binaries.
+          allowBackup: false,
+        }
+      : {}),
     config: {
       ...(config.android?.config ?? {}),
       ...(ANDROID_GOOGLE_MAPS_API_KEY

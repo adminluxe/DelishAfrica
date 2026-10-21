@@ -91,6 +91,19 @@ module.exports = ({ config }) => {
     android: {
       ...(config.android || {}),
       package: CLIENT_ANDROID_PACKAGE,
+      ...(!IS_DEV
+        ? {
+            // Store hardening: these broad permissions are not used by Client.
+            // Disabling Android backup avoids restoring security-sensitive local state.
+            allowBackup: false,
+            blockedPermissions: [
+              ...((config.android && config.android.blockedPermissions) || []),
+              "android.permission.SYSTEM_ALERT_WINDOW",
+              "android.permission.READ_EXTERNAL_STORAGE",
+              "android.permission.WRITE_EXTERNAL_STORAGE",
+            ],
+          }
+        : {}),
       splash: {
         image: splashPath,
         resizeMode: "contain",

@@ -59,6 +59,19 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     ...config.android,
     package: MERCHANT_ANDROID_PACKAGE,
+    ...(!IS_DEV
+      ? {
+          // Store hardening: Merchant does not use overlay or legacy shared-storage access.
+          // Account/business state is server-backed; do not restore local sensitive state.
+          allowBackup: false,
+          blockedPermissions: [
+            ...(config.android?.blockedPermissions ?? []),
+            "android.permission.SYSTEM_ALERT_WINDOW",
+            "android.permission.READ_EXTERNAL_STORAGE",
+            "android.permission.WRITE_EXTERNAL_STORAGE",
+          ],
+        }
+      : {}),
     splash: {
       image: SPLASH_IMAGE,
       resizeMode: "contain",
