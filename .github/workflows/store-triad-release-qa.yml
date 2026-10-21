@@ -50,13 +50,16 @@ jobs:
       - name: Frozen install without lifecycle scripts
         run: |
           pnpm install --frozen-lockfile --ignore-scripts \
-            --filter client --filter merchant --filter courier
+            --filter client --filter merchant --filter courier --filter ./services/api-nest
 
       - name: TypeScript 3 apps
         run: |
           pnpm --dir apps/client exec tsc --noEmit --pretty false
           pnpm --dir apps/merchant exec tsc --noEmit --pretty false
           pnpm --dir apps/courier exec tsc --noEmit --pretty false
+
+      - name: Nest API build
+        run: pnpm --dir services/api-nest run build
 
       - name: Production manifest invariants 3 apps
         run: |
@@ -149,4 +152,11 @@ jobs:
           done
 
       - name: Runtime dependency audit high or critical
-        run: pnpm audit --prod --audit-level high
+        run: |
+          timeout 120s pnpm audit --prod --audit-level high
+          code=$?
+          if [ "$code" -eq 124 ]; then
+            echo "Dependency audit timed out; release fails closed."
+            exit 1
+          fi
+          exit "$code"
