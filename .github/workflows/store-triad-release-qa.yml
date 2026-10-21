@@ -207,10 +207,16 @@ jobs:
 
       - name: Runtime dependency audit high or critical
         run: |
-          timeout 120s pnpm audit --prod --audit-level high
+          set +e
+          NODE_OPTIONS=--max-old-space-size=8192 timeout 300s pnpm audit --prod --audit-level high
           code=$?
+          set -e
           if [ "$code" -eq 124 ]; then
-            echo "Dependency audit timed out; release fails closed."
+            echo "Dependency audit timed out after 300s; release fails closed."
+            exit 1
+          fi
+          if [ "$code" -eq 134 ] || [ "$code" -eq 137 ]; then
+            echo "Dependency audit exhausted runner resources; release fails closed."
             exit 1
           fi
           exit "$code"
