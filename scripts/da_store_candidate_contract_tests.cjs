@@ -132,6 +132,15 @@ async function run() {
     assert.equal(zones.validateDeliveryZone(
       { city: "Ixelles" }, ""
     ).ok, false);
+    assert.equal(zones.validateDeliveryZone(
+      { city: "Gand", address: "Rue d'Ixelles" }, "Bruxelles / Ixelles"
+    ).ok, false, "Street names cannot spoof the declared delivery city");
+    assert.equal(zones.validateDeliveryZone(
+      { city: "", address: "Rue de Bruxelles" }, "Bruxelles / Ixelles"
+    ).ok, false, "A street name cannot replace a missing city");
+    assert.equal(zones.validateDeliveryZone(
+      { city: "Ixelles", address: "" }, "Bruxelles / Ixelles"
+    ).ok, false, "The delivery address must also be present");
   });
 
   const catalog = loadSource("apps/client/utils/daRestaurantCatalog.ts");
@@ -189,7 +198,20 @@ async function run() {
     assert.match(migration, /da_catalog_schema_migrations/);
   });
 
-  console.log("STORE_CANDIDATE_CONTRACTS=" + passed + "/10 PASS");
+  await check("Patched build-tool libraries remain compatible", async () => {
+    const imageModule = require("image-size");
+    const imageSize = imageModule.default || imageModule.imageSize || imageModule;
+    assert.equal(typeof imageSize, "function");
+    const pixel = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9lV3OVQAAAAASUVORK5CYII=",
+      "base64"
+    );
+    assert.deepEqual([imageSize(pixel).width, imageSize(pixel).height], [1, 1]);
+    const shellQuote = require("shell-quote");
+    assert.throws(() => shellQuote.quote(["echo", "ok", { comment: "x" }, "a\nid;#"]), TypeError);
+  });
+
+  console.log("STORE_CANDIDATE_CONTRACTS=" + passed + "/11 PASS");
 }
 run().catch((error) => {
   console.error("STORE_CANDIDATE_CONTRACTS=FAILED", error);

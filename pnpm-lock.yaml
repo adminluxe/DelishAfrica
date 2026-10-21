@@ -12,6 +12,7 @@ overrides:
   browserslist@4.28.1: 4.28.7
   compression@1.8.1: 1.8.2
   fast-uri@3.1.0: 3.1.7
+  image-size: 2.0.4
   js-yaml@3.14.2: 3.15.2
   js-yaml@4.1.1: 4.3.2
   minimatch@3.1.2: 3.1.4
@@ -27,7 +28,7 @@ overrides:
   picomatch@4.0.3: 4.0.7
   postcss@8.4.49: 8.5.28
   proxy-addr@2.0.7: 2.0.8
-  shell-quote@1.8.3: 1.9.0
+  shell-quote: 1.12.0
   source-map-js@1.2.1: 1.2.2
   tar@7.5.2: 7.5.21
   undici@6.22.0: 6.28.1
@@ -5007,9 +5008,9 @@ packages:
     resolution: {integrity: sha512-Hs59xBNfUIunMFgWAbGX5cq6893IbWg4KnrjbYwX3tx0ztorVgTDA6B2sxf8ejHJ4wz8BqGUMYlnzNBer5NvGg==}
     engines: {node: '>= 4'}
 
-  image-size@1.2.1:
-    resolution: {integrity: sha512-rH+46sQJ2dlwfjfhCyNx5thzrv+dtmBIhPHk0zgRUukHzZ/kRueTJXoYYsclBaKcSMBWuGbOFXtioLpzTb5euw==}
-    engines: {node: '>=16.x'}
+  image-size@2.0.4:
+    resolution: {integrity: sha512-QRUkFFsRV/6fuESxb9Vkq+a0LkSrgKXuc2NEqfikiXxxN/G3tjWt5EVUlMaImRBZRZK/jRBEbYvpPYZL8t08Zw==}
+    engines: {node: '>=18'}
     hasBin: true
 
   import-fresh@3.3.1:
@@ -6256,9 +6257,6 @@ packages:
     resolution: {integrity: sha512-5fBfMOcDi5SA9qj5jZhWAcTtDfKF5WFdd2uD9nVNlbxVv1baq65aALy6qofpNEGELHvisjjasxQp7BlM9gvMzw==}
     engines: {node: '>=18'}
 
-  queue@6.0.2:
-    resolution: {integrity: sha512-iHZWu+q3IdFZFX36ro/lKBkSvfkztY5Y7HMiPlOUjhupPcG2JMfst2KKEpu5XndviX/3UhFbRngUPNKtgvtZiA==}
-
   quick-lru@5.1.1:
     resolution: {integrity: sha512-WuyALRjWPDGtt/wzJiadO5AXY+8hZ80hVpe6MyivgraREW751X3SbhRvG3eLKOYN+8VEvqLcf3wdnt44Z4S4SA==}
     engines: {node: '>=10'}
@@ -6731,8 +6729,8 @@ packages:
     resolution: {integrity: sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==}
     engines: {node: '>=8'}
 
-  shell-quote@1.9.0:
-    resolution: {integrity: sha512-Iov+JwFv/2HcTpcwNMKd8+IWNb8tboQJNQTkAY/LLVK7gGH9jy+LGkVqPxfekHl+yMmiqXszdGWXgkfml7hjqA==}
+  shell-quote@1.12.0:
+    resolution: {integrity: sha512-PcByqNyT/38F2kDNi006HAMRJaULuBzq/FOsw3qdZvX/GA9W/jamDaRskgHjubHiftXK5sIFxLNkvrXUwcof6Q==}
     engines: {node: '>= 0.4'}
 
   shiki@4.5.0:
@@ -13071,9 +13069,7 @@ snapshots:
 
   ignore@7.0.5: {}
 
-  image-size@1.2.1:
-    dependencies:
-      queue: 6.0.2
+  image-size@2.0.4: {}
 
   import-fresh@3.3.1:
     dependencies:
@@ -13842,7 +13838,7 @@ snapshots:
       flow-enums-runtime: 0.0.6
       graceful-fs: 4.2.11
       hermes-parser: 0.32.0
-      image-size: 1.2.1
+      image-size: 2.0.4
       invariant: 2.2.4
       jest-worker: 29.7.0
       jsc-safe-url: 0.2.4
@@ -14379,10 +14375,6 @@ snapshots:
       filter-obj: 5.1.0
       split-on-first: 3.0.0
 
-  queue@6.0.2:
-    dependencies:
-      inherits: 2.0.4
-
   quick-lru@5.1.1: {}
 
   radix3@1.1.2: {}
@@ -14416,7 +14408,7 @@ snapshots:
 
   react-devtools-core@6.1.5:
     dependencies:
-      shell-quote: 1.9.0
+      shell-quote: 1.12.0
       ws: 7.5.11
     transitivePeerDependencies:
       - bufferutil
@@ -14424,7 +14416,7 @@ snapshots:
 
   react-devtools-core@7.0.1:
     dependencies:
-      shell-quote: 1.9.0
+      shell-quote: 1.12.0
       ws: 7.5.11
     transitivePeerDependencies:
       - bufferutil
@@ -15019,7 +15011,7 @@ snapshots:
 
   shebang-regex@3.0.0: {}
 
-  shell-quote@1.9.0: {}
+  shell-quote@1.12.0: {}
 
   shiki@4.5.0:
     dependencies:

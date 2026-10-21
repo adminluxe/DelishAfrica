@@ -55,7 +55,6 @@ export function validateDeliveryZone(
 ): DADeliveryZoneResult {
   const city = normalizeZoneText(input?.city);
   const address = normalizeZoneText(input?.address);
-  const combined = `${address} ${city}`.trim();
   const zoneLabel = String(restaurantZoneLabel || "").trim();
   const tokens = serviceAreaTokens(zoneLabel);
 
@@ -71,19 +70,22 @@ export function validateDeliveryZone(
     };
   }
 
-  if (!combined) {
+  if (!city || !address) {
     return {
       ok: false,
       status: "missing",
       title: "Adresse à compléter",
       message:
-        "Ajoutez puis confirmez votre adresse de livraison pour vérifier la zone de ce restaurant.",
+        "Ajoutez puis confirmez votre adresse et votre ville pour vérifier la zone de ce restaurant.",
       zoneLabel,
       normalizedCity: city,
     };
   }
 
-  const accepted = tokens.some((token) => combined.includes(token));
+  // Never accept a delivery locality just because its name occurs in a street
+  // address, business name or arbitrary free text. The geocoded address is
+  // independently rechecked during checkout.
+  const accepted = tokens.some((token) => city === token);
 
   if (accepted) {
     return {
