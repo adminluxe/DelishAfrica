@@ -474,6 +474,14 @@ export async function daMerchantOidcAccessToken(): Promise<string | null> {
   }
 }
 
+export async function daMerchantOidcForgetLocalSession(): Promise<void> {
+  try {
+    await clearTokens(loadModules().SecureStore);
+  } catch {
+    // Best-effort local purge. This never represents server-side deletion.
+  }
+}
+
 export async function daMerchantOidcLogout(): Promise<void> {
   const { AuthSession, WebBrowser, SecureStore } = loadModules();
   const [idToken, refreshToken] = await Promise.all([
