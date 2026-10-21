@@ -79,7 +79,6 @@ module.exports = ({ config }) => {
       infoPlist: {
         ...((config.ios && config.ios.infoPlist) || {}),
         CFBundleDisplayName: CLIENT_DISPLAY_NAME,
-        NSCameraUsageDescription: CLIENT_CAMERA_PURPOSE,
         NSLocationWhenInUseUsageDescription: CLIENT_LOCATION_PURPOSE,
       },
       splash: {
@@ -101,6 +100,8 @@ module.exports = ({ config }) => {
               "android.permission.SYSTEM_ALERT_WINDOW",
               "android.permission.READ_EXTERNAL_STORAGE",
               "android.permission.WRITE_EXTERNAL_STORAGE",
+              "android.permission.USE_BIOMETRIC",
+              "android.permission.USE_FINGERPRINT",
             ],
           }
         : {}),
