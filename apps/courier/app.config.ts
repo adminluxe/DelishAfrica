@@ -74,7 +74,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       ...(config.android?.blockedPermissions ?? []),
       "android.permission.READ_EXTERNAL_STORAGE",
       "android.permission.WRITE_EXTERNAL_STORAGE",
-      ...(!IS_DEV ? ["android.permission.SYSTEM_ALERT_WINDOW"] : []),
+      ...(!IS_DEV
+        ? [
+            "android.permission.SYSTEM_ALERT_WINDOW",
+            "android.permission.USE_BIOMETRIC",
+            "android.permission.USE_FINGERPRINT",
+          ]
+        : []),
     ],
     ...(!IS_DEV
       ? {
