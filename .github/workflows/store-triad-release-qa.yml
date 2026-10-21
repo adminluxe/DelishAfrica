@@ -61,6 +61,17 @@ jobs:
       - name: Nest API build
         run: pnpm --dir services/api-nest run build
 
+      - name: Internal auth fail-closed contract
+        run: |
+          grep -q "DA_INTERNAL_AUTH_ENABLED" services/api-nest/src/auth/auth.service.ts
+          grep -q "internal_auth_disabled" services/api-nest/src/auth/auth.service.ts
+          grep -q "auth_secret_unavailable" services/api-nest/src/auth/auth.service.ts
+          grep -q "if (this.internalAuthEnabled())" services/api-nest/src/auth/auth.service.ts
+          if grep -q "update(path.resolve(process.cwd()))" services/api-nest/src/auth/auth.service.ts; then
+            echo "Predictable internal auth secret fallback detected"
+            exit 1
+          fi
+
       - name: Identity lifecycle contract
         run: |
           test -f services/api-nest/src/identity-lifecycle/identity-lifecycle.module.ts
