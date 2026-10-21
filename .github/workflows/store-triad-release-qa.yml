@@ -70,7 +70,9 @@ jobs:
           test -f services/api-nest/migrations/identity-lifecycle/20261021_001_account_deletion.sql
           grep -q "IdentityLifecycleModule" services/api-nest/src/app.module.ts
           grep -q "account-deletion" services/api-nest/src/identity-lifecycle/identity-lifecycle.controller.ts
-          grep -q "DA_AUTH_SECRET_FILE" services/api-nest/src/identity-lifecycle/identity-lifecycle.crypto.ts
+          grep -q "DA_IDENTITY_LIFECYCLE_SECRET_FILE" services/api-nest/src/identity-lifecycle/identity-lifecycle.crypto.ts
+          grep -q "DA_INVITATION_ENCRYPTION_KEY_FILE" services/api-nest/src/identity-lifecycle/identity-lifecycle.crypto.ts
+          grep -q "identity_lifecycle_secret_unavailable" services/api-nest/src/identity-lifecycle/identity-lifecycle.crypto.ts
           grep -q "identity_fingerprint" services/api-nest/migrations/identity-lifecycle/20261021_001_account_deletion.sql
 
       - name: Production manifest invariants 3 apps
