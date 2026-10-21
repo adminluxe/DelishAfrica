@@ -1,0 +1,345 @@
+{
+  "revision": "OP-P0-B7-C-R2",
+  "upstreamVersionsRetained": true,
+  "releaseApproved": false,
+  "officialUpstreamRelease": false,
+  "packages": {
+    "braces": {
+      "version": "3.0.3",
+      "archive": "vendor/orchidpay-security/braces-3.0.3-orchidpay-b7.2.tgz",
+      "sha256": "4bff218db239804e386a20d9b4b577a13c9be7df892d652971277f33f135b5af",
+      "sha512": "12d0798d532d76e4c98dbea9e62d54af363d81504eff7d9f5919c81cba8aa2f832ede1a7924059304545a1b5058584fc94c05da3c1b8ab6249c3ad7fa86eb3f1",
+      "integrity": "sha512-EtB5jVMtduTJjb6p5i1UrzY9gVBO/32fWRnIHLqKovgy7eGnkkBZMEVFobUFhYT8lMBdo8G4q2JJw61/qG6z8Q==",
+      "files": {
+        "LICENSE": {
+          "sha256": "35bdd8a44339719441900fb50fbefc5e2dca1ca662cbaed7a687de842c8b70f2",
+          "sha512": "72392bccd8964c88ec8aa3d815746a2b6a4466d9c7ca8f428d7d0f3e2bb11674ef494ca335c8b255eee5825c087a77bb45a5d60025f318b78a64e19beccd23c7"
+        },
+        "README.md": {
+          "sha256": "947b0fc3cc12eaaa070207126213fbdf9ab2bf8cd13dcc6e4007b36b79309866",
+          "sha512": "f9717a3630f1f0b44e33ad4ad7bc2b3f5a731568e658a000cda8d87e6310ffec94aae4b1cd5158e8d6d2ec65df3e1392d0025407c94e1147c16159a01d42520e"
+        },
+        "SECURITY_BACKPORT.md": {
+          "sha256": "625abf5be7374858379787b5190f363a29df9effca5bda815163b9e88fbebd9b",
+          "sha512": "55c71c9ff7fb0a77e24794dd6dee864534c4715ca22bd1c72ed377e8c5abb33ab07e992eb26bc06654159ba1593d0482bb0c14d5ea975884bb08d97006024073"
+        },
+        "index.js": {
+          "sha256": "332ea07c7b006361aad12aa994ca75dc1db8e8382b884909e2f38f10b85c88a4",
+          "sha512": "de9493cee0023e17904a66975f010f774a9ca3be2abb5fb4be48d158c8626461581cc0e8ab0c42a781825a836594bbf2623a5c306a00fd8b4edfd9f7b98d1c13"
+        },
+        "lib/compile.js": {
+          "sha256": "f37f89621e4bf04841d5343430b64a17c6c3b4d95201292ac4d01d851ee4cd35",
+          "sha512": "eeee6c4080919b0463bcb9bb68efbab9ea318ea3761e2273b37d51f25b5e5b0c479bcc7c2536d542aaeb5740df1de5c2e084dd3c5d8d46c796a65fe97268eb70"
+        },
+        "lib/constants.js": {
+          "sha256": "a53882a8d9dadcc5f0db5d9ce30a9bc4bf770876909013a8d2841b54a7ebb594",
+          "sha512": "c5a3f5722f461ebd7d3c63ee6e7b1e49662d98149b89466f9ef07e1a8182ac8bf47e0dc1d312dbb00c6a4e7933d5884ae6f484be8bd221bf4626ee91ceb8bf4d"
+        },
+        "lib/depth.js": {
+          "sha256": "6bdadd139c33d8452ede5a056dcc66eff729f971715a437ea269460cb0a2f8f4",
+          "sha512": "418b1cc38bcc2822a04218a4e242342ae2991145eb157dd800e1321ec6500847ae24600da8c5c0d02112678082cd7ac05bf3d28a8b648be880c8d43e1f887985"
+        },
+        "lib/expand.js": {
+          "sha256": "fba1e02dad07021a05ffd6487c4d6c5e122ead9990467ed9ff6fd2552f9385b3",
+          "sha512": "a23768b3ee0bc7cde4965309dd90578535b3b2d34cbdd8da0108dfeb3e5bd3aef1d6a23529c40edf3f547410485e498fa06598522c12f623a8cfbcd77432bf2c"
+        },
+        "lib/parse.js": {
+          "sha256": "b1bf766fba6a62035f78ecbda8a5fd94e921aa1c1ec0cdf3f467e9c836abed55",
+          "sha512": "a959a1fa29aaadb54759d150ca93ae28863d0531784c2e40c4cf41ec4b161d97ec89a621d546032fffbd429f5cb9c706102f81e0a44b14110de2cd6bf83191f3"
+        },
+        "lib/stringify.js": {
+          "sha256": "4d6d6fb33b9409a8998332a9144f40986bb992e87510947055463200cd4f79dc",
+          "sha512": "e21a15af02c3b1c8e7cece7d2a6a047a63e1e2ca1c2635f5ec288d84aa2c6ac9587f386823390767bfa797662911df4f71e30792603b22d0a35815353d3fda5a"
+        },
+        "lib/utils.js": {
+          "sha256": "0e87e15331a3f41e95a3d16d47c14b8aa53d540fbec803fb06b386bc62de96bd",
+          "sha512": "ae16caaa1fc4eb5d757730907895d98788c881d191c9608b05958fd4f13b477ca833d414018af6ff9664911a230e2cb4222c1eefbb0dd46283e9bc6f75e8480b"
+        },
+        "package.json": {
+          "sha256": "e9021b71e23bf355b1d97876924a8f6f091a9c9f5dcb36d6e43ede07c3c51bab",
+          "sha512": "84a9bcc8ef4853a1fc776de579e1b7b6f09bd93af062ee6283ce4589f10e15eb5a45c81a137ba3d3b442e9c5ba3ca01b184a6c6d409090e24cb31b36baa2fabd"
+        }
+      },
+      "licensePreserved": true,
+      "provenance": {
+        "upstreamPullRequest": 72,
+        "upstreamPatchCommitSha": "28d440b5dd449dbf1fe6f3506cf94ecca4d02660",
+        "adaptedOverlayManifestSha256": "3ff3ebf6e5a3b55fdf1e8ee0e78de71bea563dee5fe39ef9d903dfb5debeed95",
+        "overlayOrigin": "PEV V3.1 project-specific hardening; not externally certified",
+        "upstreamRegistryIntegrity": "sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==",
+        "candidateOnly": true,
+        "upstreamPackageVersion": "3.0.3",
+        "securityRevision": "OP-P0-B7-C-R2",
+        "releaseApproved": false,
+        "officialUpstreamRelease": false,
+        "auditAdvisoriesIntentionallyRetained": true,
+        "orchidpayAdaptationSha256": "cc06ea0edb07ada3e8022fbdab85ba4c62edbf16a38dd42f9c6d72398c923119",
+        "b6ParserPreserved": true,
+        "attribution": "LabTether / watari-dev, PEV V3.1, upstream braces PR72 and OrchidPay R2 adaptation"
+      }
+    },
+    "node-forge": {
+      "version": "1.4.0",
+      "archive": "vendor/orchidpay-security/node-forge-1.4.0-orchidpay-b7.2.tgz",
+      "sha256": "1cbc5f02f47c42e1a748b6396f0381658fd2bf97fc99dc4c126fc308ec74dce9",
+      "sha512": "50ffdafe18308d91e996c410abfecc00f0a4b234d4ff5ea41492f6497e71a289ae52bac09f3815ea226f23c125f48b96f798938409f6be98ce63e5f767a0a54d",
+      "integrity": "sha512-UP/a/hgwjZHplsQQq/7MAPCksjTU/16kFJL2SX5xoomuUrrAnzgV6iJvI8El9IuW95iThAn2vpjOY+X3Z6ClTQ==",
+      "files": {
+        "LICENSE": {
+          "sha256": "f63ff0e4e239244aa79280da2dd4811a0469e5e201caf5cbc0d97c3a1dff8e82",
+          "sha512": "d41c6bb98329f6fe323bfe363420fcf7da80b54f22ab98449fe5ac60c0b52f78e9639396e2723d61ef31b90b57dd2355efd6bf726abe085eaf5de300aee1904d"
+        },
+        "README.md": {
+          "sha256": "4ea0e2db410fd5d87c3c9b21912b9ed3fe6c57b3107fa92e2c90b1e618121a49",
+          "sha512": "71537b35e4bbb3c83b6025cd7e4137326cb29fc4da651c5e6c17496103de3bd6fe2568369259ab6f69d0ef4ecd829a89d26baf3c1c1fc52c67643715b726cb74"
+        },
+        "SECURITY_BACKPORT.md": {
+          "sha256": "f8c112342f794b835f2d795b1a3064bba01b87698658f9c7d73cbdbbca69376c",
+          "sha512": "2bf0f31edf52646c77ae0be42e33c5466f5b0cca3f328936c6bce6869d859bc37264fedad1abf83e29d20f7287ff0640a301fb90cc304e85c264b57bfdfd7e91"
+        },
+        "dist/forge.all.min.js": {
+          "sha256": "737fc186aaa40fdb4b4f52e7f86a9903026917044bab2e8c4948a74740c0ebeb",
+          "sha512": "a239e1d98ed1f4e412703fa397464d74442527cca0ade5c1523f7a3f86ea0055d5c548347d58c57e4d9b091da96b901da5faa74993f8819f1d2a088e36a1ab1c"
+        },
+        "dist/forge.all.min.js.map": {
+          "sha256": "0b21eb8fb1c124e963d564b6462177331027f6e739f48e73184e0f6a81cac3f1",
+          "sha512": "4ad80f2ddb92feba8c57fcf1833e201a4671a04d1426f556ea32506a3bb6309573ba80fafa70f85a30cd3e765cd14ee68dadce3637928c0d7d2267b68105205c"
+        },
+        "dist/forge.min.js": {
+          "sha256": "5d1c56f5ce07ab89fda9debeed02208c3bbde4d6d34dec7ae5346157aff9ab22",
+          "sha512": "0c77c282f72eba23422dce44b9a4c051638f76414c9994c5073045787a0420183531decdce8708b397464ea6441b7093e556d5bbeb3a9b260f9b9d1a954d71a2"
+        },
+        "dist/forge.min.js.map": {
+          "sha256": "5f11be794b0ad083ce9b2bcee1079e7ee1f0771d37beb90d6f13b2b9a8a0eba3",
+          "sha512": "99ed08d9d66c22cf1485f894636d9cd4683ba651394e6758addb71046577866c3790da234802d0097d3b3ce622aa7834da37f1b552b98e3d0cd05eda2499d4ed"
+        },
+        "dist/prime.worker.min.js": {
+          "sha256": "877bd31b0cc79ecb9163649034fbafaeec45e8e2861fc4fa9fb11335f28c4ef9",
+          "sha512": "85ea1148559b597e9437b7c470bcd0faf30ca0cf6b12732428a0a9ab82b4f6f3c6dfb3742112856b5bfc10cf214ddf7fbcc5a7a859ccb4a2a5a293f657ddf5b2"
+        },
+        "dist/prime.worker.min.js.map": {
+          "sha256": "73f786b89ef54b00e0cfb6969b2881e7cffa77b4be3f03e998f70993290716a8",
+          "sha512": "e0ec10915985abb79fdb12ff0bc34e73e2fdc7d24ce45b38328bd28b843fb97ea22d8bf4d33e5d20cc51049f9e4be15cc1d8fa2c1e01d9872aa4e5b72f0c591f"
+        },
+        "flash/swf/SocketPool.swf": {
+          "sha256": "0ebae322dc751e77e18ceef4960bcda1d1634f53a49e7030fb640cf90f1d8839",
+          "sha512": "004ce95f873233b190c3bdc1c532f8778cba23b6098cf3740ee3f7e403dd1ff3dc458c42c0c1d335f419647b2b2031dab9c704612d8dabbe31c12ce2b61c14f5"
+        },
+        "lib/aes.js": {
+          "sha256": "be13b617cfff1d583f616c0ce97147cebd9bf101cf893f027cc18c3a54bd3a2f",
+          "sha512": "dffa57ea86acc26951e9e96a12866b4eb28f48a58d800153233d5f76b36d25deb8045b7ea404e3c48bd011aed06b1ae20ef5eb4d84167f96db0893d25b4a4768"
+        },
+        "lib/aesCipherSuites.js": {
+          "sha256": "bdc5762c0d6edee74e469a59e0157555463d7abeadf34c4377121673dacc2360",
+          "sha512": "ed11db93998897d008979ad312bbe966cf808b763a84b315f571d6b803cc911b2003b6d57c6a0b6ba92cea5aa50b612cb58eec1c5eaafdf013803260c3742b7a"
+        },
+        "lib/asn1-validator.js": {
+          "sha256": "6f206656ab557712c2a09f3b8bba69004dd41b2b37cee0cb836d44ea8034004b",
+          "sha512": "fdf92061cfc367912b91d07fac32f8425908db9d6ab961708d2c453248c51d6d63bba830cdc9028550bd866dec370beda30670d5004e83b5d638a6383b713bc6"
+        },
+        "lib/asn1.js": {
+          "sha256": "271047be6eab614060ef361cce2c8a92abf066c40fb329f44cfac3269214b912",
+          "sha512": "3badb9043ed404cfbf75b2b4c2bf0f88797a7576df36a6eea56c17e1f71230eaf711219bbda8529c88efa577f7fdd4d9a85d7044816d83996d3fcd3f4900c4b8"
+        },
+        "lib/baseN.js": {
+          "sha256": "08175e677127132340002bdb63dd19ba41c0baae546936032c7d6a6335e219b6",
+          "sha512": "5347bae4a9f65ea989b7e1707ef9c6038fbe70838d197c78354693e0cb874c92e0286c94bed2b1b5170863e8551d98cc2061e4218bec4bfe9e0a912518df0865"
+        },
+        "lib/cipher.js": {
+          "sha256": "67e3547ac39aaa8862d9519f55571dc0deef6e1d3d6a48ea6d6b653fb7a35a3f",
+          "sha512": "fb096c8b2040dbad6bd821c0742a2c0e49bc7732f1ed11a4ebd6aee1fe037730756a38f60345995744b8a2ad66baf2f21ea6fa86eb961e4c19f891cf4cf92439"
+        },
+        "lib/cipherModes.js": {
+          "sha256": "79d74191887706cd5e14bbbcd1ff49472aa1f2baa9154e45f7578c17c3ffefbb",
+          "sha512": "c405b1f6cfc825ed3344b1cb7cbe3d4415c6c6f91c800faf656f7e585c254dd8f5af895b4047b43dc83b77779b9964be83e149fad04f8d7d813af1a8d698dc82"
+        },
+        "lib/des.js": {
+          "sha256": "cb0ae63c8477e61be95c3948bf52f1b7ed02d8522791d9ed1704b6b8b8517734",
+          "sha512": "04e638eaf2b0dd1114120eee8ebc58e36bc607358f26c37144f84b3b423883ff64ef68d91e77a330cb91aadec0b027ff7af8443cf51a19ba2703b2f22e7ee9e4"
+        },
+        "lib/ed25519.js": {
+          "sha256": "b0d15f1e11168a3a6de9914cdff9bf1be0c5c2fc313499e44dfeb164f5202849",
+          "sha512": "e6d521cc0875d322b23f435f877a30773aecb874ed157460e9278ad74774964e337baddb171d84e87469b4ceb00b883fdfde3d8ef847d6b5387379e0c625becd"
+        },
+        "lib/forge.js": {
+          "sha256": "4300955cc75f3cb5b71287b0fa37ec07d3a6bb721a9f6f8b7db19328801046bf",
+          "sha512": "f6598571131d1afdda56c715ef8b40c5ca152dc1f2d9a1de5ec2d042537688583eb8e39fd0a27071732781689df46637baae9a9e0d5a93f0edd9d73aea926f42"
+        },
+        "lib/form.js": {
+          "sha256": "a2f6e0fbab87d5acb02e08c8f92ea8269445f9f35ee1706fb82246ba8f5aba12",
+          "sha512": "b17aca184f8f396cb548f26b2d3246aaf6f2327857c3901ba0ea1ec1e3d3c41e856222c060b33ce7ea4ebe2f686b22e8560f78bbd5115595cc25c354c2d749c2"
+        },
+        "lib/hmac.js": {
+          "sha256": "bab6d0f322458186f6d123cfdd208ab1298a64ab6925b478968a0dfb446a8fa9",
+          "sha512": "382e4dffd83b01f73160700e25e47860a5a8e41cfe31b8d75f5df0a1553cca942941e112e2d5ac5d1535255293478982a075dd9d03c23c263edd854db0461f22"
+        },
+        "lib/http.js": {
+          "sha256": "3ad8ec7eb451c173b5980265f30f7b3d84268a1cc9b3e0e86337bc55facbc658",
+          "sha512": "3d2a09b5fbec66e68d5b3aa5bd175cfaf9d805c84a3910d4e953b5e64b8a9a3c7b925163a51caa2e9f1e9576f360b6d9289d1a584bd72722f6603508a1fe24db"
+        },
+        "lib/index.all.js": {
+          "sha256": "48fa7454923f3baa3dd5a5bf9475892aa5f272c4cc8b5a0ec4f3d6c2370ac631",
+          "sha512": "e643055aeec33452642481a3f8443e425a1bb6e43d1f07e226fc8c7c20ce415733a7b480c0a293c8898f8c6c8c5fe683bc4020eb5b339e81ffe9573eed8caedb"
+        },
+        "lib/index.js": {
+          "sha256": "c231851a9d065df1fae045d6e6fb17cf5688b260f9ee0db4965fe1ef3c0607ab",
+          "sha512": "0e42983528ac2524627f2825e2291846e0bf808dd05a1d88a5b0f1084d467f8ddf743b94f028837f0f04c65f02eb63f872acc6cdb24a4a19ab94d082c6ccc4f4"
+        },
+        "lib/jsbn.js": {
+          "sha256": "9d2cd4ad90eadf84b0110d9e1fc02512fc89e7ad64d0fee2d578fa51af28e48d",
+          "sha512": "75d15955a394c00f911b2209165f08f1a25421a87ea4b2f62aad3279e7457f30c21e3f6f15caa88c2fda08db6277d4df0106ed3c2b706e0cec599a6712d089bc"
+        },
+        "lib/kem.js": {
+          "sha256": "6552b048e05b92278f70b2810317e1505d521ee9e2ec5496047d927f5f7d1f70",
+          "sha512": "dfddf6a14e73a7f1f5a53b815e5b76524b53305aeee284359b46bc82cb846fb3b4ec1f876c7446a36e149938bdadc5bdeac1a35b22c76513ab0864baddb8e2f9"
+        },
+        "lib/log.js": {
+          "sha256": "9453eeba574a617225c8f54cfd2c11f1bade2e6a39f73d6e1a9da142db1afaeb",
+          "sha512": "b7680e1432e73b39f53d463e11fefd224480befb0a123aee80c1686f6d3c9c5f3889af42cd27ae9f2e1975835232056a3397347998d3efbd06c2f4517356f242"
+        },
+        "lib/md.all.js": {
+          "sha256": "6a10918cc8f727cc8cec20fee5e13f55c11e30b3f03b8800108cabb299211d4d",
+          "sha512": "a35a3a1ccad273aae849c4cf1b3af74813805752b1a40c6efeb38d113f0fdac5e14297d99ad84ee703af9788301cd42a0dd854d7c6ae3c7267bc9d04d7f05ee1"
+        },
+        "lib/md.js": {
+          "sha256": "ebfc33ed52d3c8cf2d584310fe0f45b23d911f532deef8044844bf2271b04402",
+          "sha512": "bc0e08347741a066b2e82348d386e0df531e049ced1e38f7f85692c25af56e9e55e56dd6013b93437b670c43e6fa290ad37325a7485154ef04741dff08ee638c"
+        },
+        "lib/md5.js": {
+          "sha256": "ed58ce89d124a276a083280bd7003b09c294c4063e6925d83fe422664a51f810",
+          "sha512": "6b63cf9f605248a61d50ecf114de4dbe27476c5c664503dd198bec32e71d5c0fe87b94f0975c508b5d0d13ef3db058e8c301b1cc1aa13ef511d8a11855af14fb"
+        },
+        "lib/mgf.js": {
+          "sha256": "2d6d851d6791d0cc1697342edf275993e745fd8c33ef13ad7201026d8a0eea54",
+          "sha512": "2b89a27bf01a2ab25f9f42ff683cfa0a4459037508e4b7f0d8ac2a5dabfd65e5f64c1915af2e2f9a83c43fbddd86f0ca8f1cfa557e928fd45dbce25fe4a65d66"
+        },
+        "lib/mgf1.js": {
+          "sha256": "9a4acd26ee423034995a811c357e69a6c2368480664b62862982f5c404cfcc0e",
+          "sha512": "53bde06c8968aef0061422d3f227d73b2539d97183cc475165f30de477ec009f953b42b201902cbd9b2e4b9406e20b64e52c7e83d0e9853f9710a43c61e6c204"
+        },
+        "lib/oids.js": {
+          "sha256": "13e31fe08ccb431fefe44f9d2285891b846e65b17b24329bf14eed04de584015",
+          "sha512": "bc10fd830eb09751856cd924d8802dc30a3029f058cf028676f1615312c443fb6cb6bfa2f5224529b15ac70b41fc78ed27ff2b68c86b6dc957072f81a21d9ba5"
+        },
+        "lib/pbe.js": {
+          "sha256": "2b5c931e1549f5b98478a5b7b014fd3b62260a20db0704f72612dbe64540e25c",
+          "sha512": "687e457bae2600d62acfc13f2493138fda09ee830cfc1196fece39739527e09511de71c92dea33bc2dc248db0ab6496877a22bf3a8efdbf827c845063ba57b8a"
+        },
+        "lib/pbkdf2.js": {
+          "sha256": "1cd2f133c60cf860f23d05313a39a5dc060389adcca8423c2143ee904db9f627",
+          "sha512": "681faeb34ab009f9f527fcc3376f4bcdba38a4a27b35f2a09422ad20e8db2e080b145fa10a37692237a01bbd012339f06bcc62703492c6e397cf74ad6069d883"
+        },
+        "lib/pem.js": {
+          "sha256": "c6509f3aae5ad5e9286da727ea4cbf3b748ad7deff407e76b226f7a6a3b6a120",
+          "sha512": "71b6ea0a14a4d7f5d1388f4668f43329946e5378df680fba2158aca8df851092f76ac00e5def5a41239e2c256e29750de35e234ad9dd8ada18a62b8d0c31a18b"
+        },
+        "lib/pkcs1.js": {
+          "sha256": "c43cf348520a3f6adc4769a3c3410cde502a6bc7a768d5a71a575fa72d19acc7",
+          "sha512": "6b29608fdccc313e9226df02b20222ad0d51377fb964e871e41960fa5a93d1055696077680000c58a38327fd14974484a7bc0077ac66b35236b54d968bcf034e"
+        },
+        "lib/pkcs12.js": {
+          "sha256": "d0f9693ff8b6e755031566139f0e23a762c9a7af6a1b08a27d522810019906d3",
+          "sha512": "5d99f8fd2a4ea3e69283b9df96ad67eec3fe75e0ef0c9ef92b481769848f569faaaa8c7099cc1e9a11b474b195baa6b386fe8c660c0cd5da3c068dd26cf5bfe4"
+        },
+        "lib/pkcs7.js": {
+          "sha256": "f5cc5a89b093262cdcf8f7e01615dddcdb87907228a1c56b5fe73db8cc4160a2",
+          "sha512": "831cca075e1ab48c68dd30449867796d5736ad228ad606f6ccf5144d1c78611903c2888bfd21dfd322309034e23136795a8243d1ee6163b1ef0a73bccc04fb47"
+        },
+        "lib/pkcs7asn1.js": {
+          "sha256": "9a00faef7bff964e3c983eb4a435e8218bdd631b0f0217807b1b2bff895ab76a",
+          "sha512": "c10b34d1d4d8d16a2ede2aed128eda2e27512a8b8372162d8bb1768db5b83a3684bbe428dfaa54a45f5261a7ee9acb989517d69bbcbebfc3568c65e77bd0ddd8"
+        },
+        "lib/pki.js": {
+          "sha256": "43f1b98dbd39a0c8277b7c0d44325a851712ce5434146ca2a2587a2a7ae1bb1e",
+          "sha512": "d033f36431338a46648b75b57682e5defd144d437a9e5a73a79a5530316c4418714310929be1a0a3d9707607f7a83c0d4d0be6a5e72fd08838abdf02df637870"
+        },
+        "lib/prime.js": {
+          "sha256": "5c63550c13aa4351c210b0766a8ad4a1f23101e1968c6244be7aad8f008e4073",
+          "sha512": "5f2ae592126358b45f207921d4077132e80dcb9f3826d259c7e6ff3e6aac882fb5fbdfa29debb979ebc9f3a1d29bdb17ef249a29a36a0ba2bdbc3528c5455c53"
+        },
+        "lib/prime.worker.js": {
+          "sha256": "c2fc7777c7a07c7bc3909d400f9f65dabd6c484a11840e1ef71b2b67236ffd9d",
+          "sha512": "66b39e9d558ab4de49e56b6b3f36e0a5bb2374b9f5356c917f79053bff51e8e8480e7a0272796afb0acfd181b5bae19312a111215243e552b0c23169faddada8"
+        },
+        "lib/prng.js": {
+          "sha256": "fc70051ea878498be4d7473ba6b0982f3e2522962e3deee558b393ac4fb18cf9",
+          "sha512": "a6af04d6d31d1b1a4492243605945a82d5588cd3f353da69d6864a31a0f526e78a701a2f2c282b7ac1e512824ecb1e64235834399e344cd008de4d8897bb240b"
+        },
+        "lib/pss.js": {
+          "sha256": "c9e83c50451bd90735030cf3fe3d2a68403f678853a6d300cfa3e59b813e7f9b",
+          "sha512": "120338a344dcf6e9ee671dbbe30d9d98e35e2358e7550095c4c02e445e3eef8d47028fddb631e050e5128de13779675f39c6259b9a0e6b2aaaa102432953c10f"
+        },
+        "lib/random.js": {
+          "sha256": "13daf47db350648ebb98cc0d694f246ae7be508aa03a0d7b9c9f2dbdf127add0",
+          "sha512": "0a25a4c77cec3077e76c49109d29aa3d555ef27304453c340f079c0b07d62e16ffa922bef65c41ce55f8ccba332a59aebe8c60712f7254ced3e763bfb30df9b5"
+        },
+        "lib/rc2.js": {
+          "sha256": "d2eb78b77441d9784f5edfced1ad2f49cb35c2a956687ce9d754cf40bbd1b3c3",
+          "sha512": "99c62bf6b61daada48fb146ecfc1634449f4038d71096aa023f315b00338b60a777c26eb0b847aa9ce929fe67099f3394fac560b8e7f2c11dc0774d66505cb42"
+        },
+        "lib/rsa.js": {
+          "sha256": "f1c736cb0dcd2615e9e8225ab894cd4cab55a384f6f07df221da1436096f3761",
+          "sha512": "f0e777f4365be5514cfaf6d8210b1d1cb1c52ce83379576bb5d3be417a92e8ab15cab7770e9d208f792bb0b87b7d4caae9421da58ee9d6b832923204a6b34791"
+        },
+        "lib/sha1.js": {
+          "sha256": "0792cc13fa342fd9d8c213c4ffd0d697fc019144258e383dd0ac985bd717564c",
+          "sha512": "a6d9a72ee5d69f17bb5590416d6572f2794e71e4d957997751e9c1a5e9379c37e7f15c208384e7d26ce299e1bde95cc98b3bafb05665d9a5b9414083a56a3222"
+        },
+        "lib/sha256.js": {
+          "sha256": "54b2f4c0ee9d4a561b6d18b1713fddeb815ea1c9d50537f7cbb4fc4474ab732d",
+          "sha512": "fc6703ed30911839ac718000ba710d1b4837b63fea603c413396973b874012791ef50291ac319500bad52f27d727ce3abcab53e79a48601b585801dd1166987d"
+        },
+        "lib/sha512.js": {
+          "sha256": "d600f189d7bd22630b9301a5dea0fd49bb0ac3687f2c8feb7ecdcccd3d21c092",
+          "sha512": "f713dfb18b6d8d61b3c5db848d9d7468a0971ec15c21c1f61e455bcaa82f6b30d801d783dacaefd0b272d68a86b2ed4ef983de0209798a4b3f01f54b7c15abf7"
+        },
+        "lib/socket.js": {
+          "sha256": "689715cdeeba3274d6763ab92716a8a3dc1d24a684ea88fee9e2aca72e2dade0",
+          "sha512": "f76042bc86fe99af1767a83e1f22cbbc1348d5cf3da3a6c1bfd6855fe1e0ebd2c6cd41afea72a9393a2bab72ae6a01b32646bec4f08074590e97d9511dacf6a2"
+        },
+        "lib/ssh.js": {
+          "sha256": "6f27454e3fc028c8a6b1c02ae98969aace558ee0c1b6784e8fb12d4419e46d24",
+          "sha512": "f9503b1faaebbfdc936057293cca87057ee7a31e74af0e9e2dc0466c9d1ba1e817b40b9eaba702a2033102cde2862bfb37e7f29b86f7015ae9bcf35cc6666191"
+        },
+        "lib/tls.js": {
+          "sha256": "ceee226d32c623bbae290d76b5950be0c06880310ec26dc289f66bd631de4916",
+          "sha512": "5cbef80d90d2db117e983b7cd3b95b8e67da518dab200e9e1b2ecd66d0861aac405147a6888095566267b4354fa3418259a248a9773b457bd48d1f78a10be5a1"
+        },
+        "lib/tlssocket.js": {
+          "sha256": "99728e72301548ee5233c16bc0417f07892022d24fd178dfb9c0a40aff541a47",
+          "sha512": "a06b9ea383c4836d14eedb1326b916641fe7e069382a34ed318ed5372b0f10c2ca9baca3abecb1b3e01bc5f981217453556ab2816e506274d0cfc91890e5beb5"
+        },
+        "lib/util.js": {
+          "sha256": "a05620c922303dd687e9447754ebde42878f37e51c390a9a3aedb592434795bc",
+          "sha512": "65dfaa86d7af4d867c053ee13100261dfd8842077b855729062776d357a8bcfe93af7d5f7e8b2923da4d935144cea2bd972335f06b0d8c6e02d8cb21d64460c1"
+        },
+        "lib/x509.js": {
+          "sha256": "cce5b00838c8c08486964c1f62cb8ae3491365509b26a27cfe1917f73dee3be9",
+          "sha512": "e9f820c7a8f433607c52e504d67eeb27c3f8f653d2ccfc721f6fcaa892274bbea02c050c1abcc621e14cd78841e0e83332b7e4801451b050a8a0d92fa8b834bd"
+        },
+        "lib/xhr.js": {
+          "sha256": "d9abf523180b6d03b2cc99909eef3488a6b4bc1f822d7fb9d1e945abf555cb42",
+          "sha512": "869a92aa684f3a85dde4c6a4f6a3216ede534f6e906caede75703842b45bff77d3acd07f00ef9d96bb221bf84f5fc073b5419886187cc88988eef0f4d0c78d7e"
+        },
+        "package.json": {
+          "sha256": "9ff250473bb660a1fa3e462e39cac3e0daf862eb0b35c36c3009d343534d9812",
+          "sha512": "af56380870c2c406bf69e4ea1276402ae6c22f28f6ff27a0adf7e7b1d212f5bc37e0ecfce1842b48b12c1de8cc51a6c0ad34e9d53cc50d0e800160ee013254d8"
+        }
+      },
+      "licensePreserved": true,
+      "provenance": {
+        "upstreamPullRequest": 1160,
+        "upstreamPatchCommitSha": "889cee0901659df2379f4153be322a45c6f202b5",
+        "canonicalizationCrossReview": "PR1159 db05494352dd3c9a5a07c5270333dcc78866cad2",
+        "upstreamRegistryIntegrity": "sha512-LarFH0+6VfriEhqMMcLX2F7SwSXeWwnEAJEsYm5QKWchiVYVvJyV9v7UDvUv+w5HO23ZpQTXDv/GxdDdMyOuoQ==",
+        "bundlesRebuiltOffline": true,
+        "candidateOnly": true,
+        "upstreamPackageVersion": "1.4.0",
+        "securityRevision": "OP-P0-B7-C-R2",
+        "releaseApproved": false,
+        "officialUpstreamRelease": false,
+        "auditAdvisoriesIntentionallyRetained": true
+      }
+    }
+  }
+}
