@@ -23,24 +23,25 @@ deliveryFee: number;
 total: number;
 };
 
-type DAPersistedCartV1 = {
-version: 1;
+type DAPersistedCartV2 = {
+version: 2;
 updatedAt: string;
 cart: DACartState;
 };
 
 export const DEFAULT_CART_RESTAURANT: DARestaurantCartContext = {
-restaurantId: "thieyp",
-restaurantSlug: "thieyp",
-restaurantName: "Thieyp",
+restaurantId: "",
+restaurantSlug: "",
+restaurantName: "",
 minimumOrderAmount: 0,
-serviceAreaLabel: "Bruxelles / Ixelles",
+serviceAreaLabel: "",
 };
 
-const CART_STORAGE_KEY = "@delishafrica/client/cart/v1";
-const CART_STORAGE_VERSION = 1 as const;
+const LEGACY_CART_STORAGE_KEY = "@delishafrica/client/cart/v1";
+const CART_STORAGE_KEY = "@delishafrica/client/cart/v2";
+const CART_STORAGE_VERSION = 2 as const;
 
-let cartState: DACartState = createEmptyCart(DEFAULT_CART_RESTAURANT);
+let cartState: DACartState = createEmptyCart();
 let hydrationPromise: Promise<DACartState> | null = null;
 let persistenceQueue: Promise<void> = Promise.resolve();
 
@@ -49,14 +50,35 @@ return { ...item };
 }
 
 function normalizeRestaurant(input?: Partial<DARestaurantCartContext> | null): DARestaurantCartContext {
-const restaurantSlug = String(input?.restaurantSlug || input?.restaurantId || DEFAULT_CART_RESTAURANT.restaurantSlug);
+const restaurantSlug = String(input?.restaurantSlug || input?.restaurantId || "").trim();
 return {
-restaurantId: String(input?.restaurantId || restaurantSlug),
+restaurantId: String(input?.restaurantId || restaurantSlug).trim(),
 restaurantSlug,
-restaurantName: String(input?.restaurantName || DEFAULT_CART_RESTAURANT.restaurantName),
-minimumOrderAmount: Number(input?.minimumOrderAmount || 0),
-serviceAreaLabel: String(input?.serviceAreaLabel || DEFAULT_CART_RESTAURANT.serviceAreaLabel),
+restaurantName: String(input?.restaurantName || "").trim(),
+minimumOrderAmount: Math.max(0, Math.round(Number(input?.minimumOrderAmount) || 0)),
+serviceAreaLabel: String(input?.serviceAreaLabel || "").trim(),
 };
+}
+
+function restaurantContextReady(restaurant: DARestaurantCartContext): boolean {
+return Boolean(
+restaurant.restaurantId &&
+restaurant.restaurantSlug &&
+restaurant.restaurantName &&
+restaurant.serviceAreaLabel
+);
+}
+
+function requireRestaurantContext(restaurant?: Partial<DARestaurantCartContext> | null): DARestaurantCartContext {
+const normalized = normalizeRestaurant(restaurant);
+if (!restaurantContextReady(normalized)) {
+const error = new Error(
+"Ce restaurant n’a pas encore toutes les informations nécessaires pour ouvrir un panier réel.",
+) as Error & { code?: string };
+error.code = "DA_CART_RESTAURANT_CONTEXT_REQUIRED";
+throw error;
+}
+return normalized;
 }
 
 function createEmptyCart(restaurant?: Partial<DARestaurantCartContext> | null): DACartState {
@@ -100,7 +122,7 @@ return (a.restaurantSlug || a.restaurantId) === (b.restaurantSlug || b.restauran
 }
 
 function ensureRestaurant(restaurant?: Partial<DARestaurantCartContext> | null): DARestaurantCartContext {
-const next = normalizeRestaurant(restaurant);
+const next = requireRestaurantContext(restaurant);
 if (cartState.items.length === 0) {
 cartState = recalculate({
 ...cartState,
@@ -147,22 +169,24 @@ unitPrice: Math.max(0, Math.round(Number(value.unitPrice) || 0)),
 
 function sanitizePersistedCart(input: unknown): DACartState | null {
 if (!input || typeof input !== "object") return null;
-const envelope = input as Partial<DAPersistedCartV1> & { cart?: unknown; version?: unknown };
+const envelope = input as Partial<DAPersistedCartV2> & { cart?: unknown; version?: unknown };
 if (Number(envelope.version) !== CART_STORAGE_VERSION || !envelope.cart || typeof envelope.cart !== "object") {
 return null;
 }
 
 const raw = envelope.cart as Record<string, unknown>;
 const restaurant = normalizeRestaurant({
-restaurantId: String(raw.restaurantId || raw.restaurantSlug || DEFAULT_CART_RESTAURANT.restaurantId),
-restaurantSlug: String(raw.restaurantSlug || raw.restaurantId || DEFAULT_CART_RESTAURANT.restaurantSlug),
-restaurantName: String(raw.restaurantName || DEFAULT_CART_RESTAURANT.restaurantName),
+restaurantId: String(raw.restaurantId || raw.restaurantSlug || ""),
+restaurantSlug: String(raw.restaurantSlug || raw.restaurantId || ""),
+restaurantName: String(raw.restaurantName || ""),
 minimumOrderAmount: Math.max(0, Math.round(Number(raw.minimumOrderAmount) || 0)),
-serviceAreaLabel: String(raw.serviceAreaLabel || DEFAULT_CART_RESTAURANT.serviceAreaLabel),
+serviceAreaLabel: String(raw.serviceAreaLabel || ""),
 });
 const items = Array.isArray(raw.items)
 ? raw.items.map(sanitizePersistedItem).filter((item): item is DACartItem => Boolean(item))
 : [];
+
+if (items.length > 0 && !restaurantContextReady(restaurant)) return null;
 
 return recalculate({
 ...createEmptyCart(restaurant),
@@ -171,7 +195,7 @@ deliveryFee: Math.max(0, Math.round(Number(raw.deliveryFee) || 0)),
 });
 }
 
-function persistedEnvelope(snapshot: DACartState): DAPersistedCartV1 {
+function persistedEnvelope(snapshot: DACartState): DAPersistedCartV2 {
 return {
 version: CART_STORAGE_VERSION,
 updatedAt: new Date().toISOString(),
@@ -201,13 +225,18 @@ if (hydrationPromise) return hydrationPromise;
 hydrationPromise = (async () => {
 try {
 const serialized = await AsyncStorage.getItem(CART_STORAGE_KEY);
-if (!serialized) return getCartSnapshot();
+if (!serialized) {
+// Preserve the legacy cart until a separately validated migration is available.
+// Never silently promote unverified partner or pricing data to a live checkout.
+return getCartSnapshot();
+}
 const restored = sanitizePersistedCart(JSON.parse(serialized));
 if (!restored) {
 await AsyncStorage.removeItem(CART_STORAGE_KEY).catch(() => undefined);
 return getCartSnapshot();
 }
 cartState = restored;
+await AsyncStorage.removeItem(LEGACY_CART_STORAGE_KEY).catch(() => undefined);
 return getCartSnapshot();
 } catch {
 return getCartSnapshot();
@@ -222,19 +251,13 @@ return persistenceQueue.catch(() => undefined);
 }
 
 export function clearCart(restaurant?: Partial<DARestaurantCartContext> | null): DACartState {
-cartState = createEmptyCart(restaurant || {
-restaurantId: cartState.restaurantId,
-restaurantSlug: cartState.restaurantSlug,
-restaurantName: cartState.restaurantName,
-minimumOrderAmount: cartState.minimumOrderAmount,
-serviceAreaLabel: cartState.serviceAreaLabel,
-});
+cartState = createEmptyCart(restaurant || null);
 schedulePersist();
 return getCartSnapshot();
 }
 
 export function setCartRestaurant(restaurant: Partial<DARestaurantCartContext>): DACartState {
-const next = normalizeRestaurant(restaurant);
+const next = requireRestaurantContext(restaurant);
 if (cartState.items.length > 0 && !sameRestaurant(cartState, next)) {
 throw new Error(`Le panier est déjà lié à ${cartState.restaurantName}.`);
 }
@@ -252,6 +275,9 @@ return getCartSnapshot();
 
 export function canAddRestaurant(restaurant: Partial<DARestaurantCartContext>): { ok: boolean; message?: string } {
 const next = normalizeRestaurant(restaurant);
+if (!restaurantContextReady(next)) {
+return { ok: false, message: "Ce restaurant n’a pas encore une zone de service confirmée." };
+}
 if (cartState.items.length === 0 || sameRestaurant(cartState, next)) return { ok: true };
 return {
 ok: false,
@@ -330,6 +356,6 @@ return `${(value / 100).toFixed(2).replace(".", ",")} €`;
 
 export function cartItemSummary(cart: DACartState): string {
 const count = cart.items.reduce((sum, item) => sum + item.quantity, 0);
-if (count === 0) return `Panier vide · ${cart.restaurantName}`;
+if (count === 0) return cart.restaurantName ? `Panier vide · ${cart.restaurantName}` : "Panier vide";
 return `${count} article${count > 1 ? "s" : ""} · ${formatCartEuro(cart.total)}`;
 }

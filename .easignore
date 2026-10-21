@@ -51,6 +51,8 @@ npm-shrinkwrap.json
 !packages/**
 !services
 !services/**
+!patches
+!patches/**
 
 # BEGIN DELISHAFRICA EAS SECURITY PATCH V1B — 2026-08-04
 # Final deny rules. Keep this block after every workspace re-inclusion.

@@ -90,7 +90,7 @@ export default function RestaurantsScreen() {
       <View style={styles.list}>
         {restaurants.map((restaurant) => {
           const orderable = isRestaurantOrderable(restaurant);
-          const location = [restaurant.area, restaurant.city].filter(Boolean).join(" · ") || "Bruxelles";
+          const location = [restaurant.area, restaurant.city].filter(Boolean).join(" · ") || "Localisation à confirmer";
           return (
             <GlassCard app="client" key={restaurant.slug}>
               <View style={styles.cardTop}>
@@ -110,7 +110,7 @@ export default function RestaurantsScreen() {
 
               <View style={styles.metaRow}>
                 <Text style={styles.meta}>{restaurant.rating ? `★ ${restaurant.rating}` : "★ Nouveau"}</Text>
-                <Text style={styles.meta}>{restaurant.delivery.serviceAreaLabel || "Bruxelles"}</Text>
+                <Text style={styles.meta}>{restaurant.delivery.serviceAreaLabel || "Zone de livraison à confirmer"}</Text>
                 <Text style={styles.meta}>{restaurantStatusLabel(restaurant)}</Text>
               </View>
 

@@ -1597,54 +1597,6 @@ const partners: Partner[] = [
           }
       ]
   },
-  {
-    "id": "p2",
-    "name": "Afro Bowl",
-    "slug": "afro-bowl",
-    "city": "Bruxelles",
-    "country": "Belgique",
-    "cuisine": "Pan-africain",
-    "cuisines": [
-      "Pan-africain",
-      "Bowl",
-      "Street-food"
-    ],
-    "rating": 4.6,
-    "status": "placeholder",
-    "featured": false,
-    "description": "Partenaire placeholder pour tester les listes restaurants avant onboarding réel."
-  },
-  {
-    "id": "p3",
-    "name": "Toukoul",
-    "slug": "toukoul",
-    "city": "Bruxelles",
-    "country": "Belgique",
-    "cuisine": "Éthiopien",
-    "cuisines": [
-      "Éthiopien"
-    ],
-    "rating": 4.7,
-    "status": "placeholder",
-    "featured": false,
-    "description": "Partenaire placeholder pour tester filtres, cartes et navigation."
-  },
-  {
-    "id": "p4",
-    "name": "Café Béguin",
-    "slug": "cafe-beguin",
-    "city": "Bruxelles",
-    "country": "Belgique",
-    "cuisine": "Afro-européen",
-    "cuisines": [
-      "Afro-européen",
-      "Fusion"
-    ],
-    "rating": 4.5,
-    "status": "placeholder",
-    "featured": false,
-    "description": "Partenaire placeholder masqué en démo externe tant que l’onboarding n’est pas validé."
-  }
 ];
 
 const BRUSSELS_WEEKDAYS = [

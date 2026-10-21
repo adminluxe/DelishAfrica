@@ -125,7 +125,10 @@ return String(first?.name || first?.title || "Commande DelishAfrica®");
 }
 
 function amountOf(order?: DemoOrder): string {
-const raw = Number(order?.total ?? order?.amount ?? 0);
+const source = order?.total ?? order?.amount;
+if (source === undefined || source === null) return "—";
+const raw = Number(source);
+if (!Number.isFinite(raw)) return "—";
 const euros = raw > 100 ? raw / 100 : raw;
 try {
 return new Intl.NumberFormat("fr-BE", {

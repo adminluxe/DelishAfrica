@@ -394,7 +394,15 @@ export default function GlobalMarketplaceHome() {
       const orderResult = results[1];
       let successCount = 0;
       if (partnerResult.status === "fulfilled") {
-        setPartners(Array.isArray(partnerResult.value) ? partnerResult.value : []);
+        const livePartners = Array.isArray(partnerResult.value) ? partnerResult.value : [];
+        setPartners(
+          livePartners.filter(
+            (partner) =>
+              !["placeholder", "demo", "test", "draft", "internal"].includes(
+                normalized(partner?.status),
+              ),
+          ),
+        );
         successCount += 1;
       }
       if (orderResult.status === "fulfilled") {
@@ -829,20 +837,6 @@ export default function GlobalMarketplaceHome() {
       <View style={styles.experienceShelf}>
         <Text style={styles.experienceShelfKicker}>DÉCOUVRIR AUTREMENT</Text>
         <Text style={styles.experienceShelfTitle}>La magie reste disponible, sans ralentir votre commande.</Text>
-
-        <Pressable
-          style={({ pressed }) => [styles.experienceItem, pressed && styles.pressFeedback]}
-          onPress={() => { rememberMarketplaceFocus(); router.push("/taste-oracle" as never); }}
-          accessibilityRole="button"
-          accessibilityLabel="Ouvrir Taste Oracle"
-          accessibilityHint="Transforme votre humeur en recommandation culinaire"
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={styles.experienceItemKicker}>TASTE ORACLE</Text>
-            <Text style={styles.experienceItemTitle}>Une envie devient une assiette.</Text>
-          </View>
-          <Text style={styles.experienceItemArrow}>→</Text>
-        </Pressable>
 
         <Pressable
           style={({ pressed }) => [styles.experienceItem, pressed && styles.pressFeedback]}

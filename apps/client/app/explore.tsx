@@ -23,8 +23,14 @@ async function fetchPartners(): Promise<Partner[]> {
     : `${API_BASE}/api/partners`;
 
   const res = await fetch(url);
+  if (!res.ok) throw new Error(`Catalogue partenaires indisponible (${res.status}).`);
   const data = await res.json();
-  return Array.isArray(data) ? data : [];
+  const items = Array.isArray(data) ? data : [];
+  return items.filter((partner) =>
+    !["placeholder", "demo", "test", "draft", "internal"].includes(
+      String(partner?.status || "").trim().toLowerCase(),
+    ),
+  );
 }
 
 export default function ExploreScreen() {
@@ -45,33 +51,44 @@ export default function ExploreScreen() {
         <Text style={styles.kicker}>DELISHAFRICA · EXPLORE</Text>
         <Text style={styles.title}>Partenaires & menus</Text>
         <Text style={styles.subtitle}>
-          Thieyp est branché avec ses informations réelles. De nouveaux partenaires rejoignent progressivement la sélection DelishAfrica.
+          Les informations affichées proviennent des fiches partenaires synchronisées. Une donnée absente reste à confirmer plutôt que d’être inventée.
         </Text>
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {thieyp ? (
-        <Pressable style={styles.featured} onPress={() => router.push("/menu" as any)}>
-          <Text style={styles.badge}>ACTIF</Text>
-          <Text style={styles.cardTitle}>{thieyp.name}</Text>
-          <Text style={styles.cardText}>{thieyp.address || "Rue Longue Vie 46, 1050 Ixelles"}</Text>
-          <Text style={styles.cardText}>Menu : Rice and Peace, attiéké, yassa, mafé, bissap.</Text>
-          <Text style={styles.link}>Voir le menu →</Text>
+        <Pressable
+          style={styles.featured}
+          onPress={() =>
+            router.push({
+              pathname: "/menu",
+              params: { restaurantSlug: thieyp.slug || "thieyp" },
+            } as any)
+          }
+        >
+          <Text style={styles.badge}>PARTENAIRE</Text>
+          <Text style={styles.cardTitle}>{thieyp.name || "Partenaire DelishAfrica®"}</Text>
+          <Text style={styles.cardText}>{thieyp.address || "Adresse en cours de confirmation par le partenaire."}</Text>
+          <Text style={styles.cardText}>{thieyp.description || "Menu et informations synchronisés depuis la fiche partenaire."}</Text>
+          <Text style={styles.link}>Voir le menu réel →</Text>
         </Pressable>
       ) : null}
 
-      {partners.filter((p) => p.slug !== "thieyp").map((p) => (
-        <View key={p.slug || p.name} style={styles.card}>
-          <Text style={styles.placeholder}>PROCHAINEMENT SUR DELISHAFRICA®</Text>
-          <Text style={styles.cardTitle}>{p.name}</Text>
-          <Text style={styles.cardText}>{p.cuisine || "Cuisine afro-diasporique"} · {p.city || "Bruxelles"}</Text>
-          <Text style={styles.cardText}>{p.description || "Préparé pour tester listes, filtres et navigation."}</Text>
-        </View>
-      ))}
+      {partners.filter((p) => p.slug !== "thieyp").map((p) => {
+        const context = [p.cuisine, p.city].filter(Boolean).join(" · ");
+        return (
+          <View key={p.slug || p.id || p.name} style={styles.card}>
+            <Text style={styles.placeholder}>PARTENAIRE DELISHAFRICA®</Text>
+            <Text style={styles.cardTitle}>{p.name || "Partenaire à confirmer"}</Text>
+            <Text style={styles.cardText}>{context || "Informations en cours de validation par le partenaire."}</Text>
+            <Text style={styles.cardText}>{p.description || "Présentation en cours de validation par le partenaire."}</Text>
+          </View>
+        );
+      })}
 
-      <Pressable style={styles.cta} onPress={() => router.push("/menu" as any)}>
-        <Text style={styles.ctaText}>Ouvrir le menu Thieyp</Text>
+      <Pressable style={styles.cta} onPress={() => router.push("/" as any)}>
+        <Text style={styles.ctaText}>Retour à la marketplace</Text>
       </Pressable>
     </ScrollView>
   );

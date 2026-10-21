@@ -9,6 +9,12 @@ on:
       - "apps/client/**"
       - "apps/merchant/**"
       - "apps/courier/**"
+      - "services/api-nest/**"
+      - "scripts/da_store_candidate_contract_tests.cjs"
+      - "scripts/da_store_bundle_dependency_attestation.cjs"
+      - "patches/**"
+      - ".easignore"
+      - "package.json"
       - "pnpm-lock.yaml"
       - ".github/workflows/store-triad-release-qa.yml"
 
@@ -35,6 +41,15 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 1
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact immutable candidate SHA
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$EXPECTED_SHA"
+          echo "RELEASE_CANDIDATE_SHA=$actual"
 
       - name: Node 22
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -60,6 +75,9 @@ jobs:
 
       - name: Nest API build
         run: pnpm --dir services/api-nest run build
+
+      - name: Client cart catalog zone and map regression contracts
+        run: node scripts/da_store_candidate_contract_tests.cjs
 
       - name: Internal auth fail-closed contract
         run: |
@@ -188,7 +206,7 @@ jobs:
         run: |
           if grep -RInE --exclude-dir=node_modules --exclude-dir=.git \
             'sk_live_[A-Za-z0-9]{16,}|rk_live_[A-Za-z0-9]{16,}|whsec_[A-Za-z0-9]{16,}|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' \
-            apps/client apps/merchant apps/courier; then
+            apps/client apps/merchant apps/courier services/api-nest/src patches; then
             echo "Potential secret detected"
             exit 1
           fi
@@ -199,16 +217,19 @@ jobs:
           for app in client merchant courier; do
             for platform in ios android; do
               out="$RUNNER_TEMP/da-$app-$platform"
-              (cd "apps/$app" && APP_VARIANT=production pnpm exec expo export --platform "$platform" --max-workers 2 --output-dir "$out")
+              (cd "apps/$app" && APP_VARIANT=production pnpm exec expo export --platform "$platform" --source-maps --max-workers 2 --output-dir "$out")
               test -f "$out/metadata.json"
               test "$(find "$out/_expo/static/js/$platform" -name '*.hbc' | wc -l)" -eq 1
             done
           done
 
+      - name: Verify all six mobile bundle dependency source maps
+        run: node scripts/da_store_bundle_dependency_attestation.cjs "$RUNNER_TEMP"
+
       - name: Runtime dependency audit high or critical
         run: |
           set +e
-          NODE_OPTIONS=--max-old-space-size=8192 timeout 300s pnpm audit --prod --audit-level high
+          NODE_OPTIONS=--max-old-space-size=4096 timeout 300s pnpm audit --prod --audit-level high
           code=$?
           set -e
           if [ "$code" -eq 124 ]; then

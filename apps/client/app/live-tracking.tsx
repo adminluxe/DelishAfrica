@@ -568,7 +568,7 @@ onPress={() => setShowOrderDetails((value) => !value)}
                   onPress={() => {
                     const id = publicIdOf(selectedOrder);
                     router.push({
-                      pathname: "/maps-live-lab",
+                      pathname: "/maps-live",
                       params: { orderId: id, publicId: id },
                     } as never);
                   }}

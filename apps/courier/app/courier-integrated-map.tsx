@@ -375,7 +375,7 @@ async function openNativeGuidance(destination: LatLng) {
   const coordinates = `${destination.latitude},${destination.longitude}`;
   const url =
     Platform.OS === "ios"
-      ? `http://maps.apple.com/?daddr=${encodeURIComponent(coordinates)}&dirflg=d`
+      ? `https://maps.apple.com/?daddr=${encodeURIComponent(coordinates)}&dirflg=d`
       : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(coordinates)}&travelmode=driving`;
   try {
     await Linking.openURL(url);

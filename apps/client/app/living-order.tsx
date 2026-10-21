@@ -118,7 +118,7 @@ function restaurantOf(order?: LivingOrder | null): string {
       order?.legacy?.restaurantName ||
       order?.legacy?.merchantName ||
       order?.legacy?.restaurant ||
-      "Thieyp",
+      "Restaurant à confirmer",
   );
 }
 
@@ -134,7 +134,7 @@ function itemOf(order?: LivingOrder | null): string {
       order?.legacy?.item ||
       legacyFirst?.name ||
       legacyFirst?.title ||
-      "Rice and Peace",
+      "Commande à confirmer",
   );
 }
 

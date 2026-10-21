@@ -7,7 +7,7 @@ type SmartCameraCoordinate = {
 
 type SmartCameraOptions = {
   mapRef: RefObject<any>;
-  courier: SmartCameraCoordinate;
+  courier: SmartCameraCoordinate | null;
   heading: number;
   running: boolean;
   enabled: boolean;
@@ -55,7 +55,7 @@ export function useSmartCamera({
   const lastCameraPointRef = useRef<CameraPoint>(null);
 
   useEffect(() => {
-    if (!enabled || !running) return;
+    if (!enabled || !running || !courier) return;
 
     const now = Date.now();
     if (now - lastUpdateRef.current < throttleMs) return;
@@ -85,8 +85,8 @@ export function useSmartCamera({
       CAMERA_DURATION_MS,
     );
   }, [
-    courier.latitude,
-    courier.longitude,
+    courier?.latitude,
+    courier?.longitude,
     enabled,
     mapRef,
     running,

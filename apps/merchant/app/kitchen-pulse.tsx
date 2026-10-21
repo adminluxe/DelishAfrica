@@ -259,9 +259,6 @@ Aperçu des commandes accessibles dans votre session ; priorités à confirmer. 
 <Pressable style={styles.primaryButton} onPress={() => router.push("/orders")}>
 <Text style={styles.primaryButtonText}>Ouvrir les commandes</Text>
 </Pressable>
-<Pressable style={styles.secondaryButton} onPress={() => router.push("/kitchen-oracle")}>
-<Text style={styles.secondaryButtonText}>Voir Kitchen Oracle</Text>
-</Pressable>
 </View>
 
 <View style={styles.queueCard}>
