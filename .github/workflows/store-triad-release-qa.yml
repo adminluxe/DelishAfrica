@@ -95,12 +95,23 @@ jobs:
               'android.permission.SYSTEM_ALERT_WINDOW',
               'android.permission.READ_EXTERNAL_STORAGE',
               'android.permission.WRITE_EXTERNAL_STORAGE',
+              'android.permission.USE_BIOMETRIC',
+              'android.permission.USE_FINGERPRINT',
             ]) {
               if (!blocked.has(p)) throw new Error(role + ': missing blocked permission ' + p);
             }
             console.log('PASS STORE_MANIFEST ' + role);
           }
           NODE
+
+      - name: Merchant foreground location purpose
+        run: |
+          grep -q '"expo-location"' apps/merchant/app.config.ts
+          grep -q 'locationWhenInUsePermission' apps/merchant/app.config.ts
+          if grep -q 'NSCameraUsageDescription' apps/client/app.config.js; then
+            echo "Client declares an unused camera purpose"
+            exit 1
+          fi
 
       - name: Development manifests remain isolated
         run: |
