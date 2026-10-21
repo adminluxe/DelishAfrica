@@ -94,6 +94,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     ["expo-dev-client", { addGeneratedScheme: IS_DEV }],
     "expo-notifications",
+    [
+      "expo-location",
+      {
+        locationWhenInUsePermission:
+          "Autorisez DelishAfrica Merchant à utiliser votre position pendant la configuration de votre établissement afin de confirmer sa zone de service et son adresse.",
+      },
+    ],
     "expo-web-browser",
     "expo-router",
     "expo-secure-store",
