@@ -130,6 +130,18 @@ jobs:
           }
           NODE
 
+      - name: Merchant account scope isolation
+        run: |
+          if grep -RIn --exclude-dir=node_modules --exclude-dir=.git 'merchant_thieyp' apps/merchant; then
+            echo "Hard-coded Merchant identity detected"
+            exit 1
+          fi
+          grep -q 'requireExternalMerchantPrincipal(false)' apps/merchant/utils/daOrdersApi.ts
+          if grep -q "return 'merchant_" apps/merchant/utils/daOrdersApi.ts; then
+            echo "Merchant local scope contains a hard-coded identity fallback"
+            exit 1
+          fi
+
       - name: Account deletion contract is wired 3 apps
         run: |
           node - <<'NODE'
