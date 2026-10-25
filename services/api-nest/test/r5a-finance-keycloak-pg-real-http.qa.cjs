@@ -202,6 +202,31 @@ async function realmSetup() {
     introspector.id+'/client-secret',undefined,ADMIN);
   http('READ_EPHEMERAL_INTROSPECTOR_SECRET',sec.status,200);
   mandatory('REAL_INTROSPECTOR_HAS_SECRET',typeof sec.data.value==='string');
+  // Keycloak 26.8+ requires the confidential introspector in token audience.
+  // Preserve audience check; explicitly grant the private QA resource audience,
+  // without any admin role, token scope widening, or compatibility override.
+  for(const role of ['merchant','courier']) {
+    const appId=details[role].clientId;
+    const apps=await keycloak('GET','/admin/realms/'+REALM+
+      '/clients?clientId='+appId,undefined,ADMIN);
+    http('LOOKUP_PUBLIC_APP_FOR_PRIVATE_AUDIENCE_'+role,apps.status,200);
+    const app=apps.data.find(x=>x.clientId===appId);
+    mandatory('PUBLIC_APP_EXISTS_FOR_PRIVATE_AUDIENCE_'+role,Boolean(app?.id));
+    const audienceMapper={
+      name:'qa_r5a_private_backend_audience_'+role,
+      protocol:'openid-connect',
+      protocolMapper:'oidc-audience-mapper',
+      consentRequired:false,
+      config:{
+        'included.client.audience':'r5a-private-introspector',
+        'access.token.claim':'true',
+        'id.token.claim':'false'
+      }
+    };
+    http('MAP_PRIVATE_BACKEND_AUDIENCE_'+role,
+      (await keycloak('POST','/admin/realms/'+REALM+'/clients/'+
+        app.id+'/protocol-mappers/models',audienceMapper,ADMIN)).status,201);
+  }
   return {ADMIN,details,introspector:sec.data.value};
 }
 function pgSetup(details) {
@@ -301,7 +326,8 @@ async function trustedJwt(jwt) {
   const requiredClient='r5a-'+role+'-qa-client';
   const aud=typeof p.aud==='string'?[p.aud]:p.aud;
   if(p.azp!==requiredClient || !Array.isArray(aud) ||
-      !aud.includes(requiredClient)) {
+      !aud.includes(requiredClient) ||
+      !aud.includes('r5a-private-introspector')) {
     throw new FinanceReadonlyQaPortError('unauthenticated');
   }
   const trustedGroups=p.qa_tenant_groups;
