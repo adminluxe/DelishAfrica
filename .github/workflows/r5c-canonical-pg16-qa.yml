@@ -1,0 +1,97 @@
+name: R5C canonical-shaped PG16 additive isolated QA
+on:
+  push:
+    branches: [qa/r5c-canonical-pg16-expandonly-20261025]
+    paths:
+      - '.github/workflows/r5c-canonical-pg16-qa.yml'
+      - 'services/api-nest/migrations/checkout-candidate/20261025_r5c_reservation_expand_only.qa.sql'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  canonical-clone-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Real PG16 with disposable canonical-shaped catalog
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          NAME="pog-r5c-pg-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          VOLUME="pog-r5c-pgdata-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cleanup() {
+            docker rm -f "$NAME" >/dev/null 2>&1 || true
+            docker volume rm "$VOLUME" >/dev/null 2>&1 || true
+            echo R5C_CONTAINER_VOLUME_CLEANUP=COMPLETE
+          }
+          trap cleanup EXIT
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          docker pull postgres:16 >/dev/null
+          docker volume create "$VOLUME" >/dev/null
+          docker run -d --name "$NAME" --network none --cap-drop ALL             --security-opt no-new-privileges --memory 768m --pids-limit 128             --user 999:999 --read-only             --mount "type=volume,src=$VOLUME,dst=/var/lib/postgresql/data"             --tmpfs /var/run/postgresql:rw,nosuid,nodev,size=16m,uid=999,gid=999,mode=0775             --tmpfs /tmp:rw,nosuid,nodev,size=16m,uid=999,gid=999,mode=1777             -e POSTGRES_USER=postgres -e POSTGRES_DB=r5c_qa             -e POSTGRES_HOST_AUTH_METHOD=trust -e PGDATA=/var/lib/postgresql/data/pgdata             postgres:16 >/dev/null
+          test -z "$(docker port "$NAME")"
+          echo R5C_PG_NETWORK=NONE
+          for i in $(seq 1 90); do
+            if docker exec "$NAME" psql -XAt -U postgres -d r5c_qa -c 'SELECT 1' 2>/dev/null | grep -qx 1; then break; fi
+            sleep 1
+          done
+          SQL=services/api-nest/migrations/checkout-candidate/20261025_r5c_reservation_expand_only.qa.sql
+          BASE=services/api-nest/migrations/catalog-foundation/34b4b5b2a5a2_001_catalog_foundation.sql
+          ! grep -Eq 'DROP (TABLE|SCHEMA)|TRUNCATE|DELETE FROM|STRIPE_SECRET' "$SQL"
+          docker exec -i "$NAME" psql -X -v ON_ERROR_STOP=1 -U postgres -d r5c_qa < "$BASE" >/dev/null
+          echo R5C_CANONICAL_FOUNDATION_MIGRATION=PASS
+          docker exec -i "$NAME" psql -X -v ON_ERROR_STOP=1 -U postgres -d r5c_qa < "$SQL" >/dev/null
+          echo R5C_ADDITIVE_CHECKOUT_MIGRATION=PASS
+          docker exec -i "$NAME" psql -X -v ON_ERROR_STOP=1 -U postgres -d r5c_qa < "$SQL" >/dev/null
+          echo R5C_MIGRATION_REAPPLY_IDEMPOTENT=PASS
+          cat > "${RUNNER_TEMP}/r5c-probes.sql" <<'SQL'
+          \set ON_ERROR_STOP on
+          CREATE ROLE r5c_denied LOGIN;
+          DO $$
+          DECLARE x boolean;
+          BEGIN
+            SELECT has_table_privilege('r5c_denied','da_checkout_candidate.reservation','SELECT') INTO x;
+            IF x THEN RAISE EXCEPTION 'unexpected direct SELECT'; END IF;
+            SELECT has_function_privilege('r5c_denied',
+              'da_checkout_candidate.reserve_trusted(text,text,text,text,text,jsonb)','EXECUTE') INTO x;
+            IF x THEN RAISE EXCEPTION 'unexpected untrusted execute'; END IF;
+          END $$;
+          INSERT INTO public.da_catalog_partners(partner_id,slug,published_payload)
+          VALUES('merchant-text-1','qa-partner','{"name":"QA Partner"}'::jsonb);
+          INSERT INTO public.da_identity_subjects(issuer,subject,identity_kind,identity_status)
+          VALUES('https://qa.invalid/realms/afritaste','client-text-subject-1','client','active');
+          SELECT CASE WHEN
+          (da_checkout_candidate.reserve_trusted(
+            'https://qa.invalid/realms/afritaste','client-text-subject-1','merchant-text-1',
+            'mutation_r5c_012345','aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+            '{"total":4380,"currency":"eur","partnerSlug":"qa-partner","items":[{"sku":"rice","quantity":2}]}'::jsonb
+          )->>'amount_minor')::bigint=4380 THEN 'R5C_SERVER_SNAPSHOT_SQL=PASS'
+          ELSE 'FAIL' END;
+          SELECT CASE WHEN count(*)=1 THEN 'R5C_ONE_OUTBOX=PASS' ELSE 'FAIL' END
+          FROM da_checkout_candidate.outbox;
+          SELECT CASE WHEN
+          (da_checkout_candidate.reserve_trusted(
+            'https://qa.invalid/realms/afritaste','client-text-subject-1','merchant-text-1',
+            'mutation_r5c_012345','aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+            '{"total":4380,"currency":"eur","partnerSlug":"qa-partner","items":[{"sku":"rice","quantity":2}]}'::jsonb
+          )->>'amount_minor')::bigint=4380 THEN 'R5C_RETRY_SAME_MUTATION=PASS'
+          ELSE 'FAIL' END;
+          SELECT CASE WHEN count(*)=1 THEN 'R5C_RETRY_ONE_RESERVATION=PASS'
+            ELSE 'FAIL' END FROM da_checkout_candidate.reservation;
+          SELECT CASE WHEN EXISTS(
+            SELECT 1 FROM da_checkout_candidate.reservation
+            WHERE issuer='https://qa.invalid/realms/afritaste'
+              AND subject='client-text-subject-1' AND partner_id='merchant-text-1'
+          ) THEN 'R5C_CANONICAL_TEXT_FOREIGN_KEYS=PASS' ELSE 'FAIL' END;
+          SQL
+          docker exec -i "$NAME" psql -XAt -v ON_ERROR_STOP=1 -U postgres -d r5c_qa < "${RUNNER_TEMP}/r5c-probes.sql" > "${RUNNER_TEMP}/r5c-results.txt"
+          if grep -qx 'FAIL' "${RUNNER_TEMP}/r5c-results.txt"; then echo 'R5C_ASSERTION=FAIL'; exit 1; fi
+          grep '^R5C_' "${RUNNER_TEMP}/r5c-results.txt"
+          test "$(grep -c '^R5C_' "${RUNNER_TEMP}/r5c-results.txt")" = 5
+          echo R5C_DIRECT_SQL_PRIVILEGES=DENIED
+          echo R5C_CANONICAL_PRODUCTION_MIGRATION=NOT_APPLIED
+          echo R5C_REAL_PSP=NOT_RUN
+          echo R5C_RELEASE=NO_GO
