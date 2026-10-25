@@ -1,0 +1,181 @@
+name: R5B - isolated real Keycloak Client to Nest Redis PostgreSQL QA
+on:
+  push:
+    branches: [qa/r5b-client-nest-pg16-integrated-20261025]
+    paths:
+      - '.github/workflows/r5b-client-nest-kc-pg16-qa.yml'
+      - 'services/api-nest/src/client-commerce/r5b-client-reservation.qa.controller.ts'
+      - 'services/api-nest/test/r5b-client-nest-kc-pg16.qa.cjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-client-nest-pg:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 23
+    env:
+      NODE_ENV: test
+      QA_SYNTHETIC_ONLY: 'YES'
+      TS_NODE_PROJECT: services/api-nest/tsconfig.json
+    steps:
+      - name: Checkout exact review branch SHA without persisted credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Setup Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install frozen dependency graph without lifecycle scripts
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+          cat > pnpm-workspace.yaml <<'WORKSPACES'
+          packages:
+            - apps/client
+            - apps/merchant
+            - apps/courier
+            - services/api-nest
+            - packages/*
+          WORKSPACES
+          pnpm install --frozen-lockfile --ignore-scripts
+      - name: Guard private AppModule, hardstop, token isolation and TypeScript
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node --check services/api-nest/test/r5b-client-nest-kc-pg16.qa.cjs
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const read = p => fs.readFileSync('services/api-nest/'+p,'utf8');
+          assert(!read('src/app.module.ts').includes('R5BClientReservationQaController'));
+          const ctl = read('src/client-commerce/r5b-client-reservation.qa.controller.ts');
+          assert(ctl.includes("process.env.GITHUB_ACTIONS !== 'true'"));
+          assert(ctl.includes('resolvePrincipalFromAuthorization'));
+          assert(ctl.includes('readCommitted('));
+          const payments = read('src/payments/payments.service.ts');
+          const a=payments.indexOf('  async createPaymentIntent(');
+          const b=payments.indexOf('  async verifyPaidOrder(',a);
+          assert(a>=0&&b>a&&payments.slice(a,b).includes('this.assertDurableCheckoutAuthority();'));
+          assert(payments.includes('checkoutIntentCreationEnabled: false'));
+          const auth = read('src/auth/external-jwks-verifier.service.ts');
+          assert(auth.includes('validateClientTokenIsolation('));
+          assert(auth.includes('validatePartnerTokenIsolation('));
+          console.log('R5B_PR48_HARDSTOP=PASS');
+          console.log('R5B_PRIVATE_APPMODULE_ONLY=PASS');
+          console.log('R5B_MIXED_ROLE_JWT_ISOLATION_SOURCE=PASS');
+          NODE
+          pnpm exec tsc --noEmit -p services/api-nest/tsconfig.json
+          echo "R5B_TYPECHECK=PASS"
+      - name: Real Keycloak 26.8.1 NestJS HTTP Redis and PG16 disposable integration
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          KCNAME="pog-r5b-client-kc-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          PGNAME="pog-r5b-client-pg-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          RDNAME="pog-r5b-client-rd-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          VOLUME="pog-r5b-client-data-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          ENVFILE="${RUNNER_TEMP}/r5b-client-qa-${GITHUB_RUN_ID}.env"
+          CONFIGFILE="services/api-nest/.runtime-config/keycloak-trusted-identity.json"
+          cleanup() {
+            docker rm -f "$KCNAME" "$PGNAME" "$RDNAME" >/dev/null 2>&1 || true
+            docker volume rm "$VOLUME" >/dev/null 2>&1 || true
+            rm -f "$ENVFILE" "$CONFIGFILE"
+            echo "R5B_QA_CONTAINER_VOLUME_CONFIG_CLEANUP=COMPLETE"
+          }
+          trap cleanup EXIT
+          umask 077
+          test ! -e "$CONFIGFILE"
+          node - "$ENVFILE" "$PGNAME" "$RDNAME" <<'NODE'
+          const fs=require('node:fs'),crypto=require('node:crypto');
+          const password=crypto.randomBytes(32).toString('hex');
+          const secret=crypto.randomBytes(32).toString('hex');
+          fs.writeFileSync(process.argv[2],[
+            'KC_BOOTSTRAP_ADMIN_USERNAME=qa_admin',
+            'KC_BOOTSTRAP_ADMIN_PASSWORD='+password,
+            'QA_BOOTSTRAP_ADMIN_PASSWORD='+password,
+            'R5B_QA_PG_CONTAINER='+process.argv[3],
+            'R5B_QA_REDIS_CONTAINER='+process.argv[4],
+            'QA_KEYCLOAK_ORIGIN=http://127.0.0.1:18195',
+            'REDIS_URL=redis://127.0.0.1:16379',
+            'DA_AUTH_SECRET='+secret,
+            'QA_SYNTHETIC_ONLY=YES',
+            'GITHUB_ACTIONS=true',
+            'NODE_ENV=test',''
+          ].join('\n'),{mode:0o600});
+          console.log('R5B_PRIVATE_RANDOM_SECRETS_NOT_LOGGED=PASS');
+          NODE
+          docker pull postgres:16 >/dev/null
+          docker pull quay.io/keycloak/keycloak:26.8.1 >/dev/null
+          docker pull redis:7-alpine >/dev/null
+          docker volume create "$VOLUME" >/dev/null
+          docker run -d --name "$PGNAME" \
+            --network none --read-only --cap-drop ALL --security-opt no-new-privileges \
+            --pids-limit 128 --memory 768m --user 999:999 \
+            --mount "type=volume,src=$VOLUME,dst=/var/lib/postgresql/data" \
+            --tmpfs /var/run/postgresql:rw,nosuid,nodev,size=16m,uid=999,gid=999,mode=0775 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=16m,uid=999,gid=999,mode=1777 \
+            -e POSTGRES_USER=postgres -e POSTGRES_DB=r5b_checkout_qa \
+            -e POSTGRES_HOST_AUTH_METHOD=trust -e PGDATA=/var/lib/postgresql/data/pgdata \
+            postgres:16 >/dev/null
+          test -z "$(docker port "$PGNAME")"
+          echo "R5B_PG16_PUBLISHED_PORTS=NONE"
+          docker run -d --name "$RDNAME" \
+            --network bridge -p 127.0.0.1:16379:6379 \
+            --user 999:999 --read-only --cap-drop ALL --security-opt no-new-privileges \
+            --memory 256m --pids-limit 96 \
+            --tmpfs /data:rw,nosuid,nodev,size=16m,uid=999,gid=999,mode=0700 \
+            redis:7-alpine redis-server --save "" --appendonly no --protected-mode no \
+            >/dev/null
+          echo "R5B_REDIS_PUBLISHED_LOOPBACK_ONLY=YES"
+          docker run -d --name "$KCNAME" \
+            --network bridge -p 127.0.0.1:18195:18195 \
+            --user 1000:0 --cap-drop ALL --security-opt no-new-privileges \
+            --pids-limit 320 --memory 3g \
+            --tmpfs /opt/keycloak/data:rw,nosuid,nodev,size=384m,uid=1000,gid=0,mode=0700 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=128m,uid=1000,gid=0,mode=1777 \
+            --env-file "$ENVFILE" \
+            quay.io/keycloak/keycloak:26.8.1 start-dev \
+            --http-port=18195 --http-host=0.0.0.0 \
+            --hostname=http://127.0.0.1:18195 >/dev/null
+          echo "R5B_KEYCLOAK_PUBLISHED_LOOPBACK_ONLY=YES"
+          pgready=0
+          for i in $(seq 1 90); do
+            if docker exec "$PGNAME" psql -XAt -v ON_ERROR_STOP=1 \
+              -U postgres -d r5b_checkout_qa -c 'SELECT 1' 2>/dev/null | grep -qx 1; then
+              pgready=1; break
+            fi
+            sleep 1
+          done
+          test "$pgready" = 1
+          echo "R5B_POSTGRES16_READY=YES"
+          rdready=0
+          for i in $(seq 1 40); do
+            if docker exec "$RDNAME" redis-cli ping 2>/dev/null | grep -qx PONG; then
+              rdready=1; break
+            fi
+            sleep 1
+          done
+          test "$rdready" = 1
+          echo "R5B_REDIS_READY=YES"
+          kcready=0
+          for i in $(seq 1 120); do
+            if curl -fsS --max-time 3 \
+              http://127.0.0.1:18195/realms/master/.well-known/openid-configuration \
+              -o /dev/null 2>/dev/null; then
+              kcready=1; break
+            fi
+            sleep 2
+          done
+          test "$kcready" = 1
+          echo "R5B_KEYCLOAK26_READY=YES"
+          set -a
+          source "$ENVFILE"
+          set +a
+          node -r ts-node/register/transpile-only \
+            services/api-nest/test/r5b-client-nest-kc-pg16.qa.cjs
+          echo "R5B_PRIVATE_KC26_NEST_REDIS_PG16_QA=PASS"
+          echo "R5B_FGAP_GLOBAL=FAIL_UNWAIVED"
+          echo "R5B_STRIPE_TEST=NOT_RUN"
+          echo "R5B_LIVE_CHECKOUT=NO_GO"
+          echo "R5B_AUTO_MERGE=FORBIDDEN"
