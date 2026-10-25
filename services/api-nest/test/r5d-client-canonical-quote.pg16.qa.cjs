@@ -269,7 +269,7 @@ function setupPostgres() {
   sqlStdin("CREATE ROLE r5d_catalog_reader LOGIN PASSWORD '"+CATALOG_PASSWORD+"';"+
     " CREATE ROLE r5d_checkout_worker LOGIN;"+
     " CREATE ROLE r5d_checkout_auditor LOGIN;"+
-    " GRANT SELECT ON public.da_catalog_schema_migrations,public.da_catalog_partners TO r5d_catalog_reader;"+
+    " GRANT SELECT ON public.da_catalog_schema_migrations,public.da_catalog_partners,public.da_catalog_ownerships,public.da_catalog_audit TO r5d_catalog_reader;"+
     " GRANT USAGE ON SCHEMA da_checkout_candidate TO r5d_checkout_auditor;"+
     " GRANT SELECT ON da_checkout_candidate.reservation,da_checkout_candidate.outbox"+
     " TO r5d_checkout_auditor;");
