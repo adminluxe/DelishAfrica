@@ -7,6 +7,7 @@ on:
       - 'services/api-nest/test/r5d-client-canonical-quote.pg16.qa.cjs'
       - 'services/api-nest/src/client-commerce/r5d-canonical-quote-reservation.qa.controller.ts'
       - 'services/api-nest/migrations/checkout-candidate/20261025_r5d_revision_guard.qa.sql'
+      - 'services/api-nest/src/catalog-foundation/catalog-foundation.repository.ts'
   workflow_dispatch:
 permissions:
   contents: read
