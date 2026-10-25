@@ -86,7 +86,7 @@ jobs:
           trap cleanup EXIT
           umask 077
           test ! -e "$CONFIGFILE"
-          node - "$ENVFILE" "$PGNAME" <<'NODE'
+          node - "$ENVFILE" "$PGNAME" "$RDNAME" <<'NODE'
           const fs=require('node:fs'),crypto=require('node:crypto');
           const password=crypto.randomBytes(32).toString('hex');
           const secret=crypto.randomBytes(32).toString('hex');
@@ -95,6 +95,7 @@ jobs:
             'KC_BOOTSTRAP_ADMIN_PASSWORD='+password,
             'QA_BOOTSTRAP_ADMIN_PASSWORD='+password,
             'R5B_QA_PG_CONTAINER='+process.argv[3],
+            'R5B_QA_REDIS_CONTAINER='+process.argv[4],
             'QA_KEYCLOAK_ORIGIN=http://127.0.0.1:18195',
             'REDIS_URL=redis://127.0.0.1:16379',
             'DA_AUTH_SECRET='+secret,
