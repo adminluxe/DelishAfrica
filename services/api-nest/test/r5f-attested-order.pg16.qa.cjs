@@ -275,6 +275,13 @@ function sqlStdin(sql) {
     '-v','ON_ERROR_STOP=1','-U','postgres','-d',DB],{
     input:sql,encoding:'utf8',timeout:25000,maxBuffer:1000000,
   });
+  if(result.status!==0) {
+    const raw=String(result.stderr||'');
+    const code=(raw.match(/ERROR:\s*([^\r\n]{1,200})/)||[])[1]||'qa_sql_failed';
+    console.error('R5F_SQL_ERROR_CODE='+code
+      .replace(/\b[a-f0-9]{20,}\b/gi,'REDACTED')
+      .replace(/[^A-Za-z0-9_.:-]/g,'_').slice(0,160));
+  }
   pass('QA_ADMIN_SQL_SUCCEEDED',result.status===0);
 }
 function setupPostgres() {
