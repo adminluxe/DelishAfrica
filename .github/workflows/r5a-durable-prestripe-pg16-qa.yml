@@ -1,0 +1,91 @@
+name: R5A-C - real PG16 durable pre-Stripe checkout QA
+on:
+  push:
+    branches: [qa/r5a-durable-prestripe-reservation-20261025]
+    paths:
+      - 'services/api-nest/qa/r5a-durable-reservation.pg16.sql'
+      - 'services/api-nest/test/r5a-durable-reservation.pg16.qa.cjs'
+      - '.github/workflows/r5a-durable-prestripe-pg16-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-pg16-reservation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 17
+    env:
+      NODE_ENV: test
+      QA_SYNTHETIC_ONLY: 'YES'
+    steps:
+      - name: Immutable exact SHA
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify Stripe hardstop unchanged and QA only
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node --check services/api-nest/test/r5a-durable-reservation.pg16.qa.cjs
+          node - <<'NODE'
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          const code=fs.readFileSync('services/api-nest/src/payments/payments.service.ts','utf8');
+          const a=code.indexOf('  async createPaymentIntent(');
+          const b=code.indexOf('  async verifyPaidOrder(',a);
+          assert(a>=0&&b>a&&code.slice(a,b).includes('this.assertDurableCheckoutAuthority();'));
+          assert(code.includes('checkoutIntentCreationEnabled: false'));
+          const sql=fs.readFileSync('services/api-nest/qa/r5a-durable-reservation.pg16.sql','utf8');
+          assert(sql.includes('UNIQUE (issuer,subject,mutation_key)'));
+          assert(sql.includes('REVOKE ALL ON ALL TABLES'));
+          assert(sql.includes('SECURITY DEFINER'));
+          assert(!/api\.stripe\.com|sk_live_|pk_live_/i.test(sql));
+          console.log('R5A_C_STATIC_STRIPE_HARDSTOP=PASS');
+          NODE
+      - name: Real PG16 transactions and synthetic provider fault injection
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PGNAME="pog-r5a-prestripe-pg-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          VOL="pog-r5a-prestripe-data-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cleanup() {
+            docker rm -f "$PGNAME" >/dev/null 2>&1 || true
+            docker volume rm "$VOL" >/dev/null 2>&1 || true
+            echo "R5A_C_QA_CONTAINERS_VOLUMES_CLEANUP=COMPLETE"
+          }
+          trap cleanup EXIT
+          docker pull postgres:16 >/dev/null
+          docker volume create "$VOL" >/dev/null
+          docker run -d --name "$PGNAME" \
+            --network none --cap-drop ALL --security-opt no-new-privileges \
+            --read-only --user 999:999 --memory 768m --pids-limit 128 \
+            --mount "type=volume,src=$VOL,dst=/var/lib/postgresql/data" \
+            --tmpfs /var/run/postgresql:rw,nosuid,nodev,size=16m,uid=999,gid=999,mode=0775 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=16m,uid=999,gid=999,mode=1777 \
+            -e POSTGRES_USER=postgres -e POSTGRES_DB=r5a_checkout_qa \
+            -e POSTGRES_HOST_AUTH_METHOD=trust \
+            -e PGDATA=/var/lib/postgresql/data/pgdata \
+            postgres:16 >/dev/null
+          test -z "$(docker port "$PGNAME")"
+          echo "R5A_C_PG16_NETWORK=NONE"
+          echo "R5A_C_PG16_PUBLISHED_PORTS=NONE"
+          ready=0
+          for i in $(seq 1 90); do
+            if docker exec "$PGNAME" psql -XAt -v ON_ERROR_STOP=1 \
+              -U postgres -d r5a_checkout_qa -c 'SELECT 1' 2>/dev/null | grep -qx 1; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          test "$ready" = 1
+          echo "R5A_C_PG16_REAL_READY=YES"
+          R5A_PGC_QA_CONTAINER="$PGNAME" \
+            node services/api-nest/test/r5a-durable-reservation.pg16.qa.cjs
+          echo "R5A_C_REAL_POSTGRES_RESERVATION=PASS_QA"
+          echo "R5A_C_ACTUAL_STRIPE_TEST=NOT_EXECUTED"
+          echo "R5A_C_PAYMENT_HARDSTOP=STILL_503"
+          echo "R5A_C_FINANCE_LIVE=NO_GO"
+          echo "R5A_C_PUBLIC_STORES=NO_GO"
