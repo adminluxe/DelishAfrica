@@ -1,0 +1,86 @@
+name: R5A - private finance typed HTTP contract (synthetic only)
+on:
+  push:
+    branches:
+      - qa/r5a-private-finance-http-contract-20261025
+    paths:
+      - 'services/api-nest/src/client-commerce/partner-finance-readonly.qa.controller.ts'
+      - 'services/api-nest/test/r5a-finance-readonly-typed-http.qa.test.cjs'
+      - 'services/api-nest/test/partner-finance-readonly.http.qa.test.cjs'
+      - '.github/workflows/r5a-private-finance-typed-http-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  private-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      TS_NODE_PROJECT: services/api-nest/tsconfig.json
+      QA_SYNTHETIC_ONLY: 'YES'
+    steps:
+      - name: Checkout exact SHA, no merge release
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Setup pinned Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Enable pnpm
+        run: corepack enable && corepack prepare pnpm@9.15.4 --activate
+      - name: Limit CI install to financial API and three app workspaces
+        run: |
+          cat > pnpm-workspace.yaml <<'YAML'
+          packages:
+            - apps/client
+            - apps/merchant
+            - apps/courier
+            - services/api-nest
+            - packages/*
+          YAML
+      - name: Install frozen lock without scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Verify exact SHA and isolate controller from production
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git diff --exit-code -- services/api-nest/src)"
+          node --check services/api-nest/test/r5a-finance-readonly-typed-http.qa.test.cjs
+          node --check services/api-nest/test/partner-finance-readonly.http.qa.test.cjs
+          node - <<'NODE'
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          const src=fs.readFileSync('services/api-nest/src/client-commerce/partner-finance-readonly.qa.controller.ts','utf8');
+          const root=fs.readFileSync('services/api-nest/src/app.module.ts','utf8');
+          assert(!root.includes('PartnerFinanceReadonlyQaController'));
+          for(const m of [
+            "process.env.NODE_ENV === 'production'",
+            "process.env.GITHUB_ACTIONS !== 'true'",
+            "process.env.QA_SYNTHETIC_ONLY !== 'YES'",
+            "report.withdrawableMinor !== 0",
+            "report.payoutEnabled !== false",
+            'FinanceReadonlyQaPortError',
+            'UnauthorizedException',
+            'ForbiddenException',
+            'ConflictException',
+          ]) assert(src.includes(m), 'missing guard '+m);
+          console.log('R5A_NO_PUBLIC_APP_MODULE_MOUNT=PASS');
+          console.log('R5A_FAIL_CLOSED_GATES_UNCHANGED=PASS');
+          NODE
+      - name: Compile actual Nest API
+        run: pnpm exec tsc --noEmit -p services/api-nest/tsconfig.json
+      - name: Run original updated HTTP QA contract (mock port)
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/partner-finance-readonly.http.qa.test.cjs
+      - name: Run expanded R5A exact-controller typed HTTP matrix (mock port)
+        run: node -r ts-node/register/transpile-only --test services/api-nest/test/r5a-finance-readonly-typed-http.qa.test.cjs
+      - name: Declare precisely non-real staging status
+        run: |
+          echo "R5A_PR46_HTTP_STATUS_MAPPING=PASS_SYNTHETIC_ONLY"
+          echo "R5A_PR46_KEYCLOAK_REAL_POSTGRES=NOT_CERTIFIED"
+          echo "R5A_PR46_PUBLIC_APPMODULE=UNTOUCHED"
+          echo "R5A_PR48_DURABLE_PRESTRIPE=NOT_CERTIFIED"
+          echo "R5A_FINANCE_LIVE=NO_GO"
+          echo "R5A_PAYOUT_LIVE=NO_GO"
