@@ -8,6 +8,7 @@ type Client = {
   release(): void;
 };
 type PoolLike = {
+  on(event: 'error', listener: (error: Error) => void): void;
   connect(): Promise<Client>;
   query<T extends Row = Row>(sql: string, values?: unknown[]): Promise<QueryResult<T>>;
   end(): Promise<void>;
@@ -31,8 +32,12 @@ export type ClientEnrollmentReservation = {
 @Injectable()
 export class ClientEnrollmentRepository implements OnModuleDestroy {
   private pool: PoolLike | null = null;
+  private poolFailed = false;
 
   private connection(): PoolLike {
+    // A PostgreSQL failover that killed an idle client must not be silently
+    // treated as a healthy enrollment service. Require a controlled restart.
+    if (this.poolFailed) throw new Error('client_enrollment_database_unavailable');
     if (this.pool) return this.pool;
     const connectionString = String(process.env.DATABASE_URL || '');
     if (!connectionString) throw new Error('client_enrollment_database_not_configured');
@@ -42,7 +47,7 @@ export class ClientEnrollmentRepository implements OnModuleDestroy {
     } catch {
       throw new Error('client_enrollment_pg_runtime_missing');
     }
-    this.pool = new Pool({
+    const pool = new Pool({
       connectionString,
       max: 3,
       min: 0,
@@ -50,7 +55,12 @@ export class ClientEnrollmentRepository implements OnModuleDestroy {
       idleTimeoutMillis: 10000,
       application_name: 'delishafrica-client-enrollment-v1',
     });
-    return this.pool;
+    // pg.Pool emits errors for interrupted *idle* client connections. With no
+    // listener Node terminates the API process. Never print connection secrets.
+    // Fail closed until the reviewed operator restarts the service.
+    pool.on('error', () => { this.poolFailed = true; });
+    this.pool = pool;
+    return pool;
   }
 
   async reserve(input: ClientEnrollmentReservation): Promise<string | null> {
