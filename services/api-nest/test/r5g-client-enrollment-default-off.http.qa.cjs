@@ -47,6 +47,7 @@ async function run() {
   delete process.env.DA_CLIENT_ENROLLMENT_SECURITY_GATE;
   delete process.env.DA_CLIENT_ENROLLMENT_RECOVERY_GATE;
   delete process.env.DA_CLIENT_ENROLLMENT_AUTHZ_GATE;
+  delete process.env.DA_CLIENT_ENROLLMENT_TRUSTED_INGRESS_MODE;
   process.env.DA_CLIENT_ENROLLMENT_ENABLED='false';
   delete process.env.DATABASE_URL;
 
@@ -74,6 +75,7 @@ async function run() {
     DA_CLIENT_ENROLLMENT_KC_CLIENT_SECRET:'fixture-only',
     DA_CLIENT_ENROLLMENT_SECURITY_GATE:'APPROVED_AFTER_REVIEW',
     DA_CLIENT_ENROLLMENT_RECOVERY_GATE:'SMTP_RESET_TESTED',
+    DA_CLIENT_ENROLLMENT_TRUSTED_INGRESS_MODE:'NGINX_REALIP_ON_LOOPBACK_VERIFIED',
   };
   ok('MISSING_FGAP_NEGATIVE_GATE_FAILS_CLOSED',!enrollmentReadyForProduction(allButAuthorization));
   ok('MISSING_SMTP_RESET_GATE_FAILS_CLOSED',
@@ -87,6 +89,10 @@ async function run() {
   ok('MISSING_HMAC_KEY_FAILS_CLOSED',
       !enrollmentReadyForProduction({...allButAuthorization,
         DA_CLIENT_ENROLLMENT_HMAC_SECRET:undefined,
+        DA_CLIENT_ENROLLMENT_AUTHZ_GATE:'FGAP_NEGATIVE_TESTS_PASSED'}));
+  ok('MISSING_REVIEWED_NGINX_ORIGIN_FAILS_CLOSED',
+      !enrollmentReadyForProduction({...allButAuthorization,
+        DA_CLIENT_ENROLLMENT_TRUSTED_INGRESS_MODE:undefined,
         DA_CLIENT_ENROLLMENT_AUTHZ_GATE:'FGAP_NEGATIVE_TESTS_PASSED'}));
   const maliciousRequest={
     ip:'192.0.2.99',
