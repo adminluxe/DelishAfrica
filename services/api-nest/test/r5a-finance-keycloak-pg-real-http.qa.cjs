@@ -332,6 +332,9 @@ function financialReader(introspector) {
         if(res.status!==200)throw Error('introspection unavailable');
         introspected=await res.json();
       }catch{throw new FinanceReadonlyQaPortError('unavailable')}
+      console.log('R5A_B_DIAG_INTROSPECTION_FLAGS='+
+        'ACTIVE_'+(introspected?.active===true)+
+        '_SUB_MATCH_'+(introspected?.sub===claim.sub));
       if(introspected.active!==true ||
         introspected.sub!==claim.sub) {
         throw new FinanceReadonlyQaPortError('unauthenticated');
