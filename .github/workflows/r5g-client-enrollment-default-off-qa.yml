@@ -1,0 +1,98 @@
+name: R5G - gated Client enrollment Nest HTTP default OFF QA
+on:
+  push:
+    branches:
+      - release/r5g-native-client-enrollment-gated-20261025
+    paths:
+      - '.github/workflows/r5g-client-enrollment-default-off-qa.yml'
+      - 'services/api-nest/src/app.module.ts'
+      - 'services/api-nest/src/client-enrollment/**'
+      - 'services/api-nest/src/identity-proof/identity-proof.controller.ts'
+      - 'services/api-nest/src/identity-proof/trusted-requester-peer.ts'
+      - 'services/api-nest/migrations/client-enrollment/**'
+      - 'services/api-nest/test/client-enrollment*.cjs'
+      - 'services/api-nest/test/r5g-client-enrollment-default-off.http.qa.cjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  client-default-off:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      NODE_ENV: test
+      TS_NODE_PROJECT: services/api-nest/tsconfig.json
+      DA_CLIENT_ENROLLMENT_ENABLED: 'false'
+      DA_CLIENT_ENROLLMENT_SECURITY_GATE: 'BLOCKED_FOR_REVIEW'
+      DA_CLIENT_ENROLLMENT_RECOVERY_GATE: 'NOT_TESTED'
+      DA_CLIENT_ENROLLMENT_AUTHZ_GATE: 'FGAP_FAIL_UNWAIVED'
+      QA_SYNTHETIC_ONLY: 'YES'
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Frozen installation and static safety
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+          cat > pnpm-workspace.yaml <<'WS'
+          packages:
+            - apps/client
+            - apps/merchant
+            - apps/courier
+            - services/api-nest
+            - packages/*
+          WS
+          pnpm install --frozen-lockfile --ignore-scripts
+          node --check services/api-nest/test/r5g-client-enrollment-default-off.http.qa.cjs
+          pnpm exec tsc --noEmit -p services/api-nest/tsconfig.json
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const assert=require('node:assert/strict');
+          const read=p=>fs.readFileSync('services/api-nest/'+p,'utf8');
+          const app=read('src/app.module.ts');
+          const enroll=read('src/client-enrollment/client-enrollment.service.ts');
+          const policy=read('src/client-enrollment/client-enrollment.policy.ts');
+          const proof=read('src/identity-proof/identity-proof.controller.ts');
+          const controller=read('src/client-enrollment/client-enrollment.controller.ts');
+          assert(app.includes('ClientEnrollmentModule'));
+          assert(app.includes('OrchidpayF3Module'));
+          assert(app.includes('ConfluenceAiModule'));
+          assert(enroll.includes('enrollmentReadyForProduction(process.env)'));
+          assert(enroll.includes('client_enrollment_not_ready'));
+          assert(policy.includes('DA_CLIENT_ENROLLMENT_SECURITY_GATE'));
+          assert(policy.includes('DA_CLIENT_ENROLLMENT_RECOVERY_GATE'));
+          assert(policy.includes('DA_CLIENT_ENROLLMENT_AUTHZ_GATE'));
+          assert(proof.includes('trustedRequesterPeer(req)'));
+          assert(controller.includes('trustedRequesterPeer(req)'));
+          assert(!proof.includes("req?.headers?.['cf-connecting-ip']"));
+          console.log('R5G_RELEASE_CANDIDATE_GATED_HARDSTOP=PASS');
+          console.log('R5G_UNREVIEWED_REGISTRATION=DISABLED');
+          NODE
+      - name: Exact Client enrollment policy and spoofing unit regression
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          node -r ts-node/register/transpile-only --test \
+            services/api-nest/test/client-enrollment.guard.test.cjs \
+            services/api-nest/test/client-enrollment-requester-origin.test.cjs
+          echo R5G_CLIENT_ENROLLMENT_UNIT_AND_NEGATIVE_TESTS=PASS
+      - name: Actual private Nest HTTP default-off and no-side-effect gates
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          node -r ts-node/register/transpile-only \
+            services/api-nest/test/r5g-client-enrollment-default-off.http.qa.cjs
+          echo R5G_NEST_ACTUAL_HTTP_DEFAULT_OFF=PASS_QA_TARGETED
+          echo R5G_REALM_PUBLIC_SIGNUP=NOT_CERTIFIED
+          echo R5G_PG_PRODUCTION_MIGRATION=NOT_APPLIED
+          echo R5G_FGAP_GLOBAL=FAIL_UNWAIVED
+          echo R5G_FINANCE_AND_STORES=NO_GO
