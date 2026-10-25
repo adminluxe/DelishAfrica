@@ -267,6 +267,13 @@ async function trustedJwt(jwt) {
      pub,Buffer.from(chunks[2],'base64url'))) {
     throw new FinanceReadonlyQaPortError('unauthenticated');
   }
+  const tokenRoles=Array.isArray(p.realm_access?.roles)?p.realm_access.roles:[];
+  const probeAudience=typeof p.aud==='string'?[p.aud]:p.aud;
+  console.log('R5A_B_DIAG_SIGNED_TOKEN_FLAGS='+
+    'MERCHANT_'+tokenRoles.includes('merchant')+
+    '_COURIER_'+tokenRoles.includes('courier')+
+    '_AUD_BOUND_'+(Array.isArray(probeAudience)&&probeAudience.includes(p.azp))+
+    '_TENANT_PRESENT_'+(typeof p.qa_tenant==='string'));
   const role=p.realm_access?.roles?.includes('merchant')?'merchant':
     p.realm_access?.roles?.includes('courier')?'courier':null;
   if(!role || (p.realm_access.roles.includes('merchant') &&
