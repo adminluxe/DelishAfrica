@@ -215,7 +215,7 @@ function pgSetup(details) {
   // Regression: the finance reader cannot mutate the committed authority.
   let denied=false;
   try {
-    sqlAs('qa_finance_reader','UPDATE qa_finance.partner_authority SET state=\\'active\\';');
+    sqlAs('qa_finance_reader',"UPDATE qa_finance.partner_authority SET state='active';");
   } catch { denied=true; }
   mandatory('PG_READER_CANNOT_UPDATE',denied);
 }
@@ -383,7 +383,9 @@ async function run(){
     mandatory('MISSING_JWT_ZERO_SQL',financeSqlReads===before);
     http('MALFORMED_JWT_NO_SQL',(await fetchPrivate('broken')).status,401);
     mandatory('MALFORMED_JWT_ZERO_SQL',financeSqlReads===before);
-    const invalid=tokenMerchant.slice(0,-2)+'aa';
+    const chunks=tokenMerchant.split('.');
+    chunks[2]=(chunks[2][0]==='a'?'b':'a')+chunks[2].slice(1);
+    const invalid=chunks.join('.');
     http('TAMPERED_SIGNATURE_NO_SQL',(await fetchPrivate(invalid)).status,401);
     mandatory('TAMPERED_SIGNATURE_ZERO_SQL',financeSqlReads===before);
     const first=await fetchPrivate(tokenMerchant);
