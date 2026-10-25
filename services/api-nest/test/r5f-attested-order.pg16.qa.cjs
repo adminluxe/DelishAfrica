@@ -302,8 +302,8 @@ function setupPostgres() {
   sqlStdin(r5f);
   sqlStdin("INSERT INTO da_checkout_candidate.attestation_keys_qa(singleton,key_bytes) "+
     "VALUES(true,decode('"+HMAC_KEY_HEX+"','hex'))");
-  pass('R5D_CANONICAL_FK_DATABASE_READY',pgExec('postgres',
-    "SELECT count(*) FROM information_schema.tables WHERE table_schema='da_checkout_candidate'")==='2');
+  pass('R5F_CANONICAL_AND_PRIVATE_KEY_TABLES_READY',pgExec('postgres',
+    "SELECT count(*) FROM information_schema.tables WHERE table_schema='da_checkout_candidate'")==='3');
   const directRead=pgExec('postgres',
     "SELECT has_table_privilege('r5d_checkout_worker',"+
     "'da_checkout_candidate.reservation','SELECT')");
