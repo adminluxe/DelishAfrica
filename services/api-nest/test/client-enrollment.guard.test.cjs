@@ -48,9 +48,11 @@ test('even fully populated enrollment env fails closed without recovery or scope
     DA_CLIENT_ENROLLMENT_SECURITY_GATE: 'APPROVED_AFTER_REVIEW',
     DA_CLIENT_ENROLLMENT_RECOVERY_GATE: 'SMTP_RESET_TESTED',
     DA_CLIENT_ENROLLMENT_AUTHZ_GATE: 'FGAP_NEGATIVE_TESTS_PASSED',
+    DA_CLIENT_ENROLLMENT_TRUSTED_INGRESS_MODE: 'NGINX_REALIP_ON_LOOPBACK_VERIFIED',
   };
   assert.equal(enrollmentReadyForProduction(env), true, 'all manually audited gates required');
-  for (const key of ['DA_CLIENT_ENROLLMENT_RECOVERY_GATE', 'DA_CLIENT_ENROLLMENT_AUTHZ_GATE']) {
+  for (const key of ['DA_CLIENT_ENROLLMENT_RECOVERY_GATE', 'DA_CLIENT_ENROLLMENT_AUTHZ_GATE',
+    'DA_CLIENT_ENROLLMENT_TRUSTED_INGRESS_MODE']) {
     assert.equal(enrollmentReadyForProduction({ ...env, [key]: undefined }), false, key + ' may not be missing');
     assert.equal(enrollmentReadyForProduction({ ...env, [key]: 'false' }), false, key + ' must be exact');
   }
@@ -330,6 +332,7 @@ async function withEnrollmentFlags(run) {
     DA_CLIENT_ENROLLMENT_SECURITY_GATE: 'APPROVED_AFTER_REVIEW',
     DA_CLIENT_ENROLLMENT_RECOVERY_GATE: 'SMTP_RESET_TESTED',
     DA_CLIENT_ENROLLMENT_AUTHZ_GATE: 'FGAP_NEGATIVE_TESTS_PASSED',
+    DA_CLIENT_ENROLLMENT_TRUSTED_INGRESS_MODE: 'NGINX_REALIP_ON_LOOPBACK_VERIFIED',
   };
   const old = Object.fromEntries(Object.keys(values).map((k) => [k, process.env[k]]));
   Object.assign(process.env, values);
