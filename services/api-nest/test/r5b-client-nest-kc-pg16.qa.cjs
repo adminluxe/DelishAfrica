@@ -30,6 +30,7 @@ const REALM = 'afritaste';
 const ISSUER = KC + '/realms/' + REALM;
 const URL = 'http://127.0.0.1:18197/qa-isolated/r5b-client-reservation/v1/reserve';
 const PG = process.env.R5B_QA_PG_CONTAINER || '';
+const REDIS = process.env.R5B_QA_REDIS_CONTAINER || '';
 const SECRET = process.env.QA_BOOTSTRAP_ADMIN_PASSWORD || '';
 const MERCHANT_A = '00000000-0000-4000-8000-000000000001';
 const MERCHANT_B = '00000000-0000-4000-8000-000000000002';
@@ -42,6 +43,7 @@ const assertEnv = (
   process.env.QA_KEYCLOAK_ORIGIN === KC &&
   process.env.NODE_ENV === 'test' &&
   /^pog-r5b-client-pg-[A-Za-z0-9-]+$/.test(PG) &&
+  /^pog-r5b-client-rd-[A-Za-z0-9-]+$/.test(REDIS) &&
   SECRET.length >= 24 &&
   (process.env.REDIS_URL || '').startsWith('redis://')
 );
@@ -158,14 +160,33 @@ async function setupKeycloak() {
     pass('JWT_CLIENT_AZP_'+username,claims.azp==='delishafrica-client');
     pass('JWT_CLIENT_AUD_'+username,[].concat(claims.aud||[]).includes('delishafrica-client'));
     pass('JWT_HAS_SESSION_'+username,typeof claims.sid==='string'&&claims.sid.length>10);
-    return {jwt:t.data.access_token,userId,role:userRole};
+    return {jwt:t.data.access_token,userId,role:userRole,password};
   }
   const alice=await addUser('client','r5b_alice');
   const bob=await addUser('client','r5b_bob');
   const other=await addUser('merchant','r5b_merchant');
   pass('MERCHANT_ONLY_TOKEN_HAS_NO_CLIENT_ROLE',
     !(decode(other.jwt).realm_access?.roles||[]).includes('client'));
-  return {alice,bob,other};
+  // A real Keycloak-issued Client+Merchant token must fail at the actual
+  // JWT isolation boundary. Temporarily add and then remove the role scope
+  // inside this disposable QA realm. This is not an FGAP privilege grant.
+  const mixedRolePath='/admin/realms/'+REALM+'/users/'+alice.userId+'/role-mappings/realm';
+  const publicScopePath='/admin/realms/'+REALM+'/clients/'+client.id+'/scope-mappings/realm';
+  expectCode('EPHEMERAL_MIXED_ROLE_ASSIGNED',
+    (await api('POST',mixedRolePath,[roleMap.merchant],admin)).status,204);
+  expectCode('EPHEMERAL_MIXED_ROLE_IN_PUBLIC_SCOPE',
+    (await api('POST',publicScopePath,[roleMap.merchant],admin)).status,204);
+  const mix=await oauth({grant_type:'password',client_id:'delishafrica-client',
+    username:'r5b_alice',password:alice.password,scope:'openid'});
+  expectCode('MIXED_ROLE_REAL_KEYCLOAK_JWT',mix.status,200);
+  const mixRoles=decode(mix.data.access_token).realm_access?.roles||[];
+  pass('SIGNED_CLIENT_AND_MERCHANT_IN_SAME_JWT',
+    mixRoles.includes('client')&&mixRoles.includes('merchant'));
+  expectCode('REMOVE_MIXED_QA_USER_ROLE',
+    (await api('DELETE',mixedRolePath,[roleMap.merchant],admin)).status,204);
+  expectCode('REMOVE_MIXED_QA_CLIENT_SCOPE',
+    (await api('DELETE',publicScopePath,[roleMap.merchant],admin)).status,204);
+  return {alice,bob,other,mixedJwt:mix.data.access_token};
 }
 
 function pgArgs(user,sql) {
@@ -314,6 +335,9 @@ function requestBody(mutation=MUTATION,more={}) {
     const dev=await post(devToken,requestBody());
     expectCode('INTERNAL_DEV_LOGIN_DENIED',dev.status,403);
     pass('NO_SQL_WITH_DEV_LOGIN',port.sqlCalls===0);
+    const mixed=await post(users.mixedJwt,requestBody());
+    expectCode('SIGNED_MIXED_CLIENT_MERCHANT_JWT_DENIED',mixed.status,401);
+    pass('MIXED_ROLES_DENIED_BEFORE_SQL',port.sqlCalls===0);
     const merchant=await post(users.other.jwt,requestBody());
     expectCode('MERCHANT_JWT_DENIED_BEFORE_SQL',merchant.status,401);
     pass('NO_SQL_WITH_MERCHANT',port.sqlCalls===0);
@@ -366,6 +390,29 @@ function requestBody(mutation=MUTATION,more={}) {
       requestBody('r5b_bob_independent_123456'));
     expectCode('OTHER_CLIENT_STILL_WORKS',bobStill.status,201);
     pass('NEVER_CALLED_PROVIDER',port.providerCalls===0);
+    const redisStopped=cp.spawnSync('docker',['stop',REDIS],{
+      encoding:'utf8',timeout:25000,
+    });
+    pass('QA_REDIS_STOPPED',redisStopped.status===0);
+    const beforeRedisDown=port.sqlCalls;
+    const redisDown=await post(users.bob.jwt,requestBody('r5b_redis_down_123456'));
+    expectCode('REDIS_UNAVAILABLE_FAIL_CLOSED',redisDown.status,503);
+    pass('REDIS_DOWN_ZERO_SQL',port.sqlCalls===beforeRedisDown);
+    const redisRestarted=cp.spawnSync('docker',['start',REDIS],{
+      encoding:'utf8',timeout:25000,
+    });
+    pass('QA_REDIS_RESTARTED',redisRestarted.status===0);
+    let redisReady=false;
+    for(let attempt=0;attempt<40;attempt++){
+      const p=cp.spawnSync('docker',['exec',REDIS,'redis-cli','ping'],{
+        encoding:'utf8',timeout:4000,
+      });
+      if(p.status===0 && String(p.stdout||'').trim()==='PONG'){
+        redisReady=true;break;
+      }
+      await new Promise(r=>setTimeout(r,250));
+    }
+    pass('REAL_REDIS_RECOVERED',redisReady);
     const stopped=cp.spawnSync('docker',['stop',PG],{
       encoding:'utf8',timeout:25000,
     });
