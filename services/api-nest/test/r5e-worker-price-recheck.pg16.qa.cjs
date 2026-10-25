@@ -206,7 +206,8 @@ function pgExec(user,sql) {
   });
   if(x.error||x.status!==0) {
     const stderr=String(x.stderr||x.error||'');
-    if(stderr.includes('checkout_idempotency_conflict')) {
+    if(stderr.includes('checkout_idempotency_conflict') ||
+       stderr.includes('checkout_qa_price_forged')) {
       throw new R5DReservationQaPortError('conflict');
     }
     if(stderr.includes('checkout_catalog_revision_changed')) {
@@ -228,7 +229,8 @@ async function pgAsync(user,sql) {
     return String(r.stdout||'').trim();
   } catch(e) {
     const m=String(e.stderr||e.message||'');
-    if(m.includes('checkout_idempotency_conflict')) {
+    if(m.includes('checkout_idempotency_conflict') ||
+       m.includes('checkout_qa_price_forged')) {
       throw new R5DReservationQaPortError('conflict');
     }
     if(m.includes('checkout_catalog_revision_changed')) {
@@ -486,9 +488,13 @@ async function waitForPg(){
         literal(ISSUER)+","+literal(users.alice.userId)+","+
         literal(PARTNER_ID)+","+literal(mutation)+","+
         literal(fingerprint)+","+jexpr(forged)+",1)";
-      let denied=false;
-      try { pgExec('r5d_checkout_worker',sql); } catch { denied=true; }
-      pass(label,denied);
+      let exactPriceRejection=false;
+      try { pgExec('r5d_checkout_worker',sql); }
+      catch(e) {
+        exactPriceRejection=e instanceof R5DReservationQaPortError &&
+          e.kind==='conflict';
+      }
+      pass(label,exactPriceRejection);
     }
     maliciousAttempt('DIRECT_SQL_WORKER_FAKED_TOTAL_DENIED',
       'r5e_forged_total_123456',{...honest,total:1});
