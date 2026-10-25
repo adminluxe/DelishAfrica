@@ -1,0 +1,180 @@
+import {
+  BadRequestException,
+  ConflictException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { IdentityProofService } from '../identity-proof/identity-proof.service';
+import { ClientEnrollmentKeycloak } from './client-enrollment.keycloak';
+import {
+  ClientEnrollmentRepository,
+  type ClientEnrollmentReservation,
+} from './client-enrollment.repository';
+import {
+  enrollmentHmac,
+  enrollmentReadyForProduction,
+  clientEnrollmentQaConfigured,
+  clientEnrollmentQaEmailAllowed,
+  parseClientEnrollmentCommand,
+} from './client-enrollment.policy';
+
+@Injectable()
+export class ClientEnrollmentService {
+  private readonly qaAudit = new Logger('ClientEnrollmentQa');
+
+  constructor(
+    private readonly identityProof: IdentityProofService,
+    private readonly repository: ClientEnrollmentRepository,
+    private readonly keycloak: ClientEnrollmentKeycloak,
+  ) {}
+
+  readiness() {
+    return {
+      ok: true,
+      service: 'delishafrica-client-enrollment',
+      version: 'v1',
+      enabled: enrollmentReadyForProduction(process.env) &&
+        process.env.DA_CLIENT_ENROLLMENT_QA_ENABLED !== 'true',
+      rolePolicy: 'realm_role_client_only',
+      tokenPolicy: 'signed_sms_and_email_required',
+      replayPolicy: 'durable_postgres_single_use',
+      paymentAuthority: 'none',
+    };
+  }
+
+  async register(body: Record<string, unknown>, requesterKey: string) {
+    // Default OFF until PostgreSQL migration, a scoped service account,
+    // Keycloak e-mail recovery/branding and independent QA have all passed.
+    // A QA admission is a different, explicit gate. Enabling public
+    // enrollment and a QA cohort simultaneously is a configuration error.
+    const publicReady = enrollmentReadyForProduction(process.env) &&
+      process.env.DA_CLIENT_ENROLLMENT_QA_ENABLED !== 'true';
+    const qaReady = clientEnrollmentQaConfigured(process.env);
+    if (!publicReady && !qaReady) {
+      throw new ServiceUnavailableException({
+        ok: false,
+        code: 'client_enrollment_not_ready',
+        retryable: false,
+      });
+    }
+    const parsed = parseClientEnrollmentCommand(body);
+    if (!parsed) {
+      throw new BadRequestException({
+        ok: false,
+        code: 'client_enrollment_fields_invalid',
+      });
+    }
+    // Outside the small, time-limited HMAC allowlist the endpoint gives
+    // the same response as its default OFF state; no proof, DB or IAM I/O.
+    if (qaReady && !clientEnrollmentQaEmailAllowed(process.env, parsed.email)) {
+      throw new ServiceUnavailableException({
+        ok: false,
+        code: 'client_enrollment_not_ready',
+        retryable: false,
+      });
+    }
+
+    // Never accept proofs based on a local mobile badge or a client-provided
+    // 'verified' boolean. Re-validate exact recipient and Client role on the API.
+    const emailProof = this.identityProof.attest({
+      channel: 'email',
+      role: 'client',
+      destination: parsed.email,
+      proofToken: parsed.emailProofToken,
+    }, requesterKey);
+    const smsProof = this.identityProof.attest({
+      channel: 'sms',
+      role: 'client',
+      destination: parsed.phone,
+      proofToken: parsed.smsProofToken,
+    }, requesterKey);
+    if (emailProof.valid !== true || smsProof.valid !== true) {
+      throw new BadRequestException({
+        ok: false,
+        code: 'client_enrollment_proofs_invalid',
+      });
+    }
+
+    const key = String(process.env.DA_CLIENT_ENROLLMENT_HMAC_SECRET || '');
+    const reservation: ClientEnrollmentReservation = {
+      emailHash: enrollmentHmac(key, 'email', parsed.email),
+      phoneHash: enrollmentHmac(key, 'phone', parsed.phone),
+      requesterHash: enrollmentHmac(key, 'remote', requesterKey || 'unknown'),
+      requestHash: enrollmentHmac(key, 'request', parsed.requestId),
+      emailProofHash: enrollmentHmac(key, 'email-proof', parsed.emailProofToken),
+      smsProofHash: enrollmentHmac(key, 'sms-proof', parsed.smsProofToken),
+    };
+
+    let reserved: string | null;
+    try {
+      reserved = await this.repository.reserve(reservation);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'client_enrollment_rate_limit') {
+        throw new HttpException(
+          { ok: false, code: 'client_enrollment_please_wait' },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+      throw new ServiceUnavailableException({
+        ok: false,
+        code: 'client_enrollment_service_unavailable',
+      });
+    }
+    if (!reserved) {
+      // Identical response for replay, repeated email, phone or proof token.
+      // Do not expose whether an existing user account was found.
+      throw new ConflictException({
+        ok: false,
+        code: 'client_enrollment_already_requested',
+      });
+    }
+
+    // The PostgreSQL reservation is the durable audit record (HMAC-only).
+    // Application logs carry its request correlation hash, never PII,
+    // password, OTP, proof token, or Keycloak access token.
+    if (qaReady) this.qaAudit.log('qa_reserved request_hmac=' + reservation.requestHash);
+
+    let subjectId: string | null = null;
+    try {
+      // Stage a disabled Keycloak identity and verify its sole realm role.
+      subjectId = await this.keycloak.createClientIdentity({
+        email: parsed.email,
+        phone: parsed.phone,
+        firstName: parsed.firstName,
+        lastName: parsed.lastName,
+        password: parsed.password,
+      });
+      // Commit the unique, non-PII audit ledger BEFORE the user can sign in.
+      // A crash before activation leaves a disabled account, never an
+      // enabled-but-untracked Client identity.
+      await this.repository.complete(reserved, subjectId);
+      await this.keycloak.activateClientIdentity(subjectId);
+      if (qaReady) this.qaAudit.log('qa_completed request_hmac=' + reservation.requestHash);
+      return {
+        ok: true,
+        status: 'account_created',
+        next: 'secure_delishafrica_sign_in',
+        role: 'client',
+        paymentStarted: false,
+      };
+    } catch {
+      // If DB commit or Keycloak activation fails, fail closed. Never
+      // replay provisioning automatically for ambiguous partial outcomes.
+      if (subjectId) {
+        await this.keycloak.disableClientIdentity(subjectId).catch(() => undefined);
+      }
+      await this.repository.flagForReview(reserved).catch(() => undefined);
+      if (qaReady) this.qaAudit.warn('qa_pending_review request_hmac=' + reservation.requestHash);
+      // No raw database/Keycloak exception, provider URL, email or password
+      // must escape to the mobile app or into an application log.
+      throw new ServiceUnavailableException({
+        ok: false,
+        code: 'client_enrollment_pending_review',
+        retryable: false,
+      });
+    }
+  }
+}
