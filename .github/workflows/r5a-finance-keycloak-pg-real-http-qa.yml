@@ -1,0 +1,144 @@
+name: R5A - real Keycloak 26.8.1 + PG16 exact private Nest finance HTTP QA
+
+on:
+  push:
+    branches:
+      - qa/r5a-private-finance-http-contract-20261025
+    paths:
+      - '.github/workflows/r5a-finance-keycloak-pg-real-http-qa.yml'
+      - 'services/api-nest/test/r5a-finance-keycloak-pg-real-http.qa.cjs'
+      - 'services/api-nest/src/client-commerce/partner-finance-readonly.qa.controller.ts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-private-http:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    env:
+      TS_NODE_PROJECT: services/api-nest/tsconfig.json
+      QA_SYNTHETIC_ONLY: 'YES'
+    steps:
+      - name: Checkout exact review branch SHA
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Setup pinned Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Enable pnpm
+        run: corepack enable && corepack prepare pnpm@9.15.4 --activate
+      - name: Install only pinned finance and app workspaces
+        run: |
+          cat > pnpm-workspace.yaml <<'YAML'
+          packages:
+            - apps/client
+            - apps/merchant
+            - apps/courier
+            - services/api-nest
+            - packages/*
+          YAML
+          pnpm install --frozen-lockfile --ignore-scripts
+      - name: Verify source syntax, private AppModule and TypeScript
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node --check services/api-nest/test/r5a-finance-keycloak-pg-real-http.qa.cjs
+          test -z "$(grep -F 'PartnerFinanceReadonlyQaController' services/api-nest/src/app.module.ts || true)"
+          pnpm exec tsc --noEmit -p services/api-nest/tsconfig.json
+          echo "R5A_B_EXACT_CONTROLLER_NOT_MOUNTED=PASS"
+      - name: Run REAL Keycloak 26.8.1 to actual Nest HTTP to real PG16
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          KCNAME="pog-r5a-finance-kc-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          PGNAME="pog-r5a-finance-pg-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          VOLUME="pog-r5a-finance-data-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          ENVFILE="${RUNNER_TEMP}/r5a-finance-qa-${GITHUB_RUN_ID}.env"
+          cleanup() {
+            docker rm -f "$KCNAME" "$PGNAME" >/dev/null 2>&1 || true
+            docker volume rm "$VOLUME" >/dev/null 2>&1 || true
+            rm -f "$ENVFILE"
+            echo "R5A_B_REAL_EPHEMERAL_CLEANUP=COMPLETE"
+          }
+          trap cleanup EXIT
+          umask 077
+          node - "$ENVFILE" "$PGNAME" <<'NODE'
+          const fs=require('node:fs'),crypto=require('node:crypto');
+          const pass=crypto.randomBytes(32).toString('hex');
+          fs.writeFileSync(process.argv[2],[
+            'KC_BOOTSTRAP_ADMIN_USERNAME=qa_admin',
+            'KC_BOOTSTRAP_ADMIN_PASSWORD='+pass,
+            'QA_BOOTSTRAP_ADMIN_PASSWORD='+pass,
+            'R5A_QA_PG_CONTAINER='+process.argv[3],
+            'QA_KEYCLOAK_ORIGIN=http://127.0.0.1:18195',
+            'QA_SYNTHETIC_ONLY=YES',
+            'GITHUB_ACTIONS=true',
+            'NODE_ENV=test',''
+          ].join('\n'),{mode:0o600});
+          console.log('R5A_B_QA_PASSWORD_GENERATED_IN_RUNNER_NOT_PRINTED');
+          NODE
+          docker pull postgres:16 >/dev/null
+          docker pull quay.io/keycloak/keycloak:26.8.1 >/dev/null
+          docker volume create "$VOLUME" >/dev/null
+          docker run -d --name "$PGNAME" \
+            --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 128 --memory 768m \
+            --user 999:999 \
+            --mount "type=volume,src=$VOLUME,dst=/var/lib/postgresql/data" \
+            --tmpfs /var/run/postgresql:rw,nosuid,nodev,size=16m,uid=999,gid=999,mode=0775 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=16m,uid=999,gid=999,mode=1777 \
+            -e POSTGRES_USER=postgres -e POSTGRES_DB=r5a_finance_qa \
+            -e POSTGRES_HOST_AUTH_METHOD=trust \
+            -e PGDATA=/var/lib/postgresql/data/pgdata \
+            postgres:16 >/dev/null
+          echo "R5A_B_PG_NETWORK=NONE"
+          test -z "$(docker port "$PGNAME")"
+          echo "R5A_B_PG_PUBLISHED_PORTS=NONE"
+          ready=0
+          for i in $(seq 1 75); do
+            if docker exec "$PGNAME" psql -XAt -v ON_ERROR_STOP=1 \
+              -U postgres -d r5a_finance_qa -c 'SELECT 1' 2>/dev/null | grep -qx 1; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          test "$ready" = 1
+          echo "R5A_B_PG16_REAL_READY=YES"
+          docker run -d --name "$KCNAME" \
+            --network bridge -p 127.0.0.1:18195:18195 \
+            --user 1000:0 --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 320 --memory 3g \
+            --tmpfs /opt/keycloak/data:rw,nosuid,nodev,size=384m,uid=1000,gid=0,mode=0700 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=128m,uid=1000,gid=0,mode=1777 \
+            --env-file "$ENVFILE" \
+            quay.io/keycloak/keycloak:26.8.1 \
+            start-dev --http-port=18195 --http-host=0.0.0.0 \
+            --hostname=http://127.0.0.1:18195 >/dev/null
+          echo "R5A_B_KEYCLOAK_PUBLISHED_LOOPBACK_ONLY=YES"
+          ready=0
+          for i in $(seq 1 120); do
+            if curl -fsS --max-time 3 \
+              http://127.0.0.1:18195/realms/master/.well-known/openid-configuration \
+              -o /dev/null 2>/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          test "$ready" = 1
+          echo "R5A_B_KEYCLOAK_26_8_1_READY=YES"
+          set -a
+          source "$ENVFILE"
+          set +a
+          node -r ts-node/register/transpile-only \
+            services/api-nest/test/r5a-finance-keycloak-pg-real-http.qa.cjs
+          echo "R5A_B_EXACT_NEST_HTTP_REAL_KC_PG=PASS_QA"
+          echo "R5A_B_REAL_MONEY_RECONCILIATION=NOT_CERTIFIED"
+          echo "R5A_B_PUBLIC_APPMODULE=UNTOUCHED"
+          echo "R5A_B_FINANCE_LIVE=NO_GO"
+          echo "R5A_B_PAYOUT_LIVE=NO_GO"
