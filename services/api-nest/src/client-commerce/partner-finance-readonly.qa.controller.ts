@@ -10,13 +10,27 @@
  * No wallet writes, bank instructions, Stripe, payout, or admin credentials.
  */
 import {
-  Controller, Get, Header, Inject, Req, ServiceUnavailableException,
+  ConflictException, Controller, ForbiddenException, Get, Header, Inject,
+  Req, ServiceUnavailableException, UnauthorizedException,
 } from '@nestjs/common';
 import type { QaVerifiedWalletRead } from
   './merchant-courier-wallet-signed-session.pg-qa.bridge';
 
 export const FINANCE_READONLY_QA_PORT =
   Symbol('FINANCE_READONLY_QA_PORT');
+/**
+ * A PRIVATE trusted QA attestor may classify an already-verified denial.
+ * Never trust an HTTP-provided string, JWT claim or body as this error kind.
+ * Generic and unknown errors always fail closed as 503.
+ */
+export class FinanceReadonlyQaPortError extends Error {
+  constructor(
+    readonly kind: 'unauthenticated' | 'forbidden' | 'conflict' | 'unavailable',
+  ) {
+    super('finance_qa_port_denied');
+  }
+}
+
 export type FinanceReadonlyQaPort = Readonly<{
   readWallet: (
     authorization: unknown, limit?: number,
@@ -38,6 +52,27 @@ const deny = (): never => {
   throw new ServiceUnavailableException({
     ok: false, code: 'finance_not_certified_for_public_use',
   });
+};
+const typedDenial = (error: unknown): never => {
+  if (error instanceof FinanceReadonlyQaPortError) {
+    if (error.kind === 'unauthenticated') {
+      throw new UnauthorizedException({
+        ok: false, code: 'finance_qa_session_unverified',
+      });
+    }
+    if (error.kind === 'forbidden') {
+      throw new ForbiddenException({
+        ok: false, code: 'finance_qa_scope_denied',
+      });
+    }
+    if (error.kind === 'conflict') {
+      throw new ConflictException({
+        ok: false, code: 'finance_qa_identity_conflict',
+      });
+    }
+  }
+  // Do not leak detailed SQL, Keycloak, tenant or ledger error diagnostics.
+  return deny();
 };
 
 @Controller('qa-isolated/partner-finance/v1')
@@ -61,7 +96,9 @@ export class PartnerFinanceReadonlyQaController {
     const raw = request?.headers?.authorization;
     if (typeof raw !== 'string' || raw.length > 11000 ||
         !/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(raw)) {
-      return deny();
+      throw new UnauthorizedException({
+        ok: false, code: 'finance_qa_identity_required',
+      });
     }
     try {
       // The independent bridge verifies signatures/issuer/azp/audience,
@@ -94,8 +131,8 @@ export class PartnerFinanceReadonlyQaController {
         withdrawableMinor: 0 as const,
         payoutEnabled: false as const,
       };
-    } catch {
-      return deny();
+    } catch (error: unknown) {
+      return typedDenial(error);
     }
   }
 }
