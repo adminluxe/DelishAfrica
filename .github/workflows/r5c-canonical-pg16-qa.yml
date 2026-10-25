@@ -69,8 +69,8 @@ jobs:
             'mutation_r5c_012345','aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
             '{"total":4380,"currency":"eur","partnerSlug":"qa-partner","items":[{"sku":"rice","quantity":2}]}'::jsonb
           )->>'amount_minor')::bigint=4380 THEN 'R5C_SERVER_SNAPSHOT_SQL=PASS'
-          ELSE (1/0)::text END;
-          SELECT CASE WHEN count(*)=1 THEN 'R5C_ONE_OUTBOX=PASS' ELSE (1/0)::text END
+          ELSE 'FAIL' END;
+          SELECT CASE WHEN count(*)=1 THEN 'R5C_ONE_OUTBOX=PASS' ELSE 'FAIL' END
           FROM da_checkout_candidate.outbox;
           SELECT CASE WHEN
           (da_checkout_candidate.reserve_trusted(
@@ -78,17 +78,19 @@ jobs:
             'mutation_r5c_012345','aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
             '{"total":4380,"currency":"eur","partnerSlug":"qa-partner","items":[{"sku":"rice","quantity":2}]}'::jsonb
           )->>'amount_minor')::bigint=4380 THEN 'R5C_RETRY_SAME_MUTATION=PASS'
-          ELSE (1/0)::text END;
+          ELSE 'FAIL' END;
           SELECT CASE WHEN count(*)=1 THEN 'R5C_RETRY_ONE_RESERVATION=PASS'
-            ELSE (1/0)::text END FROM da_checkout_candidate.reservation;
+            ELSE 'FAIL' END FROM da_checkout_candidate.reservation;
           SELECT CASE WHEN EXISTS(
             SELECT 1 FROM da_checkout_candidate.reservation
             WHERE issuer='https://qa.invalid/realms/afritaste'
               AND subject='client-text-subject-1' AND partner_id='merchant-text-1'
-          ) THEN 'R5C_CANONICAL_TEXT_FOREIGN_KEYS=PASS' ELSE (1/0)::text END;
+          ) THEN 'R5C_CANONICAL_TEXT_FOREIGN_KEYS=PASS' ELSE 'FAIL' END;
           SQL
-          docker exec -i "$NAME" psql -XAt -v ON_ERROR_STOP=1 -U postgres -d r5c_qa < "${RUNNER_TEMP}/r5c-probes.sql" |
-            grep '^R5C_'
+          docker exec -i "$NAME" psql -XAt -v ON_ERROR_STOP=1 -U postgres -d r5c_qa < "${RUNNER_TEMP}/r5c-probes.sql" > "${RUNNER_TEMP}/r5c-results.txt"
+          if grep -qx 'FAIL' "${RUNNER_TEMP}/r5c-results.txt"; then echo 'R5C_ASSERTION=FAIL'; exit 1; fi
+          grep '^R5C_' "${RUNNER_TEMP}/r5c-results.txt"
+          test "$(grep -c '^R5C_' "${RUNNER_TEMP}/r5c-results.txt")" = 5
           echo R5C_DIRECT_SQL_PRIVILEGES=DENIED
           echo R5C_CANONICAL_PRODUCTION_MIGRATION=NOT_APPLIED
           echo R5C_REAL_PSP=NOT_RUN
