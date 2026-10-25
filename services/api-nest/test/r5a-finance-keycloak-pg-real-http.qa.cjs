@@ -154,7 +154,9 @@ async function realmSetup() {
     const email=username+'@qa.invalid';
     const tenant=role==='merchant'?'tenant-alpha':'tenant-beta';
     const created=await keycloak('POST','/admin/realms/'+REALM+'/users',{
-      username,email,enabled:true,emailVerified:true,
+      username,email,firstName:'QA',lastName:role==='merchant'?'Merchant':'Courier',
+      enabled:true,emailVerified:true,
+      requiredActions:[],
       attributes:{qa_tenant:[tenant]}
     },ADMIN);
     http('CREATE_SYNTHETIC_USER_'+role,created.status,201);
@@ -222,6 +224,14 @@ function pgSetup(details) {
 async function getJwt(d) {
   const t=await token({grant_type:'password',client_id:d.clientId,
     username:d.username,password:d.password,scope:'openid'});
+  if(t.status!==200) {
+    const reason=String(t.data?.error||'unknown').replace(/[^a-z0-9_]/gi,'_');
+    const desc=String(t.data?.error_description||'').toLowerCase();
+    const category=desc.includes('not fully set up')?'REQUIRED_ACTION_PENDING':
+      desc.includes('not allowed')?'GRANT_NOT_ALLOWED':
+      desc.includes('invalid user')?'INVALID_USER_CREDENTIALS':'OTHER';
+    console.log('R5A_B_DIAG_GRANT_REASON='+reason+'_CATEGORY_'+category);
+  }
   http('KEYCLOAK_REAL_PASSWORD_GRANT_'+d.username,t.status,200);
   mandatory('ISSUED_SIGNED_JWT_'+d.username,
     typeof t.data?.access_token==='string'&&
