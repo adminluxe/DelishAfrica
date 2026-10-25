@@ -83,3 +83,47 @@ test('rate-limit identifier is deterministic across spoofed-header variations', 
   assert.equal(trustedRequesterPeer(fakeRequest(headersA, '10.0.0.19')),
     trustedRequesterPeer(fakeRequest(headersB, '10.0.0.19')));
 });
+
+
+test('default mode ignores X-Real-IP even when the socket is loopback', () => {
+  const old=process.env.DA_CLIENT_ENROLLMENT_TRUSTED_INGRESS_MODE;
+  try {
+    delete process.env.DA_CLIENT_ENROLLMENT_TRUSTED_INGRESS_MODE;
+    assert.equal(trustedRequesterPeer(fakeRequest({
+      'x-real-ip':'198.51.100.80',
+      'x-forwarded-for':'198.51.100.81',
+    },'127.0.0.1')),'ip:127.0.0.1');
+  } finally {
+    if(old===undefined) delete process.env.DA_CLIENT_ENROLLMENT_TRUSTED_INGRESS_MODE;
+    else process.env.DA_CLIENT_ENROLLMENT_TRUSTED_INGRESS_MODE=old;
+  }
+});
+
+test('reviewed Nginx real-IP mode trusts only one canonical X-Real-IP on loopback', () => {
+  const old=process.env.DA_CLIENT_ENROLLMENT_TRUSTED_INGRESS_MODE;
+  process.env.DA_CLIENT_ENROLLMENT_TRUSTED_INGRESS_MODE='NGINX_REALIP_ON_LOOPBACK_VERIFIED';
+  try {
+    const fake=fakeRequest({
+      'x-real-ip':'198.51.100.80',
+      'cf-connecting-ip':'203.0.113.92',
+      'x-forwarded-for':'8.8.8.8, 9.9.9.9',
+    },'127.0.0.1');
+    assert.equal(trustedRequesterPeer(fake),'ip:198.51.100.80');
+    assert.equal(trustedRequesterPeer({...fake,socket:{remoteAddress:'::ffff:127.0.0.1'}}),
+      'ip:198.51.100.80');
+    assert.equal(trustedRequesterPeer(fakeRequest(fake.headers,'198.51.100.41')),
+      'ip:198.51.100.41','non-loopback cannot forge proxy client identity');
+    assert.equal(trustedRequesterPeer(fakeRequest({
+      ...fake.headers,'x-real-ip':'198.51.100.1, 203.0.113.2',
+    },'127.0.0.1')),'ip:unknown','chain cannot be parsed');
+    assert.equal(trustedRequesterPeer(fakeRequest({
+      'cf-connecting-ip':'198.51.100.80','x-forwarded-for':'198.51.100.80',
+    },'127.0.0.1')),'ip:unknown','missing trusted header fails closed');
+    assert.equal(trustedRequesterPeer(fakeRequest({
+      'x-real-ip':['198.51.100.1','198.51.100.2'],
+    },'127.0.0.1')),'ip:unknown','multi-value header fails closed');
+  } finally {
+    if(old===undefined) delete process.env.DA_CLIENT_ENROLLMENT_TRUSTED_INGRESS_MODE;
+    else process.env.DA_CLIENT_ENROLLMENT_TRUSTED_INGRESS_MODE=old;
+  }
+});
