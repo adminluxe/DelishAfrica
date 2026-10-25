@@ -1,0 +1,190 @@
+name: R5E - independent worker SQL price and delivery forgery denials PG16 QA
+on:
+  push:
+    branches: [qa/r5e-db-quote-revalidation-20261025]
+    paths:
+      - '.github/workflows/r5e-worker-price-recheck-qa.yml'
+      - 'services/api-nest/test/r5e-worker-price-recheck.pg16.qa.cjs'
+      - 'services/api-nest/src/client-commerce/r5d-canonical-quote-reservation.qa.controller.ts'
+      - 'services/api-nest/migrations/checkout-candidate/20261025_r5d_revision_guard.qa.sql'
+      - 'services/api-nest/migrations/checkout-candidate/20261025_r5e_price_recheck.qa.sql'
+      - 'services/api-nest/src/catalog-foundation/catalog-foundation.repository.ts'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-client-canonical-quote-pg16:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    env:
+      NODE_ENV: test
+      QA_SYNTHETIC_ONLY: 'YES'
+      TS_NODE_PROJECT: services/api-nest/tsconfig.json
+    steps:
+      - name: Checkout exact review candidate SHA
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Exact policy, TS, safety and frozen dependencies
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          corepack enable && corepack prepare pnpm@9.15.4 --activate
+          cat > pnpm-workspace.yaml <<'WS'
+          packages:
+            - apps/client
+            - apps/merchant
+            - apps/courier
+            - services/api-nest
+            - packages/*
+          WS
+          pnpm install --frozen-lockfile --ignore-scripts
+          node --check services/api-nest/test/r5e-worker-price-recheck.pg16.qa.cjs
+          pnpm exec tsc --noEmit -p services/api-nest/tsconfig.json
+          node - <<'NODE'
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          const read=p=>fs.readFileSync('services/api-nest/'+p,'utf8');
+          assert(!read('src/app.module.ts').includes('R5DCanonicalQuoteReservationQaController'));
+          const ctl=read('src/client-commerce/r5d-canonical-quote-reservation.qa.controller.ts');
+          assert(ctl.includes('CatalogOrderPolicyService'));
+          assert(ctl.includes('resolvePrincipalFromAuthorization'));
+          assert(ctl.includes('readCommitted('));
+          const payments=read('src/payments/payments.service.ts');
+          const start=payments.indexOf('  async createPaymentIntent(');
+          const stop=payments.indexOf('  async verifyPaidOrder(',start);
+          assert(start>=0&&stop>start&&
+            payments.slice(start,stop).includes('this.assertDurableCheckoutAuthority();'));
+          assert(payments.includes('checkoutIntentCreationEnabled: false'));
+          console.log('R5D_EXACT_CANONICAL_POLICY_AND_PRIVATE_HTTP=PASS');
+          console.log('R5D_STRIPE_PR48_HTTP503_LOCK=PASS');
+          NODE
+          # This pinned pg runtime exists only in the disposable runner.
+          npm install --prefix services/api-nest/.runtime-vendor/pg-runtime \
+            --no-save --no-audit --no-fund --ignore-scripts --package-lock=false \
+            pg@8.16.3 >/dev/null
+          node - <<'NODE'
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          const p=JSON.parse(fs.readFileSync(
+            'services/api-nest/.runtime-vendor/pg-runtime/node_modules/pg/package.json'));
+          assert.equal(p.version,'8.16.3');
+          console.log('R5D_PINNED_PG_RUNTIME_QA_ONLY=PASS');
+          NODE
+      - name: Real Keycloak26, Redis, readonly CatalogFoundationRepository, PG16
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PGNAME="pog-r5d-client-pg-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          RDNAME="pog-r5d-client-rd-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          KCNAME="pog-r5d-client-kc-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          VOLUME="pog-r5d-client-data-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          ENVFILE="$RUNNER_TEMP/r5d-$GITHUB_RUN_ID.env"
+          CONFIGFILE="services/api-nest/.runtime-config/keycloak-trusted-identity.json"
+          cleanup() {
+            docker rm -f "$KCNAME" "$RDNAME" "$PGNAME" >/dev/null 2>&1 || true
+            docker volume rm "$VOLUME" >/dev/null 2>&1 || true
+            rm -f "$ENVFILE" "$CONFIGFILE"
+            echo R5E_QA_CONTAINERS_VOLUME_CONFIG_CLEANUP=COMPLETE
+          }
+          trap cleanup EXIT
+          umask 077
+          test ! -e "$CONFIGFILE"
+          node - "$ENVFILE" "$PGNAME" "$RDNAME" <<'NODE'
+          const fs=require('node:fs'),crypto=require('node:crypto');
+          const key=()=>crypto.randomBytes(32).toString('hex');
+          const pass=key(),admin=key(),read=key(),secret=key();
+          fs.writeFileSync(process.argv[2],[
+            'POSTGRES_PASSWORD='+pass,
+            'KC_BOOTSTRAP_ADMIN_USERNAME=qa_admin',
+            'KC_BOOTSTRAP_ADMIN_PASSWORD='+admin,
+            'QA_BOOTSTRAP_ADMIN_PASSWORD='+admin,
+            'R5D_CATALOG_READ_PASSWORD='+read,
+            'DATABASE_URL=postgresql://r5d_catalog_reader:'+read+'@127.0.0.1:15437/r5d_qa',
+            'R5D_QA_PG_CONTAINER='+process.argv[3],
+            'R5D_QA_REDIS_CONTAINER='+process.argv[4],
+            'QA_KEYCLOAK_ORIGIN=http://127.0.0.1:18195',
+            'REDIS_URL=redis://127.0.0.1:16379',
+            'DA_AUTH_SECRET='+secret,
+            'QA_SYNTHETIC_ONLY=YES',
+            'GITHUB_ACTIONS=true',
+            'NODE_ENV=test',''
+          ].join('\n'),{mode:0o600});
+          console.log('R5D_QA_SECRETS_GENERATED_NOT_PRINTED');
+          NODE
+          set -a
+          source "$ENVFILE"
+          set +a
+          docker pull postgres:16 >/dev/null
+          docker pull redis:7-alpine >/dev/null
+          docker pull quay.io/keycloak/keycloak:26.8.1 >/dev/null
+          docker volume create "$VOLUME" >/dev/null
+          docker run -d --name "$PGNAME" \
+            --network bridge -p 127.0.0.1:15437:5432 \
+            --read-only --cap-drop ALL --security-opt no-new-privileges \
+            --user 999:999 --memory 768m --pids-limit 128 \
+            --mount "type=volume,src=$VOLUME,dst=/var/lib/postgresql/data" \
+            --tmpfs /var/run/postgresql:rw,nosuid,nodev,size=16m,uid=999,gid=999,mode=0775 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=16m,uid=999,gid=999,mode=1777 \
+            -e POSTGRES_USER=postgres -e POSTGRES_DB=r5d_qa \
+            -e POSTGRES_PASSWORD -e PGDATA=/var/lib/postgresql/data/pgdata \
+            postgres:16 >/dev/null
+          docker port "$PGNAME" 5432/tcp | grep -Fx '127.0.0.1:15437'
+          echo R5D_POSTGRES_PORT_LOOPBACK_ONLY=PASS
+          docker run -d --name "$RDNAME" \
+            --network bridge -p 127.0.0.1:16379:6379 \
+            --user 999:999 --read-only --cap-drop ALL --security-opt no-new-privileges \
+            --memory 256m --pids-limit 96 \
+            --tmpfs /data:rw,nosuid,nodev,size=16m,uid=999,gid=999,mode=0700 \
+            redis:7-alpine redis-server --save "" --appendonly no --protected-mode no >/dev/null
+          echo R5D_REDIS_PORT_LOOPBACK_ONLY=PASS
+          docker run -d --name "$KCNAME" \
+            --network bridge -p 127.0.0.1:18195:18195 \
+            --user 1000:0 --cap-drop ALL --security-opt no-new-privileges \
+            --pids-limit 320 --memory 3g \
+            --tmpfs /opt/keycloak/data:rw,nosuid,nodev,size=384m,uid=1000,gid=0,mode=0700 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=128m,uid=1000,gid=0,mode=1777 \
+            -e KC_BOOTSTRAP_ADMIN_USERNAME -e KC_BOOTSTRAP_ADMIN_PASSWORD \
+            quay.io/keycloak/keycloak:26.8.1 \
+            start-dev --http-port=18195 --http-host=0.0.0.0 \
+            --hostname=http://127.0.0.1:18195 >/dev/null
+          echo R5D_KEYCLOAK_PORT_LOOPBACK_ONLY=PASS
+          ready=0
+          for i in $(seq 1 90); do
+            if docker exec "$PGNAME" psql -XAt -U postgres -d r5d_qa -c 'SELECT 1' 2>/dev/null | grep -qx 1; then
+              ready=1; break
+            fi
+            sleep 1
+          done
+          test "$ready" = 1
+          echo R5D_POSTGRES16_REAL_READY=PASS
+          ready=0
+          for i in $(seq 1 40); do
+            if docker exec "$RDNAME" redis-cli ping 2>/dev/null | grep -qx PONG; then
+              ready=1; break
+            fi
+            sleep 1
+          done
+          test "$ready" = 1
+          echo R5D_REDIS_REAL_READY=PASS
+          ready=0
+          for i in $(seq 1 120); do
+            if curl -fsS --max-time 3 \
+              http://127.0.0.1:18195/realms/master/.well-known/openid-configuration \
+              -o /dev/null 2>/dev/null; then
+              ready=1; break
+            fi
+            sleep 2
+          done
+          test "$ready" = 1
+          echo R5D_KEYCLOAK26_REAL_READY=PASS
+          node -r ts-node/register/transpile-only \
+            services/api-nest/test/r5e-worker-price-recheck.pg16.qa.cjs
+          echo R5E_EXACT_NEST_POLICY_REAL_KEYCLOAK_REDIS_PG16_REVALIDATED=PASS_QA
+          echo R5E_CANONICAL_PRODUCTION_MIGRATION=NOT_APPLIED
+          echo R5E_STRIPE_TEST=NOT_EXECUTED
+          echo R5E_FGAP_GLOBAL=FAIL_UNWAIVED
+          echo R5E_RELEASE=NO_GO
