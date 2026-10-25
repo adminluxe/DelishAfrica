@@ -28,6 +28,7 @@ type PoolClient = {
 };
 
 type PoolLike = {
+  on(event: 'error', listener: (error: Error) => void): void;
   connect(): Promise<PoolClient>;
   query<T extends QueryResultRow = QueryResultRow>(
     text: string,
@@ -69,6 +70,18 @@ export class CatalogFoundationRepository implements OnModuleDestroy {
       idleTimeoutMillis: 30000,
       allowExitOnIdle: false,
       application_name: 'delishafrica-catalog-foundation-34b3',
+    });
+
+    // PostgreSQL may terminate an *idle* pool client during restart or
+    // failover. Without an error listener, pg Pool emits an unhandled
+    // EventEmitter 'error' and crashes the NestJS process. Fail closed
+    // instead: revoke catalogue readiness until a controlled re-init.
+    // Do not log connection strings, credentials, or raw SQL errors.
+    pool.on('error', (error: Error) => {
+      if (this.pool === pool) {
+        this.ready = false;
+        this.lastError = this.sanitizeError(error);
+      }
     });
 
     let client: PoolClient | null = null;
