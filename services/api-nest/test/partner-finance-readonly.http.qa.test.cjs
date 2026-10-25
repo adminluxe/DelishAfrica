@@ -53,8 +53,11 @@ test('P0 authenticated finance presentation: no leak, no payout, production deni
       redirect:'manual',
     });
     let response=await query();
-    assert.equal(response.status,503);
+    assert.equal(response.status,401,'missing JWT is unauthenticated, never a synthetic wallet status');
     assert.equal(reads,0,'no SQL attestor call before authorization shape');
+    response=await query('Bearer broken.token.value');
+    assert.equal(response.status,503,'properly shaped but unverified JWT is rejected by trusted port');
+    assert.equal(reads,1,'trusted port receives syntactically plausible JWT only');
     response=await query('Bearer signed.qa.jwt');
     assert.equal(response.status,200);
     assert.match(response.headers.get('cache-control')||'',/no-store/);
