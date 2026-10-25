@@ -104,6 +104,18 @@ async function realmSetup() {
     http('LOOKUP_ROLE_'+role,result.status,200);
     roles[role]=result.data;
   }
+  // Tenant authority is a PRIVILEGED ADMIN-ASSIGNED GROUP. Keycloak 26.8
+  // intentionally ignores unmanaged user attributes by default; do not
+  // globally loosen user-profile policy just to inject a tenant claim.
+  const tenantGroups={};
+  for(const groupName of ['tenant-alpha','tenant-beta']) {
+    const createdGroup=await keycloak('POST','/admin/realms/'+REALM+'/groups',
+      {name:groupName},ADMIN);
+    http('CREATE_PRIVILEGED_TENANT_GROUP_'+groupName,createdGroup.status,201);
+    const groupId=String(createdGroup.location||'').split('/').pop();
+    mandatory('PRIVILEGED_TENANT_GROUP_UUID_'+groupName,UUID.test(groupId));
+    tenantGroups[groupName]=groupId;
+  }
   const details={};
   const appNames={merchant:'r5a-merchant-qa-client',courier:'r5a-courier-qa-client'};
   for(const role of ['merchant','courier']) {
@@ -131,16 +143,14 @@ async function realmSetup() {
         }
       },
       {
-        name:'qa_r5a_tenant_'+role,protocol:'openid-connect',
-        protocolMapper:'oidc-usermodel-attribute-mapper',consentRequired:false,
+        name:'qa_r5a_tenant_group_'+role,protocol:'openid-connect',
+        protocolMapper:'oidc-group-membership-mapper',consentRequired:false,
         config:{
-          'user.attribute':'qa_tenant',
-          'claim.name':'qa_tenant',
-          'jsonType.label':'String',
+          'claim.name':'qa_tenant_groups',
+          'full.path':'false',
           'access.token.claim':'true',
           'id.token.claim':'false',
-          'userinfo.token.claim':'false',
-          'multivalued':'false'
+          'userinfo.token.claim':'false'
         }
       }
     ];
@@ -156,8 +166,7 @@ async function realmSetup() {
     const created=await keycloak('POST','/admin/realms/'+REALM+'/users',{
       username,email,firstName:'QA',lastName:role==='merchant'?'Merchant':'Courier',
       enabled:true,emailVerified:true,
-      requiredActions:[],
-      attributes:{qa_tenant:[tenant]}
+      requiredActions:[]
     },ADMIN);
     http('CREATE_SYNTHETIC_USER_'+role,created.status,201);
     const userId=String(created.location||'').split('/').pop();
@@ -168,6 +177,15 @@ async function realmSetup() {
     http('GRANT_ONLY_REALM_ROLE_'+role,
       (await keycloak('POST','/admin/realms/'+REALM+'/users/'+userId+
         '/role-mappings/realm',[roles[role]],ADMIN)).status,204);
+    http('ADMIN_ASSIGN_SIGNED_TENANT_GROUP_'+role,
+      (await keycloak('PUT','/admin/realms/'+REALM+'/users/'+userId+
+        '/groups/'+tenantGroups[tenant],undefined,ADMIN)).status,204);
+    const memberships=await keycloak('GET','/admin/realms/'+REALM+
+      '/users/'+userId+'/groups',undefined,ADMIN);
+    http('READ_PRIVILEGED_TENANT_GROUP_'+role,memberships.status,200);
+    mandatory('EXACTLY_ONE_TENANT_GROUP_'+role,
+      memberships.data.length===1 &&
+      memberships.data[0].id===tenantGroups[tenant]);
     details[role]={clientId,username,password,userId,tenant,email};
   }
   http('CREATE_NON_ADMIN_INTROSPECTOR',
@@ -273,7 +291,7 @@ async function trustedJwt(jwt) {
     'MERCHANT_'+tokenRoles.includes('merchant')+
     '_COURIER_'+tokenRoles.includes('courier')+
     '_AUD_BOUND_'+(Array.isArray(probeAudience)&&probeAudience.includes(p.azp))+
-    '_TENANT_PRESENT_'+(typeof p.qa_tenant==='string'));
+    '_SIGNED_TENANT_GROUP_PRESENT_'+(Array.isArray(p.qa_tenant_groups)&&p.qa_tenant_groups.length===1));
   const role=p.realm_access?.roles?.includes('merchant')?'merchant':
     p.realm_access?.roles?.includes('courier')?'courier':null;
   if(!role || (p.realm_access.roles.includes('merchant') &&
@@ -286,10 +304,12 @@ async function trustedJwt(jwt) {
       !aud.includes(requiredClient)) {
     throw new FinanceReadonlyQaPortError('unauthenticated');
   }
-  if(!safeTenant.test(p.qa_tenant||'')) {
+  const trustedGroups=p.qa_tenant_groups;
+  if(!Array.isArray(trustedGroups) || trustedGroups.length!==1 ||
+    !safeTenant.test(trustedGroups[0])) {
     throw new FinanceReadonlyQaPortError('forbidden');
   }
-  return {claim:p,role};
+  return {claim:p,role,tenant:trustedGroups[0]};
 }
 function financialReader(introspector) {
   return {
@@ -297,7 +317,7 @@ function financialReader(introspector) {
       if(typeof authorization!=='string'||!SHAPE.test(authorization) ||
         limit!==20)throw new FinanceReadonlyQaPortError('unauthenticated');
       const jwt=authorization.match(SHAPE)[1];
-      const {claim,role}=await trustedJwt(jwt);
+      const {claim,role,tenant}=await trustedJwt(jwt);
       const post=new URLSearchParams({
         client_id:'r5a-private-introspector',
         client_secret:introspector,
@@ -328,7 +348,7 @@ function financialReader(introspector) {
         row=raw?JSON.parse(raw):null;
       }catch{throw new FinanceReadonlyQaPortError('unavailable')}
       if(!row || row.issuer!==claim.iss || row.role!==role ||
-        row.tenant!==claim.qa_tenant) {
+        row.tenant!==tenant) {
         throw new FinanceReadonlyQaPortError('forbidden');
       }
       if(row.state==='conflict')throw new FinanceReadonlyQaPortError('conflict');
@@ -365,10 +385,10 @@ async function run(){
     const tokenCourier=await getJwt(details.courier);
     const m=await trustedJwt(tokenMerchant);
     mandatory('MERCHANT_REAL_JWT_SIGNED_ROLE',m.role==='merchant' &&
-      m.claim.qa_tenant==='tenant-alpha');
+      m.tenant==='tenant-alpha');
     const c=await trustedJwt(tokenCourier);
     mandatory('COURIER_REAL_JWT_SIGNED_ROLE',c.role==='courier' &&
-      c.claim.qa_tenant==='tenant-beta');
+      c.tenant==='tenant-beta');
     const reader=financialReader(introspector);
     const mod=await Test.createTestingModule({
       controllers:[PartnerFinanceReadonlyQaController],
