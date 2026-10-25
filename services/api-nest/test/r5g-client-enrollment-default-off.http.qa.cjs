@@ -101,6 +101,48 @@ async function run() {
      trustedRequesterPeer(maliciousRequest)==='ip:198.51.100.41');
   ok('IPV6_PEER_STABLE',
      trustedRequesterPeer({socket:{remoteAddress:'2001:db8::1'}})==='ip:2001:db8::1');
+  // Simulate pg.Pool's idle-client error without connecting to a database.
+  // The real R5D catalogue lab exposed an unhandled EventEmitter error;
+  // this enrollment repository must have its own independent handler.
+  const Module=require('node:module');
+  const originalLoad=Module._load;
+  const originalDatabase=process.env.DATABASE_URL;
+  const vendorPath=path.resolve(ROOT,'.runtime-vendor/pg-runtime/node_modules/pg');
+  let idleErrorListener=null;
+  let unexpectedSQL=0;
+  let poolClosed=false;
+  class FakePool {
+    on(event,listener) {
+      if(event==='error') idleErrorListener=listener;
+    }
+    async connect() {unexpectedSQL++;throw Error('qa_mock_no_pg');}
+    async query() {unexpectedSQL++;throw Error('qa_mock_no_pg');}
+    async end() {poolClosed=true;}
+  }
+  try {
+    Module._load=function(request,parent,isMain) {
+      if(request===vendorPath) return {Pool:FakePool};
+      return originalLoad.apply(this,arguments);
+    };
+    process.env.DATABASE_URL='postgresql://qa.invalid/isolated';
+    const subject=new ClientEnrollmentRepository();
+    const testPool=subject.connection();
+    ok('PG_IDLE_ERROR_EVENT_LISTENER_INSTALLED',
+       Boolean(testPool) && typeof idleErrorListener==='function');
+    idleErrorListener(new Error('qa_database_restart'));
+    let outageCode='';
+    try {subject.connection();}
+    catch(e) {outageCode=String(e?.message||'');}
+    ok('PG_IDLE_ERROR_CAUSES_FAIL_CLOSED_NEXT_REQUEST',
+       outageCode==='client_enrollment_database_unavailable');
+    await subject.onModuleDestroy();
+    ok('PG_IDLE_FAILED_POOL_CLEANUP_NO_SQL',
+       poolClosed && unexpectedSQL===0);
+  } finally {
+    Module._load=originalLoad;
+    if(originalDatabase===undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL=originalDatabase;
+  }
   const calls=[];
   const identityProof={
     attest:never('PROOF_ATTEST',calls),
