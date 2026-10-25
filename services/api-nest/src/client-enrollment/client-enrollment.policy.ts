@@ -65,5 +65,8 @@ export function enrollmentReadyForProduction(env: NodeJS.ProcessEnv): boolean {
     // Independent human-reviewed gates: successful password recovery delivery
     // and verified *negative* FGAP tests, not merely a healthy OIDC issuer.
     env.DA_CLIENT_ENROLLMENT_RECOVERY_GATE === 'SMTP_RESET_TESTED' &&
-    env.DA_CLIENT_ENROLLMENT_AUTHZ_GATE === 'FGAP_NEGATIVE_TESTS_PASSED';
+    env.DA_CLIENT_ENROLLMENT_AUTHZ_GATE === 'FGAP_NEGATIVE_TESTS_PASSED' &&
+    // Only the reviewed Nginx/Cloudflare X-Real-IP ingress is eligible;
+    // direct socket mode would collapse public clients into one rate-limit key.
+    env.DA_CLIENT_ENROLLMENT_TRUSTED_INGRESS_MODE === 'NGINX_REALIP_ON_LOOPBACK_VERIFIED';
 }
