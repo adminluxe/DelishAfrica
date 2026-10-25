@@ -472,3 +472,63 @@ test('six concurrent distinct Client reservations share one trusted-origin quota
     r.reason?.message === 'client_enrollment_rate_limit').length, 1);
   assert.equal(committed.length, 5);
 });
+
+
+test('R5Y QA cohort refuses unknown emails before proof, database or IAM side effects', async () => {
+  await withEnrollmentFlags(async () => {
+    const qaKeys = [
+      'DA_CLIENT_ENROLLMENT_ENABLED', 'DA_CLIENT_ENROLLMENT_SECURITY_GATE',
+      'DA_CLIENT_ENROLLMENT_QA_ENABLED', 'DA_CLIENT_ENROLLMENT_QA_MODE',
+      'DA_CLIENT_ENROLLMENT_QA_APPROVAL', 'DA_CLIENT_ENROLLMENT_QA_EXPIRES_UNIX',
+      'DA_CLIENT_ENROLLMENT_QA_EMAIL_HMACS',
+    ];
+    const before = qaKeys.map((key) => process.env[key]);
+    const qaValues = {
+      DA_CLIENT_ENROLLMENT_ENABLED: 'false',
+      DA_CLIENT_ENROLLMENT_SECURITY_GATE: 'QA_SCOPED_APPROVED',
+      DA_CLIENT_ENROLLMENT_QA_ENABLED: 'true',
+      DA_CLIENT_ENROLLMENT_QA_MODE: 'SCOPED_DEVICE_QA',
+      DA_CLIENT_ENROLLMENT_QA_APPROVAL: 'HUMAN_APPROVED_QA_ONLY',
+      DA_CLIENT_ENROLLMENT_QA_EXPIRES_UNIX: String(Math.floor(Date.now() / 1000) + 600),
+      DA_CLIENT_ENROLLMENT_QA_EMAIL_HMACS:
+        enrollmentHmac(process.env.DA_CLIENT_ENROLLMENT_HMAC_SECRET, 'qa-email', 'test@example.org'),
+    };
+    Object.assign(process.env, qaValues);
+    const calls = [];
+    const proof = { attest: () => { calls.push('proof'); return { valid: true }; } };
+    const repo = {
+      reserve: async () => { calls.push('db_reserve'); return oid; },
+      complete: async () => { calls.push('db_ready'); },
+      flagForReview: async () => { calls.push('db_review'); },
+    };
+    const kc = {
+      createClientIdentity: async () => { calls.push('identity_staged'); return oid; },
+      activateClientIdentity: async () => { calls.push('identity_activated'); },
+      disableClientIdentity: async () => { calls.push('identity_disabled'); },
+    };
+    try {
+      const service = new ClientEnrollmentService(proof, repo, kc);
+      assert.equal(service.readiness().enabled, false, 'no public signup even during QA');
+      await assert.rejects(
+        service.register({ ...valid, email: 'outsider@example.org' }, 'trusted-peer'),
+        /Service Unavailable|ServiceUnavailableException|503|client_enrollment_not_ready/,
+      );
+      assert.deepEqual(calls, [], 'outside cohort never reaches email/SMS proof, DB or Keycloak');
+      const created = await service.register(valid, 'trusted-peer');
+      assert.equal(created.status, 'account_created');
+      assert.equal(created.role, 'client');
+      assert.equal(created.paymentStarted, false);
+      assert.deepEqual(calls, [
+        'proof', 'proof', 'db_reserve', 'identity_staged', 'db_ready', 'identity_activated',
+      ]);
+    } finally {
+      qaKeys.forEach((key, i) => {
+        if (before[i] === undefined) delete process.env[key];
+        else process.env[key] = before[i];
+      });
+    }
+  });
+});
+
+// Keep the scoped, time-expiring cohort suite in the existing enforced CI job.
+require('./client-enrollment-qa-cohort.test.cjs');

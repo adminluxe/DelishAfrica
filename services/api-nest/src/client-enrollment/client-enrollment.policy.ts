@@ -1,4 +1,4 @@
-import { createHmac } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 
 export type ClientEnrollmentCommand = {
   email: string;
@@ -69,4 +69,74 @@ export function enrollmentReadyForProduction(env: NodeJS.ProcessEnv): boolean {
     // Only the reviewed Nginx/Cloudflare X-Real-IP ingress is eligible;
     // direct socket mode would collapse public clients into one rate-limit key.
     env.DA_CLIENT_ENROLLMENT_TRUSTED_INGRESS_MODE === 'NGINX_REALIP_ON_LOOPBACK_VERIFIED';
+}
+
+// PRIVATE QA COHORT. Default OFF; no unscoped public enrollment may be
+// enabled through this path. All upstream recovery, FGAP, DB and trusted-ingress
+// gates remain mandatory. The operator provides only purpose-separated HMACs
+// of explicitly authorized, verified test email addresses (never raw emails).
+const QA_HMAC = /^[0-9a-f]{64}$/;
+const QA_MAX_EMAILS = 5;
+const QA_MAX_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function qaHashes(env: NodeJS.ProcessEnv): string[] | null {
+  const raw = env.DA_CLIENT_ENROLLMENT_QA_EMAIL_HMACS;
+  if (!raw || raw.length > QA_MAX_EMAILS * 65) return null;
+  const hashes = raw.split(',');
+  if (
+    hashes.length < 1 || hashes.length > QA_MAX_EMAILS ||
+    hashes.some((hash) => !QA_HMAC.test(hash)) ||
+    new Set(hashes).size !== hashes.length
+  ) return null;
+  return hashes;
+}
+
+export function clientEnrollmentQaConfigured(
+  env: NodeJS.ProcessEnv,
+  nowMs: number = Date.now(),
+): boolean {
+  if (
+    env.DA_CLIENT_ENROLLMENT_ENABLED !== 'false' ||
+    env.DA_CLIENT_ENROLLMENT_QA_ENABLED !== 'true' ||
+    env.DA_CLIENT_ENROLLMENT_QA_MODE !== 'SCOPED_DEVICE_QA' ||
+    env.DA_CLIENT_ENROLLMENT_SECURITY_GATE !== 'QA_SCOPED_APPROVED' ||
+    env.DA_CLIENT_ENROLLMENT_QA_APPROVAL !== 'HUMAN_APPROVED_QA_ONLY'
+  ) return false;
+  if (!Number.isSafeInteger(nowMs) || nowMs < 0) return false;
+  const expiryText = env.DA_CLIENT_ENROLLMENT_QA_EXPIRES_UNIX || '';
+  if (!/^\d{10}$/.test(expiryText)) return false;
+  const expiryMs = Number(expiryText) * 1000;
+  if (expiryMs <= nowMs || expiryMs > nowMs + QA_MAX_WINDOW_MS) return false;
+  if (!qaHashes(env)) return false;
+
+  // Reuse all substantive reviewed backend gates. Only the explicit
+  // *public-enable* switch and production approval are replaced with
+  // separate, QA-specific authorization above; never bypass recovery/FGAP.
+  return enrollmentReadyForProduction({
+    ...env,
+    DA_CLIENT_ENROLLMENT_ENABLED: 'true',
+    DA_CLIENT_ENROLLMENT_SECURITY_GATE: 'APPROVED_AFTER_REVIEW',
+  });
+}
+
+export function clientEnrollmentQaEmailAllowed(
+  env: NodeJS.ProcessEnv,
+  normalizedEmail: string,
+  nowMs: number = Date.now(),
+): boolean {
+  if (!clientEnrollmentQaConfigured(env, nowMs)) return false;
+  if (typeof normalizedEmail !== 'string' || !EMAIL.test(normalizedEmail) ||
+      normalizedEmail !== normalizedEmail.trim().toLowerCase()) return false;
+  const hashes = qaHashes(env);
+  if (!hashes) return false;
+  const expected = Buffer.from(
+    enrollmentHmac(env.DA_CLIENT_ENROLLMENT_HMAC_SECRET || '', 'qa-email', normalizedEmail),
+    'hex',
+  );
+  // Timing-safe comparison avoids exposing which entry matched.
+  let found = 0;
+  for (const hex of hashes) {
+    found |= Number(timingSafeEqual(expected, Buffer.from(hex, 'hex')));
+  }
+  return found === 1;
 }

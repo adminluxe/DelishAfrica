@@ -4,6 +4,7 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { IdentityProofService } from '../identity-proof/identity-proof.service';
@@ -15,11 +16,15 @@ import {
 import {
   enrollmentHmac,
   enrollmentReadyForProduction,
+  clientEnrollmentQaConfigured,
+  clientEnrollmentQaEmailAllowed,
   parseClientEnrollmentCommand,
 } from './client-enrollment.policy';
 
 @Injectable()
 export class ClientEnrollmentService {
+  private readonly qaAudit = new Logger('ClientEnrollmentQa');
+
   constructor(
     private readonly identityProof: IdentityProofService,
     private readonly repository: ClientEnrollmentRepository,
@@ -31,7 +36,8 @@ export class ClientEnrollmentService {
       ok: true,
       service: 'delishafrica-client-enrollment',
       version: 'v1',
-      enabled: enrollmentReadyForProduction(process.env),
+      enabled: enrollmentReadyForProduction(process.env) &&
+        process.env.DA_CLIENT_ENROLLMENT_QA_ENABLED !== 'true',
       rolePolicy: 'realm_role_client_only',
       tokenPolicy: 'signed_sms_and_email_required',
       replayPolicy: 'durable_postgres_single_use',
@@ -42,7 +48,12 @@ export class ClientEnrollmentService {
   async register(body: Record<string, unknown>, requesterKey: string) {
     // Default OFF until PostgreSQL migration, a scoped service account,
     // Keycloak e-mail recovery/branding and independent QA have all passed.
-    if (!enrollmentReadyForProduction(process.env)) {
+    // A QA admission is a different, explicit gate. Enabling public
+    // enrollment and a QA cohort simultaneously is a configuration error.
+    const publicReady = enrollmentReadyForProduction(process.env) &&
+      process.env.DA_CLIENT_ENROLLMENT_QA_ENABLED !== 'true';
+    const qaReady = clientEnrollmentQaConfigured(process.env);
+    if (!publicReady && !qaReady) {
       throw new ServiceUnavailableException({
         ok: false,
         code: 'client_enrollment_not_ready',
@@ -54,6 +65,15 @@ export class ClientEnrollmentService {
       throw new BadRequestException({
         ok: false,
         code: 'client_enrollment_fields_invalid',
+      });
+    }
+    // Outside the small, time-limited HMAC allowlist the endpoint gives
+    // the same response as its default OFF state; no proof, DB or IAM I/O.
+    if (qaReady && !clientEnrollmentQaEmailAllowed(process.env, parsed.email)) {
+      throw new ServiceUnavailableException({
+        ok: false,
+        code: 'client_enrollment_not_ready',
+        retryable: false,
       });
     }
 
@@ -112,6 +132,11 @@ export class ClientEnrollmentService {
       });
     }
 
+    // The PostgreSQL reservation is the durable audit record (HMAC-only).
+    // Application logs carry its request correlation hash, never PII,
+    // password, OTP, proof token, or Keycloak access token.
+    if (qaReady) this.qaAudit.log('qa_reserved request_hmac=' + reservation.requestHash);
+
     let subjectId: string | null = null;
     try {
       // Stage a disabled Keycloak identity and verify its sole realm role.
@@ -127,6 +152,7 @@ export class ClientEnrollmentService {
       // enabled-but-untracked Client identity.
       await this.repository.complete(reserved, subjectId);
       await this.keycloak.activateClientIdentity(subjectId);
+      if (qaReady) this.qaAudit.log('qa_completed request_hmac=' + reservation.requestHash);
       return {
         ok: true,
         status: 'account_created',
@@ -141,6 +167,7 @@ export class ClientEnrollmentService {
         await this.keycloak.disableClientIdentity(subjectId).catch(() => undefined);
       }
       await this.repository.flagForReview(reserved).catch(() => undefined);
+      if (qaReady) this.qaAudit.warn('qa_pending_review request_hmac=' + reservation.requestHash);
       // No raw database/Keycloak exception, provider URL, email or password
       // must escape to the mobile app or into an application log.
       throw new ServiceUnavailableException({
