@@ -182,6 +182,7 @@ export default function ClientSpaceScreen() {
   const [stage, setStage] = useState<'contacts' | 'delivery'>('contacts');
   const [showPreferences, setShowPreferences] = useState(false);
   const [inlineNotice, setInlineNotice] = useState('');
+  const scrollViewRef = useRef<ScrollView>(null);
   const [enrollmentEnabled, setEnrollmentEnabled] = useState<boolean | null>(null);
   const auth = useDaPkceAuth();
   const accountConnected = auth.session.status === 'authenticated';
@@ -475,12 +476,12 @@ export default function ClientSpaceScreen() {
         setEmailClientRequestId(effectiveRequestId);
         setEmailAttemptExpiresAt(expiresAt);
       }
-      Alert.alert(
-        result.reused ? 'Code déjà envoyé' : route === 'alternate' ? 'Route de secours activée' : 'Code envoyé',
-        `${result.notice || 'Un code a été envoyé.'}
-${result.maskedDestination}
-Utilisez uniquement le code le plus récent.`,
-      );
+      // A positive status is non-blocking. The code field appears below the contact.
+      setInlineNotice(result.reused
+        ? 'Code déjà envoyé. Utilisez le plus récent.'
+        : route === 'alternate'
+          ? 'Code envoyé par notre service de secours.'
+          : 'Code envoyé. Entrez-le juste en dessous.');
     } catch (error: any) {
       Alert.alert('Envoi indisponible', error?.message || 'Le fournisseur de vérification est indisponible.');
     } finally {
@@ -585,10 +586,20 @@ Utilisez uniquement le code le plus récent.`,
         setEmailAttemptExpiresAt('');
         setEmailCode('');
       }
-      Alert.alert(
-        'Contact confirmé',
-        `${channel === 'sms' ? 'Téléphone vérifié.' : 'Email vérifié.'} La preuve est mémorisée sur cet appareil.`,
-      );
+      // Keep the verified proof in SecureStore; never ask the customer to confirm
+      // a success pop-up or repeat a code. Move on once BOTH are verified.
+      const otherContactVerified = channel === 'sms' ? emailVerified : phoneVerified;
+      if (otherContactVerified) {
+        setInlineNotice('Téléphone et e-mail confirmés ✓. Passons à votre adresse.');
+        setStage('delivery');
+        requestAnimationFrame(() => {
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        });
+      } else {
+        setInlineNotice(channel === 'sms'
+          ? 'Téléphone confirmé ✓. Vérifiez maintenant votre e-mail.'
+          : 'E-mail confirmé ✓. Vérifiez maintenant votre téléphone.');
+      }
     } catch (error: any) {
       if (Number(error?.status || 0) === 409) {
         if (channel === 'sms') {
@@ -732,7 +743,7 @@ Utilisez uniquement le code le plus récent.`,
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={scrollViewRef} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
           <Text style={styles.brand}>DELISHAFRICA®</Text>
           <Text style={styles.title}>Mon espace</Text>
           <Text style={styles.subtitle}>
