@@ -7,6 +7,7 @@ import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { daAccountStorageKey } from '../utils/daOrdersApi';
+import { useDaPkceAuth } from '../hooks/useDaPkceAuth';
 import { daCanonicalContact, daLocalProofFresh } from '../utils/daProofIdentity';
 import { daAttestIdentityProof, type DaIdentityProof } from '../utils/daTrustNetwork';
 
@@ -28,6 +29,8 @@ const API_BASE = String(
 
 export default function ActivateClientAccountScreen() {
   const router = useRouter();
+  const auth = useDaPkceAuth();
+  const accountConnected = auth.session.status === 'authenticated';
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const [profile, setProfile] = useState<ClientEnrollmentProfile | null>(null);
   const [ready, setReady] = useState<boolean | null>(null);
@@ -152,21 +155,31 @@ export default function ActivateClientAccountScreen() {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
         <Text style={styles.brand}>DELISHAFRICA®</Text>
-        <Text style={styles.title}>Votre compte, votre liberté.</Text>
+        <Text style={styles.title}>{accountConnected ? 'Votre compte est prêt !' : 'Créer mon compte'}</Text>
         <Text style={styles.subtitle}>
-          Deux contacts vérifiés, une seule activation. Vos prochaines commandes en toute simplicité.
-          Votre phrase secrète reste privée.
+          {accountConnected
+            ? 'Vous êtes déjà connecté. Aucune nouvelle inscription nécessaire.'
+            : 'Vos informations sont conservées. Plus besoin de les saisir deux fois.'}
         </Text>
-
+        {accountConnected ? (
+          <Pressable
+            accessibilityRole="button"
+            style={styles.primary}
+            onPress={() => router.replace((returnTo === 'checkout' ? '/checkout-preflight' : '/client-space') as any)}
+          >
+            <Text style={styles.primaryText}>{returnTo === 'checkout' ? 'Reprendre ma commande' : 'Voir mon espace'}</Text>
+          </Pressable>
+        ) : (
+          <>
         <View style={styles.card}>
-          <Text style={styles.kicker}>ACTIVATION DE VOTRE COMPTE</Text>
+          <Text style={styles.kicker}>VOTRE INSCRIPTION</Text>
           {loading ? <ActivityIndicator color="#EAC775" /> : (
             <>
               <Text style={styles.value}>{profile?.firstName || 'Bienvenue'}</Text>
               <Text style={styles.detail}>E-mail {daLocalProofFresh('email', profile?.proofs?.email, email) ? 'confirmé ✓' : 'à confirmer'}</Text>
               <Text style={styles.detail}>Téléphone {daLocalProofFresh('sms', profile?.proofs?.phone, phone) ? 'confirmé ✓' : 'à confirmer'}</Text>
               {ready === false ? (
-                <Text style={styles.warning}>Vos coordonnées sont conservées. L’activation des comptes arrive bientôt. Votre panier reste disponible.</Text>
+                                  <Text style={styles.warning}>Vos informations sont enregistrées sur cet iPhone, mais aucun nouveau compte n’a encore été créé. L’activation côté serveur est temporairement indisponible.</Text>
               ) : null}
               {!verified && ready ? <Text style={styles.warning}>Confirmez vos deux contacts une fois pour activer votre compte.</Text> : null}
             </>
@@ -174,7 +187,7 @@ export default function ActivateClientAccountScreen() {
         </View>
 
         {ready && verified ? <View style={styles.card}>
-          <Text style={styles.kicker}>CHOISIR MA PHRASE SECRÈTE</Text>
+          <Text style={styles.kicker}>UNE DERNIÈRE ÉTAPE : MON MOT DE PASSE</Text>
           <Text style={styles.hint}>12 caractères minimum. Jamais enregistrée dans l’application.</Text>
           <TextInput
             style={styles.input}
@@ -212,13 +225,21 @@ export default function ActivateClientAccountScreen() {
             <Text style={styles.primaryText}>Activer mon compte DelishAfrica</Text>
           )}
         </Pressable> : null}
-        <Pressable style={styles.secondary} onPress={() => router.replace({ pathname: '/client-space', params: { returnTo: returnTo === 'checkout' ? 'checkout' : 'space' } } as any)}>
-          <Text style={styles.secondaryText}>Vérifier mes contacts</Text>
+        <Pressable
+          accessibilityRole="button"
+          style={styles.secondary}
+          onPress={() => router.replace({
+            pathname: verified ? '/secure-session' : '/client-space',
+            params: { returnTo: returnTo === 'checkout' ? 'checkout' : 'space' },
+          } as any)}
+        >
+          <Text style={styles.secondaryText}>
+            {verified ? 'J’ai déjà un compte · Me connecter' : 'Retour à mes coordonnées'}
+          </Text>
         </Pressable>
-        <Pressable style={styles.secondary} onPress={() => router.replace({ pathname: '/secure-session', params: { returnTo: returnTo === 'checkout' ? 'checkout' : 'space' } } as any)}>
-          <Text style={styles.secondaryText}>J’ai déjà un compte</Text>
-        </Pressable>
-        <Text style={styles.foot}>Le paiement reste volontaire. Il ne démarre jamais pendant l’inscription.</Text>
+        <Text style={styles.foot}>Aucun paiement pendant la création de compte.</Text>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

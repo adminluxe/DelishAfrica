@@ -44,6 +44,9 @@ export default function SecureSessionScreen() {
             [{ text: 'Mon espace', onPress: () => router.replace('/client-space' as any) }],
           );
         }
+      } else {
+        // After a successful sign-in, return to the app without another tap.
+        router.replace('/client-space' as any);
       }
       return;
     }
@@ -56,7 +59,7 @@ export default function SecureSessionScreen() {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.page}>
         <Text style={styles.brand}>DELISHAFRICA®</Text>
-        <Text style={styles.title}>Connexion sécurisée</Text>
+        <Text style={styles.title}>{auth.session.status === 'authenticated' ? 'Bienvenue !' : 'Se connecter'}</Text>
         <Text style={styles.subtitle}>
           Retrouvez votre espace et vos commandes en toute sérénité. Votre panier sera conservé pendant la connexion.
         </Text>
@@ -80,7 +83,7 @@ export default function SecureSessionScreen() {
             style={styles.primary}
             accessibilityRole="button"
           >
-            <Text style={styles.primaryText}>{returnToCheckout ? 'Reprendre ma commande' : 'Retour à mon espace'}</Text>
+            <Text style={styles.primaryText}>{returnToCheckout ? 'Reprendre ma commande' : 'Voir mon espace'}</Text>
           </Pressable>
         ) : (
           <Pressable
@@ -104,7 +107,7 @@ export default function SecureSessionScreen() {
             } as any)}
             style={styles.secondary}
           >
-            <Text style={styles.secondaryText}>Pas encore de compte ? L’activer</Text>
+            <Text style={styles.secondaryText}>Créer mon compte</Text>
           </Pressable>
         ) : null}
 
@@ -120,9 +123,11 @@ export default function SecureSessionScreen() {
           </Pressable>
         ) : null}
 
-        <Pressable onPress={() => router.replace('/client-space' as any)} style={styles.back}>
-          <Text style={styles.backText}>Retour à Mon espace</Text>
-        </Pressable>
+        {auth.session.status !== 'authenticated' ? (
+          <Pressable onPress={() => router.replace('/client-space' as any)} style={styles.back}>
+            <Text style={styles.backText}>Retour à mon espace</Text>
+          </Pressable>
+        ) : null}
 
         <Text style={styles.privacy}>
           Votre compte protège vos commandes. Aucune information de paiement n’est demandée pendant la connexion.

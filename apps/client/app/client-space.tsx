@@ -17,6 +17,7 @@ import * as Location from 'expo-location';
 import * as SecureStore from 'expo-secure-store';
 import { router, useLocalSearchParams } from 'expo-router';
 import { daInspectProfileTrust, DaProfileTrustResult } from '../utils/daProfileTrust';
+import { useDaPkceAuth } from '../hooks/useDaPkceAuth';
 import { daAccountScopeId, daAccountStorageKey, daSessionRehydrationStatus } from '../utils/daOrdersApi';
 import { daCanonicalContact, daLocalProofFresh } from '../utils/daProofIdentity';
 import { daProbeTerritoryTruth, type DaTerritoryTruthResult } from '../utils/daTerritoryTruth';
@@ -177,6 +178,25 @@ export default function ClientSpaceScreen() {
   const [profileId, setProfileId] = useState(existing?.id || '');
   const [hydrating, setHydrating] = useState(true);
   const [lastSavedAt, setLastSavedAt] = useState(existing?.updatedAt || '');
+  const [editing, setEditing] = useState(true);
+  const [stage, setStage] = useState<'contacts' | 'delivery'>('contacts');
+  const [showPreferences, setShowPreferences] = useState(false);
+  const [inlineNotice, setInlineNotice] = useState('');
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [enrollmentEnabled, setEnrollmentEnabled] = useState<boolean | null>(null);
+  const auth = useDaPkceAuth();
+  const accountConnected = auth.session.status === 'authenticated';
+
+  useEffect(() => {
+    let active = true;
+    const raw = String(process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL || 'https://api.delishafrica.me/api/v1');
+    const base = raw.replace(/\/+$/, '').replace(/\/api\/v1$/, '');
+    void fetch(base + '/api/v1/client-enrollment/readiness')
+      .then((response) => response.json())
+      .then((result) => { if (active) setEnrollmentEnabled(result?.enabled === true); })
+      .catch(() => { if (active) setEnrollmentEnabled(false); });
+    return () => { active = false; };
+  }, []);
 
   const phoneVerified = daLocalProofFresh('sms', phoneProof, phone);
   const emailVerified = daLocalProofFresh('email', emailProof, email);
@@ -253,6 +273,15 @@ export default function ClientSpaceScreen() {
         setPhoneProof(profile.proofs?.phone || null);
         setEmailProof(profile.proofs?.email || null);
         setLastSavedAt(profile.updatedAt || '');
+        const bothVerified = daLocalProofFresh('sms', profile.proofs?.phone, profile.phone)
+          && daLocalProofFresh('email', profile.proofs?.email, profile.email);
+        const deliveryReady = Boolean(profile.addressTruth?.deliverable && profile.city && profile.consent);
+        setEditing(!bothVerified || !deliveryReady);
+        setStage(bothVerified ? 'delivery' : 'contacts');
+        setShowPreferences(Boolean(profile.allergenFlags?.length || profile.dietaryTags?.length || profile.foodSafetyNote));
+      } else {
+        setEditing(true);
+        setStage('contacts');
       }
       setHydrating(false);
     });
@@ -447,12 +476,12 @@ export default function ClientSpaceScreen() {
         setEmailClientRequestId(effectiveRequestId);
         setEmailAttemptExpiresAt(expiresAt);
       }
-      Alert.alert(
-        result.reused ? 'Code déjà envoyé' : route === 'alternate' ? 'Route de secours activée' : 'Code envoyé',
-        `${result.notice || 'Un code a été envoyé.'}
-${result.maskedDestination}
-Utilisez uniquement le code le plus récent.`,
-      );
+      // A positive status is non-blocking. The code field appears below the contact.
+      setInlineNotice(result.reused
+        ? 'Code déjà envoyé. Utilisez le plus récent.'
+        : route === 'alternate'
+          ? 'Code envoyé par notre service de secours.'
+          : 'Code envoyé. Entrez-le juste en dessous.');
     } catch (error: any) {
       Alert.alert('Envoi indisponible', error?.message || 'Le fournisseur de vérification est indisponible.');
     } finally {
@@ -557,10 +586,20 @@ Utilisez uniquement le code le plus récent.`,
         setEmailAttemptExpiresAt('');
         setEmailCode('');
       }
-      Alert.alert(
-        'Contact confirmé',
-        `${channel === 'sms' ? 'Téléphone vérifié.' : 'Email vérifié.'} La preuve est mémorisée sur cet appareil.`,
-      );
+      // Keep the verified proof in SecureStore; never ask the customer to confirm
+      // a success pop-up or repeat a code. Move on once BOTH are verified.
+      const otherContactVerified = channel === 'sms' ? emailVerified : phoneVerified;
+      if (otherContactVerified) {
+        setInlineNotice('Téléphone et e-mail confirmés ✓. Passons à votre adresse.');
+        setStage('delivery');
+        requestAnimationFrame(() => {
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        });
+      } else {
+        setInlineNotice(channel === 'sms'
+          ? 'Téléphone confirmé ✓. Vérifiez maintenant votre e-mail.'
+          : 'E-mail confirmé ✓. Vérifiez maintenant votre téléphone.');
+      }
     } catch (error: any) {
       if (Number(error?.status || 0) === 409) {
         if (channel === 'sms') {
@@ -689,7 +728,10 @@ Utilisez uniquement le code le plus récent.`,
           router.push({ pathname: '/activate-account', params: { returnTo: 'checkout' } } as any);
         }
       }
-      else Alert.alert('Profil enregistré', 'Vos informations sont conservées sur cet appareil. Pour commander, activez votre compte DelishAfrica puis connectez-vous.');
+      else {
+        setEditing(false);
+        setInlineNotice('Vos modifications sont enregistrées sur cet appareil.');
+      }
     } catch (error: any) {
       Alert.alert('Contrôle indisponible', error?.message || 'Réessayez dans un instant.');
     } finally {
@@ -700,59 +742,104 @@ Utilisez uniquement le code le plus récent.`,
   const truthCount = Number(addressVerified) + Number(phoneVerified) + Number(emailVerified);
   return (
     <SafeAreaView style={styles.safe}>
-      {/* DA_J7B_LEGAL_LINK */}
-      <DaLegalLink
-        href={"/legal" as any}
-        style={{ alignSelf: "flex-start", marginBottom: 16, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 999, overflow: "hidden", backgroundColor: "#FFF4E8", color: "#7A421D", fontWeight: "800" }}
-      >
-        Confidentialité · Conditions · Assistance
-      </DaLegalLink>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={scrollViewRef} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
           <Text style={styles.brand}>DELISHAFRICA®</Text>
           <Text style={styles.title}>Mon espace</Text>
-          <Text style={styles.subtitle}>Une adresse confirmée, des contacts protégés. Votre commande reste à portée de main.</Text>
-
-          <View style={[styles.truthCard, truthCount === 3 && styles.truthCardReady]}>
-            <Text style={styles.truthKicker}>VÉRITÉ D’IDENTITÉ</Text>
-            <Text style={[styles.truthTitle, truthCount === 3 && styles.truthTitleReady]}>{truthCount}/3 preuves confirmées</Text>
-            <Text style={[styles.truthText, truthCount === 3 && styles.truthTextReady]}>
-              Adresse {addressVerified ? '✓' : '·'} · SMS {phoneVerified ? '✓' : '·'} · Email {emailVerified ? '✓' : '·'}
-            </Text>
-          </View>
-          <Text style={styles.continuityHint}>
-            {hydrating
-              ? 'Restauration sécurisée de Mon Espace…'
-              : lastSavedAt
-                ? 'Mon Espace est mémorisé sur cet appareil.'
-                : 'Chaque preuve confirmée sera mémorisée immédiatement sur cet appareil.'}
+          <Text style={styles.subtitle}>
+            {accountConnected ? 'Bonjour ! Votre compte est connecté.' : 'Tout pour commander, en deux petites étapes.'}
           </Text>
 
-          <View style={styles.secureAccountCard}>
-            <View style={styles.secureAccountCopy}>
-              <Text style={styles.secureAccountKicker}>COMPTE DELISHAFRICA</Text>
-              <Text style={styles.secureAccountTitle}>Votre compte, sans complication</Text>
-              <Text style={styles.secureAccountText}>
-                Une activation, puis vos commandes en toute sécurité. Vos coordonnées déjà vérifiées restent conservées.
-              </Text>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push({ pathname: '/activate-account', params: { returnTo: returnToCheckout ? 'checkout' : 'space' } } as any)}
-              style={styles.secureAccountButton}
-            >
-              <Text style={styles.secureAccountButtonText}>Activer mon compte DelishAfrica</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push({ pathname: '/secure-session', params: { returnTo: returnToCheckout ? 'checkout' : 'space' } } as any)}
-              style={[styles.secureAccountButton, { backgroundColor: '#143C2C', marginTop: 10 }]}
-            >
-              <Text style={[styles.secureAccountButtonText, { color: '#FFE5A4' }]}>J’ai déjà un compte · Me connecter</Text>
-            </Pressable>
+          <View style={[styles.truthCard, accountConnected && styles.truthCardReady]}>
+            <Text style={styles.truthKicker}>
+              {accountConnected ? 'COMPTE CONNECTÉ' : 'VOTRE PROGRESSION'}
+            </Text>
+            <Text style={[styles.truthTitle, accountConnected && styles.truthTitleReady]}>
+              {auth.session.reason === 'initializing' && !accountConnected
+                ? 'On retrouve votre compte…'
+                : accountConnected
+                  ? 'Bienvenue chez DelishAfrica ✓'
+                  : truthCount === 3
+                    ? 'Vos coordonnées sont vérifiées ✓'
+                    : 'Encore un petit effort !'}
+            </Text>
+            <Text style={[styles.truthText, accountConnected && styles.truthTextReady]}>
+              {accountConnected
+                ? 'Votre compte est bien créé et connecté. Aucune nouvelle inscription.'
+                : 'Adresse ' + (addressVerified ? '✓' : '·') + '  ·  Téléphone ' + (phoneVerified ? '✓' : '·') + '  ·  E-mail ' + (emailVerified ? '✓' : '·')}
+            </Text>
           </View>
+          {inlineNotice ? <Text style={styles.successNotice}>{inlineNotice}</Text> : null}
+          {!hydrating && !editing ? (
+            <View style={styles.secureAccountCard}>
+              <Text style={styles.secureAccountKicker}>VOTRE ESPACE</Text>
+              <Text style={styles.secureAccountTitle}>
+                {accountConnected ? 'Tout est prêt, ' + (firstName || 'bienvenue') + ' !' : 'Vos informations sont conservées ✓'}
+              </Text>
+              <Text style={styles.secureAccountText}>
+                {accountConnected
+                  ? (addressVerified && ownershipReady
+                      ? 'Votre adresse et vos contacts sont prêts. Vous pouvez commander.'
+                      : 'Compte connecté. Complétez vos coordonnées pour commander avec ce compte.')
+                  : enrollmentEnabled === false
+                    ? 'Vos coordonnées sont enregistrées sur cet appareil. Votre compte n’est pas encore créé : l’inscription serveur est temporairement fermée.'
+                    : 'Vos coordonnées sont enregistrées. Il ne reste qu’à créer votre compte.'}
+              </Text>
+              {addressVerified ? <Text style={styles.summaryLine}>⌖ {address}</Text> : null}
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  if (accountConnected) {
+                    if (!addressVerified || !ownershipReady) {
+                      setStage(!ownershipReady ? 'contacts' : 'delivery');
+                      setEditing(true);
+                    } else {
+                      router.push((returnToCheckout ? '/checkout-preflight' : '/restaurants') as any);
+                    }
+                  } else if (truthCount === 3) {
+                    router.push({ pathname: '/activate-account', params: { returnTo: returnToCheckout ? 'checkout' : 'space' } } as any);
+                  } else {
+                    setStage(!ownershipReady ? 'contacts' : 'delivery');
+                    setEditing(true);
+                  }
+                }}
+                style={styles.secureAccountButton}
+              >
+                <Text style={styles.secureAccountButtonText}>
+                  {accountConnected
+                    ? (addressVerified && ownershipReady ? (returnToCheckout ? 'Reprendre ma commande' : 'Choisir un restaurant') : 'Compléter mes informations')
+                    : truthCount === 3
+                      ? (enrollmentEnabled ? 'Créer mon compte' : 'Voir l’état de mon inscription')
+                      : 'Compléter mes informations'}
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => { setStage('contacts'); setEditing(true); }}
+                style={styles.simpleLinkButton}
+              >
+                <Text style={styles.simpleLinkText}>Modifier mes informations</Text>
+              </Pressable>
+              {!accountConnected ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => router.push({ pathname: '/secure-session', params: { returnTo: returnToCheckout ? 'checkout' : 'space' } } as any)}
+                  style={styles.simpleLinkButton}
+                >
+                  <Text style={styles.simpleLinkText}>J’ai déjà un compte · Me connecter</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
 
-          <View style={styles.card}>
+          {!hydrating && editing ? (
+            <>
+              <Text style={styles.stepHeading}>
+                {stage === 'contacts' ? 'ÉTAPE 1 SUR 2 · MES COORDONNÉES' : 'ÉTAPE 2 SUR 2 · MA LIVRAISON'}
+              </Text>
+              {stage === 'contacts' ? (
+                <>
+                    <View style={styles.card}>
             <Text style={styles.cardTitle}>Identité</Text>
             <Text style={styles.label}>Prénom *</Text>
             <TextInput value={firstName} onChangeText={(v) => { setFirstName(v); invalidateTrust(); }} placeholder="Votre prénom" placeholderTextColor="#6F7685" style={styles.input} textContentType="givenName" />
@@ -790,8 +877,30 @@ Utilisez uniquement le code le plus récent.`,
             </View>
           </View>
 
+          <Pressable
+            accessibilityRole="button"
+            disabled={proofBusy !== null}
+            onPress={() => {
+              if (!clean(firstName) || !clean(email) || !clean(phone)) {
+                Alert.alert('Encore une petite chose', 'Ajoutez votre prénom, votre téléphone et votre e-mail.');
+                return;
+              }
+              if (!ownershipReady) {
+                Alert.alert('Confirmez vos contacts', 'Entrez les codes reçus par SMS et e-mail. Cette étape n’est à faire qu’une fois.');
+                return;
+              }
+              void persistActivationDraft().then(() => setStage('delivery')).catch(() =>
+                Alert.alert('Enregistrement impossible', 'Réessayez dans un instant.'));
+            }}
+            style={[styles.primaryButton, proofBusy !== null && styles.disabled]}
+          >
+            <Text style={styles.primaryText}>Continuer · Mon adresse →</Text>
+          </Pressable>
+                </>
+              ) : (
+                <>
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Destination réelle</Text>
+            <Text style={styles.cardTitle}>Mon adresse de livraison</Text>
             <Pressable onPress={detectTerritory} disabled={locationBusy} style={styles.locationButton}>
               {locationBusy ? <ActivityIndicator color="#FFF8EA" /> : <Text style={styles.locationButtonText}>{deviceTerritory?.detected ? `${deviceTerritory.territory.city} · ${deviceTerritory.territory.country}` : 'Détecter mon territoire'}</Text>}
             </Pressable>
@@ -832,8 +941,18 @@ Utilisez uniquement le code le plus récent.`,
             <TextInput value={instructions} onChangeText={setInstructions} placeholder="Étage, sonnette, repère utile…" placeholderTextColor="#6F7685" style={[styles.input, styles.multiline]} multiline />
           </View>
 
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setShowPreferences((current) => !current)}
+            style={styles.preferencesToggle}
+          >
+            <Text style={styles.preferencesToggleText}>
+              {showPreferences ? 'Masquer les préférences' : 'Allergies et préférences · Facultatif +'}
+            </Text>
+          </Pressable>
+          {showPreferences ? (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Préférences & sécurité alimentaire</Text>
+            <Text style={styles.cardTitle}>Allergies et préférences</Text>
             <Text style={styles.foodSafetyIntro}>
               Ces informations seront jointes à la commande et visibles dans la fiche cuisine du restaurant.
             </Text>
@@ -912,20 +1031,43 @@ Utilisez uniquement le code le plus récent.`,
             </View>
           </View>
 
+          ) : null}
+
           <View style={styles.consentCard}>
             <View style={styles.consentCopy}><Text style={styles.consentTitle}>Utilisation des données *</Text><Text style={styles.consentText}>Uniquement pour sécuriser, préparer, livrer et suivre la commande.</Text></View>
             <Switch value={consent} onValueChange={(v) => { setConsent(v); invalidateTrust(); }} />
           </View>
 
-          <Pressable disabled={checking} onPress={() => saveProfile(false)} style={[styles.primaryButton, checking && styles.disabled]} accessibilityRole="button">
-            {checking ? <ActivityIndicator color="#07130E" /> : <Text style={styles.primaryText}>Enregistrer mon espace</Text>}
+          <Pressable
+            disabled={checking}
+            accessibilityRole="button"
+            onPress={() => { void saveProfile(returnToCheckout || !accountConnected); }}
+            style={[styles.primaryButton, checking && styles.disabled]}
+          >
+            {checking
+              ? <ActivityIndicator color="#07130E" />
+              : <Text style={styles.primaryText}>
+                  {returnToCheckout ? 'Reprendre ma commande' : accountConnected ? 'Enregistrer et terminer' : 'Continuer vers mon compte'}
+                </Text>}
           </Pressable>
-          <Pressable disabled={checking || !ownershipReady || !addressVerified} onPress={() => saveProfile(true)} style={[styles.secondaryButton, (!ownershipReady || !addressVerified) && styles.disabled]} accessibilityRole="button">
-            <Text style={styles.secondaryText}>{returnToCheckout ? 'Reprendre ma commande' : 'Continuer vers la commande'}</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setStage('contacts')}
+            style={styles.simpleLinkButton}
+          >
+            <Text style={styles.simpleLinkText}>← Revoir mes coordonnées</Text>
           </Pressable>
-          <Pressable onPress={() => router.replace('/' as any)} style={styles.backButton}><Text style={styles.backText}>Retour à l’accueil</Text></Pressable>
-
-          {trust?.issues?.length ? <Text style={styles.note}>{trust.issues[0].message}</Text> : <Text style={styles.note}>Le territoire local accélère la recherche. Le mode cadeau permet de livrer ailleurs sans contourner les contrôles.</Text>}
+                </>
+              )}
+            </>
+          ) : null}
+          <Pressable onPress={() => router.replace('/' as any)} style={styles.backButton}>
+            <Text style={styles.backText}>Retour aux restaurants</Text>
+          </Pressable>
+          <DaLegalLink href={"/legal" as any} style={styles.legalLink}>
+            Confidentialité · Conditions · Assistance
+          </DaLegalLink>
+          {trust?.issues?.length && editing ? <Text style={styles.note}>{trust.issues[0].message}</Text> : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -933,6 +1075,14 @@ Utilisez uniquement le code le plus récent.`,
 }
 
 const styles = StyleSheet.create({
+  stepHeading: { color: '#E7B85F', fontSize: 12, fontWeight: '900', letterSpacing: 2, marginBottom: 15, marginTop: 8 },
+  simpleLinkButton: { paddingVertical: 12, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
+  simpleLinkText: { color: '#F3D59A', fontSize: 14, fontWeight: '800', textAlign: 'center' },
+  summaryLine: { marginTop: 14, color: '#C8D8CB', fontSize: 14, lineHeight: 22 },
+  successNotice: { backgroundColor: '#173E29', borderRadius: 14, marginBottom: 12, padding: 12, color: '#B8F0CC', fontWeight: '800' },
+  preferencesToggle: { minHeight: 50, marginBottom: 12, padding: 14, borderRadius: 16, backgroundColor: '#123E2E', justifyContent: 'center' },
+  preferencesToggleText: { color: '#F4D69B', fontSize: 15, fontWeight: '900' },
+  legalLink: { color: '#D7C1A1', alignSelf: 'center', padding: 12, marginTop: 5, fontSize: 12, fontWeight: '700' },
   flex: { flex: 1 }, safe: { flex: 1, backgroundColor: '#04150E' }, page: { padding: 22, paddingBottom: 72 },
   brand: { color: '#E7B85F', fontSize: 18, fontWeight: '900', letterSpacing: 6, marginTop: 8 }, title: { color: '#FFF8EA', fontSize: 42, lineHeight: 48, fontWeight: '900', marginTop: 14 }, subtitle: { color: '#9BA79F', fontSize: 17, lineHeight: 25, marginTop: 10, marginBottom: 20 },
   truthCard: { padding: 18, borderRadius: 24, backgroundColor: '#0A2418', borderWidth: 1, borderColor: 'rgba(231,184,95,0.28)', marginBottom: 10 },
