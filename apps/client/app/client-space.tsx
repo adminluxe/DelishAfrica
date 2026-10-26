@@ -783,7 +783,7 @@ Utilisez uniquement le code le plus récent.`,
                       setStage(!ownershipReady ? 'contacts' : 'delivery');
                       setEditing(true);
                     } else {
-                      router.push((returnToCheckout ? '/checkout-preflight' : '/explore') as any);
+                      router.push((returnToCheckout ? '/checkout-preflight' : '/restaurants') as any);
                     }
                   } else if (truthCount === 3) {
                     router.push({ pathname: '/activate-account', params: { returnTo: returnToCheckout ? 'checkout' : 'space' } } as any);
