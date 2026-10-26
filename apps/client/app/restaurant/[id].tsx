@@ -98,13 +98,13 @@ export default function RestaurantDetailScreen() {
             app="client"
             kind={orderable ? "success" : "info"}
             title={orderable ? "Cette table prend des commandes" : "Cette table prépare son ouverture"}
-            body={orderable ? "Consultez la carte, composez votre panier puis poursuivez vers le paiement sécurisé." : "La fiche reste consultable pendant la préparation de son ouverture aux commandes."}
+            body={orderable ? "Consultez la carte, composez votre panier puis poursuivez vers le paiement sécurisé." : "Le partenaire termine sa vérification. Vous pouvez explorer ses plats, mais les commandes restent désactivées jusqu’à validation."}
           />
 
           <DAButton
             app="client"
-            label={orderable ? "Ouvrir le menu" : "Ouverture bientôt"}
-            disabled={!orderable}
+            label={orderable ? "Ouvrir le menu" : restaurant.menuItems.length > 0 ? "Découvrir les plats" : "Ouverture bientôt"}
+            disabled={restaurant.menuItems.length === 0}
             onPress={() => router.push({ pathname: "/menu", params: { restaurantSlug: restaurant.slug } } as any)}
           />
           <DAButton app="client" label="Retour aux restaurants" variant="secondary" onPress={() => router.push("/restaurants" as any)} />

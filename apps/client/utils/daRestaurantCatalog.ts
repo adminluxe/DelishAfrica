@@ -210,6 +210,7 @@ return Boolean(restaurant && restaurant.status === "active" && restaurant.accept
 
 export function restaurantStatusLabel(restaurant: DARestaurant): string {
 if (isRestaurantOrderable(restaurant)) return "Ouvert aux commandes";
+if (restaurant.status === "pending_verification") return "Validation partenaire en cours";
 if (restaurant.status === "placeholder") return "Bientôt disponible";
 if (restaurant.status === "coming_soon") return "Bientôt disponible";
 if (restaurant.status === "paused") return "Service en pause";

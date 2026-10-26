@@ -99,85 +99,93 @@ const identity = {
   password: 'UnePhraseTresLongue#4',
 };
 
-test('Keycloak provisioning stages only a DISABLED Client realm-role identity', async () => {
-  const captured = [];
+
+const scopedGroup = { id: '9e1c7e6a-6ff1-4859-87c3-01b47d0cba97', path: '/da-clients-enrollment-v1' };
+function stagedUser(enabled = false) {
+  return {
+    id: oid,
+    enabled,
+    emailVerified: true,
+    attributes: { delishafrica_enrollment_version: ['client-v1'] },
+  };
+}
+function reads(path, method = 'GET', opts = {}) {
+  if (path.endsWith('/protocol/openid-connect/token')) return response(200, { access_token: 'a'.repeat(40) });
+  if (path.endsWith('/users/' + oid + '/groups')) return response(
+    opts.groupCode || 200, opts.groups || [scopedGroup],
+  );
+  if (path.endsWith('/users/' + oid + '/role-mappings/realm/composite')) {
+    return response(opts.roleCode || 200, opts.roles || [role]);
+  }
+  if (path.endsWith('/users/' + oid) && method === 'GET') {
+    return response(200, opts.user || stagedUser());
+  }
+  throw new Error('UNEXPECTED_REQUEST:' + method + ':' + path);
+}
+
+test('group-scoped provisioning creates only a DISABLED Client with group inheritance', async () => {
+  const operations = [];
   await withKeycloakMock(async (url, options = {}) => {
     const path = new URL(url).pathname;
-    captured.push({ path, method: options.method || 'GET', body: options.body });
-    if (path.endsWith('/protocol/openid-connect/token')) {
-      return response(200, { access_token: 'a'.repeat(40) });
-    }
-    if (path.endsWith('/roles/client')) return response(200, role);
-    if (path.endsWith('/users') && options.method === 'POST') {
-      const payload = JSON.parse(options.body);
-      assert.equal(payload.emailVerified, true);
-      assert.equal(payload.enabled, false, 'new identities MUST start disabled');
-      assert.deepEqual(payload.requiredActions, []);
-      assert.deepEqual(payload.credentials.map((r) => r.type), ['password']);
-      assert.deepEqual(payload.attributes.delishafrica_enrollment_version, ['client-v1']);
-      assert.equal(payload.credentials[0].value, identity.password);
+    const method = options.method || 'GET';
+    operations.push(method + ' ' + path);
+    if (path.endsWith('/users') && method === 'POST') {
+      const body = JSON.parse(options.body);
+      assert.deepEqual(body.groups, ['/da-clients-enrollment-v1']);
+      assert.equal(body.enabled, false);
+      assert.equal(body.emailVerified, true);
+      assert.deepEqual(body.requiredActions, []);
+      assert.deepEqual(body.credentials.map((x) => x.type), ['password']);
+      assert.deepEqual(body.attributes.delishafrica_enrollment_version, ['client-v1']);
       return response(201, null, 'http://afritaste-keycloak:8080/admin/realms/afritaste/users/' + oid);
     }
-    if (path.endsWith('/role-mappings/realm') && options.method === 'POST') {
-      assert.deepEqual(JSON.parse(options.body).map((r) => r.name), ['client']);
-      return response(204, null);
-    }
-    if (path.endsWith('/role-mappings/realm')) return response(200, [role]);
-    if (path.endsWith('/users/' + oid) && options.method === 'PUT') {
-      throw new Error('NO_ENABLE_DURING_PROVISIONING');
-    }
-    throw new Error('unexpected_fetch_path');
+    return reads(path, method);
   }, async () => {
-    const id = await new ClientEnrollmentKeycloak().createClientIdentity(identity);
-    assert.equal(id, oid);
+    const subject = await new ClientEnrollmentKeycloak().createClientIdentity(identity);
+    assert.equal(subject, oid);
   });
-  assert.equal(captured.filter((call) => call.method === 'POST' && call.path.endsWith('/users')).length, 1);
-  assert.equal(captured.some((call) => call.method === 'PUT'), false,
-    'a newly staged identity MUST remain disabled until the DB ledger commits');
+  assert.equal(operations.filter((x) => x.startsWith('POST ') && x.endsWith('/users')).length, 1);
+  assert(!operations.some((x) => x.endsWith('/role-mappings/realm') && x.startsWith('POST ')));
+  assert(!operations.some((x) => x.startsWith('PUT ')));
 });
 
-test('mismatched role grants never produce a Client identity', async () => {
-  const created = [];
+test('mismatched group fails closed; no account is activated', async () => {
+  const operations = [];
   await withKeycloakMock(async (url, options = {}) => {
     const path = new URL(url).pathname;
-    created.push(path);
-    if (path.endsWith('/protocol/openid-connect/token')) return response(200, { access_token: 'a'.repeat(40) });
-    if (path.endsWith('/roles/client')) return response(200, { ...role, clientRole: true });
-    throw new Error('unreachable');
+    const method = options.method || 'GET';
+    operations.push(method + ' ' + path);
+    if (path.endsWith('/users') && method === 'POST') {
+      return response(201, null, 'http://afritaste-keycloak:8080/admin/realms/afritaste/users/' + oid);
+    }
+    return reads(path, method, { groups: [{ path: '/da-r6g-merchants' }] });
   }, async () => {
     await assert.rejects(
       new ClientEnrollmentKeycloak().createClientIdentity(identity),
-      /enrollment_client_role_misconfigured/,
+      /enrollment_client_group_mismatch/,
     );
   });
-  assert(!created.some((p) => p.endsWith('/users')));
+  assert(!operations.some((x) => x.startsWith('PUT ')),
+    'a disabled but wrong-group account must not be mutated');
 });
 
-test('mapping failures fail closed and disable the newly created account', async () => {
-  let disabled = false;
+test('unexpected Merchant role in effective mappings blocks Client activation', async () => {
+  const operations = [];
   await withKeycloakMock(async (url, options = {}) => {
     const path = new URL(url).pathname;
-    if (path.endsWith('/protocol/openid-connect/token')) return response(200, { access_token: 'a'.repeat(40) });
-    if (path.endsWith('/roles/client')) return response(200, role);
-    if (path.endsWith('/users') && options.method === 'POST') {
-      return response(201, null, 'http://afritaste-keycloak:8080/admin/realms/afritaste/users/' + oid);
-    }
-    if (path.endsWith('/role-mappings/realm') && options.method === 'POST') return response(500, {});
-    if (path.endsWith('/users/' + oid) && options.method === 'PUT') {
-      disabled = JSON.parse(options.body).enabled === false;
-      return response(204, null);
-    }
-    throw new Error('unexpected_fetch');
+    const method = options.method || 'GET';
+    operations.push(method + ' ' + path);
+    return reads(path, method, { roles: [role, { ...role, name: 'merchant' }] });
   }, async () => {
     await assert.rejects(
-      new ClientEnrollmentKeycloak().createClientIdentity(identity),
-      /enrollment_realm_role_mapping_failed/,
+      new ClientEnrollmentKeycloak().activateClientIdentity(oid),
+      /enrollment_effective_role_not_client_only/,
     );
   });
-  assert.equal(disabled, true);
+  assert(!operations.some((x) => x.startsWith('PUT ')));
 });
 
-test('non-private Admin API host is rejected before any token request', async () => {
+test('non-private Keycloak Admin API host is blocked BEFORE a token request', async () => {
   let calls = 0;
   await withKeycloakMock(async () => { calls++; throw new Error('network_called'); }, async () => {
     process.env.DA_CLIENT_ENROLLMENT_KC_BASE_URL = 'https://attacker.example.org/';
@@ -185,34 +193,84 @@ test('non-private Admin API host is rejected before any token request', async ()
       new ClientEnrollmentKeycloak().createClientIdentity(identity),
       /enrollment_keycloak_endpoint_not_private/,
     );
-    assert.equal(calls, 0);
   });
+  assert.equal(calls, 0);
 });
 
+test('activation verifies group + inherited role + ownership before and after PUT', async () => {
+  const calls = [];
+  let enabled = false;
+  await withKeycloakMock(async (url, options = {}) => {
+    const path = new URL(url).pathname;
+    const method = options.method || 'GET';
+    calls.push(method + ' ' + path);
+    if (path.endsWith('/users/' + oid) && method === 'PUT') {
+      assert.deepEqual(JSON.parse(options.body), { enabled: true });
+      enabled = true;
+      return response(204, null);
+    }
+    return reads(path, method, { user: stagedUser(enabled) });
+  }, async () => {
+    await new ClientEnrollmentKeycloak().activateClientIdentity(oid);
+  });
+  const activation = calls.findIndex((x) => x.startsWith('PUT '));
+  assert(activation >= 3);
+  assert.equal(calls.filter((x) => x.endsWith('/role-mappings/realm/composite')).length, 2);
+  assert.equal(calls.filter((x) => x.endsWith('/groups')).length, 2);
+  assert.equal(calls.filter((x) => x.endsWith('/users/' + oid) && x.startsWith('GET ')).length, 2);
+});
 
-test('Keycloak activation revalidates the Client role AND enabled state', async () => {
+test('wrong provenance marker prevents activation', async () => {
+  const calls = [];
+  await withKeycloakMock(async (url, options = {}) => {
+    const path = new URL(url).pathname;
+    const method = options.method || 'GET';
+    calls.push(method + ' ' + path);
+    return reads(path, method, {
+      user: { ...stagedUser(false), attributes: { delishafrica_enrollment_version: ['merchant-v1'] } },
+    });
+  }, async () => {
+    await assert.rejects(
+      new ClientEnrollmentKeycloak().activateClientIdentity(oid),
+      /enrollment_client_provenance_invalid/,
+    );
+  });
+  assert(!calls.some((x) => x.startsWith('PUT ')));
+});
+
+test('compensation can disable ONLY its own scoped Client identity', async () => {
+  const calls = [];
+  await withKeycloakMock(async (url, options = {}) => {
+    const path = new URL(url).pathname;
+    const method = options.method || 'GET';
+    calls.push(method + ' ' + path);
+    if (method === 'PUT' && path.endsWith('/users/' + oid)) {
+      assert.deepEqual(JSON.parse(options.body), { enabled: false });
+      return response(204, null);
+    }
+    return reads(path, method, { user: stagedUser(true) });
+  }, async () => {
+    await new ClientEnrollmentKeycloak().disableClientIdentity(oid);
+  });
+  assert.equal(calls.filter((x) => x.startsWith('PUT ')).length, 1);
+});
+
+test('an unreachable Merchant group cannot be disabled by Client service', async () => {
   const calls = [];
   await withKeycloakMock(async (url, options = {}) => {
     const path = new URL(url).pathname;
     const method = options.method || 'GET';
     calls.push(method + ' ' + path);
     if (path.endsWith('/protocol/openid-connect/token')) return response(200, { access_token: 'a'.repeat(40) });
-    if (path.endsWith('/role-mappings/realm')) return response(200, [role]);
-    if (path.endsWith('/users/' + oid) && method === 'PUT') {
-      assert.deepEqual(JSON.parse(options.body), { enabled: true });
-      return response(204, null);
-    }
-    if (path.endsWith('/users/' + oid) && method === 'GET') {
-      return response(200, { enabled: true, emailVerified: true });
-    }
-    throw new Error('unexpected_fetch');
+    if (path.endsWith('/users/' + oid + '/groups')) return response(403, null);
+    throw new Error('unexpected_request');
   }, async () => {
-    await new ClientEnrollmentKeycloak().activateClientIdentity(oid);
+    await assert.rejects(
+      new ClientEnrollmentKeycloak().disableClientIdentity(oid),
+      /enrollment_client_group_unreadable/,
+    );
   });
-  const idxRoles = calls.findIndex((x) => x.includes('/role-mappings/realm'));
-  const idxEnable = calls.findIndex((x) => x.startsWith('PUT ') && x.endsWith('/users/' + oid));
-  const idxConfirm = calls.findIndex((x) => x.startsWith('GET ') && x.endsWith('/users/' + oid));
-  assert(idxRoles >= 0 && idxEnable > idxRoles && idxConfirm > idxEnable);
+  assert(!calls.some((x) => x.startsWith('PUT ')));
 });
 
 async function withEnrollmentFlags(run) {
@@ -224,6 +282,8 @@ async function withEnrollmentFlags(run) {
     DA_CLIENT_ENROLLMENT_KC_CLIENT_ID: 'delishafrica-client-enrollment',
     DA_CLIENT_ENROLLMENT_KC_CLIENT_SECRET: 'test-only-service-credential',
     DA_CLIENT_ENROLLMENT_SECURITY_GATE: 'APPROVED_AFTER_REVIEW',
+    DA_CLIENT_ENROLLMENT_AUTHZ_GATE: 'PROD_KC2681_FGAP_GROUP_CLIENT_ONLY_PASS',
+    DA_CLIENT_ENROLLMENT_RECOVERY_GATE: 'EMAIL_PASSWORD_RECOVERY_LIVE_VERIFIED',
   };
   const old = Object.fromEntries(Object.keys(values).map((k) => [k, process.env[k]]));
   Object.assign(process.env, values);

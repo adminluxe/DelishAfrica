@@ -1,5 +1,13 @@
 import { Injectable } from '@nestjs/common';
 
+/**
+ * DelishAfrica R6G | Keycloak 26.8.1+ FGAP v2 - group-scoped enrollment.
+ *
+ * This client gets no realm-admin, manage-users, view-users or map-roles.
+ * Only group-scoped 'view', 'view-members', 'manage-members' and
+ * 'manage-membership' are allowed for the single Client enrollment group.
+ * An existing Merchant, Courier or Ops subject MUST be inaccessible.
+ */
 type ClientIdentityInput = {
   email: string;
   phone: string;
@@ -7,23 +15,36 @@ type ClientIdentityInput = {
   lastName: string;
   password: string;
 };
-
 type AdminCredentials = {
   base: string;
   clientId: string;
   secret: string;
 };
-
-type RealmRole = { id: string; name: string; clientRole: boolean };
+type RealmRole = { id?: string; name?: string; clientRole?: boolean };
+type UserGroup = { id?: string; name?: string; path?: string };
+type KeycloakUser = {
+  id?: string;
+  emailVerified?: boolean;
+  enabled?: boolean;
+  attributes?: Record<string, unknown>;
+};
 
 const REALM = 'afritaste';
 const CLIENT_ROLE = 'client';
+const CLIENT_GROUP_PATH = '/da-clients-enrollment-v1';
 const AUTHORIZED_INTERNAL_HOST = 'afritaste-keycloak';
+const ALLOWED_REALM_ROLES = new Set([
+  CLIENT_ROLE,
+  'default-roles-' + REALM,
+  'offline_access',
+  'uma_authorization',
+]);
+const SUBJECT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function validateAdminUrl(raw: string): string {
   let url: URL;
-  try { url = new URL(raw); } catch { throw new Error('enrollment_keycloak_endpoint_invalid'); }
-  // All Admin API traffic must stay inside the private Keycloak Docker network.
+  try { url = new URL(raw); }
+  catch { throw new Error('enrollment_keycloak_endpoint_invalid'); }
   if (
     url.protocol !== 'http:' ||
     url.hostname !== AUTHORIZED_INTERNAL_HOST ||
@@ -44,8 +65,7 @@ export class ClientEnrollmentKeycloak {
     }
     return {
       base: validateAdminUrl(String(process.env.DA_CLIENT_ENROLLMENT_KC_BASE_URL || '')),
-      clientId,
-      secret,
+      clientId, secret,
     };
   }
 
@@ -77,7 +97,10 @@ export class ClientEnrollmentKeycloak {
     try {
       res = await fetch(creds.base + '/realms/' + REALM + '/protocol/openid-connect/token', {
         method: 'POST',
-        headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' },
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+          accept: 'application/json',
+        },
         body: new URLSearchParams({
           grant_type: 'client_credentials',
           client_id: creds.clientId,
@@ -98,27 +121,59 @@ export class ClientEnrollmentKeycloak {
     return data.access_token;
   }
 
+  private checkCreatedId(subjectId: string): void {
+    if (!SUBJECT_ID.test(subjectId)) {
+      throw new Error('enrollment_user_id_invalid');
+    }
+  }
+
   private async verifyOnlyClientRole(
     creds: AdminCredentials,
     token: string,
     subjectId: string,
-  ): Promise<void> {
+  ): Promise<KeycloakUser> {
+    this.checkCreatedId(subjectId);
+    const root = '/admin/realms/' + REALM + '/users/' + subjectId;
+
+    // The service may inspect ONLY members of its dedicated Client group.
+    const groupResponse = await this.request(creds.base, root + '/groups', token);
+    if (groupResponse.status !== 200) throw new Error('enrollment_client_group_unreadable');
+    const groups = await groupResponse.json() as UserGroup[];
+    if (
+      !Array.isArray(groups) ||
+      groups.length !== 1 ||
+      groups[0]?.path !== CLIENT_GROUP_PATH
+    ) throw new Error('enrollment_client_group_mismatch');
+
+    // Keycloak's /realm endpoint returns *direct* mappings only.
+    // Group-inherited 'client' is visible through /realm/composite instead.
     const recheck = await this.request(
-      creds.base, '/admin/realms/' + REALM + '/users/' + subjectId + '/role-mappings/realm', token,
+      creds.base, root + '/role-mappings/realm/composite', token,
     );
-    if (recheck.status !== 200) throw new Error('enrollment_role_recheck_failed');
-    const roles = await recheck.json() as Array<{ name: string; clientRole?: boolean }>;
+    if (recheck.status !== 200) throw new Error('enrollment_effective_role_unreadable');
+    const roles = await recheck.json() as RealmRole[];
     if (
       !Array.isArray(roles) ||
-      !roles.some((value) => value.name === CLIENT_ROLE && value.clientRole === false) ||
-      roles.some((value) => ['admin', 'merchant', 'courier', 'ops', 'realm-admin'].includes(value.name))
-    ) throw new Error('enrollment_role_verification_failed');
-  }
+      !roles.some((role) => role.name === CLIENT_ROLE && role.clientRole === false) ||
+      roles.some((role) =>
+        role.clientRole !== false ||
+        !role.name ||
+        !ALLOWED_REALM_ROLES.has(role.name),
+      )
+    ) throw new Error('enrollment_effective_role_not_client_only');
 
-  private checkCreatedId(subjectId: string): void {
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(subjectId)) {
-      throw new Error('enrollment_user_id_invalid');
-    }
+    const userResponse = await this.request(creds.base, root, token);
+    if (userResponse.status !== 200) throw new Error('enrollment_client_user_unreadable');
+    const account = await userResponse.json() as KeycloakUser;
+    const markers = account.attributes?.delishafrica_enrollment_version;
+    if (
+      account.id !== subjectId ||
+      account.emailVerified !== true ||
+      !Array.isArray(markers) ||
+      markers.length !== 1 ||
+      markers[0] !== 'client-v1'
+    ) throw new Error('enrollment_client_provenance_invalid');
+    return account;
   }
 
   /** Called only AFTER ClientEnrollmentRepository.complete has committed. */
@@ -126,28 +181,24 @@ export class ClientEnrollmentKeycloak {
     this.checkCreatedId(subjectId);
     const creds = this.credentials();
     const token = await this.getToken(creds);
-    // Role permissions may have changed since provisioning; verify again.
-    await this.verifyOnlyClientRole(creds, token, subjectId);
-    const activate = await this.request(
+    const before = await this.verifyOnlyClientRole(creds, token, subjectId);
+    if (before.enabled !== false) throw new Error('enrollment_activation_initial_state_invalid');
+    const response = await this.request(
       creds.base, '/admin/realms/' + REALM + '/users/' + subjectId,
       token, 'PUT', { enabled: true },
     );
-    if (activate.status !== 204) throw new Error('enrollment_account_activation_failed');
-    const confirm = await this.request(
-      creds.base, '/admin/realms/' + REALM + '/users/' + subjectId, token,
-    );
-    if (confirm.status !== 200) throw new Error('enrollment_activation_recheck_failed');
-    const account = await confirm.json() as { enabled?: boolean; emailVerified?: boolean };
-    if (account.enabled !== true || account.emailVerified !== true) {
-      throw new Error('enrollment_activation_not_confirmed');
-    }
+    if (response.status !== 204) throw new Error('enrollment_account_activation_failed');
+    const after = await this.verifyOnlyClientRole(creds, token, subjectId);
+    if (after.enabled !== true) throw new Error('enrollment_activation_not_confirmed');
   }
 
-  /** Best-effort compensation if the ledger or activation fails. */
+  /** Never attempt to change a Merchant/Courier/Ops subject during compensation. */
   async disableClientIdentity(subjectId: string): Promise<void> {
     this.checkCreatedId(subjectId);
     const creds = this.credentials();
     const token = await this.getToken(creds);
+    const current = await this.verifyOnlyClientRole(creds, token, subjectId);
+    if (current.enabled === false) return;
     const response = await this.request(
       creds.base, '/admin/realms/' + REALM + '/users/' + subjectId,
       token, 'PUT', { enabled: false },
@@ -158,29 +209,19 @@ export class ClientEnrollmentKeycloak {
   async createClientIdentity(input: ClientIdentityInput): Promise<string> {
     const creds = this.credentials();
     const token = await this.getToken(creds);
-
-    const roleResponse = await this.request(
-      creds.base, '/admin/realms/' + REALM + '/roles/' + CLIENT_ROLE, token,
-    );
-    if (roleResponse.status !== 200) throw new Error('enrollment_client_realm_role_missing');
-    const role = await roleResponse.json() as RealmRole;
-    if (
-      typeof role.id !== 'string' ||
-      role.name !== CLIENT_ROLE ||
-      role.clientRole !== false
-    ) throw new Error('enrollment_client_role_misconfigured');
-
     let createdId: string | null = null;
     try {
+      // Keycloak v2 checks group-scoped creation rights on POST /users.
+      // The group carries the 'client' realm role: NO direct role mappings.
+      // Production MUST be upgraded to a version fixing CVE-2026-18571.
       const response = await this.request(
         creds.base, '/admin/realms/' + REALM + '/users', token, 'POST',
         {
           username: input.email,
           email: input.email,
-          emailVerified: true, // SMS AND e-mail provider proofs were verified by our API.
-          // Keep this account unable to authenticate until the Client realm
-          // role has been assigned and independently re-checked.
+          emailVerified: true, // Signed SMS and email proofs were verified by our API.
           enabled: false,
+          groups: [CLIENT_GROUP_PATH],
           firstName: input.firstName,
           lastName: input.lastName,
           requiredActions: [],
@@ -193,36 +234,24 @@ export class ClientEnrollmentKeycloak {
       );
       if (response.status === 409) throw new Error('enrollment_identity_already_exists');
       if (response.status !== 201) throw new Error('enrollment_keycloak_create_rejected');
-
       const location = response.headers.get('location') || '';
       const match = location.match(/\/users\/([0-9a-fA-F-]{36})$/);
       if (!match) throw new Error('enrollment_keycloak_user_id_missing');
       createdId = match[1];
+      this.checkCreatedId(createdId);
 
-      const mapped = await this.request(
-        creds.base, '/admin/realms/' + REALM + '/users/' + createdId + '/role-mappings/realm',
-        token, 'POST', [role],
-      );
-      if (mapped.status !== 204) throw new Error('enrollment_realm_role_mapping_failed');
-
-      await this.verifyOnlyClientRole(creds, token, createdId);
-
-      // Two-phase enrollment: provisioning returns a DISABLED identity.
-      // The enrollment ledger must be durably committed BEFORE the account
-      // becomes able to authenticate. A crash now leaves a disabled account.
+      const created = await this.verifyOnlyClientRole(creds, token, createdId);
+      if (created.enabled !== false) {
+        throw new Error('enrollment_new_account_was_enabled');
+      }
+      // Ledger commit precedes activation in ClientEnrollmentService.
       return createdId;
     } catch (error) {
-      // Fail closed after partial remote creation. Require operator reconciliation.
-      // Do not delete identities automatically or retry provisioning with new secrets.
       if (createdId) {
-        try {
-          await this.request(
-            creds.base, '/admin/realms/' + REALM + '/users/' + createdId,
-            token, 'PUT', { enabled: false },
-          );
-        } catch {
-          // Do not expose Keycloak diagnostic details.
-        }
+        // The new identity should already be disabled. Never blindly
+        // mutate another principal in the absence of provenance proof.
+        try { await this.disableClientIdentity(createdId); }
+        catch { /* quarantined for operator review */ }
       }
       throw error;
     }

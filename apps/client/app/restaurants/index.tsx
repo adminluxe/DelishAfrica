@@ -52,7 +52,7 @@ export default function RestaurantsScreen() {
   }
 
   function openMenu(restaurant: DARestaurant) {
-    if (!isRestaurantOrderable(restaurant)) return;
+    if (restaurant.menuItems.length === 0) return;
     router.push({ pathname: "/menu", params: { restaurantSlug: restaurant.slug } } as any);
   }
 
@@ -121,9 +121,9 @@ export default function RestaurantsScreen() {
                 <View style={styles.actionGrow}>
                   <DAButton
                     app="client"
-                    label={orderable ? "Voir le menu" : "Ouverture bientôt"}
+                    label={orderable ? "Voir le menu" : restaurant.menuItems.length > 0 ? "Consulter la carte" : "Ouverture bientôt"}
                     onPress={() => openMenu(restaurant)}
-                    disabled={!orderable}
+                    disabled={restaurant.menuItems.length === 0}
                   />
                 </View>
               </View>
