@@ -27,6 +27,7 @@ export interface CountryPayPolicy {
   policyId: string;
   countryCode: string;
   currency: string;
+  payrollTimeZone: string;
   workerStatus: CourierWorkerStatus;
   validationStatus: PolicyValidationStatus;
   effectiveFrom: string | null;

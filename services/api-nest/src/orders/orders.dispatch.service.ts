@@ -1,12 +1,14 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { DaAuthPrincipal } from '../auth/auth.types';
 import { FinancialStateRepository } from '../financial-state/financial-state.repository';
+import { courierFairPayLabEnabled } from '../courier-payroll/lab-config';
 import { CourierPresenceService, type CourierPresenceRecord } from './courier-presence.service';
 import { OrdersAccessService } from './orders.access.service';
 import {
   acceptDemoOrderCourier,
   getDemoOrder,
   listDemoOrders,
+  markDemoOrderCourierPickupArrived,
   proposeDemoOrderCourier,
   rejectDemoOrderCourier,
   releaseDemoOrderCourierAssignment,
@@ -88,6 +90,58 @@ export class OrdersDispatchService {
     if (!order) throw new NotFoundException({ ok: false, code: 'dispatch_offer_not_found' });
     await this.financialState.upsertOrder(order);
     return { ok: true, order, proposal: order.assignmentProposal, status: order.status };
+  }
+
+  async pickupArrived(
+    principal: DaAuthPrincipal,
+    body: Record<string, any> = {},
+  ) {
+    if (principal.role !== 'courier') {
+      throw new ForbiddenException({ ok: false, code: 'courier_role_required' });
+    }
+    if (!courierFairPayLabEnabled()) {
+      throw new ForbiddenException({
+        ok: false,
+        code: 'courier_fair_pay_lab_disabled',
+      });
+    }
+
+    const orderId = this.access.requestedId(body);
+    const existing = await this.financialState.findOrder(orderId);
+    this.access.requireLivePublisher(principal, existing);
+
+    if (status(existing) !== 'ready') {
+      if (existing?.courierArrivedPickupAt) {
+        return {
+          ok: true,
+          order: existing,
+          pickupArrivedAt: existing.courierArrivedPickupAt,
+          idempotentReplay: true,
+        };
+      }
+      throw new ForbiddenException({
+        ok: false,
+        code: 'courier_pickup_arrival_requires_ready_status',
+        currentStatus: status(existing),
+      });
+    }
+
+    const courierId = this.presence.courierId(principal);
+    const order = markDemoOrderCourierPickupArrived({ orderId, courierId });
+    if (!order) {
+      throw new NotFoundException({
+        ok: false,
+        code: 'courier_pickup_arrival_order_not_found',
+      });
+    }
+
+    await this.financialState.upsertOrder(order);
+    return {
+      ok: true,
+      order,
+      pickupArrivedAt: order.courierArrivedPickupAt,
+      idempotentReplay: false,
+    };
   }
 
   async reject(principal: DaAuthPrincipal, body: Record<string, any> = {}) {

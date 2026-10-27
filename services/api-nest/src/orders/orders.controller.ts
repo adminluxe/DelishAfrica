@@ -181,6 +181,14 @@ export class OrdersController {
     return this.dispatch.accept(this.access.principal(request), body);
   }
 
+  @Post(['courier/pickup-arrived', 'demo/courier/pickup-arrived'])
+  courierPickupArrived(
+    @Req() request: OrdersRequest,
+    @Body() body: AnyRecord = {},
+  ) {
+    return this.dispatch.pickupArrived(this.access.principal(request), body);
+  }
+
   @Post(['courier/offers/reject', 'demo/courier/offers/reject'])
   courierReject(@Req() request: OrdersRequest, @Body() body: AnyRecord = {}) {
     return this.dispatch.reject(this.access.principal(request), body);

@@ -178,6 +178,12 @@ function addTimeline(order: AnyOrder, status: DemoOrderStatus, note?: string): A
   order.updatedAt = at;
   order.status = status;
 
+  // Status timestamps are append-once runtime facts. They must not be
+  // regenerated on idempotent/repeated state writes.
+  if (status === 'ready' && !order.readyAt) order.readyAt = at;
+  if (status === 'picked_up' && !order.pickedUpAt) order.pickedUpAt = at;
+  if (status === 'delivered' && !order.deliveredAt) order.deliveredAt = at;
+
   return order;
 }
 
@@ -351,6 +357,60 @@ export function updateDemoOrderStatus(input: any, maybeStatus?: any): AnyOrder |
   return clone(orders[idx]);
 }
 
+
+export function markDemoOrderCourierPickupArrived(input: any = {}): AnyOrder | null {
+  boot();
+
+  const orderId = String(input.orderId || input.id || input.publicId || '').trim();
+  const courierId = String(input.courierId || '').trim();
+  if (!orderId || !courierId) return null;
+
+  const idx = orders.findIndex((order: any) =>
+    [order.id, order.orderId, order.publicId]
+      .filter(Boolean)
+      .map(String)
+      .includes(orderId),
+  );
+  if (idx < 0) return null;
+
+  const current = orders[idx] as any;
+  const proposal = current.assignmentProposal || null;
+  if (
+    !proposal ||
+    String(proposal.status || '').toLowerCase() !== 'accepted' ||
+    String(proposal.courierId || '') !== courierId
+  ) {
+    return null;
+  }
+
+  if (current.courierArrivedPickupAt) return clone(current);
+
+  const at = nowIso();
+  const auditId =
+    input.auditId ||
+    `da-pickup-arrival-${Date.now()}-${Math.floor(Math.random() * 9000 + 1000)}`;
+
+  orders[idx] = {
+    ...current,
+    courierArrivedPickupAt: at,
+    updatedAt: at,
+    timeline: [
+      ...(Array.isArray(current.timeline) ? current.timeline : []),
+      {
+        status: current.status,
+        at,
+        changedAt: at,
+        label: 'courier_arrived_pickup',
+        note: 'Arrivée coursier au point de retrait enregistrée',
+        courierId,
+        auditId,
+      },
+    ],
+  } as AnyOrder;
+
+  safeWrite(orders);
+  return clone(orders[idx]);
+}
 
 export type DemoOrderCourierProposalInput = {
 orderId?: string;

@@ -12,6 +12,7 @@ export function createBelgiumEmployeeLabPolicy(
     policyId: 'BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1',
     countryCode: 'BE',
     currency: 'EUR',
+    payrollTimeZone: 'Europe/Brussels',
     workerStatus: 'EMPLOYEE',
     validationStatus: 'DRAFT',
     effectiveFrom: null,

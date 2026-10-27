@@ -1,5 +1,5 @@
 import type { CourierPayrollClockEvent } from '../../../../packages/contracts/src/courier-payroll-telemetry';
-import { InMemoryCourierPayrollLedger } from './lab-ledger-repository';
+import type { CourierPayrollLedgerRepository } from './courier-payroll-ledger';
 import {
   normalizeMissionPayrollTelemetry,
   normalizePaidWorkSegments,
@@ -18,7 +18,7 @@ function missionKey(event: CourierPayrollClockEvent): string {
 }
 
 export function runClockNormalizationJob(
-  ledger: InMemoryCourierPayrollLedger,
+  ledger: CourierPayrollLedgerRepository,
   courierId: string,
   weekKey: string,
   policyId: string,

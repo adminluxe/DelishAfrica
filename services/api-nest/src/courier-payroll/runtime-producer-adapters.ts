@@ -1,7 +1,7 @@
 import type { CanonicalOrderTruth } from '../../../../packages/contracts/src/order';
 import type { CourierPayrollClockEvent } from '../../../../packages/contracts/src/courier-payroll-telemetry';
 import { assertCourierFairPayLabEnabled } from './lab-config';
-import { InMemoryCourierPayrollLedger } from './lab-ledger-repository';
+import type { CourierPayrollLedgerRepository } from './courier-payroll-ledger';
 
 export interface PayrollProducerContext {
   countryCode: string;
@@ -103,6 +103,87 @@ export function buildCanonicalOrderClockEvents(
   );
 }
 
+export function buildRuntimeOrderClockEvents(
+  order: Record<string, any>,
+  context: PayrollProducerContext,
+): CourierPayrollClockEvent[] {
+  const orderId = String(order.id || order.orderId || order.publicId || '').trim();
+  const proposal = order.assignmentProposal || {};
+  const courierId = String(context.courierId || proposal.courierId || '').trim();
+  if (!orderId || !courierId) return [];
+
+  const missionId = context.missionId || `${orderId}:delivery`;
+  const base = {
+    courierId,
+    countryCode: context.countryCode,
+    weekKey: context.weekKey,
+    policyId: context.policyId,
+    orderId,
+    missionId,
+    merchantId: String(
+      order.restaurantId || order.partnerSlug || order.merchantSlug || '',
+    ).trim() || undefined,
+  };
+
+  const candidates: Array<{
+    eventType: CourierPayrollClockEvent['eventType'];
+    occurredAt: unknown;
+    source: CourierPayrollClockEvent['source'];
+    estimatedActivitySeconds?: number;
+  }> = [
+    {
+      eventType: 'MISSION_ACCEPTED',
+      occurredAt: proposal.acceptedAt,
+      source: 'API_ORDER',
+      ...(context.estimatedActivitySeconds != null
+        ? { estimatedActivitySeconds: context.estimatedActivitySeconds }
+        : {}),
+    },
+    {
+      eventType: 'MERCHANT_READY',
+      occurredAt: order.readyAt,
+      source: 'API_ORDER',
+    },
+    {
+      eventType: 'PICKUP_ARRIVED',
+      occurredAt: order.courierArrivedPickupAt,
+      source: 'COURIER_APP',
+    },
+    {
+      eventType: 'PICKED_UP',
+      occurredAt: order.pickedUpAt,
+      source: 'API_ORDER',
+    },
+    {
+      eventType: 'DELIVERED',
+      occurredAt: order.deliveredAt,
+      source: 'API_ORDER',
+    },
+  ];
+
+  return candidates
+    .filter(
+      (candidate) =>
+        typeof candidate.occurredAt === 'string' &&
+        Number.isFinite(Date.parse(candidate.occurredAt)),
+    )
+    .map((candidate) => ({
+      ...base,
+      eventId: eventId(orderId, candidate.eventType, String(candidate.occurredAt)),
+      eventType: candidate.eventType,
+      source: candidate.source,
+      occurredAt: String(candidate.occurredAt),
+      ...(candidate.estimatedActivitySeconds != null
+        ? { estimatedActivitySeconds: candidate.estimatedActivitySeconds }
+        : {}),
+    }))
+    .sort(
+      (a, b) =>
+        Date.parse(a.occurredAt) - Date.parse(b.occurredAt) ||
+        a.eventId.localeCompare(b.eventId),
+    );
+}
+
 export interface PickupArrivalInput extends PayrollProducerContext {
   orderId: string;
   merchantId?: string;
@@ -130,7 +211,7 @@ export function buildCourierPickupArrivalEvent(
 }
 
 export function recordLabClockEvents(
-  ledger: InMemoryCourierPayrollLedger,
+  ledger: CourierPayrollLedgerRepository,
   events: CourierPayrollClockEvent[],
   env: Record<string, string | undefined> = process.env,
 ) {

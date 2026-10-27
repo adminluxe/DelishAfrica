@@ -5,18 +5,19 @@ import { isCourierPayrollClockEvent } from '../../../../packages/contracts/src/c
 import type { CourierWeeklyStatement } from './weekly-statement';
 import type { SealedCountryPayPolicy } from './policy-ledger';
 import { assertSealedPolicyIntegrity, stableJsonHash } from './policy-ledger';
-
-export interface AppendResult {
-  inserted: boolean;
-  idempotentReplay: boolean;
-}
+import type {
+  AppendResult,
+  CourierPayrollLedgerRepository,
+} from './courier-payroll-ledger';
 
 interface StoredValue<T> {
   value: T;
   hash: string;
 }
 
-export class InMemoryCourierPayrollLedger {
+export class InMemoryCourierPayrollLedger
+  implements CourierPayrollLedgerRepository
+{
   private readonly clockEvents = new Map<string, StoredValue<CourierPayrollClockEvent>>();
   private readonly facts = new Map<string, StoredValue<CourierPayrollFact>>();
   private readonly policies = new Map<string, StoredValue<SealedCountryPayPolicy>>();

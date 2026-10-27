@@ -14,7 +14,10 @@ import {
 export interface ProjectedWeeklyPayrollInput {
   input: WeeklyCourierPayInput;
   factIds: string[];
+  effectiveFactIds: string[];
+  supersededFactIds: string[];
   factCount: number;
+  effectiveFactCount: number;
 }
 
 function secondsBetween(startedAt: string, endedAt: string): number {
@@ -51,6 +54,80 @@ function assertNoDuplicateFacts(facts: CourierPayrollFact[]): void {
     if (ids.has(fact.factId)) throw new Error('COURIER_PAYROLL_DUPLICATE_FACT');
     ids.add(fact.factId);
   }
+}
+
+function assertCorrectionCompatibility(
+  replacement: CourierPayrollFact,
+  target: CourierPayrollFact,
+): void {
+  if (
+    replacement.courierId !== target.courierId ||
+    replacement.weekKey !== target.weekKey ||
+    replacement.policyId !== target.policyId ||
+    replacement.countryCode.toUpperCase() !== target.countryCode.toUpperCase()
+  ) {
+    throw new Error('COURIER_PAYROLL_CORRECTION_SCOPE_MISMATCH');
+  }
+  if (
+    replacement.kind !== target.kind ||
+    replacement.category !== target.category
+  ) {
+    throw new Error('COURIER_PAYROLL_CORRECTION_TYPE_MISMATCH');
+  }
+  if (
+    replacement.kind === 'MONEY' &&
+    target.kind === 'MONEY' &&
+    replacement.currency.toUpperCase() !== target.currency.toUpperCase()
+  ) {
+    throw new Error('COURIER_PAYROLL_CORRECTION_CURRENCY_MISMATCH');
+  }
+  const approvedAt = Date.parse(replacement.correction!.approvedAt);
+  if (
+    approvedAt < Date.parse(target.recordedAt) ||
+    approvedAt > Date.parse(replacement.recordedAt)
+  ) {
+    throw new Error('COURIER_PAYROLL_CORRECTION_TIME_INVALID');
+  }
+}
+
+export function resolveEffectivePayrollFacts(
+  facts: CourierPayrollFact[],
+): {
+  effectiveFacts: CourierPayrollFact[];
+  supersededFactIds: string[];
+} {
+  const byId = new Map(facts.map((fact) => [fact.factId, fact] as const));
+  const supersededBy = new Map<string, string>();
+
+  for (const fact of facts) {
+    if (!fact.supersedesFactId) continue;
+    const target = byId.get(fact.supersedesFactId);
+    if (!target) {
+      throw new Error('COURIER_PAYROLL_CORRECTION_TARGET_MISSING');
+    }
+    assertCorrectionCompatibility(fact, target);
+    if (supersededBy.has(target.factId)) {
+      throw new Error('COURIER_PAYROLL_CORRECTION_TARGET_ALREADY_SUPERSEDED');
+    }
+    supersededBy.set(target.factId, fact.factId);
+  }
+
+  for (const fact of facts) {
+    const visited = new Set<string>();
+    let current: CourierPayrollFact | undefined = fact;
+    while (current?.supersedesFactId) {
+      if (visited.has(current.factId)) {
+        throw new Error('COURIER_PAYROLL_CORRECTION_CYCLE');
+      }
+      visited.add(current.factId);
+      current = byId.get(current.supersedesFactId);
+    }
+  }
+
+  return {
+    effectiveFacts: facts.filter((fact) => !supersededBy.has(fact.factId)),
+    supersededFactIds: Array.from(supersededBy.keys()).sort(),
+  };
 }
 
 function assertUniqueDurationEstimates(facts: CourierPayrollDurationFact[]): void {

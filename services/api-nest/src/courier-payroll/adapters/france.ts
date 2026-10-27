@@ -5,6 +5,7 @@ export function createFranceIndependentReferencePolicy(): CountryPayPolicy {
     policyId: 'FR-INDEPENDENT-ARPE-2026-09-01-v1',
     countryCode: 'FR',
     currency: 'EUR',
+    payrollTimeZone: 'Europe/Paris',
     workerStatus: 'INDEPENDENT',
     validationStatus: 'LEGAL_REVIEW',
     effectiveFrom: '2026-09-01',

@@ -1,6 +1,6 @@
 import type { PayrollExecutionMode } from './courier-payroll.types';
 import type { SealedCountryPayPolicy } from './policy-ledger';
-import { InMemoryCourierPayrollLedger } from './lab-ledger-repository';
+import type { CourierPayrollLedgerRepository } from './courier-payroll-ledger';
 import { buildCourierWeeklyStatement } from './weekly-statement';
 
 export interface WeeklyCalculationJobInput {
@@ -11,7 +11,7 @@ export interface WeeklyCalculationJobInput {
 }
 
 export function runWeeklyCalculationJob(
-  ledger: InMemoryCourierPayrollLedger,
+  ledger: CourierPayrollLedgerRepository,
   input: WeeklyCalculationJobInput,
 ) {
   ledger.appendPolicy(input.sealedPolicy);

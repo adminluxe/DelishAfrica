@@ -2,7 +2,7 @@ import type { CourierPayrollFact } from '../../../../packages/contracts/src/cour
 import type { CourierPayrollClockEvent } from '../../../../packages/contracts/src/courier-payroll-telemetry';
 import type { SealedCountryPayPolicy } from './policy-ledger';
 import { assertCourierFairPayLabEnabled } from './lab-config';
-import { InMemoryCourierPayrollLedger } from './lab-ledger-repository';
+import type { CourierPayrollLedgerRepository } from './courier-payroll-ledger';
 import { runClockNormalizationJob } from './clock-normalization-job';
 import { runWeeklyCalculationJob } from './weekly-calculation-job';
 
@@ -16,7 +16,7 @@ export interface LabPipelineInput {
 }
 
 export function runCourierFairPayLabPipeline(
-  ledger: InMemoryCourierPayrollLedger,
+  ledger: CourierPayrollLedgerRepository,
   input: LabPipelineInput,
 ) {
   assertCourierFairPayLabEnabled(input.env);
