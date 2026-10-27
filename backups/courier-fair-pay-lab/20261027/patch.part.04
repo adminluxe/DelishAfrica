@@ -1,0 +1,702 @@
++      'Production must remain blocked until Belgian legal review is GREEN.',
++    ],
++  };
++}
+diff --git a/services/api-nest/src/courier-payroll/adapters/france.ts b/services/api-nest/src/courier-payroll/adapters/france.ts
+new file mode 100644
+index 0000000..c22da01
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/adapters/france.ts
+@@ -0,0 +1,34 @@
++import { CountryPayPolicy } from '../courier-payroll.types';
++
++export function createFranceIndependentReferencePolicy(): CountryPayPolicy {
++  return {
++    policyId: 'FR-INDEPENDENT-ARPE-2026-09-01-v1',
++    countryCode: 'FR',
++    currency: 'EUR',
++    workerStatus: 'INDEPENDENT',
++    validationStatus: 'LEGAL_REVIEW',
++    effectiveFrom: '2026-09-01',
++    legalFloorCentsPerPaidHour: null,
++    pogFairnessFloorCentsPerPaidHour: null,
++    paidTimeRules: {
++      activeMission: true,
++      platformControlledWaiting: false,
++      requiredReposition: false,
++      otherPaid: false,
++    },
++    weeklyActivityGuarantee: {
++      rateCentsPerHour: 1900,
++      differentialPaymentDelayDays: 7,
++      calculationVersion: 'FR-ARPE-2026-09-01-v1',
++    },
++    tipsPassThrough: true,
++    tipsExcludedFromFloors: true,
++    expenseReimbursementsExcludedFromFloors: true,
++    productionActivationAllowed: false,
++    notes: [
++      'Reference adapter for the ARPE weekly activity-income guarantee.',
++      'The ARPE guarantee uses an explicit estimated activity duration (activityGuaranteeSeconds), kept separate from actual mission clock time.',
++      'Production remains blocked until final legal/data mapping review is GREEN.',
++    ],
++  };
++}
+diff --git a/services/api-nest/src/courier-payroll/belgium-sensitivity.ts b/services/api-nest/src/courier-payroll/belgium-sensitivity.ts
+new file mode 100644
+index 0000000..192c604
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/belgium-sensitivity.ts
+@@ -0,0 +1,101 @@
++import { estimateOperationalDensity } from './operational-density';
++
++export interface BelgiumEconomicsSensitivityRow {
++  employerCostPerPaidHourCents: number;
++  contributionBeforeCourierCentsPerDelivery: number;
++  targetResidualContributionCentsPerDelivery: number;
++  breakEvenDeliveriesPerPaidHour: number | null;
++  targetDeliveriesPerPaidHour: number | null;
++}
++
++export interface BelgiumOperationsSensitivityRow {
++  baseTravelAndHandlingMinutesPerDelivery: number;
++  merchantWaitMinutesPerDelivery: number;
++  batchEfficiencyMultiplier: number;
++  deliveriesPerPaidHour: number;
++  employerCostPerPaidHourCents: number;
++  contributionBeforeCourierCentsPerDelivery: number;
++  residualContributionPerPaidHourCents: number;
++}
++
++export function runBelgiumEconomicsSensitivity(): BelgiumEconomicsSensitivityRow[] {
++  const employerCosts = [2600, 2800, 3000, 3200, 3400];
++  const contributions = [900, 1000, 1100, 1200, 1300, 1400];
++  const targetResidualContributionCentsPerDelivery = 200;
++  const rows: BelgiumEconomicsSensitivityRow[] = [];
++
++  for (const employerCostPerPaidHourCents of employerCosts) {
++    for (const contributionBeforeCourierCentsPerDelivery of contributions) {
++      const breakEvenDeliveriesPerPaidHour =
++        contributionBeforeCourierCentsPerDelivery === 0
++          ? null
++          : employerCostPerPaidHourCents /
++            contributionBeforeCourierCentsPerDelivery;
++      const residualCapacity =
++        contributionBeforeCourierCentsPerDelivery -
++        targetResidualContributionCentsPerDelivery;
++      const targetDeliveriesPerPaidHour =
++        residualCapacity <= 0
++          ? null
++          : employerCostPerPaidHourCents / residualCapacity;
++
++      rows.push({
++        employerCostPerPaidHourCents,
++        contributionBeforeCourierCentsPerDelivery,
++        targetResidualContributionCentsPerDelivery,
++        breakEvenDeliveriesPerPaidHour,
++        targetDeliveriesPerPaidHour,
++      });
++    }
++  }
++
++  return rows;
++}
++
++export function runBelgiumOperationsSensitivity(): BelgiumOperationsSensitivityRow[] {
++  const baseMinutes = [15, 17, 20];
++  const waitMinutes = [0, 3, 6, 9, 12];
++  const batchMultipliers = [1, 1.1, 1.2];
++  const employerCostPerPaidHourCents = 3000;
++  const contributionBeforeCourierCentsPerDelivery = 1200;
++  const rows: BelgiumOperationsSensitivityRow[] = [];
++
++  for (const baseTravelAndHandlingMinutesPerDelivery of baseMinutes) {
++    for (const merchantWaitMinutesPerDelivery of waitMinutes) {
++      for (const batchEfficiencyMultiplier of batchMultipliers) {
++        const density = estimateOperationalDensity({
++          baseTravelAndHandlingMinutesPerDelivery,
++          merchantWaitMinutesPerDelivery,
++          batchEfficiencyMultiplier,
++        }).deliveriesPerPaidHour;
++
++        rows.push({
++          baseTravelAndHandlingMinutesPerDelivery,
++          merchantWaitMinutesPerDelivery,
++          batchEfficiencyMultiplier,
++          deliveriesPerPaidHour: density,
++          employerCostPerPaidHourCents,
++          contributionBeforeCourierCentsPerDelivery,
++          residualContributionPerPaidHourCents:
++            density * contributionBeforeCourierCentsPerDelivery -
++            employerCostPerPaidHourCents,
++        });
++      }
++    }
++  }
++
++  return rows;
++}
++
++if (require.main === module) {
++  process.stdout.write(
++    JSON.stringify(
++      {
++        economics: runBelgiumEconomicsSensitivity(),
++        operations: runBelgiumOperationsSensitivity(),
++      },
++      null,
++      2,
++    ) + '\n',
++  );
++}
+diff --git a/services/api-nest/src/courier-payroll/clock-normalization-job.ts b/services/api-nest/src/courier-payroll/clock-normalization-job.ts
+new file mode 100644
+index 0000000..f62367f
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/clock-normalization-job.ts
+@@ -0,0 +1,72 @@
++import type { CourierPayrollClockEvent } from '../../../../packages/contracts/src/courier-payroll-telemetry';
++import { InMemoryCourierPayrollLedger } from './lab-ledger-repository';
++import {
++  normalizeMissionPayrollTelemetry,
++  normalizePaidWorkSegments,
++} from './telemetry-normalizer';
++
++const MISSION_TYPES = new Set([
++  'MISSION_ACCEPTED',
++  'MERCHANT_READY',
++  'PICKUP_ARRIVED',
++  'PICKED_UP',
++  'DELIVERED',
++]);
++
++function missionKey(event: CourierPayrollClockEvent): string {
++  return String(event.missionId || event.orderId || '').trim();
++}
++
++export function runClockNormalizationJob(
++  ledger: InMemoryCourierPayrollLedger,
++  courierId: string,
++  weekKey: string,
++  policyId: string,
++) {
++  const events = ledger.listClockEvents(courierId, weekKey, policyId);
++  const missionGroups = new Map<string, CourierPayrollClockEvent[]>();
++
++  for (const event of events.filter((item) => MISSION_TYPES.has(item.eventType))) {
++    const key = missionKey(event);
++    if (!key) {
++      throw new Error('COURIER_PAYROLL_CLOCK_EVENT_MISSION_REQUIRED');
++    }
++    const bucket = missionGroups.get(key) || [];
++    bucket.push(event);
++    missionGroups.set(key, bucket);
++  }
++
++  const incompleteMissions: Array<{
++    missionKey: string;
++    missingSignals: string[];
++  }> = [];
++  const factAppendResults = [];
++
++  for (const [key, bucket] of missionGroups.entries()) {
++    const normalized = normalizeMissionPayrollTelemetry(bucket);
++    factAppendResults.push(...ledger.appendFacts(normalized.facts));
++    if (!normalized.complete) {
++      incompleteMissions.push({
++        missionKey: key,
++        missingSignals: normalized.missingSignals,
++      });
++    }
++  }
++
++  const segmentResult = normalizePaidWorkSegments(events);
++  factAppendResults.push(...ledger.appendFacts(segmentResult.facts));
++
++  return {
++    complete:
++      incompleteMissions.length === 0 &&
++      segmentResult.incompleteSegments.length === 0,
++    eventCount: events.length,
++    normalizedFactWrites: factAppendResults.length,
++    insertedFacts: factAppendResults.filter((result) => result.inserted).length,
++    idempotentFactReplays: factAppendResults.filter(
++      (result) => result.idempotentReplay,
++    ).length,
++    incompleteMissions,
++    incompleteSegments: segmentResult.incompleteSegments,
++  };
++}
+diff --git a/services/api-nest/src/courier-payroll/courier-payroll.types.ts b/services/api-nest/src/courier-payroll/courier-payroll.types.ts
+new file mode 100644
+index 0000000..299a685
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/courier-payroll.types.ts
+@@ -0,0 +1,107 @@
++export type CourierWorkerStatus = 'EMPLOYEE' | 'INDEPENDENT';
++export type PolicyValidationStatus = 'DRAFT' | 'LEGAL_REVIEW' | 'GREEN';
++export type PayrollExecutionMode = 'LAB' | 'PRODUCTION';
++
++export interface WorkTimeBreakdown {
++  activeMissionSeconds: number;
++  platformControlledWaitingSeconds: number;
++  requiredRepositionSeconds: number;
++  otherPaidSeconds: number;
++  excludedSeconds: number;
++}
++
++export interface PaidTimeRules {
++  activeMission: boolean;
++  platformControlledWaiting: boolean;
++  requiredReposition: boolean;
++  otherPaid: boolean;
++}
++
++export interface WeeklyActivityGuaranteePolicy {
++  rateCentsPerHour: number;
++  differentialPaymentDelayDays: number;
++  calculationVersion: string;
++}
++
++export interface CountryPayPolicy {
++  policyId: string;
++  countryCode: string;
++  currency: string;
++  workerStatus: CourierWorkerStatus;
++  validationStatus: PolicyValidationStatus;
++  effectiveFrom: string | null;
++  legalFloorCentsPerPaidHour: number | null;
++  pogFairnessFloorCentsPerPaidHour: number | null;
++  paidTimeRules: PaidTimeRules;
++  weeklyActivityGuarantee: WeeklyActivityGuaranteePolicy | null;
++  tipsPassThrough: true;
++  tipsExcludedFromFloors: true;
++  expenseReimbursementsExcludedFromFloors: true;
++  productionActivationAllowed: boolean;
++  notes: string[];
++}
++
++export interface WeeklyCourierPayInput {
++  courierId: string;
++  weekKey: string;
++  workTime: WorkTimeBreakdown;
++  activityGuaranteeSeconds?: number;
++  eligibleIncomeCents: number;
++  tipsCents: number;
++  expenseReimbursementsCents: number;
++}
++
++export interface FairPayComputation {
++  courierId: string;
++  weekKey: string;
++  policyId: string;
++  workerStatus: CourierWorkerStatus;
++  paidSeconds: number;
++  mobilizedSeconds: number;
++  activeMissionSeconds: number;
++  activityGuaranteeSeconds: number | null;
++  utilizationRatio: number;
++  legalFloorCents: number;
++  pogFairnessFloorCents: number;
++  activityGuaranteeFloorCents: number;
++  governingFloorCents: number;
++  eligibleIncomeCents: number;
++  differentialDueCents: number;
++  grossPayDueCents: number;
++  tipsPassThroughCents: number;
++  expenseReimbursementsCents: number;
++  totalCashDueCents: number;
++  differentialPaymentDelayDays: number | null;
++  productionEligible: boolean;
++  warnings: string[];
++}
++
++export interface ZoneViabilityInput {
++  zoneId: string;
++  paidHours: number;
++  activeMissionHours: number;
++  deliveries: number;
++  employerCostPerPaidHourCents: number;
++  contributionBeforeCourierCentsPerDelivery: number;
++  fixedZoneCostCents?: number;
++  targetResidualContributionCentsPerDelivery?: number;
++}
++
++export interface ZoneViabilityResult {
++  zoneId: string;
++  paidHours: number;
++  deliveries: number;
++  deliveriesPerPaidHour: number;
++  utilizationRatio: number;
++  totalEmployerCourierCostCents: number;
++  courierCostPerDeliveryCents: number;
++  grossContributionBeforeCourierCents: number;
++  fixedZoneCostCents: number;
++  residualContributionCents: number;
++  residualContributionPerDeliveryCents: number;
++  breakEvenDeliveriesPerPaidHour: number | null;
++  targetDeliveriesPerPaidHour: number | null;
++  viableAtCurrentDensity: boolean;
++  workerPayProtected: true;
++  warnings: string[];
++}
+diff --git a/services/api-nest/src/courier-payroll/fair-pay-kernel.spec.ts b/services/api-nest/src/courier-payroll/fair-pay-kernel.spec.ts
+new file mode 100644
+index 0000000..1287369
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/fair-pay-kernel.spec.ts
+@@ -0,0 +1,188 @@
++import { equal, ok, throws } from 'node:assert/strict';
++import { test } from 'node:test';
++import { createBelgiumEmployeeLabPolicy } from './adapters/belgium';
++import { createFranceIndependentReferencePolicy } from './adapters/france';
++import { computeFairPay } from './fair-pay-kernel';
++import { simulateZoneViability } from './zone-viability';
++
++test('Belgium employee lab pays controlled waiting and repositioning', () => {
++  const policy = createBelgiumEmployeeLabPolicy();
++  const result = computeFairPay({
++    courierId: 'be-1',
++    weekKey: '2026-W44',
++    workTime: {
++      activeMissionSeconds: 3 * 3600,
++      platformControlledWaitingSeconds: 3600,
++      requiredRepositionSeconds: 1800,
++      otherPaidSeconds: 1800,
++      excludedSeconds: 0,
++    },
++    eligibleIncomeCents: 9000,
++    tipsCents: 1200,
++    expenseReimbursementsCents: 800,
++  }, policy);
++
++  equal(result.paidSeconds, 5 * 3600);
++  equal(result.pogFairnessFloorCents, 9500);
++  equal(result.differentialDueCents, 500);
++  equal(result.grossPayDueCents, 9500);
++  equal(result.totalCashDueCents, 11500);
++  equal(result.utilizationRatio, 0.6);
++  ok(result.warnings.includes('LOW_UTILIZATION_IS_POG_ZONE_RISK_NOT_COURIER_DEBT'));
++});
++
++test('legal floor overrides POG floor when higher', () => {
++  const policy = createBelgiumEmployeeLabPolicy({
++    legalFloorCentsPerPaidHour: 2200,
++    pogFairnessFloorCentsPerPaidHour: 1900,
++  });
++  const result = computeFairPay({
++    courierId: 'be-2',
++    weekKey: '2026-W44',
++    workTime: {
++      activeMissionSeconds: 3600,
++      platformControlledWaitingSeconds: 0,
++      requiredRepositionSeconds: 0,
++      otherPaidSeconds: 0,
++      excludedSeconds: 0,
++    },
++    eligibleIncomeCents: 1900,
++    tipsCents: 0,
++    expenseReimbursementsCents: 0,
++  }, policy);
++
++  equal(result.legalFloorCents, 2200);
++  equal(result.governingFloorCents, 2200);
++  equal(result.differentialDueCents, 300);
++});
++
++test('tips and expenses never satisfy a pay floor', () => {
++  const result = computeFairPay({
++    courierId: 'be-3',
++    weekKey: '2026-W44',
++    workTime: {
++      activeMissionSeconds: 3600,
++      platformControlledWaitingSeconds: 0,
++      requiredRepositionSeconds: 0,
++      otherPaidSeconds: 0,
++      excludedSeconds: 0,
++    },
++    eligibleIncomeCents: 1500,
++    tipsCents: 1000,
++    expenseReimbursementsCents: 500,
++  }, createBelgiumEmployeeLabPolicy());
++
++  equal(result.differentialDueCents, 400);
++  equal(result.grossPayDueCents, 1900);
++  equal(result.totalCashDueCents, 3400);
++});
++
++test('France reference adapter keeps 19 EUR activity guarantee separate', () => {
++  const result = computeFairPay({
++    courierId: 'fr-1',
++    weekKey: '2026-W44',
++    workTime: {
++      activeMissionSeconds: 3600,
++      platformControlledWaitingSeconds: 1800,
++      requiredRepositionSeconds: 0,
++      otherPaidSeconds: 0,
++      excludedSeconds: 0,
++    },
++    activityGuaranteeSeconds: 3600,
++    eligibleIncomeCents: 1800,
++    tipsCents: 700,
++    expenseReimbursementsCents: 0,
++  }, createFranceIndependentReferencePolicy());
++
++  equal(result.activityGuaranteeFloorCents, 1900);
++  equal(result.differentialDueCents, 100);
++  equal(result.differentialPaymentDelayDays, 7);
++});
++
++test('draft policy cannot execute production payroll', () => {
++  throws(() => computeFairPay({
++    courierId: 'be-4',
++    weekKey: '2026-W44',
++    workTime: {
++      activeMissionSeconds: 3600,
++      platformControlledWaitingSeconds: 0,
++      requiredRepositionSeconds: 0,
++      otherPaidSeconds: 0,
++      excludedSeconds: 0,
++    },
++    eligibleIncomeCents: 1900,
++    tipsCents: 0,
++    expenseReimbursementsCents: 0,
++  }, createBelgiumEmployeeLabPolicy(), 'PRODUCTION'), /NOT_GREEN/);
++});
++
++test('zone loss is borne by POG and never changes courier pay', () => {
++  const zone = simulateZoneViability({
++    zoneId: 'BRU-LAB-A',
++    paidHours: 10,
++    activeMissionHours: 6,
++    deliveries: 18,
++    employerCostPerPaidHourCents: 3000,
++    contributionBeforeCourierCentsPerDelivery: 1200,
++  });
++
++  equal(zone.workerPayProtected, true);
++  equal(zone.viableAtCurrentDensity, false);
++  ok(zone.warnings.includes('ZONE_ECONOMICS_NEGATIVE_POG_ABSORBS_SHORTFALL'));
++  equal(Number(zone.breakEvenDeliveriesPerPaidHour?.toFixed(2)), 2.5);
++});
++
++test('zone becomes viable above break-even density', () => {
++  const zone = simulateZoneViability({
++    zoneId: 'BRU-LAB-B',
++    paidHours: 10,
++    activeMissionHours: 8,
++    deliveries: 30,
++    employerCostPerPaidHourCents: 3000,
++    contributionBeforeCourierCentsPerDelivery: 1200,
++  });
++
++  equal(zone.deliveriesPerPaidHour, 3);
++  equal(zone.viableAtCurrentDensity, true);
++  equal(zone.residualContributionCents, 6000);
++});
++
++test('France guarantee requires the explicit legal activity estimate', () => {
++  throws(() => computeFairPay({
++    courierId: 'fr-missing-estimate',
++    weekKey: '2026-W44',
++    workTime: {
++      activeMissionSeconds: 7200,
++      platformControlledWaitingSeconds: 0,
++      requiredRepositionSeconds: 0,
++      otherPaidSeconds: 0,
++      excludedSeconds: 0,
++    },
++    eligibleIncomeCents: 1800,
++    tipsCents: 0,
++    expenseReimbursementsCents: 0,
++  }, createFranceIndependentReferencePolicy()), /ACTIVITY_GUARANTEE_DURATION_REQUIRED/);
++});
++
++test('France guarantee uses estimated duration, not actual mission clock', () => {
++  const result = computeFairPay({
++    courierId: 'fr-estimate-separated',
++    weekKey: '2026-W44',
++    workTime: {
++      activeMissionSeconds: 7200,
++      platformControlledWaitingSeconds: 0,
++      requiredRepositionSeconds: 0,
++      otherPaidSeconds: 0,
++      excludedSeconds: 0,
++    },
++    activityGuaranteeSeconds: 3600,
++    eligibleIncomeCents: 1800,
++    tipsCents: 0,
++    expenseReimbursementsCents: 0,
++  }, createFranceIndependentReferencePolicy());
++
++  equal(result.activeMissionSeconds, 7200);
++  equal(result.activityGuaranteeSeconds, 3600);
++  equal(result.activityGuaranteeFloorCents, 1900);
++  equal(result.differentialDueCents, 100);
++});
+diff --git a/services/api-nest/src/courier-payroll/fair-pay-kernel.ts b/services/api-nest/src/courier-payroll/fair-pay-kernel.ts
+new file mode 100644
+index 0000000..856c393
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/fair-pay-kernel.ts
+@@ -0,0 +1,176 @@
++import {
++  CountryPayPolicy,
++  FairPayComputation,
++  PayrollExecutionMode,
++  WeeklyCourierPayInput,
++  WorkTimeBreakdown,
++} from './courier-payroll.types';
++
++function assertNonNegativeSafeInteger(value: number, field: string): void {
++  if (!Number.isSafeInteger(value) || value < 0) {
++    throw new Error(`COURIER_PAYROLL_INVALID_${field.toUpperCase()}`);
++  }
++}
++
++function assertRequiredText(value: string, field: string): void {
++  if (!String(value || '').trim()) {
++    throw new Error(`COURIER_PAYROLL_INVALID_${field.toUpperCase()}`);
++  }
++}
++
++function centsForSeconds(seconds: number, centsPerHour: number | null): number {
++  if (centsPerHour == null) return 0;
++  assertNonNegativeSafeInteger(seconds, 'seconds');
++  assertNonNegativeSafeInteger(centsPerHour, 'centsPerHour');
++  if (seconds === 0 || centsPerHour === 0) return 0;
++  return Math.ceil((seconds * centsPerHour) / 3600);
++}
++
++export function mobilizedSeconds(workTime: WorkTimeBreakdown): number {
++  const values = [
++    workTime.activeMissionSeconds,
++    workTime.platformControlledWaitingSeconds,
++    workTime.requiredRepositionSeconds,
++    workTime.otherPaidSeconds,
++    workTime.excludedSeconds,
++  ];
++  values.forEach((value, index) =>
++    assertNonNegativeSafeInteger(value, `workTime[${index}]`),
++  );
++  return (
++    workTime.activeMissionSeconds +
++    workTime.platformControlledWaitingSeconds +
++    workTime.requiredRepositionSeconds +
++    workTime.otherPaidSeconds
++  );
++}
++
++export function paidSeconds(
++  workTime: WorkTimeBreakdown,
++  policy: CountryPayPolicy,
++): number {
++  mobilizedSeconds(workTime);
++  let total = 0;
++  if (policy.paidTimeRules.activeMission) total += workTime.activeMissionSeconds;
++  if (policy.paidTimeRules.platformControlledWaiting) {
++    total += workTime.platformControlledWaitingSeconds;
++  }
++  if (policy.paidTimeRules.requiredReposition) {
++    total += workTime.requiredRepositionSeconds;
++  }
++  if (policy.paidTimeRules.otherPaid) total += workTime.otherPaidSeconds;
++  return total;
++}
++
++export function assertProductionPolicy(policy: CountryPayPolicy): void {
++  if (
++    policy.validationStatus !== 'GREEN' ||
++    !policy.productionActivationAllowed ||
++    !policy.effectiveFrom
++  ) {
++    throw new Error('COURIER_PAYROLL_COUNTRY_POLICY_NOT_GREEN');
++  }
++}
++
++export function computeFairPay(
++  input: WeeklyCourierPayInput,
++  policy: CountryPayPolicy,
++  mode: PayrollExecutionMode = 'LAB',
++): FairPayComputation {
++  assertRequiredText(input.courierId, 'courierId');
++  assertRequiredText(input.weekKey, 'weekKey');
++  assertRequiredText(policy.policyId, 'policyId');
++
++  [
++    ['eligibleIncomeCents', input.eligibleIncomeCents],
++    ['tipsCents', input.tipsCents],
++    ['expenseReimbursementsCents', input.expenseReimbursementsCents],
++  ].forEach(([field, value]) =>
++    assertNonNegativeSafeInteger(value as number, field as string),
++  );
++
++  if (mode === 'PRODUCTION') assertProductionPolicy(policy);
++
++  const paid = paidSeconds(input.workTime, policy);
++  const mobilized = mobilizedSeconds(input.workTime);
++  const active = input.workTime.activeMissionSeconds;
++  const utilizationRatio = mobilized === 0 ? 0 : active / mobilized;
++
++  const legalFloorCents = centsForSeconds(
++    paid,
++    policy.legalFloorCentsPerPaidHour,
++  );
++  const pogFairnessFloorCents = centsForSeconds(
++    paid,
++    policy.pogFairnessFloorCentsPerPaidHour,
++  );
++  let activityGuaranteeSeconds: number | null = null;
++  let activityGuaranteeFloorCents = 0;
++  if (policy.weeklyActivityGuarantee) {
++    if (input.activityGuaranteeSeconds == null) {
++      throw new Error('COURIER_PAYROLL_ACTIVITY_GUARANTEE_DURATION_REQUIRED');
++    }
++    assertNonNegativeSafeInteger(
++      input.activityGuaranteeSeconds,
++      'activityGuaranteeSeconds',
++    );
++    activityGuaranteeSeconds = input.activityGuaranteeSeconds;
++    activityGuaranteeFloorCents = centsForSeconds(
++      activityGuaranteeSeconds,
++      policy.weeklyActivityGuarantee.rateCentsPerHour,
++    );
++  }
++
++  const governingFloorCents = Math.max(
++    legalFloorCents,
++    pogFairnessFloorCents,
++    activityGuaranteeFloorCents,
++  );
++  const differentialDueCents = Math.max(
++    0,
++    governingFloorCents - input.eligibleIncomeCents,
++  );
++  const grossPayDueCents = input.eligibleIncomeCents + differentialDueCents;
++  const totalCashDueCents =
++    grossPayDueCents + input.tipsCents + input.expenseReimbursementsCents;
++
++  const warnings: string[] = [];
++  if (policy.validationStatus !== 'GREEN') {
++    warnings.push('COUNTRY_POLICY_NOT_LEGALLY_GREEN');
++  }
++  if (policy.legalFloorCentsPerPaidHour == null) {
++    warnings.push('LEGAL_FLOOR_NOT_CONFIGURED');
++  }
++  if (mobilized > 0 && utilizationRatio < 0.7) {
++    warnings.push('LOW_UTILIZATION_IS_POG_ZONE_RISK_NOT_COURIER_DEBT');
++  }
++
++  return {
++    courierId: input.courierId,
++    weekKey: input.weekKey,
++    policyId: policy.policyId,
++    workerStatus: policy.workerStatus,
++    paidSeconds: paid,
++    mobilizedSeconds: mobilized,
++    activeMissionSeconds: active,
++    activityGuaranteeSeconds,
++    utilizationRatio,
++    legalFloorCents,
+
+[executed on device: purpletoshiba (90e8e634-9b37-494e-b0bb-834c5c7e7d00)]
