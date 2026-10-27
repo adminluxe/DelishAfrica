@@ -1,60 +1,76 @@
-# Policy Ledger & Weekly Statement V0.1
+# Policy Ledger & Weekly Statement V0.2
 
-## Immutable policy principle
+## Policies
 
-Every country/status policy is sealed with SHA-256 over canonical JSON.
+Belgique:
+- ID: `BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1`
+- timezone: `Europe/Brussels`
+- hash: `16ab15cf516395cef2f191a308b18062334b4d690384e36074a4a242449f39ec`
+- DRAFT / production blocked.
 
-Snapshot 27 October 2026:
+France:
+- ID: `FR-INDEPENDENT-ARPE-2026-09-01-v1`
+- timezone: `Europe/Paris`
+- hash: `4935d532709157d7bf8ff38969b1daabab039ea3926174f5392ba54857e7989b`
+- LEGAL_REVIEW / production blocked.
 
-- Belgium `BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1`
-  - hash: `5f0ca2b5349dee3921aede627b0519355d32857df5624866ce7e26b53cdb229c`
-  - validation: DRAFT
-  - production: blocked
+Une règle modifiée exige un nouvel ID/version. Un changement sous le même ID est rejeté.
 
-- France `FR-INDEPENDENT-ARPE-2026-09-01-v1`
-  - hash: `ae0794c9fb2d0408c545ff0fb58293bfe2a4fdc7147741f19429872cdbf44d4a`
-  - validation: LEGAL_REVIEW
-  - production: blocked
+## Statement V0.2
 
-A policy cannot be modified under the same `policyId` without triggering an integrity error.
-
-A changed rule requires a new version.
-
-## Weekly statement
-
-Statement identity is deterministic from:
+Un statement est déterministe à partir:
 - policy hash;
-- sorted source facts;
-- calculation result;
-- statement version.
+- faits source triés;
+- faits effectifs après supersession;
+- calcul;
+- version du statement.
 
-Example Belgium statement:
-- statement ID: `9c6c574d92fdbde7ba3a53033a48a035aba209463c8bff3c960e875c9a44cb63`
+Il expose:
+- `factIds` — historique complet;
+- `effectiveFactIds` — faits réellement comptés;
+- `supersededFactIds` — faits remplacés;
+- `factCount`;
+- `effectiveFactCount`;
+- `factsHash`;
+- `policyHash`;
+- `statementId`.
+
+Exemple Belgique:
+- statement: `682f00912149af91171d036a07cbb5bf050ebc01bb704e2b9d01c76abda75ea7`
 - facts hash: `5c7bd1b727c32c999520e2ee19b885f898072a80fa89e9560c7ee56924695cac`
-- paid time: 5,400 seconds = 90 min;
-- active mission: 3,000 seconds = 50 min;
-- pickup waiting/dwell: 600 seconds = 10 min;
-- required reposition: 900 seconds = 15 min;
-- other paid work: 900 seconds = 15 min;
-- eligible income: 26.00 EUR;
-- POG LAB floor: 28.50 EUR;
-- true-up: 2.50 EUR;
-- tips: 5.00 EUR;
-- expenses: 3.00 EUR;
-- total cash due: 36.50 EUR.
+- 90 min payées;
+- 26,00 EUR revenu éligible;
+- 28,50 EUR floor LAB;
+- 2,50 EUR true-up;
+- 5,00 EUR tips;
+- 3,00 EUR frais;
+- 36,50 EUR cash total.
 
-Warnings are preserved in the statement:
-- country policy not legally GREEN;
-- legal floor not configured;
-- low utilization belongs to POG zone risk.
+## Corrections
 
-## Contestability
+Aucune correction ne modifie un fait historique.
 
-The statement contract is explicitly `contestable: true`.
+Une correction:
+1. crée un nouveau `factId`;
+2. référence `supersedesFactId`;
+3. conserve le même type/catégorie/scope/devise;
+4. porte motif, reasonCode, approvedAt, approvedBy;
+5. exige des preuves;
+6. remplace l'ancien fait uniquement dans le calcul effectif.
 
-Future production implementation must add:
-- visible explanation;
-- support/dispute entry point;
-- human correction workflow;
-- immutable correction trail;
-- settlement state/payment reference.
+Deux corrections concurrentes de la même cible sont rejetées.
+
+## Persistence integrity
+
+Les ledgers mémoire et fichier imposent:
+- policy scellée avant tout enfant;
+- pays cohérent avec la policy;
+- statement policyHash exact;
+- devise cohérente;
+- ID immuable;
+- replay identique idempotent;
+- contenu différent sous même ID rejeté;
+- doublon déjà persisté au redémarrage rejeté;
+- hash falsifié rejeté.
+
+Le statement reste `contestable: true`. La future production doit fournir support humain, correction tracée et état de règlement.

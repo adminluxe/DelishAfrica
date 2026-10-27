@@ -68,6 +68,51 @@ export class CourierPayrollLabController {
     };
   }
 
+  @Post('orchidpay/preview')
+  orchidPayPreview(
+    @Req() request: OrdersRequest,
+    @Body() body: AnyRecord = {},
+  ) {
+    this.requireOps(request);
+    this.requireEnabled();
+    const statementId = String(body.statementId || '').trim();
+    if (!statementId) {
+      throw new ForbiddenException({
+        ok: false,
+        code: 'courier_payroll_statement_id_required',
+      });
+    }
+    const generatedAt = String(body.generatedAt || '').trim() || new Date().toISOString();
+    return {
+      ok: true,
+      labOnly: true,
+      sent: false,
+      intent: this.bridge.buildOrchidPayShadowIntent(statementId, generatedAt),
+    };
+  }
+
+  @Post('orchidpay/send-shadow')
+  async orchidPaySendShadow(
+    @Req() request: OrdersRequest,
+    @Body() body: AnyRecord = {},
+  ) {
+    this.requireOps(request);
+    this.requireEnabled();
+    const statementId = String(body.statementId || '').trim();
+    if (!statementId) {
+      throw new ForbiddenException({
+        ok: false,
+        code: 'courier_payroll_statement_id_required',
+      });
+    }
+    const generatedAt = String(body.generatedAt || '').trim() || new Date().toISOString();
+    return {
+      ok: true,
+      labOnly: true,
+      ...(await this.bridge.sendOrchidPayShadowIntent(statementId, generatedAt)),
+    };
+  }
+
   @Post('statement')
   statement(
     @Req() request: OrdersRequest,

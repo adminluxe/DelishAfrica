@@ -23,6 +23,7 @@
   "dependencies": {
     "@delishafrica/ui": "file:vendor/ui",
     "@expo/metro-runtime": "~6.1.2",
+    "@expo/vector-icons": "^15.0.2",
     "@react-navigation/bottom-tabs": "^7.0.0",
     "@react-navigation/core": "^7.0.0",
     "@react-navigation/elements": "^2.8.4",

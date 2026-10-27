@@ -12,6 +12,8 @@ import { sealCountryPayPolicy } from './policy-ledger';
 import { runClockNormalizationJob } from './clock-normalization-job';
 import { runWeeklyCalculationJob } from './weekly-calculation-job';
 import { buildRuntimeOrderClockEvents } from './runtime-producer-adapters';
+import { buildOrchidPayCourierSettlementIntent } from './orchidpay-settlement-intent';
+import { sendOrchidPayCourierShadowIntent } from './orchidpay-shadow-client';
 
 const POLICY_BE = 'BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1';
 const POLICY_FR = 'FR-INDEPENDENT-ARPE-2026-09-01-v1';
@@ -227,6 +229,36 @@ export class CourierPayrollRuntimeBridge {
   getStatement(statementId: string) {
     assertCourierFairPayLabEnabled();
     return this.ledger().getStatement(statementId);
+  }
+
+  buildOrchidPayShadowIntent(
+    statementId: string,
+    generatedAt = new Date().toISOString(),
+  ) {
+    assertCourierFairPayLabEnabled();
+    const ledger = this.ledger();
+    const statement = ledger.getStatement(statementId);
+    if (!statement) {
+      throw new Error('COURIER_PAYROLL_STATEMENT_NOT_FOUND');
+    }
+    const policy = ledger.getPolicy(statement.policyId);
+    if (!policy) {
+      throw new Error('COURIER_PAYROLL_STATEMENT_POLICY_NOT_FOUND');
+    }
+    return buildOrchidPayCourierSettlementIntent(
+      statement,
+      policy,
+      generatedAt,
+    );
+  }
+
+  async sendOrchidPayShadowIntent(
+    statementId: string,
+    generatedAt = new Date().toISOString(),
+  ) {
+    const intent = this.buildOrchidPayShadowIntent(statementId, generatedAt);
+    const delivery = await sendOrchidPayCourierShadowIntent(intent);
+    return { intent, delivery };
   }
 
   private ledger(): FileCourierPayrollLedger {

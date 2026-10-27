@@ -1,85 +1,84 @@
-# Courier Fair Pay — Telemetry Pipeline V0.1
+# Courier Fair Pay — Telemetry Pipeline V0.2
 
-## Rule
+## Architecture
 
-Apps and operational services emit factual events. They do not calculate wages.
+Apps/services émettent des faits terrain. Ils ne calculent pas eux-mêmes la paie.
 
-Flow:
+`Courier / Merchant / API / OPS / Payments`
+→ événements/faits bruts
+→ normalizer strict
+→ ledger append-only
+→ projector hebdomadaire
+→ Fair Pay Kernel
+→ statement V0.2
 
-`Client / Merchant / Courier / API / OPS / Payments events`
-→ `raw clock + money telemetry`
-→ `strict normalizer`
-→ `canonical payroll facts`
-→ `weekly projector`
-→ `Fair Pay Kernel`
-→ `weekly statement`
+## Signaux
 
-## Existing signals found in the current codebase
+### AVAILABLE — runtime LAB
+- `acceptedAt` — Orders runtime → Fair Pay bridge;
+- `readyAt` — Orders runtime → Fair Pay bridge;
+- `courierArrivedPickupAt` — endpoint/store/UI + Fair Pay bridge;
+- `pickedUpAt` — Orders runtime → Fair Pay bridge;
+- `deliveredAt` — Orders runtime → Fair Pay bridge.
 
-AVAILABLE:
-- mission/order acceptance: `acceptedAt`;
-- merchant/order ready state: `readyAt` / status `ready`;
-- pickup: `pickedUpAt`;
-- delivery: `deliveredAt`.
+`courierArrivedPickupAt` controls:
+- store serveur: oui;
+- route dispatch: oui;
+- assigned-courier guard: oui;
+- idempotence: oui;
+- flag serveur: oui;
+- UI Mission Live distincte: oui;
+- flag Expo: oui;
+- relecture serveur: oui;
+- full Courier TypeScript: PASS;
+- iOS Expo/Hermes bundle: PASS;
+- device E2E: restant.
 
-PARTIAL:
-- tips/payment domain exists, but no canonical Courier payroll fact mapping is established.
+### PARTIAL
 
-MISSING / must be explicit:
-- `courierArrivedPickupAt`;
-- required reposition start/end;
-- other paid work start/end;
-- legally validated eligible-income credit;
-- expense reimbursement credit.
+`eligibleIncomeCredit`, `tipCredit`, `expenseReimbursementCredit`
+- builders evidence-backed: oui;
+- mapping réel paiement/payroll/policy: restant.
 
-## Why pickup arrival is mandatory
+### MISSING
+- `requiredRepositionStartedAt/EndedAt` runtime;
+- `otherPaidWorkStartedAt/EndedAt` runtime.
 
-`acceptedAt`, `readyAt` and `pickedUpAt` do not prove when the courier reached the merchant.
+## Pickup waiting
 
-Therefore the kernel must not infer restaurant waiting from those timestamps.
+Le système ne déduit jamais l'arrivée à partir de `acceptedAt`, `readyAt` ou GPS seul.
 
-No `PICKUP_ARRIVED` event → no normalized mission time facts for payroll finalization.
+Clock mission:
+- ACCEPTED → PICKUP_ARRIVED = active mission;
+- PICKUP_ARRIVED → PICKED_UP = pickup dwell / waiting;
+- PICKED_UP → DELIVERED = active mission.
 
-## Normalized mission clock
+Sans `PICKUP_ARRIVED` explicite, la mission reste incomplète et aucun statement final n'est produit.
 
-When all four clock signals exist:
+## France
 
-`MISSION_ACCEPTED → PICKUP_ARRIVED`
-= ACTIVE_MISSION
+La durée ARPE estimée est un fait `ACTIVITY_GUARANTEE_ESTIMATE`, distinct du temps réel.
 
-`PICKUP_ARRIVED → PICKED_UP`
-= PLATFORM_CONTROLLED_WAITING / pickup dwell
+Aucune estimation présente → calcul garantie refusé.
 
-`PICKED_UP → DELIVERED`
-= ACTIVE_MISSION
+## Reposition / other paid
 
-The merchant-ready event is retained as an operational diagnostic. It does not independently create or erase worker entitlement.
+Ces temps ne pourront entrer dans la paie qu'avec couples START/END explicites et segmentId partagé.
 
-## France-specific duration
+## Week key
 
-The French activity guarantee uses a separate `ACTIVITY_GUARANTEE_ESTIMATE` duration fact.
+La semaine payroll est calculée dans le fuseau de la policy:
+- Belgique: Europe/Brussels;
+- France: Europe/Paris.
 
-It is not derived from actual mission timestamps.
+Une mission qui traverse une frontière de semaine locale est actuellement bloquée pour traitement explicite au lieu d'être ventilée implicitement.
 
-If a country policy requires an activity guarantee and the explicit estimate is absent, calculation fails with:
+## Feature flags
 
-`COURIER_PAYROLL_ACTIVITY_GUARANTEE_DURATION_REQUIRED`
+Serveur:
+`DA_COURIER_FAIR_PAY_LAB_ENABLED`
 
-## OPS segments
+Courier Expo:
+`EXPO_PUBLIC_COURIER_FAIR_PAY_LAB_ENABLED`
 
-Required repositioning and other paid work are normalized only from explicit START/END pairs sharing a segment ID.
-
-Missing end/start → segment remains incomplete and cannot silently enter payroll.
-
-## Audit
-
-Every normalized fact contains:
-- stable fact ID;
-- policy ID;
-- country;
-- courier;
-- week;
-- raw evidence event IDs;
-- source = `PAYROLL_NORMALIZER`.
-
-This lets every statement amount be traced back to factual events.
+Les deux restent OFF par défaut.

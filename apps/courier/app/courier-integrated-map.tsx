@@ -73,6 +73,8 @@ const API_BASE_URL = RAW_API.replace(/\/$/, "").endsWith("/api/v1")
   : `${RAW_API.replace(/\/$/, "")}/api/v1`;
 
 const LIVE_LOCATION_ENDPOINT = `${API_BASE_URL}/orders/demo/location`;
+const FAIR_PAY_LAB_UI_ENABLED =
+  String(process.env.EXPO_PUBLIC_COURIER_FAIR_PAY_LAB_ENABLED || "").toLowerCase() === "true";
 
 const THIEYP_FALLBACK: LatLng = {
   latitude: 50.8359,
@@ -504,6 +506,31 @@ async function postMissionStatus(order: Order, next: "picked_up" | "delivered") 
   return mutationId;
 }
 
+async function postPickupArrived(order: Order) {
+  if (!FAIR_PAY_LAB_UI_ENABLED) {
+    throw new Error("Fair Pay Lab désactivé sur ce build.");
+  }
+  const id = orderId(order);
+  const response = await daOrdersFetch(
+    `${API_BASE_URL}/orders/demo/courier/pickup-arrived`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ orderId: id, id }),
+    },
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.ok) {
+    throw new Error(
+      payload?.message ||
+        payload?.error ||
+        payload?.code ||
+        `Signal d’arrivée indisponible (${response.status})`,
+    );
+  }
+  return payload;
+}
+
 async function postLiveLocation(
   path: "publish" | "stop",
   body: Record<string, unknown>,
@@ -561,6 +588,7 @@ export default function CourierIntegratedMapScreen() {
   const [routeBusy, setRouteBusy] = useState(false);
   const [routeError, setRouteError] = useState("");
   const [statusBusy, setStatusBusy] = useState(false);
+  const [arrivalBusy, setArrivalBusy] = useState(false);
   const [followMode, setFollowMode] = useState(true);
   const [reduceMotion, setReduceMotion] = useState(false);
 
@@ -895,6 +923,51 @@ export default function CourierIntegratedMapScreen() {
       : mission && statusOf(mission) === "picked_up"
         ? "delivered"
         : null;
+  const pickupArrivalRecorded = Boolean(clean(mission?.courierArrivedPickupAt));
+  const canConfirmPickupArrival =
+    FAIR_PAY_LAB_UI_ENABLED &&
+    Boolean(mission) &&
+    statusOf(mission) === "ready" &&
+    assignmentAccepted(mission) &&
+    !pickupArrivalRecorded;
+
+  const commitPickupArrival = useCallback(async () => {
+    if (!mission || !canConfirmPickupArrival || arrivalBusy) return;
+    setArrivalBusy(true);
+    const id = orderId(mission);
+    setMessage("Horodatage de l’arrivée au restaurant…");
+
+    try {
+      await postPickupArrived(mission);
+      let confirmed: Order | null = null;
+      for (const waitMs of [0, 280, 700]) {
+        if (waitMs) {
+          await new Promise<void>((resolve) => setTimeout(resolve, waitMs));
+        }
+        const orders = await fetchOrders();
+        const exact = orders.find((order) => orderId(order) === id) || null;
+        if (exact?.courierArrivedPickupAt) {
+          confirmed = exact;
+          break;
+        }
+      }
+      if (!confirmed) {
+        throw new Error("L’arrivée n’a pas été confirmée après relecture.");
+      }
+      setMission(confirmed);
+      setMessage("Arrivée restaurant horodatée · attente mesurable sans estimation.");
+    } catch (error) {
+      const detail =
+        error instanceof Error
+          ? error.message
+          : "Le signal d’arrivée n’a pas pu être confirmé.";
+      setMessage("Aucun temps d’attente inventé.");
+      Alert.alert("Arrivée non confirmée", detail);
+      await loadMission(true).catch(() => undefined);
+    } finally {
+      setArrivalBusy(false);
+    }
+  }, [arrivalBusy, canConfirmPickupArrival, loadMission, mission]);
 
   const commitMissionStatus = useCallback(async () => {
     if (!mission || !nextMissionStatus || statusMutationRef.current) return;
@@ -1208,8 +1281,42 @@ export default function CourierIntegratedMapScreen() {
             {locationStatus}
             {routeError ? " · Route routière momentanément estimée." : ""}
             {fallbackCoordinates ? " · Coordonnées de sécurité utilisées." : ""}
+            {pickupArrivalRecorded ? " · Arrivée retrait horodatée." : ""}
           </Text>
         </View>
+
+        {canConfirmPickupArrival ? (
+          <Pressable
+            disabled={arrivalBusy}
+            onPress={() => void commitPickupArrival()}
+            style={({ pressed }) => [
+              styles.nextAction,
+              styles.arrivalAction,
+              arrivalBusy && styles.nextActionDisabled,
+              pressed && !arrivalBusy && styles.pressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: arrivalBusy, busy: arrivalBusy }}
+            accessibilityLabel="Confirmer mon arrivée au restaurant"
+            accessibilityHint="Horodate séparément l’arrivée au point de retrait avant la récupération de la commande"
+          >
+            <View style={styles.nextActionCopy}>
+              <Text style={[styles.nextActionKicker, styles.arrivalActionKicker]}>
+                {atTarget
+                  ? "SUR PLACE · HORODATAGE FAIR PAY"
+                  : "CONFIRMATION HUMAINE · FAIR PAY LAB"}
+              </Text>
+              <Text style={[styles.nextActionTitle, styles.arrivalActionTitle]}>
+                {arrivalBusy ? "Horodatage en cours…" : "Je suis arrivé au restaurant"}
+              </Text>
+            </View>
+            {arrivalBusy ? (
+              <ActivityIndicator color="#8EF0B3" />
+            ) : (
+              <Text style={[styles.nextActionArrow, styles.arrivalActionArrow]}>◎</Text>
+            )}
+          </Pressable>
+        ) : null}
 
         {mission && nextMissionStatus ? (
           <Pressable
@@ -1351,6 +1458,10 @@ const styles = StyleSheet.create({
   truthDot: { width: 8, height: 8, borderRadius: 999, marginTop: 5 },
   truthText: { flex: 1, color: "rgba(183,212,193,0.62)", fontSize: 11, lineHeight: 16, fontWeight: "700" },
   nextAction: { minHeight: 76, borderRadius: 24, paddingHorizontal: 18, paddingVertical: 15, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 14, backgroundColor: "#8EF0B3" },
+  arrivalAction: { backgroundColor: "rgba(142,240,179,0.08)", borderWidth: 1, borderColor: "rgba(142,240,179,0.30)" },
+  arrivalActionKicker: { color: "#8EF0B3" },
+  arrivalActionTitle: { color: "#E9FFF0" },
+  arrivalActionArrow: { color: "#8EF0B3" },
   nextActionDisabled: { opacity: 0.58 },
   nextActionCopy: { flex: 1 },
   nextActionKicker: { color: "#0A6338", fontSize: 9, fontWeight: "900", letterSpacing: 1.5 },

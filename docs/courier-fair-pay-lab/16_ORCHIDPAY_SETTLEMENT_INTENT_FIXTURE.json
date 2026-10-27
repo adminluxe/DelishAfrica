@@ -1,0 +1,107 @@
+{
+  "statement": {
+    "statementId": "7cf5c31a0eb09deb3a0a8a377e6c90139b1d90659b93ec897ee9926d9e0413f0",
+    "statementVersion": "COURIER_WEEKLY_STATEMENT_V0.2",
+    "courierId": "be-orchidpay-fixture-1",
+    "weekKey": "2026-W44",
+    "countryCode": "BE",
+    "currency": "EUR",
+    "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
+    "policyHash": "16ab15cf516395cef2f191a308b18062334b4d690384e36074a4a242449f39ec",
+    "factsHash": "8af583c3e5736280a249b0fea1a8fed5f5c0be8597fc3f0f9714e359f91abea3",
+    "factIds": [
+      "fixture-expense-1",
+      "fixture-income-1",
+      "fixture-time-1",
+      "fixture-tip-1"
+    ],
+    "effectiveFactIds": [
+      "fixture-expense-1",
+      "fixture-income-1",
+      "fixture-time-1",
+      "fixture-tip-1"
+    ],
+    "supersededFactIds": [],
+    "factCount": 4,
+    "effectiveFactCount": 4,
+    "computation": {
+      "courierId": "be-orchidpay-fixture-1",
+      "weekKey": "2026-W44",
+      "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
+      "workerStatus": "EMPLOYEE",
+      "paidSeconds": 3600,
+      "mobilizedSeconds": 3600,
+      "activeMissionSeconds": 3600,
+      "activityGuaranteeSeconds": null,
+      "utilizationRatio": 1,
+      "legalFloorCents": 0,
+      "pogFairnessFloorCents": 1900,
+      "activityGuaranteeFloorCents": 0,
+      "governingFloorCents": 1900,
+      "eligibleIncomeCents": 1800,
+      "differentialDueCents": 100,
+      "grossPayDueCents": 1900,
+      "tipsPassThroughCents": 500,
+      "expenseReimbursementsCents": 300,
+      "totalCashDueCents": 2700,
+      "differentialPaymentDelayDays": null,
+      "productionEligible": false,
+      "warnings": [
+        "COUNTRY_POLICY_NOT_LEGALLY_GREEN",
+        "LEGAL_FLOOR_NOT_CONFIGURED"
+      ]
+    },
+    "explanation": {
+      "paidSeconds": 3600,
+      "activeMissionSeconds": 3600,
+      "activityGuaranteeSeconds": null,
+      "waitingSeconds": 0,
+      "repositionSeconds": 0,
+      "otherPaidSeconds": 0,
+      "excludedSeconds": 0,
+      "eligibleIncomeCents": 1800,
+      "governingFloorCents": 1900,
+      "differentialDueCents": 100,
+      "tipsCents": 500,
+      "expenseReimbursementsCents": 300,
+      "totalCashDueCents": 2700
+    },
+    "contestable": true,
+    "warnings": [
+      "COUNTRY_POLICY_NOT_LEGALLY_GREEN",
+      "LEGAL_FLOOR_NOT_CONFIGURED"
+    ]
+  },
+  "intent": {
+    "schema_version": "ORCHIDPAY_COURIER_SETTLEMENT_INTENT_V0.1",
+    "mode": "SHADOW",
+    "source_system": "DELISHAFRICA_COURIER_FAIR_PAY",
+    "statement_id": "7cf5c31a0eb09deb3a0a8a377e6c90139b1d90659b93ec897ee9926d9e0413f0",
+    "courier_id": "be-orchidpay-fixture-1",
+    "week_key": "2026-W44",
+    "country_code": "BE",
+    "currency": "EUR",
+    "policy_id": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
+    "policy_hash": "16ab15cf516395cef2f191a308b18062334b4d690384e36074a4a242449f39ec",
+    "facts_hash": "8af583c3e5736280a249b0fea1a8fed5f5c0be8597fc3f0f9714e359f91abea3",
+    "policy_validation_status": "DRAFT",
+    "production_eligible": false,
+    "eligible_income_minor": 1800,
+    "governing_floor_minor": 1900,
+    "differential_due_minor": 100,
+    "gross_pay_due_minor": 1900,
+    "tips_minor": 500,
+    "expense_reimbursements_minor": 300,
+    "total_cash_due_minor": 2700,
+    "generated_at": "2026-10-27T12:30:00.000Z",
+    "evidence_refs": [
+      "facts:8af583c3e5736280a249b0fea1a8fed5f5c0be8597fc3f0f9714e359f91abea3",
+      "policy:16ab15cf516395cef2f191a308b18062334b4d690384e36074a4a242449f39ec",
+      "statement:7cf5c31a0eb09deb3a0a8a377e6c90139b1d90659b93ec897ee9926d9e0413f0"
+    ],
+    "warnings": [
+      "COUNTRY_POLICY_NOT_LEGALLY_GREEN",
+      "LEGAL_FLOOR_NOT_CONFIGURED"
+    ]
+  }
+}

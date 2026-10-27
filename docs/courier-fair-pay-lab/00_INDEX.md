@@ -46,16 +46,26 @@ Belgium is the first laboratory. France is the first regulatory reference adapte
 
 ## QA lock
 
-27 October 2026: **25/25 tests PASS** with `pnpm dlx tsx --test`.
+27 October 2026:
+- DelishAfrica Fair Pay/runtime/ORCHIDPAY client: **61/61 tests PASS**;
+- backend TypeScript: **PASS**;
+- Nest build: **PASS** with TypeScript 5.4.5;
+- Courier TypeScript: **PASS**;
+- Courier Expo iOS/Hermes bundle: **PASS**;
+- ORCHIDPAY shadow consumer: **9/9 PASS**;
+- real TypeScript Delish → Python ORCHIDPAY fixture: **PASS**.
 
-The test suite currently proves:
+The suite currently proves, among other invariants:
 - paid waiting/repositioning can be protected in Belgian employee LAB policy;
 - higher legal floor overrides lower POG floor;
 - tips/expenses are always additive;
 - French 19 €/activity-hour weekly reference remains distinct;
+- corrections are append-only and auditable;
 - DRAFT policy cannot execute production payroll;
 - zone loss remains with POG;
-- density can be tested independently of worker entitlement.
+- runtime Order events are idempotently captured behind a disabled-by-default flag;
+- Fair Pay statements map deterministically to ORCHIDPAY SHADOW settlement intents;
+- ORCHIDPAY retry/idempotency/tamper/auth boundaries hold without any payout execution.
 
 ## Documents
 
@@ -72,3 +82,8 @@ The test suite currently proves:
 - `11_POLICY_LEDGER_AND_STATEMENT.md`
 - `12_BELGIUM_SENSITIVITY_FINDINGS.md`
 - `13_MASTER_TODO.md`
+- `14_CORRECTION_AND_SUPERSESSION.md`
+- `15_PERSISTENCE_AND_BACKUP.md`
+- `16_ORCHIDPAY_SETTLEMENT_INTENT_FIXTURE.json`
+- `17_ORCHIDPAY_ORCHESTRATION.md`
+- `18_ORCHIDPAY_INTEGRATION_EVIDENCE.md`
