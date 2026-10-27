@@ -58,7 +58,9 @@ export class FileCourierPayrollLedger
         if (!isCourierPayrollClockEvent(value)) {
           throw new Error('COURIER_PAYROLL_FILE_LEDGER_INVALID_CLOCK_EVENT');
         }
-        return (value as CourierPayrollClockEvent).eventId;
+        const event = value as CourierPayrollClockEvent;
+        this.assertPolicyScope(event.policyId, event.countryCode);
+        return event.eventId;
       },
     );
     this.loadStore(
@@ -66,7 +68,9 @@ export class FileCourierPayrollLedger
       this.facts,
       (value) => {
         assertCourierPayrollFact(value);
-        return (value as CourierPayrollFact).factId;
+        const fact = value as CourierPayrollFact;
+        this.assertPolicyScope(fact.policyId, fact.countryCode);
+        return fact.factId;
       },
     );
     this.loadStore(
@@ -77,6 +81,7 @@ export class FileCourierPayrollLedger
         if (!statement?.statementId) {
           throw new Error('COURIER_PAYROLL_FILE_LEDGER_INVALID_STATEMENT');
         }
+        this.assertStatementPolicy(statement);
         return statement.statementId;
       },
     );
@@ -97,6 +102,7 @@ export class FileCourierPayrollLedger
     if (!isCourierPayrollClockEvent(event)) {
       throw new Error('COURIER_PAYROLL_INVALID_CLOCK_EVENT');
     }
+    this.assertPolicyScope(event.policyId, event.countryCode);
     return this.appendImmutable(
       'clock-events',
       this.clockEvents,
@@ -112,6 +118,7 @@ export class FileCourierPayrollLedger
 
   appendFact(fact: CourierPayrollFact): AppendResult {
     assertCourierPayrollFact(fact);
+    this.assertPolicyScope(fact.policyId, fact.countryCode);
     return this.appendImmutable(
       'facts',
       this.facts,
@@ -129,6 +136,7 @@ export class FileCourierPayrollLedger
     if (!statement?.statementId) {
       throw new Error('COURIER_PAYROLL_INVALID_STATEMENT');
     }
+    this.assertStatementPolicy(statement);
     return this.appendImmutable(
       'statements',
       this.statements,
@@ -189,6 +197,36 @@ export class FileCourierPayrollLedger
     };
   }
 
+  private assertPolicyScope(
+    policyId: string,
+    countryCode: string,
+  ): SealedCountryPayPolicy {
+    const policy = this.policies.get(policyId)?.value;
+    if (!policy) {
+      throw new Error('COURIER_PAYROLL_POLICY_REQUIRED_BEFORE_CHILD_RECORD');
+    }
+    if (policy.policy.countryCode.toUpperCase() !== countryCode.toUpperCase()) {
+      throw new Error('COURIER_PAYROLL_CHILD_POLICY_COUNTRY_MISMATCH');
+    }
+    return policy;
+  }
+
+  private assertStatementPolicy(
+    statement: CourierWeeklyStatement,
+  ): SealedCountryPayPolicy {
+    const policy = this.assertPolicyScope(
+      statement.policyId,
+      statement.countryCode,
+    );
+    if (statement.policyHash !== policy.policyHash) {
+      throw new Error('COURIER_PAYROLL_STATEMENT_POLICY_HASH_MISMATCH');
+    }
+    if (statement.currency.toUpperCase() !== policy.policy.currency.toUpperCase()) {
+      throw new Error('COURIER_PAYROLL_STATEMENT_CURRENCY_MISMATCH');
+    }
+    return policy;
+  }
+
   private filePath(storeName: StoreName): string {
     return path.join(this.rootDir, `${storeName}.ndjson`);
   }
@@ -233,12 +271,11 @@ export class FileCourierPayrollLedger
 
       const existing = store.get(id);
       if (existing) {
-        if (existing.hash !== parsed.hash) {
-          throw new Error(
-            `COURIER_PAYROLL_FILE_LEDGER_DUPLICATE_CONFLICT:${storeName}:${id}`,
-          );
-        }
-        return;
+        const code =
+          existing.hash === parsed.hash
+            ? 'COURIER_PAYROLL_FILE_LEDGER_DUPLICATE_RECORD'
+            : 'COURIER_PAYROLL_FILE_LEDGER_DUPLICATE_CONFLICT';
+        throw new Error(`${code}:${storeName}:${id}`);
       }
 
       store.set(id, {

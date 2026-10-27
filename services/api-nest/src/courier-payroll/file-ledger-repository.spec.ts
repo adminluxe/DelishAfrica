@@ -7,7 +7,7 @@ import type { CourierPayrollFact } from '../../../../packages/contracts/src/cour
 import { createBelgiumEmployeeLabPolicy } from './adapters/belgium';
 import { FileCourierPayrollLedger } from './file-ledger-repository';
 import { runCourierFairPayLabPipeline } from './lab-pipeline';
-import { sealCountryPayPolicy } from './policy-ledger';
+import { sealCountryPayPolicy, stableJsonHash } from './policy-ledger';
 import {
   buildCanonicalOrderClockEvents,
   buildCourierPickupArrivalEvent,
@@ -112,6 +112,7 @@ test('file ledger rejects same ID with changed payload after restart', () => {
   withTempLedger((root) => {
     const x = fixture();
     const ledger = new FileCourierPayrollLedger({ rootDir: root });
+    ledger.appendPolicy(x.policy);
     ledger.appendClockEvent(x.clockEvents[0]);
 
     const reopened = new FileCourierPayrollLedger({ rootDir: root });
@@ -148,6 +149,42 @@ test('file ledger detects persisted hash tampering', () => {
     throws(
       () => new FileCourierPayrollLedger({ rootDir: root }),
       /FILE_LEDGER_INTEGRITY/,
+    );
+  });
+});
+
+test('file ledger rejects persisted child without its sealed policy', () => {
+  withTempLedger((root) => {
+    const x = fixture();
+    const event = x.clockEvents[0];
+    const line = {
+      id: event.eventId,
+      hash: stableJsonHash(event),
+      value: event,
+    };
+    writeFileSync(
+      join(root, 'clock-events.ndjson'),
+      JSON.stringify(line) + '\n',
+      { encoding: 'utf8', mode: 0o600 },
+    );
+    throws(
+      () => new FileCourierPayrollLedger({ rootDir: root }),
+      /POLICY_REQUIRED_BEFORE_CHILD_RECORD/,
+    );
+  });
+});
+
+test('file ledger rejects duplicate persisted IDs even with identical payload', () => {
+  withTempLedger((root) => {
+    const x = fixture();
+    const ledger = new FileCourierPayrollLedger({ rootDir: root });
+    ledger.appendPolicy(x.policy);
+    const file = join(root, 'policies.ndjson');
+    const line = readFileSync(file, 'utf8').trim();
+    writeFileSync(file, line + '\n' + line + '\n', 'utf8');
+    throws(
+      () => new FileCourierPayrollLedger({ rootDir: root }),
+      /FILE_LEDGER_DUPLICATE_RECORD/,
     );
   });
 });

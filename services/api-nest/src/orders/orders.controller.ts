@@ -7,6 +7,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FinancialStateRepository } from '../financial-state/financial-state.repository';
+import { CourierPayrollRuntimeBridge } from '../courier-payroll/runtime-bridge.service';
 import { OrdersAccessService } from './orders.access.service';
 import { OrdersDispatchService } from './orders.dispatch.service';
 import { OrdersAuthGuard } from './orders.auth.guard';
@@ -50,6 +51,7 @@ export class OrdersController {
     private readonly access: OrdersAccessService,
     private readonly dispatch: OrdersDispatchService,
     private readonly financialState: FinancialStateRepository,
+    private readonly payroll: CourierPayrollRuntimeBridge,
   ) {}
 
   @Post(['reset', 'demo/reset'])
@@ -155,6 +157,7 @@ export class OrdersController {
       : order;
 
     await this.financialState.upsertOrder(dispatched);
+    const payrollLab = this.payroll.captureOrder(dispatched);
 
     return {
       ok: true,
@@ -163,6 +166,7 @@ export class OrdersController {
       id: dispatched.id,
       orderId: dispatched.orderId,
       status: dispatched.status,
+      ...(payrollLab.enabled ? { payrollLab } : {}),
     };
   }
 

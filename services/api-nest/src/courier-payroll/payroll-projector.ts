@@ -169,13 +169,16 @@ export function projectWeeklyPayrollInput(
   const weekKey = facts[0].weekKey;
   facts.forEach((fact) => assertSameScope(fact, courierId, weekKey, policy));
 
-  const timeFacts = facts.filter(
+  const resolved = resolveEffectivePayrollFacts(facts);
+  const effectiveFacts = resolved.effectiveFacts;
+
+  const timeFacts = effectiveFacts.filter(
     (fact): fact is CourierPayrollTimeFact => fact.kind === 'TIME',
   );
-  const moneyFacts = facts.filter(
+  const moneyFacts = effectiveFacts.filter(
     (fact): fact is CourierPayrollMoneyFact => fact.kind === 'MONEY',
   );
-  const durationFacts = facts.filter(
+  const durationFacts = effectiveFacts.filter(
     (fact): fact is CourierPayrollDurationFact => fact.kind === 'DURATION',
   );
   assertUniqueDurationEstimates(durationFacts);
@@ -230,10 +233,19 @@ export function projectWeeklyPayrollInput(
     }
     if (fact.category === 'ELIGIBLE_INCOME') {
       eligibleIncomeCents += fact.amountMinor;
+      if (!Number.isSafeInteger(eligibleIncomeCents)) {
+        throw new Error('COURIER_PAYROLL_ELIGIBLE_INCOME_OVERFLOW');
+      }
     } else if (fact.category === 'TIP') {
       tipsCents += fact.amountMinor;
+      if (!Number.isSafeInteger(tipsCents)) {
+        throw new Error('COURIER_PAYROLL_TIPS_OVERFLOW');
+      }
     } else if (fact.category === 'EXPENSE_REIMBURSEMENT') {
       expenseReimbursementsCents += fact.amountMinor;
+      if (!Number.isSafeInteger(expenseReimbursementsCents)) {
+        throw new Error('COURIER_PAYROLL_EXPENSES_OVERFLOW');
+      }
     }
   }
 
@@ -248,6 +260,9 @@ export function projectWeeklyPayrollInput(
       expenseReimbursementsCents,
     },
     factIds: facts.map((fact) => fact.factId).sort(),
+    effectiveFactIds: effectiveFacts.map((fact) => fact.factId).sort(),
+    supersededFactIds: resolved.supersededFactIds,
     factCount: facts.length,
+    effectiveFactCount: effectiveFacts.length,
   };
 }

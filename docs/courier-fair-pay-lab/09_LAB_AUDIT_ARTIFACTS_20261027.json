@@ -5,6 +5,7 @@
         "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
         "countryCode": "BE",
         "currency": "EUR",
+        "payrollTimeZone": "Europe/Brussels",
         "workerStatus": "EMPLOYEE",
         "validationStatus": "DRAFT",
         "effectiveFrom": null,
@@ -28,7 +29,7 @@
           "Production must remain blocked until Belgian legal review is GREEN."
         ]
       },
-      "policyHash": "5f0ca2b5349dee3921aede627b0519355d32857df5624866ce7e26b53cdb229c",
+      "policyHash": "16ab15cf516395cef2f191a308b18062334b4d690384e36074a4a242449f39ec",
       "sealedAt": "2026-10-27T12:30:00.000Z",
       "sealedBy": "pog-courier-fair-pay-lab"
     },
@@ -37,6 +38,7 @@
         "policyId": "FR-INDEPENDENT-ARPE-2026-09-01-v1",
         "countryCode": "FR",
         "currency": "EUR",
+        "payrollTimeZone": "Europe/Paris",
         "workerStatus": "INDEPENDENT",
         "validationStatus": "LEGAL_REVIEW",
         "effectiveFrom": "2026-09-01",
@@ -63,7 +65,7 @@
           "Production remains blocked until final legal/data mapping review is GREEN."
         ]
       },
-      "policyHash": "ae0794c9fb2d0408c545ff0fb58293bfe2a4fdc7147741f19429872cdbf44d4a",
+      "policyHash": "4935d532709157d7bf8ff38969b1daabab039ea3926174f5392ba54857e7989b",
       "sealedAt": "2026-10-27T12:30:00.000Z",
       "sealedBy": "pog-courier-fair-pay-lab"
     }
@@ -77,14 +79,14 @@
       "deliveredAt"
     ],
     "partial": [
-      "tipCredit"
+      "courierArrivedPickupAt",
+      "eligibleIncomeCredit",
+      "tipCredit",
+      "expenseReimbursementCredit"
     ],
     "missing": [
-      "courierArrivedPickupAt",
       "requiredRepositionStartedAt/EndedAt",
-      "otherPaidWorkStartedAt/EndedAt",
-      "eligibleIncomeCredit",
-      "expenseReimbursementCredit"
+      "otherPaidWorkStartedAt/EndedAt"
     ]
   },
   "belgiumExample": {
@@ -228,14 +230,14 @@
       }
     ],
     "statement": {
-      "statementId": "9c6c574d92fdbde7ba3a53033a48a035aba209463c8bff3c960e875c9a44cb63",
-      "statementVersion": "COURIER_WEEKLY_STATEMENT_V0.1",
+      "statementId": "682f00912149af91171d036a07cbb5bf050ebc01bb704e2b9d01c76abda75ea7",
+      "statementVersion": "COURIER_WEEKLY_STATEMENT_V0.2",
       "courierId": "be-lab-example-1",
       "weekKey": "2026-W44",
       "countryCode": "BE",
       "currency": "EUR",
       "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
-      "policyHash": "5f0ca2b5349dee3921aede627b0519355d32857df5624866ce7e26b53cdb229c",
+      "policyHash": "16ab15cf516395cef2f191a308b18062334b4d690384e36074a4a242449f39ec",
       "factsHash": "5c7bd1b727c32c999520e2ee19b885f898072a80fa89e9560c7ee56924695cac",
       "factIds": [
         "expense-lab-1",
@@ -247,7 +249,19 @@
         "reposition-lab-1:required_reposition",
         "tip-lab-1"
       ],
+      "effectiveFactIds": [
+        "expense-lab-1",
+        "income-lab-1",
+        "mission-lab-1:active-delivery",
+        "mission-lab-1:active-pre-pickup",
+        "mission-lab-1:pickup-dwell",
+        "other-paid-lab-1:other_paid",
+        "reposition-lab-1:required_reposition",
+        "tip-lab-1"
+      ],
+      "supersededFactIds": [],
       "factCount": 8,
+      "effectiveFactCount": 8,
       "computation": {
         "courierId": "be-lab-example-1",
         "weekKey": "2026-W44",

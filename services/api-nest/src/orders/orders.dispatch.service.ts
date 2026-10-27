@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import type { DaAuthPrincipal } from '../auth/auth.types';
 import { FinancialStateRepository } from '../financial-state/financial-state.repository';
 import { courierFairPayLabEnabled } from '../courier-payroll/lab-config';
+import { CourierPayrollRuntimeBridge } from '../courier-payroll/runtime-bridge.service';
 import { CourierPresenceService, type CourierPresenceRecord } from './courier-presence.service';
 import { OrdersAccessService } from './orders.access.service';
 import {
@@ -46,6 +47,7 @@ export class OrdersDispatchService {
     private readonly presence: CourierPresenceService,
     private readonly access: OrdersAccessService,
     private readonly financialState: FinancialStateRepository,
+    private readonly payroll: CourierPayrollRuntimeBridge,
   ) {}
 
   async heartbeat(principal: DaAuthPrincipal, body: Record<string, any> = {}) {
@@ -89,7 +91,14 @@ export class OrdersDispatchService {
     });
     if (!order) throw new NotFoundException({ ok: false, code: 'dispatch_offer_not_found' });
     await this.financialState.upsertOrder(order);
-    return { ok: true, order, proposal: order.assignmentProposal, status: order.status };
+    const payrollLab = this.payroll.captureOrder(order);
+    return {
+      ok: true,
+      order,
+      proposal: order.assignmentProposal,
+      status: order.status,
+      ...(payrollLab.enabled ? { payrollLab } : {}),
+    };
   }
 
   async pickupArrived(
@@ -112,11 +121,13 @@ export class OrdersDispatchService {
 
     if (status(existing) !== 'ready') {
       if (existing?.courierArrivedPickupAt) {
+        const payrollLab = this.payroll.captureOrder(existing);
         return {
           ok: true,
           order: existing,
           pickupArrivedAt: existing.courierArrivedPickupAt,
           idempotentReplay: true,
+          ...(payrollLab.enabled ? { payrollLab } : {}),
         };
       }
       throw new ForbiddenException({
@@ -136,11 +147,13 @@ export class OrdersDispatchService {
     }
 
     await this.financialState.upsertOrder(order);
+    const payrollLab = this.payroll.captureOrder(order);
     return {
       ok: true,
       order,
       pickupArrivedAt: order.courierArrivedPickupAt,
       idempotentReplay: false,
+      ...(payrollLab.enabled ? { payrollLab } : {}),
     };
   }
 

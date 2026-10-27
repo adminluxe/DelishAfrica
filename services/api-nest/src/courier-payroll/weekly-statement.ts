@@ -8,7 +8,7 @@ import {
 } from './policy-ledger';
 import { projectWeeklyPayrollInput } from './payroll-projector';
 
-export const COURIER_WEEKLY_STATEMENT_VERSION = 'COURIER_WEEKLY_STATEMENT_V0.1';
+export const COURIER_WEEKLY_STATEMENT_VERSION = 'COURIER_WEEKLY_STATEMENT_V0.2';
 
 export interface CourierWeeklyStatement {
   statementId: string;
@@ -21,7 +21,10 @@ export interface CourierWeeklyStatement {
   policyHash: string;
   factsHash: string;
   factIds: string[];
+  effectiveFactIds: string[];
+  supersededFactIds: string[];
   factCount: number;
+  effectiveFactCount: number;
   computation: FairPayComputation;
   explanation: {
     paidSeconds: number;
@@ -68,7 +71,10 @@ export function buildCourierWeeklyStatement(
     policyHash: sealedPolicy.policyHash,
     factsHash,
     factIds: projection.factIds,
+    effectiveFactIds: projection.effectiveFactIds,
+    supersededFactIds: projection.supersededFactIds,
     factCount: projection.factCount,
+    effectiveFactCount: projection.effectiveFactCount,
     computation,
     explanation: {
       paidSeconds: computation.paidSeconds,

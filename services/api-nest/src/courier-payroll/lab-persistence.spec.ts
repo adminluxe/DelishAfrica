@@ -5,6 +5,7 @@ import { createBelgiumEmployeeLabPolicy } from './adapters/belgium';
 import { InMemoryCourierPayrollLedger } from './lab-ledger-repository';
 import { runCourierFairPayLabPipeline } from './lab-pipeline';
 import { sealCountryPayPolicy } from './policy-ledger';
+import { buildCourierWeeklyStatement } from './weekly-statement';
 import {
   buildCanonicalOrderClockEvents,
   buildCourierPickupArrivalEvent,
@@ -63,6 +64,13 @@ test('canonical order producer generates stable API clock events', () => {
 
 test('lab clock recording is disabled unless explicitly enabled', () => {
   const ledger = new InMemoryCourierPayrollLedger();
+  ledger.appendPolicy(
+    sealCountryPayPolicy(
+      createBelgiumEmployeeLabPolicy(),
+      '2026-10-27T07:00:00.000Z',
+      'pog-lab',
+    ),
+  );
   const events = buildCanonicalOrderClockEvents(orderFixture(), context);
   throws(
     () => recordLabClockEvents(ledger, events, {}),
@@ -76,6 +84,13 @@ test('lab clock recording is disabled unless explicitly enabled', () => {
 
 test('append-only ledger is idempotent and rejects same-ID mutation', () => {
   const ledger = new InMemoryCourierPayrollLedger();
+  ledger.appendPolicy(
+    sealCountryPayPolicy(
+      createBelgiumEmployeeLabPolicy(),
+      '2026-10-27T07:00:00.000Z',
+      'pog-lab',
+    ),
+  );
   const event = buildCanonicalOrderClockEvents(orderFixture(), context)[0];
   equal(ledger.appendClockEvent(event).inserted, true);
   equal(ledger.appendClockEvent(event).idempotentReplay, true);
@@ -153,4 +168,61 @@ test('incomplete mission pipeline refuses statement finalization', () => {
   if (result.finalizable) throw new Error('expected incomplete');
   equal(result.statement, null);
   ok(result.normalization.incompleteMissions[0].missingSignals.includes('PICKUP_ARRIVED'));
+});
+
+test('ledger rejects orphan children and mismatched statement policy hash', () => {
+  const ledger = new InMemoryCourierPayrollLedger();
+  const event = buildCanonicalOrderClockEvents(orderFixture(), context)[0];
+  throws(
+    () => ledger.appendClockEvent(event),
+    /POLICY_REQUIRED_BEFORE_CHILD_RECORD/,
+  );
+
+  const policy = sealCountryPayPolicy(
+    createBelgiumEmployeeLabPolicy(),
+    '2026-10-27T07:00:00.000Z',
+    'pog-lab',
+  );
+  ledger.appendPolicy(policy);
+
+  const facts: CourierPayrollFact[] = [
+    {
+      courierId: 'courier-1',
+      countryCode: 'BE',
+      weekKey: '2026-W44',
+      policyId: context.policyId,
+      recordedAt: '2026-10-27T09:00:00.000Z',
+      factId: 'orphan-test-time',
+      kind: 'TIME',
+      category: 'ACTIVE_MISSION',
+      source: 'PAYROLL_NORMALIZER',
+      startedAt: '2026-10-27T08:00:00.000Z',
+      endedAt: '2026-10-27T09:00:00.000Z',
+      evidenceRefs: ['e1', 'e2'],
+    },
+    {
+      courierId: 'courier-1',
+      countryCode: 'BE',
+      weekKey: '2026-W44',
+      policyId: context.policyId,
+      recordedAt: '2026-10-27T09:00:00.000Z',
+      factId: 'orphan-test-income',
+      kind: 'MONEY',
+      category: 'ELIGIBLE_INCOME',
+      source: 'PAYMENTS',
+      amountMinor: 1900,
+      currency: 'EUR',
+      evidenceRefs: ['payment-1'],
+    },
+  ];
+  ledger.appendFacts(facts);
+  const statement = buildCourierWeeklyStatement(facts, policy);
+  throws(
+    () =>
+      ledger.appendStatement({
+        ...statement,
+        policyHash: '0'.repeat(64),
+      }),
+    /STATEMENT_POLICY_HASH_MISMATCH/,
+  );
 });

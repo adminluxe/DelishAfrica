@@ -22,6 +22,13 @@ export type CourierPayrollMoneyCategory =
 
 export type CourierPayrollDurationCategory = "ACTIVITY_GUARANTEE_ESTIMATE";
 
+export interface CourierPayrollFactCorrection {
+  reasonCode: string;
+  reason: string;
+  approvedAt: ISODateTime;
+  approvedBy: string;
+}
+
 export interface CourierPayrollFactBase {
   factId: string;
   courierId: string;
@@ -34,6 +41,8 @@ export interface CourierPayrollFactBase {
   missionId?: string;
   merchantId?: string;
   evidenceRefs?: string[];
+  supersedesFactId?: string;
+  correction?: CourierPayrollFactCorrection;
 }
 
 export interface CourierPayrollTimeFact extends CourierPayrollFactBase {
@@ -72,6 +81,22 @@ function validIsoDateTime(value: unknown): boolean {
   return Number.isFinite(parsed);
 }
 
+function validCorrection(fact: Partial<CourierPayrollFactBase>): boolean {
+  const supersedes = text(fact.supersedesFactId);
+  const correction = fact.correction;
+  if (!supersedes && !correction) return true;
+  if (!supersedes || !correction || supersedes === text(fact.factId)) return false;
+  if (
+    !text(correction.reasonCode) ||
+    !text(correction.reason) ||
+    !text(correction.approvedBy) ||
+    !validIsoDateTime(correction.approvedAt)
+  ) {
+    return false;
+  }
+  return Array.isArray(fact.evidenceRefs) && fact.evidenceRefs.some((ref) => text(ref));
+}
+
 function validBase(fact: Partial<CourierPayrollFactBase>): boolean {
   return Boolean(
     text(fact.factId) &&
@@ -80,7 +105,8 @@ function validBase(fact: Partial<CourierPayrollFactBase>): boolean {
       text(fact.weekKey) &&
       text(fact.policyId) &&
       text(fact.source) &&
-      validIsoDateTime(fact.recordedAt),
+      validIsoDateTime(fact.recordedAt) &&
+      validCorrection(fact),
   );
 }
 

@@ -1,5 +1,8 @@
 import { Controller, Get, Res } from '@nestjs/common';
-import type { Response } from 'express';
+
+type HtmlResponse = {
+  type(contentType: string): { send(body: string): unknown };
+};
 
 const OPERATOR = "Purple Orchid GROUP";
 const SUPPORT_EMAIL = "support@purpleorchidgroup.com";
@@ -24,7 +27,7 @@ function shell(title: string, body: string): string {
 @Controller('legal')
 export class LegalController {
   @Get('privacy')
-  privacy(@Res() res: Response) {
+  privacy(@Res() res: HtmlResponse) {
     const body = `
       <p>Cette politique décrit comment DelishAfrica traite les données nécessaires à ses services de commande, paiement, livraison, identité, sécurité et assistance.</p>
       <h2>Données susceptibles d'être traitées</h2>
@@ -37,7 +40,7 @@ export class LegalController {
   }
 
   @Get('terms')
-  terms(@Res() res: Response) {
+  terms(@Res() res: HtmlResponse) {
     const body = `
       <p>Ces conditions encadrent l'utilisation des services DelishAfrica. Les informations fournies doivent être exactes et le service ne doit pas être détourné ou utilisé de manière frauduleuse.</p>
       <h2>Commandes et paiements</h2><p>Les prix, disponibilités, frais et conditions présentés au moment de la commande s'appliquent. Les paiements peuvent être opérés par un prestataire externe sécurisé.</p>
@@ -48,13 +51,13 @@ export class LegalController {
   }
 
   @Get('support')
-  support(@Res() res: Response) {
+  support(@Res() res: HtmlResponse) {
     const body = `<p>Pour une question relative à une commande, un accès, un paiement, une livraison, un espace partenaire ou vos données, contactez <a href=\"mailto:${esc(SUPPORT_EMAIL)}\">${esc(SUPPORT_EMAIL)}</a>.</p>`;
     return res.type('html').send(shell('Assistance', body));
   }
 
   @Get('account-deletion')
-  deletion(@Res() res: Response) {
+  deletion(@Res() res: HtmlResponse) {
     const body = `<p>Si vous disposez d'une identité gérée par DelishAfrica et souhaitez demander l'effacement de votre compte ou de vos données, contactez <a href=\"mailto:${esc(PRIVACY_EMAIL)}\">${esc(PRIVACY_EMAIL)}</a> depuis l'adresse associée à votre identité. Nous vous indiquerons les vérifications nécessaires, les données pouvant être supprimées et celles devant être conservées pour des obligations légales, de sécurité ou de prévention de la fraude.</p><p>Cette page ne prétend pas qu'une création autonome de compte est disponible dans les applications : cette capacité est vérifiée séparément lors de la readiness Store.</p>`;
     return res.type('html').send(shell('Suppression de compte et de données', body));
   }

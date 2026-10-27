@@ -37,6 +37,7 @@ export class InMemoryCourierPayrollLedger
     if (!isCourierPayrollClockEvent(event)) {
       throw new Error('COURIER_PAYROLL_INVALID_CLOCK_EVENT');
     }
+    this.assertPolicyScope(event.policyId, event.countryCode);
     return this.appendImmutable(
       this.clockEvents,
       event.eventId,
@@ -51,6 +52,7 @@ export class InMemoryCourierPayrollLedger
 
   appendFact(fact: CourierPayrollFact): AppendResult {
     assertCourierPayrollFact(fact);
+    this.assertPolicyScope(fact.policyId, fact.countryCode);
     return this.appendImmutable(
       this.facts,
       fact.factId,
@@ -64,6 +66,16 @@ export class InMemoryCourierPayrollLedger
   }
 
   appendStatement(statement: CourierWeeklyStatement): AppendResult {
+    const policy = this.assertPolicyScope(
+      statement.policyId,
+      statement.countryCode,
+    );
+    if (statement.policyHash !== policy.policyHash) {
+      throw new Error('COURIER_PAYROLL_STATEMENT_POLICY_HASH_MISMATCH');
+    }
+    if (statement.currency.toUpperCase() !== policy.policy.currency.toUpperCase()) {
+      throw new Error('COURIER_PAYROLL_STATEMENT_CURRENCY_MISMATCH');
+    }
     return this.appendImmutable(
       this.statements,
       statement.statementId,
@@ -121,6 +133,20 @@ export class InMemoryCourierPayrollLedger
       facts: this.facts.size,
       statements: this.statements.size,
     };
+  }
+
+  private assertPolicyScope(
+    policyId: string,
+    countryCode: string,
+  ): SealedCountryPayPolicy {
+    const policy = this.policies.get(policyId)?.value;
+    if (!policy) {
+      throw new Error('COURIER_PAYROLL_POLICY_REQUIRED_BEFORE_CHILD_RECORD');
+    }
+    if (policy.policy.countryCode.toUpperCase() !== countryCode.toUpperCase()) {
+      throw new Error('COURIER_PAYROLL_CHILD_POLICY_COUNTRY_MISMATCH');
+    }
+    return policy;
   }
 
   private appendImmutable<T>(

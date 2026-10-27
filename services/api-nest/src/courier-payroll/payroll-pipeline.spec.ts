@@ -97,7 +97,10 @@ test('instrumentation gate exposes missing payroll signals', () => {
   equal(gate.green, false);
   ok(gate.available.includes('missionAcceptedAt'));
   ok(gate.available.includes('pickedUpAt'));
-  ok(gate.missing.includes('courierArrivedPickupAt'));
+  ok(gate.partial.includes('courierArrivedPickupAt'));
+  ok(gate.partial.includes('eligibleIncomeCredit'));
+  ok(gate.partial.includes('tipCredit'));
+  ok(gate.partial.includes('expenseReimbursementCredit'));
   ok(gate.missing.includes('requiredRepositionStartedAt/EndedAt'));
 });
 
@@ -161,4 +164,110 @@ test('OPS paid segments normalize only with explicit start/end pairing', () => {
   equal(out.facts.length, 1);
   equal(out.facts[0].category, 'REQUIRED_REPOSITION');
   ok(out.incompleteSegments.includes('other-1'));
+});
+
+test('human-approved correction supersedes a fact without deleting history', () => {
+  const policy = createBelgiumEmployeeLabPolicy();
+  const sealed = sealCountryPayPolicy(
+    policy,
+    '2026-10-27T11:00:00.000Z',
+    'pog-fair-pay-lab',
+  );
+  const originalFacts = belgiumFacts();
+  const original = buildCourierWeeklyStatement(originalFacts, sealed);
+
+  const correctedIncome: CourierPayrollFact = {
+    ...common,
+    factId: 'm1-correction-1',
+    kind: 'MONEY',
+    category: 'ELIGIBLE_INCOME',
+    source: 'PAYMENTS',
+    amountMinor: 8800,
+    currency: 'EUR',
+    recordedAt: '2026-10-27T14:00:00.000Z',
+    evidenceRefs: ['ops-case:PAY-2026-0001'],
+    supersedesFactId: 'm1',
+    correction: {
+      reasonCode: 'PAYROLL_RECONCILIATION',
+      reason: 'Eligible income reconciled against the approved source ledger.',
+      approvedAt: '2026-10-27T13:55:00.000Z',
+      approvedBy: 'ops-reviewer-1',
+    },
+  };
+
+  const corrected = buildCourierWeeklyStatement(
+    [...originalFacts, correctedIncome],
+    sealed,
+  );
+
+  ok(corrected.statementId !== original.statementId);
+  equal(corrected.factCount, original.factCount + 1);
+  equal(corrected.effectiveFactCount, original.effectiveFactCount);
+  ok(corrected.supersededFactIds.includes('m1'));
+  ok(corrected.effectiveFactIds.includes('m1-correction-1'));
+  equal(corrected.explanation.eligibleIncomeCents, 8800);
+  equal(corrected.explanation.governingFloorCents, 9500);
+  equal(corrected.explanation.differentialDueCents, 700);
+  equal(corrected.explanation.totalCashDueCents, 11500);
+});
+
+test('correction requires an existing compatible target', () => {
+  const facts = belgiumFacts();
+  const missingTarget: CourierPayrollFact = {
+    ...common,
+    factId: 'missing-target-correction',
+    kind: 'MONEY',
+    category: 'ELIGIBLE_INCOME',
+    source: 'PAYMENTS',
+    amountMinor: 8800,
+    currency: 'EUR',
+    recordedAt: '2026-10-27T14:00:00.000Z',
+    evidenceRefs: ['ops-case:PAY-2026-0002'],
+    supersedesFactId: 'does-not-exist',
+    correction: {
+      reasonCode: 'PAYROLL_RECONCILIATION',
+      reason: 'Correction test.',
+      approvedAt: '2026-10-27T13:55:00.000Z',
+      approvedBy: 'ops-reviewer-1',
+    },
+  };
+  throws(
+    () => projectWeeklyPayrollInput(
+      [...facts, missingTarget],
+      createBelgiumEmployeeLabPolicy(),
+    ),
+    /CORRECTION_TARGET_MISSING/,
+  );
+});
+
+test('one fact cannot be silently superseded by two competing corrections', () => {
+  const facts = belgiumFacts();
+  const makeCorrection = (
+    factId: string,
+    amountMinor: number,
+  ): CourierPayrollFact => ({
+    ...common,
+    factId,
+    kind: 'MONEY',
+    category: 'ELIGIBLE_INCOME',
+    source: 'PAYMENTS',
+    amountMinor,
+    currency: 'EUR',
+    recordedAt: '2026-10-27T14:00:00.000Z',
+    evidenceRefs: ['ops-case:PAY-2026-0003'],
+    supersedesFactId: 'm1',
+    correction: {
+      reasonCode: 'PAYROLL_RECONCILIATION',
+      reason: 'Competing correction test.',
+      approvedAt: '2026-10-27T13:55:00.000Z',
+      approvedBy: 'ops-reviewer-1',
+    },
+  });
+  throws(
+    () => projectWeeklyPayrollInput(
+      [...facts, makeCorrection('m1-c1', 8800), makeCorrection('m1-c2', 8700)],
+      createBelgiumEmployeeLabPolicy(),
+    ),
+    /CORRECTION_TARGET_ALREADY_SUPERSEDED/,
+  );
 });

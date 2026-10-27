@@ -42,6 +42,45 @@ export class CourierPayrollRuntimeBridge {
     };
   }
 
+  bootstrapActivePolicy(sealedBy = 'delish-runtime') {
+    assertCourierFairPayLabEnabled();
+    const config = this.runtimeConfig();
+    return this.bootstrapKnownPolicy(config.policyId, sealedBy);
+  }
+
+  captureOrder(order: Record<string, any>) {
+    if (!this.enabled()) {
+      return {
+        enabled: false as const,
+        ok: true as const,
+        recorded: 0,
+        replayed: 0,
+        normalization: null,
+      };
+    }
+
+    try {
+      this.bootstrapActivePolicy('delish-orders-runtime');
+      const observed = this.observeOrder(order);
+      return {
+        ok: true as const,
+        ...observed,
+      };
+    } catch (error) {
+      return {
+        enabled: true as const,
+        ok: false as const,
+        recorded: 0,
+        replayed: 0,
+        normalization: null,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'COURIER_PAYROLL_RUNTIME_CAPTURE_FAILED',
+      };
+    }
+  }
+
   bootstrapKnownPolicy(policyId: string, sealedBy: string) {
     assertCourierFairPayLabEnabled();
     const ledger = this.ledger();

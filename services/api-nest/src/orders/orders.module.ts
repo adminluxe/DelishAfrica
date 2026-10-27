@@ -4,6 +4,8 @@ import { CatalogFoundationModule } from '../catalog-foundation/catalog-foundatio
 import { OrderPolicyModule } from '../order-policy/order-policy.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { FinancialStateModule } from '../financial-state/financial-state.module';
+import { CourierPayrollLabController } from '../courier-payroll/courier-payroll.lab.controller';
+import { CourierPayrollRuntimeBridge } from '../courier-payroll/runtime-bridge.service';
 import { OrdersAccessService } from './orders.access.service';
 import { CourierPresenceService } from './courier-presence.service';
 import { OrdersDispatchService } from './orders.dispatch.service';
@@ -14,8 +16,8 @@ import { OrdersService } from './orders.service';
 
 @Module({
   imports: [AuthModule, CatalogFoundationModule, OrderPolicyModule, PaymentsModule, FinancialStateModule],
-  controllers: [OrdersController, OrdersLiveLocationController],
-  providers: [OrdersService, OrdersAuthGuard, OrdersAccessService, CourierPresenceService, OrdersDispatchService],
-  exports: [OrdersService, OrdersAuthGuard, OrdersAccessService, CourierPresenceService, OrdersDispatchService],
+  controllers: [OrdersController, OrdersLiveLocationController, CourierPayrollLabController],
+  providers: [OrdersService, OrdersAuthGuard, OrdersAccessService, CourierPresenceService, OrdersDispatchService, CourierPayrollRuntimeBridge],
+  exports: [OrdersService, OrdersAuthGuard, OrdersAccessService, CourierPresenceService, OrdersDispatchService, CourierPayrollRuntimeBridge],
 })
 export class OrdersModule {}
