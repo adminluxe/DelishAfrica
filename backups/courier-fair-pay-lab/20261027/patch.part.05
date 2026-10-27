@@ -1,0 +1,702 @@
++    pogFairnessFloorCents,
++    activityGuaranteeFloorCents,
++    governingFloorCents,
++    eligibleIncomeCents: input.eligibleIncomeCents,
++    differentialDueCents,
++    grossPayDueCents,
++    tipsPassThroughCents: input.tipsCents,
++    expenseReimbursementsCents: input.expenseReimbursementsCents,
++    totalCashDueCents,
++    differentialPaymentDelayDays:
++      policy.weeklyActivityGuarantee?.differentialPaymentDelayDays ?? null,
++    productionEligible:
++      policy.validationStatus === 'GREEN' &&
++      policy.productionActivationAllowed &&
++      Boolean(policy.effectiveFrom),
++    warnings,
++  };
++}
+diff --git a/services/api-nest/src/courier-payroll/index.ts b/services/api-nest/src/courier-payroll/index.ts
+new file mode 100644
+index 0000000..629b502
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/index.ts
+@@ -0,0 +1,19 @@
++export * from './courier-payroll.types';
++export * from './fair-pay-kernel';
++export * from './zone-viability';
++export * from './lab-scenarios';
++export * from './policy-ledger';
++export * from './payroll-projector';
++export * from './weekly-statement';
++export * from './instrumentation-coverage';
++export * from './telemetry-normalizer';
++export * from './runtime-producer-adapters';
++export * from './lab-ledger-repository';
++export * from './clock-normalization-job';
++export * from './weekly-calculation-job';
++export * from './lab-pipeline';
++export * from './lab-config';
++export * from './operational-density';
++export * from './belgium-sensitivity';
++export * from './adapters/belgium';
++export * from './adapters/france';
+diff --git a/services/api-nest/src/courier-payroll/instrumentation-coverage.ts b/services/api-nest/src/courier-payroll/instrumentation-coverage.ts
+new file mode 100644
+index 0000000..29c958b
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/instrumentation-coverage.ts
+@@ -0,0 +1,108 @@
++export interface PayrollInstrumentationCoverage {
++  signal: string;
++  currentSource: string | null;
++  currentField: string | null;
++  requiredFor: string[];
++  status: 'AVAILABLE' | 'PARTIAL' | 'MISSING';
++  note: string;
++}
++
++export const COURIER_PAYROLL_INSTRUMENTATION_COVERAGE: PayrollInstrumentationCoverage[] = [
++  {
++    signal: 'missionAcceptedAt',
++    currentSource: 'API canonical order / assignment',
++    currentField: 'timestamps.acceptedAt / assignment acceptedAt',
++    requiredFor: ['mission lifecycle', 'France activity guarantee'],
++    status: 'AVAILABLE',
++    note: 'Existing acceptedAt signal is present in order/dispatch code.',
++  },
++  {
++    signal: 'merchantReadyAt',
++    currentSource: 'API canonical order',
++    currentField: 'timestamps.readyAt / status=ready',
++    requiredFor: ['merchant readiness KPI', 'waiting diagnosis'],
++    status: 'AVAILABLE',
++    note: 'readyAt is present in the canonical order contract, but runtime population must be audited.',
++  },
++  {
++    signal: 'courierArrivedPickupAt',
++    currentSource: null,
++    currentField: null,
++    requiredFor: ['platform-controlled waiting', 'merchant SLA', 'fair paid-time classification'],
++    status: 'MISSING',
++    note: 'Must be instrumented explicitly. Never infer it from acceptedAt or readyAt.',
++  },
++  {
++    signal: 'pickedUpAt',
++    currentSource: 'API canonical order',
++    currentField: 'timestamps.pickedUpAt / assignment.pickedUpAt',
++    requiredFor: ['waiting end', 'mission lifecycle'],
++    status: 'AVAILABLE',
++    note: 'Existing canonical field.',
++  },
++  {
++    signal: 'deliveredAt',
++    currentSource: 'API canonical order',
++    currentField: 'timestamps.deliveredAt / assignment.deliveredAt',
++    requiredFor: ['active mission end', 'France activity guarantee'],
++    status: 'AVAILABLE',
++    note: 'Existing canonical field.',
++  },
++  {
++    signal: 'requiredRepositionStartedAt/EndedAt',
++    currentSource: null,
++    currentField: null,
++    requiredFor: ['employee paid-time', 'empty km/time KPI'],
++    status: 'MISSING',
++    note: 'Must only exist when POG requires a repositioning instruction.',
++  },
++  {
++    signal: 'otherPaidWorkStartedAt/EndedAt',
++    currentSource: null,
++    currentField: null,
++    requiredFor: ['employee paid-time'],
++    status: 'MISSING',
++    note: 'Future explicit OPS/employee work event.',
++  },
++  {
++    signal: 'eligibleIncomeCredit',
++    currentSource: null,
++    currentField: null,
++    requiredFor: ['weekly payroll input', 'true-up'],
++    status: 'MISSING',
++    note: 'Needs a legally validated mapping from payroll/ledger components.',
++  },
++  {
++    signal: 'tipCredit',
++    currentSource: 'payment/order domain',
++    currentField: null,
++    requiredFor: ['courier statement', 'tips pass-through'],
++    status: 'PARTIAL',
++    note: 'Domain/payment plumbing exists, but canonical Courier payroll fact mapping is not yet established.',
++  },
++  {
++    signal: 'expenseReimbursementCredit',
++    currentSource: null,
++    currentField: null,
++    requiredFor: ['courier statement', 'work-cost separation'],
++    status: 'MISSING',
++    note: 'Requires approved expense policy and evidence workflow.',
++  },
++];
++
++export function payrollInstrumentationGate() {
++  const missing = COURIER_PAYROLL_INSTRUMENTATION_COVERAGE.filter(
++    (item) => item.status === 'MISSING',
++  );
++  const partial = COURIER_PAYROLL_INSTRUMENTATION_COVERAGE.filter(
++    (item) => item.status === 'PARTIAL',
++  );
++  return {
++    green: missing.length === 0 && partial.length === 0,
++    available: COURIER_PAYROLL_INSTRUMENTATION_COVERAGE.filter(
++      (item) => item.status === 'AVAILABLE',
++    ).map((item) => item.signal),
++    partial: partial.map((item) => item.signal),
++    missing: missing.map((item) => item.signal),
++  };
++}
+diff --git a/services/api-nest/src/courier-payroll/lab-artifacts.ts b/services/api-nest/src/courier-payroll/lab-artifacts.ts
+new file mode 100644
+index 0000000..145c214
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/lab-artifacts.ts
+@@ -0,0 +1,131 @@
++import type { CourierPayrollFact } from '../../../../packages/contracts/src/courier-payroll';
++import type { CourierPayrollClockEvent } from '../../../../packages/contracts/src/courier-payroll-telemetry';
++import { createBelgiumEmployeeLabPolicy } from './adapters/belgium';
++import { createFranceIndependentReferencePolicy } from './adapters/france';
++import { payrollInstrumentationGate } from './instrumentation-coverage';
++import { sealCountryPayPolicy } from './policy-ledger';
++import { normalizeMissionPayrollTelemetry, normalizePaidWorkSegments } from './telemetry-normalizer';
++import { buildCourierWeeklyStatement } from './weekly-statement';
++
++const sealedAt = '2026-10-27T12:30:00.000Z';
++const sealedBy = 'pog-courier-fair-pay-lab';
++
++const belgium = sealCountryPayPolicy(
++  createBelgiumEmployeeLabPolicy(),
++  sealedAt,
++  sealedBy,
++);
++const france = sealCountryPayPolicy(
++  createFranceIndependentReferencePolicy(),
++  sealedAt,
++  sealedBy,
++);
++
++function event(
++  eventId: string,
++  eventType: CourierPayrollClockEvent['eventType'],
++  occurredAt: string,
++  source: CourierPayrollClockEvent['source'],
++  extra: Partial<CourierPayrollClockEvent> = {},
++): CourierPayrollClockEvent {
++  return {
++    eventId,
++    eventType,
++    courierId: 'be-lab-example-1',
++    countryCode: 'BE',
++    weekKey: '2026-W44',
++    policyId: belgium.policy.policyId,
++    source,
++    occurredAt,
++    ...extra,
++  };
++}
++
++const missionEvents: CourierPayrollClockEvent[] = [
++  event('m1-accepted', 'MISSION_ACCEPTED', '2026-10-27T08:00:00.000Z', 'API_ORDER', {
++    orderId: 'order-lab-1', missionId: 'mission-lab-1', merchantId: 'merchant-lab-1',
++  }),
++  event('m1-ready', 'MERCHANT_READY', '2026-10-27T08:10:00.000Z', 'MERCHANT_APP', {
++    orderId: 'order-lab-1', missionId: 'mission-lab-1', merchantId: 'merchant-lab-1',
++  }),
++  event('m1-arrived', 'PICKUP_ARRIVED', '2026-10-27T08:20:00.000Z', 'COURIER_APP', {
++    orderId: 'order-lab-1', missionId: 'mission-lab-1', merchantId: 'merchant-lab-1',
++  }),
++  event('m1-picked', 'PICKED_UP', '2026-10-27T08:30:00.000Z', 'API_ORDER', {
++    orderId: 'order-lab-1', missionId: 'mission-lab-1', merchantId: 'merchant-lab-1',
++  }),
++  event('m1-delivered', 'DELIVERED', '2026-10-27T09:00:00.000Z', 'API_ORDER', {
++    orderId: 'order-lab-1', missionId: 'mission-lab-1', merchantId: 'merchant-lab-1',
++  }),
++];
++
++const segmentEvents: CourierPayrollClockEvent[] = [
++  event('r1-start', 'REPOSITION_STARTED', '2026-10-27T09:00:00.000Z', 'OPS', { segmentId: 'reposition-lab-1' }),
++  event('r1-end', 'REPOSITION_ENDED', '2026-10-27T09:15:00.000Z', 'COURIER_APP', { segmentId: 'reposition-lab-1' }),
++  event('w1-start', 'OTHER_PAID_STARTED', '2026-10-27T09:15:00.000Z', 'OPS', { segmentId: 'other-paid-lab-1' }),
++  event('w1-end', 'OTHER_PAID_ENDED', '2026-10-27T09:30:00.000Z', 'OPS', { segmentId: 'other-paid-lab-1' }),
++];
++
++const mission = normalizeMissionPayrollTelemetry(missionEvents);
++const segments = normalizePaidWorkSegments(segmentEvents);
++
++const monetaryFacts: CourierPayrollFact[] = [
++  {
++    factId: 'income-lab-1',
++    kind: 'MONEY',
++    category: 'ELIGIBLE_INCOME',
++    courierId: 'be-lab-example-1',
++    countryCode: 'BE',
++    weekKey: '2026-W44',
++    policyId: belgium.policy.policyId,
++    source: 'PAYMENTS',
++    recordedAt: '2026-10-27T12:00:00.000Z',
++    amountMinor: 2600,
++    currency: 'EUR',
++  },
++  {
++    factId: 'tip-lab-1',
++    kind: 'MONEY',
++    category: 'TIP',
++    courierId: 'be-lab-example-1',
++    countryCode: 'BE',
++    weekKey: '2026-W44',
++    policyId: belgium.policy.policyId,
++    source: 'PAYMENTS',
++    recordedAt: '2026-10-27T12:00:00.000Z',
++    amountMinor: 500,
++    currency: 'EUR',
++  },
++  {
++    factId: 'expense-lab-1',
++    kind: 'MONEY',
++    category: 'EXPENSE_REIMBURSEMENT',
++    courierId: 'be-lab-example-1',
++    countryCode: 'BE',
++    weekKey: '2026-W44',
++    policyId: belgium.policy.policyId,
++    source: 'OPS',
++    recordedAt: '2026-10-27T12:00:00.000Z',
++    amountMinor: 300,
++    currency: 'EUR',
++  },
++];
++
++const facts = [...mission.facts, ...segments.facts, ...monetaryFacts];
++const statement = buildCourierWeeklyStatement(facts, belgium);
++
++process.stdout.write(
++  JSON.stringify(
++    {
++      policyLedger: [belgium, france],
++      instrumentationGate: payrollInstrumentationGate(),
++      belgiumExample: {
++        missionDiagnostics: mission.diagnostics,
++        facts,
++        statement,
++      },
++    },
++    null,
++    2,
++  ) + '\n',
++);
+diff --git a/services/api-nest/src/courier-payroll/lab-config.ts b/services/api-nest/src/courier-payroll/lab-config.ts
+new file mode 100644
+index 0000000..6f1ef97
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/lab-config.ts
+@@ -0,0 +1,15 @@
++export const COURIER_FAIR_PAY_LAB_FLAG = 'DA_COURIER_FAIR_PAY_LAB_ENABLED';
++
++export function courierFairPayLabEnabled(
++  env: Record<string, string | undefined> = process.env,
++): boolean {
++  return String(env[COURIER_FAIR_PAY_LAB_FLAG] || '').toLowerCase() === 'true';
++}
++
++export function assertCourierFairPayLabEnabled(
++  env: Record<string, string | undefined> = process.env,
++): void {
++  if (!courierFairPayLabEnabled(env)) {
++    throw new Error('COURIER_FAIR_PAY_LAB_DISABLED');
++  }
++}
+diff --git a/services/api-nest/src/courier-payroll/lab-ledger-repository.ts b/services/api-nest/src/courier-payroll/lab-ledger-repository.ts
+new file mode 100644
+index 0000000..cac2017
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/lab-ledger-repository.ts
+@@ -0,0 +1,145 @@
++import type { CourierPayrollFact } from '../../../../packages/contracts/src/courier-payroll';
++import { assertCourierPayrollFact } from '../../../../packages/contracts/src/courier-payroll';
++import type { CourierPayrollClockEvent } from '../../../../packages/contracts/src/courier-payroll-telemetry';
++import { isCourierPayrollClockEvent } from '../../../../packages/contracts/src/courier-payroll-telemetry';
++import type { CourierWeeklyStatement } from './weekly-statement';
++import type { SealedCountryPayPolicy } from './policy-ledger';
++import { assertSealedPolicyIntegrity, stableJsonHash } from './policy-ledger';
++
++export interface AppendResult {
++  inserted: boolean;
++  idempotentReplay: boolean;
++}
++
++interface StoredValue<T> {
++  value: T;
++  hash: string;
++}
++
++export class InMemoryCourierPayrollLedger {
++  private readonly clockEvents = new Map<string, StoredValue<CourierPayrollClockEvent>>();
++  private readonly facts = new Map<string, StoredValue<CourierPayrollFact>>();
++  private readonly policies = new Map<string, StoredValue<SealedCountryPayPolicy>>();
++  private readonly statements = new Map<string, StoredValue<CourierWeeklyStatement>>();
++
++  appendPolicy(policy: SealedCountryPayPolicy): AppendResult {
++    assertSealedPolicyIntegrity(policy);
++    return this.appendImmutable(
++      this.policies,
++      policy.policy.policyId,
++      policy,
++      'COURIER_PAYROLL_POLICY_ID_CONFLICT',
++    );
++  }
++
++  appendClockEvent(event: CourierPayrollClockEvent): AppendResult {
++    if (!isCourierPayrollClockEvent(event)) {
++      throw new Error('COURIER_PAYROLL_INVALID_CLOCK_EVENT');
++    }
++    return this.appendImmutable(
++      this.clockEvents,
++      event.eventId,
++      event,
++      'COURIER_PAYROLL_CLOCK_EVENT_ID_CONFLICT',
++    );
++  }
++
++  appendClockEvents(events: CourierPayrollClockEvent[]): AppendResult[] {
++    return events.map((event) => this.appendClockEvent(event));
++  }
++
++  appendFact(fact: CourierPayrollFact): AppendResult {
++    assertCourierPayrollFact(fact);
++    return this.appendImmutable(
++      this.facts,
++      fact.factId,
++      fact,
++      'COURIER_PAYROLL_FACT_ID_CONFLICT',
++    );
++  }
++
++  appendFacts(facts: CourierPayrollFact[]): AppendResult[] {
++    return facts.map((fact) => this.appendFact(fact));
++  }
++
++  appendStatement(statement: CourierWeeklyStatement): AppendResult {
++    return this.appendImmutable(
++      this.statements,
++      statement.statementId,
++      statement,
++      'COURIER_PAYROLL_STATEMENT_ID_CONFLICT',
++    );
++  }
++
++  getPolicy(policyId: string): SealedCountryPayPolicy | null {
++    return this.clone(this.policies.get(policyId)?.value ?? null);
++  }
++
++  getStatement(statementId: string): CourierWeeklyStatement | null {
++    return this.clone(this.statements.get(statementId)?.value ?? null);
++  }
++
++  listClockEvents(
++    courierId: string,
++    weekKey: string,
++    policyId: string,
++  ): CourierPayrollClockEvent[] {
++    return Array.from(this.clockEvents.values())
++      .map((stored) => stored.value)
++      .filter(
++        (event) =>
++          event.courierId === courierId &&
++          event.weekKey === weekKey &&
++          event.policyId === policyId,
++      )
++      .sort((a, b) => a.eventId.localeCompare(b.eventId))
++      .map((event) => this.clone(event));
++  }
++
++  listFacts(
++    courierId: string,
++    weekKey: string,
++    policyId: string,
++  ): CourierPayrollFact[] {
++    return Array.from(this.facts.values())
++      .map((stored) => stored.value)
++      .filter(
++        (fact) =>
++          fact.courierId === courierId &&
++          fact.weekKey === weekKey &&
++          fact.policyId === policyId,
++      )
++      .sort((a, b) => a.factId.localeCompare(b.factId))
++      .map((fact) => this.clone(fact));
++  }
++
++  counts() {
++    return {
++      clockEvents: this.clockEvents.size,
++      policies: this.policies.size,
++      facts: this.facts.size,
++      statements: this.statements.size,
++    };
++  }
++
++  private appendImmutable<T>(
++    store: Map<string, StoredValue<T>>,
++    id: string,
++    value: T,
++    conflictCode: string,
++  ): AppendResult {
++    const hash = stableJsonHash(value);
++    const existing = store.get(id);
++    if (existing) {
++      if (existing.hash !== hash) throw new Error(conflictCode);
++      return { inserted: false, idempotentReplay: true };
++    }
++    store.set(id, { value: this.clone(value), hash });
++    return { inserted: true, idempotentReplay: false };
++  }
++
++  private clone<T>(value: T): T {
++    if (value === null) return value;
++    return JSON.parse(JSON.stringify(value)) as T;
++  }
++}
+diff --git a/services/api-nest/src/courier-payroll/lab-persistence.spec.ts b/services/api-nest/src/courier-payroll/lab-persistence.spec.ts
+new file mode 100644
+index 0000000..52ee241
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/lab-persistence.spec.ts
+@@ -0,0 +1,156 @@
++import { equal, ok, throws } from 'node:assert/strict';
++import { test } from 'node:test';
++import type { CourierPayrollFact } from '../../../../packages/contracts/src/courier-payroll';
++import { createBelgiumEmployeeLabPolicy } from './adapters/belgium';
++import { InMemoryCourierPayrollLedger } from './lab-ledger-repository';
++import { runCourierFairPayLabPipeline } from './lab-pipeline';
++import { sealCountryPayPolicy } from './policy-ledger';
++import {
++  buildCanonicalOrderClockEvents,
++  buildCourierPickupArrivalEvent,
++  recordLabClockEvents,
++} from './runtime-producer-adapters';
++
++function orderFixture() {
++  return {
++    identity: { id: 'order-1', publicId: 'public-1', correlationId: 'corr-1' },
++    restaurant: { id: 'merchant-1', name: 'Merchant Lab' },
++    assignment: { courierId: 'courier-1' },
++    timestamps: {
++      createdAt: '2026-10-27T07:45:00.000Z',
++      updatedAt: '2026-10-27T09:00:00.000Z',
++      acceptedAt: '2026-10-27T08:00:00.000Z',
++      readyAt: '2026-10-27T08:10:00.000Z',
++      pickedUpAt: '2026-10-27T08:30:00.000Z',
++      deliveredAt: '2026-10-27T09:00:00.000Z',
++    },
++  } as any;
++}
++
++const context = {
++  countryCode: 'BE',
++  weekKey: '2026-W44',
++  policyId: 'BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1',
++  courierId: 'courier-1',
++  missionId: 'mission-1',
++};
++
++function moneyFacts(): CourierPayrollFact[] {
++  const base = {
++    courierId: 'courier-1',
++    countryCode: 'BE',
++    weekKey: '2026-W44',
++    policyId: context.policyId,
++    recordedAt: '2026-10-27T12:00:00.000Z',
++  } as const;
++  return [
++    { ...base, factId:'income-1', kind:'MONEY', category:'ELIGIBLE_INCOME', source:'PAYMENTS', amountMinor:1700, currency:'EUR' },
++    { ...base, factId:'tip-1', kind:'MONEY', category:'TIP', source:'PAYMENTS', amountMinor:500, currency:'EUR' },
++    { ...base, factId:'expense-1', kind:'MONEY', category:'EXPENSE_REIMBURSEMENT', source:'OPS', amountMinor:300, currency:'EUR' },
++  ];
++}
++
++test('canonical order producer generates stable API clock events', () => {
++  const a = buildCanonicalOrderClockEvents(orderFixture(), context);
++  const b = buildCanonicalOrderClockEvents(orderFixture(), context);
++  equal(a.length, 4);
++  equal(JSON.stringify(a), JSON.stringify(b));
++  equal(a[0].eventType, 'MISSION_ACCEPTED');
++  equal(a[1].eventType, 'MERCHANT_READY');
++  equal(a[2].eventType, 'PICKED_UP');
++  equal(a[3].eventType, 'DELIVERED');
++});
++
++test('lab clock recording is disabled unless explicitly enabled', () => {
++  const ledger = new InMemoryCourierPayrollLedger();
++  const events = buildCanonicalOrderClockEvents(orderFixture(), context);
++  throws(
++    () => recordLabClockEvents(ledger, events, {}),
++    /COURIER_FAIR_PAY_LAB_DISABLED/,
++  );
++  const written = recordLabClockEvents(ledger, events, {
++    DA_COURIER_FAIR_PAY_LAB_ENABLED: 'true',
++  });
++  equal(written.filter((x) => x.inserted).length, 4);
++});
++
++test('append-only ledger is idempotent and rejects same-ID mutation', () => {
++  const ledger = new InMemoryCourierPayrollLedger();
++  const event = buildCanonicalOrderClockEvents(orderFixture(), context)[0];
++  equal(ledger.appendClockEvent(event).inserted, true);
++  equal(ledger.appendClockEvent(event).idempotentReplay, true);
++  throws(
++    () => ledger.appendClockEvent({ ...event, occurredAt:'2026-10-27T08:01:00.000Z' }),
++    /CLOCK_EVENT_ID_CONFLICT/,
++  );
++});
++
++test('complete lab pipeline produces one deterministic statement', () => {
++  const ledger = new InMemoryCourierPayrollLedger();
++  const policy = sealCountryPayPolicy(
++    createBelgiumEmployeeLabPolicy(),
++    '2026-10-27T12:30:00.000Z',
++    'pog-lab',
++  );
++  const events = buildCanonicalOrderClockEvents(orderFixture(), context);
++  events.push(buildCourierPickupArrivalEvent({
++    ...context,
++    orderId:'order-1',
++    merchantId:'merchant-1',
++    missionId:'mission-1',
++    courierId:'courier-1',
++    occurredAt:'2026-10-27T08:20:00.000Z',
++  }));
++
++  const first = runCourierFairPayLabPipeline(ledger, {
++    sealedPolicy: policy,
++    courierId:'courier-1',
++    weekKey:'2026-W44',
++    clockEvents:events,
++    monetaryFacts:moneyFacts(),
++    env:{ DA_COURIER_FAIR_PAY_LAB_ENABLED:'true' },
++  });
++  equal(first.finalizable, true);
++  if (!first.finalizable) throw new Error('expected finalizable');
++  equal(first.statement.explanation.paidSeconds, 3600);
++  equal(first.statement.explanation.waitingSeconds, 600);
++  equal(first.statement.explanation.governingFloorCents, 1900);
++  equal(first.statement.explanation.differentialDueCents, 200);
++  equal(first.statement.explanation.totalCashDueCents, 2700);
++
++  const second = runCourierFairPayLabPipeline(ledger, {
++    sealedPolicy: policy,
++    courierId:'courier-1',
++    weekKey:'2026-W44',
++    clockEvents:events,
++    monetaryFacts:moneyFacts(),
++    env:{ DA_COURIER_FAIR_PAY_LAB_ENABLED:'true' },
++  });
++  equal(second.finalizable, true);
++  if (!second.finalizable) throw new Error('expected finalizable');
++  equal(second.statement.statementId, first.statement.statementId);
++  equal(second.statementPersistence.idempotentReplay, true);
++  ok(second.normalization.idempotentFactReplays > 0);
++  equal(ledger.counts().statements, 1);
++});
++
++test('incomplete mission pipeline refuses statement finalization', () => {
++  const ledger = new InMemoryCourierPayrollLedger();
++  const policy = sealCountryPayPolicy(
++    createBelgiumEmployeeLabPolicy(),
++    '2026-10-27T12:30:00.000Z',
++    'pog-lab',
++  );
++  const result = runCourierFairPayLabPipeline(ledger, {
++    sealedPolicy: policy,
++    courierId:'courier-1',
++    weekKey:'2026-W44',
++    clockEvents:buildCanonicalOrderClockEvents(orderFixture(), context),
++    monetaryFacts:moneyFacts(),
++    env:{ DA_COURIER_FAIR_PAY_LAB_ENABLED:'true' },
++  });
++  equal(result.finalizable, false);
++  if (result.finalizable) throw new Error('expected incomplete');
++  equal(result.statement, null);
++  ok(result.normalization.incompleteMissions[0].missingSignals.includes('PICKUP_ARRIVED'));
++});
+diff --git a/services/api-nest/src/courier-payroll/lab-pipeline.ts b/services/api-nest/src/courier-payroll/lab-pipeline.ts
+new file mode 100644
+index 0000000..d487496
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/lab-pipeline.ts
+@@ -0,0 +1,61 @@
++import type { CourierPayrollFact } from '../../../../packages/contracts/src/courier-payroll';
++import type { CourierPayrollClockEvent } from '../../../../packages/contracts/src/courier-payroll-telemetry';
++import type { SealedCountryPayPolicy } from './policy-ledger';
++import { assertCourierFairPayLabEnabled } from './lab-config';
++import { InMemoryCourierPayrollLedger } from './lab-ledger-repository';
++import { runClockNormalizationJob } from './clock-normalization-job';
++import { runWeeklyCalculationJob } from './weekly-calculation-job';
++
++export interface LabPipelineInput {
++  sealedPolicy: SealedCountryPayPolicy;
++  courierId: string;
++  weekKey: string;
++  clockEvents: CourierPayrollClockEvent[];
++  monetaryFacts: CourierPayrollFact[];
++  env?: Record<string, string | undefined>;
++}
++
++export function runCourierFairPayLabPipeline(
++  ledger: InMemoryCourierPayrollLedger,
++  input: LabPipelineInput,
++) {
++  assertCourierFairPayLabEnabled(input.env);
++
++  const policyWrite = ledger.appendPolicy(input.sealedPolicy);
++  const eventWrites = ledger.appendClockEvents(input.clockEvents);
++  const monetaryWrites = ledger.appendFacts(input.monetaryFacts);
++  const normalization = runClockNormalizationJob(
++    ledger,
++    input.courierId,
++    input.weekKey,
++    input.sealedPolicy.policy.policyId,
++  );
++
++  if (!normalization.complete) {
++    return {
++      finalizable: false as const,
++      policyWrite,
++      eventWrites,
++      monetaryWrites,
++      normalization,
++      statement: null,
++    };
++  }
++
++  const calculation = runWeeklyCalculationJob(ledger, {
++    courierId: input.courierId,
++    weekKey: input.weekKey,
++    sealedPolicy: input.sealedPolicy,
++    mode: 'LAB',
++  });
++
++  return {
++    finalizable: true as const,
++    policyWrite,
++    eventWrites,
++    monetaryWrites,
++    normalization,
++    statement: calculation.statement,
++    statementPersistence: calculation.persistence,
++  };
++}
+diff --git a/services/api-nest/src/courier-payroll/lab-scenarios.ts b/services/api-nest/src/courier-payroll/lab-scenarios.ts
+new file mode 100644
+index 0000000..1541cc0
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/lab-scenarios.ts
+
+[executed on device: purpletoshiba (90e8e634-9b37-494e-b0bb-834c5c7e7d00)]
