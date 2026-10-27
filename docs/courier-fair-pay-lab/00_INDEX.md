@@ -52,7 +52,7 @@ Belgium is the first laboratory. France is the first regulatory reference adapte
 - TypeScript emit build: **PASS**; Nest CLI wrapper: **intermittent SIGSEGV** after prior successful checkpoint;
 - Courier TypeScript: **PASS**;
 - Courier Expo iOS/Hermes bundle: **PASS**;
-- ORCHIDPAY shadow consumer: **9/9 PASS**;
+- ORCHIDPAY shadow + pure ledger-plan consumer: **13/13 PASS**;
 - real TypeScript Delish → Python ORCHIDPAY fixture: **PASS**.
 
 The suite currently proves, among other invariants:
@@ -90,3 +90,6 @@ The suite currently proves, among other invariants:
 - `19_BELGIUM_LEGAL_PAYROLL_DATA_PACK_20261027.md`
 - `20_BELGIUM_EMPLOYER_COST_ENGINE.md`
 - `21_HUMAN_DISPUTE_WORKFLOW.md`
+- `22_BELGIUM_CSC_CODESIGN_QUESTION_PACK.md`
+- `23_ORCHIDPAY_PARTY_LEDGER_CONTRACT_DRAFT.md`
+- `24_ORCHIDPAY_LEDGER_PLAN_EVIDENCE.md`

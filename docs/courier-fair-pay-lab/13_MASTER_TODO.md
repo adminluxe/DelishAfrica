@@ -141,6 +141,8 @@ Updated: 27 October 2026 — checkpoint Fair Pay ↔ ORCHIDPAY
 - [ ] Mapping courier → party/payee.
 - [ ] Balanced ledger transaction Courier Payroll.
 - [ ] Reconciliation / reversal production.
+- [x] Party/payee + balanced-ledger contract DRAFT documenté.
+- [x] Pure ledger-plan ORCHIDPAY non-exécutable : gross/tips/expense, 13/13 PASS.
 - [ ] Payout rail production.
 - [ ] Promotion SHADOW → GREEN settlement après validation.
 
@@ -159,7 +161,7 @@ Courier:
 - Device E2E: **OPEN**
 
 ORCHIDPAY shadow consumer:
-**9 / 9 tests PASS**
+**13 / 13 tests PASS**
 
 Cross-language:
 **PASS** — statement TypeScript DelishAfrica accepté par consumer Python ORCHIDPAY.
@@ -168,10 +170,10 @@ Production:
 **BLOCKED / NOT DEPLOYED / NO PAYOUT**
 
 ## Next priority
-1. sceller et pousser le checkpoint 72/72 + contestation humaine;
-2. synchroniser Airtable/PurpleCRM;
-3. préparer le question pack CSC / Maison des Livreurs;
-4. préparer le contrat ORCHIDPAY party/payee + balanced-ledger DRAFT;
+1. synchroniser Airtable/PurpleCRM avec checkpoint 72/72;
+2. implémenter un ledger-plan ORCHIDPAY pur/testable sans DB;
+3. utiliser le question pack CSC / Maison des Livreurs lors de la prochaine concertation;
+4. valider le contrat ORCHIDPAY party/payee + balanced-ledger avec finance/comptabilité;
 5. remplacer les hypothèses payroll par des valeurs validées (CP/CCT, charges, assurance);
 6. calibrer les unit economics réels;
 7. réconcilier l'autorité DB ORCHIDPAY avant toute migration.

@@ -126,7 +126,7 @@ DelishAfrica:
 - Nest build PASS.
 
 ORCHIDPAY:
-- 9/9 shadow consumer tests PASS;
+- 13/13 shadow + pure ledger-plan tests PASS;
 - real TypeScript Delish fixture accepted by Python consumer;
 - HTTP internal-key/feature-flag behavior PASS;
 - no payout execution path in this lab.

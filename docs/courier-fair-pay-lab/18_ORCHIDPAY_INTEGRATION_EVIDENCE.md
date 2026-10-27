@@ -27,7 +27,7 @@ DelishAfrica Fair Pay suite:
 **61/61 PASS**
 
 ORCHIDPAY shadow suite:
-**9/9 PASS**
+**13/13 PASS**
 
 ## Safety
 
