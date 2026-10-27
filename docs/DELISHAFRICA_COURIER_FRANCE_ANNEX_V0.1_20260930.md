@@ -60,9 +60,13 @@ Tips are excluded from the activity income used for that guarantee.
 
 The amendment states that it takes effect on **1 September 2026**.
 
-Source:
+Sources:
 - ARPE — Avenant du 10 juillet 2026 instaurant une garantie minimale de revenus  
   https://www.arpe.gouv.fr/dialogue-social/les-accords/les-accords-du-secteur-des-livreurs/
+- Journal officiel / Légifrance — décision corrective du 22 septembre 2026, publiée le 23 septembre 2026
+  https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000054883146
+
+The homologation wording was corrected on 22 September 2026 so that the extension applies to all platforms and independent workers using them that fall within the agreement's scope, not only to the representative organisations that signed it.
 
 **Implication for DelishAfrica:**  
 A France compensation engine must be able to:
@@ -70,9 +74,16 @@ A France compensation engine must be able to:
 - aggregate the guarantee weekly;
 - exclude tips from the guarantee base;
 - calculate a differential;
-- settle the differential within the required time.
+- settle the differential within the required time;
+- retain a versioned, reproducible calculation trace for dispute and audit.
 
-Status: **IMPLEMENT + LEGAL VALIDATION**
+Implementation lock — 27 October 2026:
+- pure calculation module added at `services/api-nest/src/courier-compensation/france-weekly-guarantee.ts`;
+- direct deterministic harness: PASS;
+- production ledger/scheduler wiring: **NOT ENABLED**;
+- legal review of eligible income components and production data mapping remains mandatory before activation.
+
+Status: **IMPLEMENTED AS NON-PRODUCTION CALCULATION CORE + LEGAL/DATA VALIDATION REQUIRED**
 
 ### 2.4 Deactivation is already heavily structured
 

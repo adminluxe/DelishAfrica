@@ -1,0 +1,70 @@
+{
+  "assumptions": {
+    "employerCostPerPaidHourCents": 3000,
+    "contributionBeforeCourierCentsPerDelivery": 1200,
+    "targetResidualContributionCentsPerDelivery": 200
+  },
+  "results": [
+    {
+      "scenario": "LOW",
+      "zoneId": "BRU-LAB-LOW",
+      "paidHours": 10,
+      "deliveries": 15,
+      "deliveriesPerPaidHour": 1.5,
+      "utilizationRatio": 0.5,
+      "totalEmployerCourierCostCents": 30000,
+      "courierCostPerDeliveryCents": 2000,
+      "grossContributionBeforeCourierCents": 18000,
+      "fixedZoneCostCents": 0,
+      "residualContributionCents": -12000,
+      "residualContributionPerDeliveryCents": -800,
+      "breakEvenDeliveriesPerPaidHour": 2.5,
+      "targetDeliveriesPerPaidHour": 3,
+      "viableAtCurrentDensity": false,
+      "workerPayProtected": true,
+      "warnings": [
+        "LOW_UTILIZATION_REQUIRES_ZONE_OR_STAFFING_ACTION",
+        "ZONE_ECONOMICS_NEGATIVE_POG_ABSORBS_SHORTFALL",
+        "DENSITY_BELOW_BREAK_EVEN"
+      ]
+    },
+    {
+      "scenario": "BASE",
+      "zoneId": "BRU-LAB-BASE",
+      "paidHours": 10,
+      "deliveries": 25,
+      "deliveriesPerPaidHour": 2.5,
+      "utilizationRatio": 0.75,
+      "totalEmployerCourierCostCents": 30000,
+      "courierCostPerDeliveryCents": 1200,
+      "grossContributionBeforeCourierCents": 30000,
+      "fixedZoneCostCents": 0,
+      "residualContributionCents": 0,
+      "residualContributionPerDeliveryCents": 0,
+      "breakEvenDeliveriesPerPaidHour": 2.5,
+      "targetDeliveriesPerPaidHour": 3,
+      "viableAtCurrentDensity": true,
+      "workerPayProtected": true,
+      "warnings": []
+    },
+    {
+      "scenario": "HIGH",
+      "zoneId": "BRU-LAB-HIGH",
+      "paidHours": 10,
+      "deliveries": 30,
+      "deliveriesPerPaidHour": 3,
+      "utilizationRatio": 0.85,
+      "totalEmployerCourierCostCents": 30000,
+      "courierCostPerDeliveryCents": 1000,
+      "grossContributionBeforeCourierCents": 36000,
+      "fixedZoneCostCents": 0,
+      "residualContributionCents": 6000,
+      "residualContributionPerDeliveryCents": 200,
+      "breakEvenDeliveriesPerPaidHour": 2.5,
+      "targetDeliveriesPerPaidHour": 3,
+      "viableAtCurrentDensity": true,
+      "workerPayProtected": true,
+      "warnings": []
+    }
+  ]
+}

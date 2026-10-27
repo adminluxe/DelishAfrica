@@ -31,7 +31,17 @@ Guardrails:
 - calculation must be reproducible;
 - every rule change gets a version;
 - courier-facing statement must explain the calculation;
-- finance/ops view must show unresolved differentials.
+- finance/ops view must show unresolved differentials;
+- the weekly floor is rounded upward to the next cent so the computed amount cannot fall below 19 €/activity-hour through cent rounding;
+- `activityIncomeCents` must be supplied by a legally validated accounting policy and must never include tips by construction.
+
+Implementation lock — 27 October 2026:
+- calculation core: `services/api-nest/src/courier-compensation/france-weekly-guarantee.ts`;
+- version: `FR-ARPE-2026-09-01-v1`;
+- direct deterministic harness: PASS;
+- unit-test specification added: `france-weekly-guarantee.spec.ts`;
+- production DB mapping, scheduler and payment execution: NOT WIRED / NOT DEPLOYED;
+- unresolved legal mapping: treatment of each bonus/adjustment category inside eligible activity income must be validated before production use.
 
 ## B. Courier-facing weekly statement
 
