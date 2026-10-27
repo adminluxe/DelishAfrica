@@ -1,0 +1,702 @@
+diff --git a/docs/DELISHAFRICA_COURIER_FRANCE_ANNEX_V0.1_20260930.md b/docs/DELISHAFRICA_COURIER_FRANCE_ANNEX_V0.1_20260930.md
+index 64dd640..47c5722 100644
+--- a/docs/DELISHAFRICA_COURIER_FRANCE_ANNEX_V0.1_20260930.md
++++ b/docs/DELISHAFRICA_COURIER_FRANCE_ANNEX_V0.1_20260930.md
+@@ -60,9 +60,13 @@ Tips are excluded from the activity income used for that guarantee.
+ 
+ The amendment states that it takes effect on **1 September 2026**.
+ 
+-Source:
++Sources:
+ - ARPE — Avenant du 10 juillet 2026 instaurant une garantie minimale de revenus  
+   https://www.arpe.gouv.fr/dialogue-social/les-accords/les-accords-du-secteur-des-livreurs/
++- Journal officiel / Légifrance — décision corrective du 22 septembre 2026, publiée le 23 septembre 2026
++  https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000054883146
++
++The homologation wording was corrected on 22 September 2026 so that the extension applies to all platforms and independent workers using them that fall within the agreement's scope, not only to the representative organisations that signed it.
+ 
+ **Implication for DelishAfrica:**  
+ A France compensation engine must be able to:
+@@ -70,9 +74,16 @@ A France compensation engine must be able to:
+ - aggregate the guarantee weekly;
+ - exclude tips from the guarantee base;
+ - calculate a differential;
+-- settle the differential within the required time.
++- settle the differential within the required time;
++- retain a versioned, reproducible calculation trace for dispute and audit.
++
++Implementation lock — 27 October 2026:
++- pure calculation module added at `services/api-nest/src/courier-compensation/france-weekly-guarantee.ts`;
++- direct deterministic harness: PASS;
++- production ledger/scheduler wiring: **NOT ENABLED**;
++- legal review of eligible income components and production data mapping remains mandatory before activation.
+ 
+-Status: **IMPLEMENT + LEGAL VALIDATION**
++Status: **IMPLEMENTED AS NON-PRODUCTION CALCULATION CORE + LEGAL/DATA VALIDATION REQUIRED**
+ 
+ ### 2.4 Deactivation is already heavily structured
+ 
+diff --git a/docs/DELISHAFRICA_COURIER_FRANCE_COMPENSATION_DEACTIVATION_SPEC_V0.1_20260930.md b/docs/DELISHAFRICA_COURIER_FRANCE_COMPENSATION_DEACTIVATION_SPEC_V0.1_20260930.md
+index d9b45b5..3f96709 100644
+--- a/docs/DELISHAFRICA_COURIER_FRANCE_COMPENSATION_DEACTIVATION_SPEC_V0.1_20260930.md
++++ b/docs/DELISHAFRICA_COURIER_FRANCE_COMPENSATION_DEACTIVATION_SPEC_V0.1_20260930.md
+@@ -31,7 +31,17 @@ Guardrails:
+ - calculation must be reproducible;
+ - every rule change gets a version;
+ - courier-facing statement must explain the calculation;
+-- finance/ops view must show unresolved differentials.
++- finance/ops view must show unresolved differentials;
++- the weekly floor is rounded upward to the next cent so the computed amount cannot fall below 19 €/activity-hour through cent rounding;
++- `activityIncomeCents` must be supplied by a legally validated accounting policy and must never include tips by construction.
++
++Implementation lock — 27 October 2026:
++- calculation core: `services/api-nest/src/courier-compensation/france-weekly-guarantee.ts`;
++- version: `FR-ARPE-2026-09-01-v1`;
++- direct deterministic harness: PASS;
++- unit-test specification added: `france-weekly-guarantee.spec.ts`;
++- production DB mapping, scheduler and payment execution: NOT WIRED / NOT DEPLOYED;
++- unresolved legal mapping: treatment of each bonus/adjustment category inside eligible activity income must be validated before production use.
+ 
+ ## B. Courier-facing weekly statement
+ 
+diff --git a/docs/courier-fair-pay-lab/00_INDEX.md b/docs/courier-fair-pay-lab/00_INDEX.md
+new file mode 100644
+index 0000000..c78c18f
+--- /dev/null
++++ b/docs/courier-fair-pay-lab/00_INDEX.md
+@@ -0,0 +1,74 @@
++# DelishAfrica® Courier Fair Pay Lab
++
++Date: 27 October 2026  
++Branch: `lab/courier-fair-pay-kernel-20261027`  
++Status: LAB — NOT PRODUCTION
++
++## Mission
++
++Build one country-agnostic Courier payroll/fairness kernel, then attach legally reviewed country adapters before any paid market activation.
++
++Belgium is the first laboratory. France is the first regulatory reference adapter.
++
++## Non-negotiable architecture
++
++1. **Pay and viability are separate calculations.**
++   - Fair Pay answers: what is owed/protected for the courier?
++   - Zone Viability answers: can POG/DelishAfrica sustain the zone?
++   - A negative zone result must never reduce an already earned courier entitlement.
++
++2. **Country policy is data, not hard-coded business folklore.**
++   - legal floor;
++   - POG fairness floor;
++   - paid-time rules;
++   - activity guarantee;
++   - tips;
++   - expenses;
++   - legal status;
++   - activation state.
++
++3. **Production activation requires GREEN.**
++   DRAFT and LEGAL_REVIEW policies may be simulated in LAB but cannot execute production payroll.
++
++4. **Tips and reimbursed work expenses do not satisfy pay floors.**
++
++5. **Low utilization is POG operational risk, not courier debt.**
++
++## Code
++
++- `services/api-nest/src/courier-payroll/courier-payroll.types.ts`
++- `services/api-nest/src/courier-payroll/fair-pay-kernel.ts`
++- `services/api-nest/src/courier-payroll/zone-viability.ts`
++- `services/api-nest/src/courier-payroll/adapters/belgium.ts`
++- `services/api-nest/src/courier-payroll/adapters/france.ts`
++- `services/api-nest/src/courier-payroll/fair-pay-kernel.spec.ts`
++- France legacy/reference core: `services/api-nest/src/courier-compensation/france-weekly-guarantee.ts`
++
++## QA lock
++
++27 October 2026: **25/25 tests PASS** with `pnpm dlx tsx --test`.
++
++The test suite currently proves:
++- paid waiting/repositioning can be protected in Belgian employee LAB policy;
++- higher legal floor overrides lower POG floor;
++- tips/expenses are always additive;
++- French 19 €/activity-hour weekly reference remains distinct;
++- DRAFT policy cannot execute production payroll;
++- zone loss remains with POG;
++- density can be tested independently of worker entitlement.
++
++## Documents
++
++- `01_FAIRNESS_DOCTRINE.md`
++- `02_BELGIUM_LAB_POLICY.md`
++- `03_VIABILITY_MATH.md`
++- `04_COUNTRY_ADAPTER_CONTRACT.md`
++- `05_RELEASE_GATES.md`
++- `06_BELGIUM_SCENARIOS_20261027.json`
++- `07_LAB_STATUS_20261027.md`
++- `08_BELGIUM_SENSITIVITY_20261027.json`
++- `09_LAB_AUDIT_ARTIFACTS_20261027.json`
++- `10_TELEMETRY_PIPELINE.md`
++- `11_POLICY_LEDGER_AND_STATEMENT.md`
++- `12_BELGIUM_SENSITIVITY_FINDINGS.md`
++- `13_MASTER_TODO.md`
+diff --git a/docs/courier-fair-pay-lab/01_FAIRNESS_DOCTRINE.md b/docs/courier-fair-pay-lab/01_FAIRNESS_DOCTRINE.md
+new file mode 100644
+index 0000000..a48e3d1
+--- /dev/null
++++ b/docs/courier-fair-pay-lab/01_FAIRNESS_DOCTRINE.md
+@@ -0,0 +1,64 @@
++# Fair Pay Doctrine — DelishAfrica® Courier
++
++Status: INTERNAL LAB DOCTRINE
++
++## Principle
++
++DelishAfrica® must not seek profitability in the gap between what a courier should fairly receive and what the platform can get away with paying.
++
++Profitability must come from better logistics:
++- density;
++- lower restaurant waiting;
++- better batching;
++- lower empty repositioning;
++- better forecasting;
++- lower incident/turnover cost;
++- better Client/Merchant/Courier coordination.
++
++## Invariants
++
++### F1 — Legal floor dominates
++For any country/status:
++
++`governingFloor >= legalFloor`
++
++If POG voluntarily sets a higher fairness floor:
++
++`governingFloor = max(legalFloor, POGFairnessFloor, applicableActivityGuarantee)`
++
++### F2 — Tips are additive
++Tips never reduce a guaranteed floor or differential.
++
++### F3 — Necessary work costs are separate
++Expense reimbursement does not count as remuneration for satisfying the floor.
++
++### F4 — Platform-controlled time is an explicit policy input
++No country adapter may silently discard waiting/repositioning time. The adapter must explicitly classify each time bucket.
++
++### F5 — No hidden refusal tax
++A courier's refusal of a mission must not silently become a payroll penalty or dispatch handicap without a separately lawful and disclosed rule. Current POG design direction: refusal alone does not lower assignment ranking.
++
++### F6 — Viability cannot rewrite earned pay
++A zone that loses money is a POG/operations problem. Payroll computation does not read zone profitability as an input to reduce worker entitlement.
++
++### F7 — Reproducible calculations
++Every rule has a `policyId` / calculation version. Historical statements must be reproducible.
++
++### F8 — Human-legible statement
++The future courier statement should separately expose:
++- paid/mobilized time;
++- active mission time;
++- eligible income;
++- floor;
++- differential;
++- tips;
++- expense reimbursement;
++- bonuses/adjustments by category;
++- payment date;
++- contestation path.
++
++## Desired strategic effect
++
++Better protection should produce lower turnover and better operational quality. Better quality should improve density and retention. Density should reduce courier cost per delivery. That efficiency can then fund both POG resilience and worker protection.
++
++This is the intended flywheel. It must be proven with data, not assumed.
+diff --git a/docs/courier-fair-pay-lab/02_BELGIUM_LAB_POLICY.md b/docs/courier-fair-pay-lab/02_BELGIUM_LAB_POLICY.md
+new file mode 100644
+index 0000000..e9633b6
+--- /dev/null
++++ b/docs/courier-fair-pay-lab/02_BELGIUM_LAB_POLICY.md
+@@ -0,0 +1,66 @@
++# Belgium Fair Pay Lab Policy V0.1
++
++Date: 27 October 2026  
++Status: DRAFT — simulation only
++
++## Purpose
++
++Belgium is the first test market for the country-agnostic Fair Pay Kernel.
++
++This document deliberately does **not** declare a final Belgian worker classification, joint committee, CBA wage scale or production pay rate.
++
++## Current LAB hypothesis
++
++Primary design scenario: **Core Fleet employee model**.
++
++For laboratory simulation only:
++- POG fairness hypothesis: **19.00 EUR per paid hour**;
++- this is **not** represented as the Belgian legal wage;
++- legal/CBA floor remains unset until competent Belgian review;
++- if the validated legal floor is higher, the kernel automatically uses the higher floor.
++
++## Paid-time LAB rule
++
++The employee lab adapter currently counts as paid:
++- active mission time;
++- platform-controlled waiting;
++- required repositioning;
++- other explicitly paid time.
++
++Excluded/free time must be separately recorded and cannot be hidden inside an unpaid bucket.
++
++## Tips and expenses
++
++- tips: 100% additive in the kernel;
++- reimbursed necessary expenses: additive and excluded from floor satisfaction;
++- neither may make a low wage appear compliant.
++
++## Production lock
++
++Adapter:
++`BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1`
++
++Current state:
++- `validationStatus = DRAFT`
++- `effectiveFrom = null`
++- `productionActivationAllowed = false`
++
++The production path therefore throws:
++`COURIER_PAYROLL_COUNTRY_POLICY_NOT_GREEN`
++
++## Questions required before Belgium GREEN
++
++1. What worker status/model will be used for the pilot?
++2. Which competent joint committee / sectoral rules apply?
++3. What mandatory wage scales, premiums and time rules apply?
++4. How are waiting, breaks, standby, repositioning and travel classified?
++5. What employer social contributions and holiday rules apply to the chosen setup?
++6. What equipment/expense reimbursement policy is required?
++7. What accident/work-risk insurance is required?
++8. What schedule/part-time/flexible arrangements are lawful and operationally suitable?
++9. What payroll cadence and payslip content will apply?
++10. What mechanism will allow couriers to dispute time/pay calculations?
++
++## Pilot rule
++
++Do not open paid Belgian Courier activity until the country adapter is legally reviewed and switched to GREEN.
+diff --git a/docs/courier-fair-pay-lab/03_VIABILITY_MATH.md b/docs/courier-fair-pay-lab/03_VIABILITY_MATH.md
+new file mode 100644
+index 0000000..282439d
+--- /dev/null
++++ b/docs/courier-fair-pay-lab/03_VIABILITY_MATH.md
+@@ -0,0 +1,92 @@
++# Viability Mathematics — Courier Fair Pay Lab
++
++## Separation
++
++Payroll answers what the courier is owed.
++
++Zone economics answers whether DelishAfrica® can sustain the operating cell.
++
++These computations are intentionally separate.
++
++## Core equations
++
++Let:
++
++- `C_h` = fully loaded employer courier cost per paid hour;
++- `D_h` = deliveries per paid hour;
++- `M_d` = contribution available before courier cost per delivery;
++- `F` = fixed zone cost;
++- `H` = paid hours;
++- `D` = deliveries.
++
++Then:
++
++`courierCostPerDelivery = C_h / D_h`
++
++and:
++
++`residualZoneContribution = (M_d * D) - (C_h * H) - F`
++
++Simple break-even density, excluding fixed zone cost:
++
++`breakEvenDeliveriesPerPaidHour = C_h / M_d`
++
++If POG wants a target residual contribution `R_d` per delivery:
++
++`targetDeliveriesPerPaidHour = C_h / (M_d - R_d)`
++
++provided `M_d > R_d`.
++
++## Utilization
++
++`utilization = activeMissionHours / paidHours`
++
++Low utilization is not automatically a labor problem. It may indicate:
++- zone too large;
++- insufficient order density;
++- bad shift design;
++- restaurant preparation delays;
++- weak batching;
++- too much empty repositioning;
++- forecasting error.
++
++## LAB example only
++
++Assume:
++- fully loaded courier cost = 30.00 EUR / paid hour;
++- contribution before courier = 12.00 EUR / delivery.
++
++Break-even:
++
++`30 / 12 = 2.5 deliveries per paid hour`
++
++At 1.8 deliveries/hour the zone is negative. The worker pay does not decrease.
++
++At 3.0 deliveries/hour:
++- courier cost/delivery = 10.00 EUR;
++- residual before fixed zone costs = 2.00 EUR/delivery.
++
++These numbers are **illustrative laboratory assumptions**, not approved POG production economics.
++
++## Pilot metrics
++
++Daily/weekly:
++- paid hours;
++- active mission hours;
++- utilization;
++- deliveries/paid hour;
++- average waiting at merchant;
++- required reposition time/km;
++- batching rate;
++- on-time pickup/delivery;
++- courier incidents;
++- courier cost/delivery;
++- contribution before courier/delivery;
++- residual contribution/delivery;
++- pay differentials;
++- courier disputes;
++- courier satisfaction;
++- merchant satisfaction;
++- client satisfaction.
++
++A zone should not scale merely because order count looks impressive.
+diff --git a/docs/courier-fair-pay-lab/04_COUNTRY_ADAPTER_CONTRACT.md b/docs/courier-fair-pay-lab/04_COUNTRY_ADAPTER_CONTRACT.md
+new file mode 100644
+index 0000000..c93f5a1
+--- /dev/null
++++ b/docs/courier-fair-pay-lab/04_COUNTRY_ADAPTER_CONTRACT.md
+@@ -0,0 +1,69 @@
++# Country Adapter Contract
++
++Every market must implement the same semantic contract.
++
++## Required policy identity
++
++- `policyId`
++- country code
++- currency
++- worker status
++- validation status
++- effective date
++- production activation flag
++
++## Required pay configuration
++
++- legal floor per paid hour, when applicable;
++- POG fairness floor, if POG chooses a higher voluntary standard;
++- explicit paid-time rules for:
++  - active mission;
++  - platform-controlled waiting;
++  - required reposition;
++  - other paid time;
++- weekly activity guarantee if the country/status uses one;
++- tips policy;
++- expense reimbursement policy.
++
++## Activation lifecycle
++
++`DRAFT -> LEGAL_REVIEW -> GREEN`
++
++DRAFT:
++- hypotheses allowed;
++- simulation allowed;
++- production payroll forbidden.
++
++LEGAL_REVIEW:
++- legal sources mapped;
++- operational interpretation under review;
++- simulation allowed;
++- production payroll forbidden.
++
++GREEN:
++- legal review recorded;
++- data mapping tested;
++- payroll statement tested;
++- disputes/appeals defined;
++- production activation may be explicitly enabled.
++
++## Universal rule
++
++No country adapter is allowed to infer that an absent rule means unpaid.
++
++Ambiguous time/pay categories must remain OPEN and block GREEN where material.
++
++## Initial adapters
++
++Belgium:
++`BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1`
++
++France:
++`FR-INDEPENDENT-ARPE-2026-09-01-v1`
++
++Future:
++- Luxembourg;
++- Cameroon;
++- any subsequent DelishAfrica® market.
++
++The kernel remains stable while policy adapters evolve.
+diff --git a/docs/courier-fair-pay-lab/05_RELEASE_GATES.md b/docs/courier-fair-pay-lab/05_RELEASE_GATES.md
+new file mode 100644
+index 0000000..6f2b6b6
+--- /dev/null
++++ b/docs/courier-fair-pay-lab/05_RELEASE_GATES.md
+@@ -0,0 +1,64 @@
++# Fair Pay Release Gates
++
++No paid Courier market activation until all material gates are GREEN.
++
++## G0 — Policy identity
++- country/status selected;
++- policy version immutable and identifiable.
++
++## G1 — Legal
++- status reviewed;
++- competent labor/CBA framework identified;
++- wage/floor/premium rules reviewed;
++- paid-time classifications reviewed;
++- insurance/social-security obligations reviewed.
++
++## G2 — Data
++Every payroll-critical time/income component has a source:
++- mission acceptance;
++- pickup;
++- delivery;
++- waiting;
++- reposition;
++- other paid time;
++- eligible income;
++- tips;
++- expenses;
++- adjustments.
++
++## G3 — Calculation
++- deterministic tests PASS;
++- rounding rule documented;
++- weekly/daily aggregation documented;
++- historical recomputation possible.
++
++## G4 — Statement
++Courier-facing statement shows the calculation clearly.
++
++## G5 — Dispute
++- human support channel;
++- correction workflow;
++- audit trail;
++- SLA.
++
++## G6 — Viability
++Pilot zone has explicit break-even and target-density thresholds.
++
++## G7 — Safety
++Insurance/incident/emergency process validated.
++
++## G8 — Product
++Client + Merchant + Courier signals needed for waiting/density are instrumented.
++
++## G9 — Production switch
++Only a GREEN country adapter with `productionActivationAllowed=true` may cross the production boundary.
++
++## Belgium current state — 27 October 2026
++
++- Kernel: GREEN in LAB
++- Test suite: 13/13 PASS
++- Belgian legal adapter: DRAFT
++- Legal floor: OPEN
++- Joint committee/CBA: OPEN
++- Production activation: BLOCKED
++- Pilot economics: LAB assumptions only
+diff --git a/docs/courier-fair-pay-lab/06_BELGIUM_SCENARIOS_20261027.json b/docs/courier-fair-pay-lab/06_BELGIUM_SCENARIOS_20261027.json
+new file mode 100644
+index 0000000..b852635
+--- /dev/null
++++ b/docs/courier-fair-pay-lab/06_BELGIUM_SCENARIOS_20261027.json
+@@ -0,0 +1,70 @@
++{
++  "assumptions": {
++    "employerCostPerPaidHourCents": 3000,
++    "contributionBeforeCourierCentsPerDelivery": 1200,
++    "targetResidualContributionCentsPerDelivery": 200
++  },
++  "results": [
++    {
++      "scenario": "LOW",
++      "zoneId": "BRU-LAB-LOW",
++      "paidHours": 10,
++      "deliveries": 15,
++      "deliveriesPerPaidHour": 1.5,
++      "utilizationRatio": 0.5,
++      "totalEmployerCourierCostCents": 30000,
++      "courierCostPerDeliveryCents": 2000,
++      "grossContributionBeforeCourierCents": 18000,
++      "fixedZoneCostCents": 0,
++      "residualContributionCents": -12000,
++      "residualContributionPerDeliveryCents": -800,
++      "breakEvenDeliveriesPerPaidHour": 2.5,
++      "targetDeliveriesPerPaidHour": 3,
++      "viableAtCurrentDensity": false,
++      "workerPayProtected": true,
++      "warnings": [
++        "LOW_UTILIZATION_REQUIRES_ZONE_OR_STAFFING_ACTION",
++        "ZONE_ECONOMICS_NEGATIVE_POG_ABSORBS_SHORTFALL",
++        "DENSITY_BELOW_BREAK_EVEN"
++      ]
++    },
++    {
++      "scenario": "BASE",
++      "zoneId": "BRU-LAB-BASE",
++      "paidHours": 10,
++      "deliveries": 25,
++      "deliveriesPerPaidHour": 2.5,
++      "utilizationRatio": 0.75,
++      "totalEmployerCourierCostCents": 30000,
++      "courierCostPerDeliveryCents": 1200,
++      "grossContributionBeforeCourierCents": 30000,
++      "fixedZoneCostCents": 0,
++      "residualContributionCents": 0,
++      "residualContributionPerDeliveryCents": 0,
++      "breakEvenDeliveriesPerPaidHour": 2.5,
++      "targetDeliveriesPerPaidHour": 3,
++      "viableAtCurrentDensity": true,
++      "workerPayProtected": true,
++      "warnings": []
++    },
++    {
++      "scenario": "HIGH",
++      "zoneId": "BRU-LAB-HIGH",
++      "paidHours": 10,
++      "deliveries": 30,
++      "deliveriesPerPaidHour": 3,
++      "utilizationRatio": 0.85,
++      "totalEmployerCourierCostCents": 30000,
++      "courierCostPerDeliveryCents": 1000,
++      "grossContributionBeforeCourierCents": 36000,
++      "fixedZoneCostCents": 0,
++      "residualContributionCents": 6000,
++      "residualContributionPerDeliveryCents": 200,
++      "breakEvenDeliveriesPerPaidHour": 2.5,
++      "targetDeliveriesPerPaidHour": 3,
++      "viableAtCurrentDensity": true,
++      "workerPayProtected": true,
++      "warnings": []
++    }
++  ]
++}
+diff --git a/docs/courier-fair-pay-lab/07_LAB_STATUS_20261027.md b/docs/courier-fair-pay-lab/07_LAB_STATUS_20261027.md
+new file mode 100644
+index 0000000..a00bf75
+--- /dev/null
++++ b/docs/courier-fair-pay-lab/07_LAB_STATUS_20261027.md
+@@ -0,0 +1,163 @@
++# Courier Fair Pay Lab — Status 2026-10-27
++
++## Snapshot
++
++Branch:
++`lab/courier-fair-pay-kernel-20261027`
++
++Previous checkpoint:
++`6fe00d0 feat(courier): establish fair pay kernel lab`
++
++QA:
++**25/25 PASS**
++
++Production:
++**BLOCKED / NOT WIRED**
++
++## Validated in LAB
++
++### Fair Pay kernel
++- country policy contract;
++- legal floor / POG floor / country guarantee arbitration;
++- paid/mobilized time separation;
++- tips and expense separation;
++- explicit France estimated-activity duration;
++- production GREEN guard.
++
++### Auditability
++- immutable policy SHA-256;
++- same-version mutation detection;
++- canonical source facts;
++- duplicate-fact protection;
++- time-overlap protection;
++- deterministic weekly statement;
++- policy hash + facts hash + statement hash;
++- statement contestability flag.
++
++### Telemetry
++- raw clock-event contract;
++- mission event normalizer;
++- required-reposition / other-paid segment normalizer;
++- existing API timestamps inventoried;
++- no waiting inference without explicit pickup-arrival event;
++- France guarantee estimate kept separate from actual mission clock.
++
++### Zone economics
++- deliveries/paid hour;
++- utilization;
++- courier cost/delivery;
++- residual contribution;
++- break-even density;
++- target density;
++- merchant-wait / batching model;
++- 30 economic sensitivity combinations;
++- 45 operational sensitivity combinations.
++
++### Belgium
++Adapter:
++`BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1`
++
++Policy hash:
++`5f0ca2b5349dee3921aede627b0519355d32857df5624866ce7e26b53cdb229c`
++
++State:
++DRAFT.
++
++Lab hypothesis:
++19 EUR/hour POG fairness floor on paid time.
++
++This is not a Belgian legal rate.
++
++### France
++Adapter:
++`FR-INDEPENDENT-ARPE-2026-09-01-v1`
++
++Policy hash:
++`ae0794c9fb2d0408c545ff0fb58293bfe2a4fdc7147741f19429872cdbf44d4a`
++
++State:
++LEGAL_REVIEW.
++
++Reference:
++19 EUR/activity-hour weekly guarantee using an explicit estimated activity duration, not the actual mission clock.
++
++## Example Belgium statement
++
++Statement:
++`9c6c574d92fdbde7ba3a53033a48a035aba209463c8bff3c960e875c9a44cb63`
++
++- paid time: 90 min;
++- active mission: 50 min;
++- pickup dwell/wait: 10 min;
++- reposition: 15 min;
+
+[executed on device: purpletoshiba (90e8e634-9b37-494e-b0bb-834c5c7e7d00)]
