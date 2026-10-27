@@ -27,7 +27,7 @@ export function createFranceIndependentReferencePolicy(): CountryPayPolicy {
     productionActivationAllowed: false,
     notes: [
       'Reference adapter for the ARPE weekly activity-income guarantee.',
-      'Activity time is represented by activeMissionSeconds in the kernel input.',
+      'The ARPE guarantee uses an explicit estimated activity duration (activityGuaranteeSeconds), kept separate from actual mission clock time.',
       'Production remains blocked until final legal/data mapping review is GREEN.',
     ],
   };

@@ -28,6 +28,14 @@
     "./live-location": {
       "types": "./src/live-location.ts",
       "default": "./src/live-location.ts"
+    },
+    "./courier-payroll": {
+      "types": "./src/courier-payroll.ts",
+      "default": "./src/courier-payroll.ts"
+    },
+    "./courier-payroll-telemetry": {
+      "types": "./src/courier-payroll-telemetry.ts",
+      "default": "./src/courier-payroll-telemetry.ts"
     }
   },
   "scripts": {

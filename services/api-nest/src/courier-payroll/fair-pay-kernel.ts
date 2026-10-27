@@ -104,12 +104,22 @@ export function computeFairPay(
     paid,
     policy.pogFairnessFloorCentsPerPaidHour,
   );
-  const activityGuaranteeFloorCents = policy.weeklyActivityGuarantee
-    ? centsForSeconds(
-        active,
-        policy.weeklyActivityGuarantee.rateCentsPerHour,
-      )
-    : 0;
+  let activityGuaranteeSeconds: number | null = null;
+  let activityGuaranteeFloorCents = 0;
+  if (policy.weeklyActivityGuarantee) {
+    if (input.activityGuaranteeSeconds == null) {
+      throw new Error('COURIER_PAYROLL_ACTIVITY_GUARANTEE_DURATION_REQUIRED');
+    }
+    assertNonNegativeSafeInteger(
+      input.activityGuaranteeSeconds,
+      'activityGuaranteeSeconds',
+    );
+    activityGuaranteeSeconds = input.activityGuaranteeSeconds;
+    activityGuaranteeFloorCents = centsForSeconds(
+      activityGuaranteeSeconds,
+      policy.weeklyActivityGuarantee.rateCentsPerHour,
+    );
+  }
 
   const governingFloorCents = Math.max(
     legalFloorCents,
@@ -143,6 +153,7 @@ export function computeFairPay(
     paidSeconds: paid,
     mobilizedSeconds: mobilized,
     activeMissionSeconds: active,
+    activityGuaranteeSeconds,
     utilizationRatio,
     legalFloorCents,
     pogFairnessFloorCents,

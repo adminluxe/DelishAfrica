@@ -45,6 +45,7 @@ export interface WeeklyCourierPayInput {
   courierId: string;
   weekKey: string;
   workTime: WorkTimeBreakdown;
+  activityGuaranteeSeconds?: number;
   eligibleIncomeCents: number;
   tipsCents: number;
   expenseReimbursementsCents: number;
@@ -58,6 +59,7 @@ export interface FairPayComputation {
   paidSeconds: number;
   mobilizedSeconds: number;
   activeMissionSeconds: number;
+  activityGuaranteeSeconds: number | null;
   utilizationRatio: number;
   legalFloorCents: number;
   pogFairnessFloorCents: number;

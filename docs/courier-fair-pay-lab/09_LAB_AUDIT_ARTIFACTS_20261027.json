@@ -1,0 +1,302 @@
+{
+  "policyLedger": [
+    {
+      "policy": {
+        "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
+        "countryCode": "BE",
+        "currency": "EUR",
+        "workerStatus": "EMPLOYEE",
+        "validationStatus": "DRAFT",
+        "effectiveFrom": null,
+        "legalFloorCentsPerPaidHour": null,
+        "pogFairnessFloorCentsPerPaidHour": 1900,
+        "paidTimeRules": {
+          "activeMission": true,
+          "platformControlledWaiting": true,
+          "requiredReposition": true,
+          "otherPaid": true
+        },
+        "weeklyActivityGuarantee": null,
+        "tipsPassThrough": true,
+        "tipsExcludedFromFloors": true,
+        "expenseReimbursementsExcludedFromFloors": true,
+        "productionActivationAllowed": false,
+        "notes": [
+          "LAB ONLY: 19 EUR/hour is a POG fairness hypothesis, not a Belgian legal rate.",
+          "Legal floor remains unset until the competent Belgian joint committee/CBA and worker classification are validated.",
+          "POG lab principle: platform-controlled waiting and required repositioning are not pushed onto the courier as unpaid zone risk.",
+          "Production must remain blocked until Belgian legal review is GREEN."
+        ]
+      },
+      "policyHash": "5f0ca2b5349dee3921aede627b0519355d32857df5624866ce7e26b53cdb229c",
+      "sealedAt": "2026-10-27T12:30:00.000Z",
+      "sealedBy": "pog-courier-fair-pay-lab"
+    },
+    {
+      "policy": {
+        "policyId": "FR-INDEPENDENT-ARPE-2026-09-01-v1",
+        "countryCode": "FR",
+        "currency": "EUR",
+        "workerStatus": "INDEPENDENT",
+        "validationStatus": "LEGAL_REVIEW",
+        "effectiveFrom": "2026-09-01",
+        "legalFloorCentsPerPaidHour": null,
+        "pogFairnessFloorCentsPerPaidHour": null,
+        "paidTimeRules": {
+          "activeMission": true,
+          "platformControlledWaiting": false,
+          "requiredReposition": false,
+          "otherPaid": false
+        },
+        "weeklyActivityGuarantee": {
+          "rateCentsPerHour": 1900,
+          "differentialPaymentDelayDays": 7,
+          "calculationVersion": "FR-ARPE-2026-09-01-v1"
+        },
+        "tipsPassThrough": true,
+        "tipsExcludedFromFloors": true,
+        "expenseReimbursementsExcludedFromFloors": true,
+        "productionActivationAllowed": false,
+        "notes": [
+          "Reference adapter for the ARPE weekly activity-income guarantee.",
+          "The ARPE guarantee uses an explicit estimated activity duration (activityGuaranteeSeconds), kept separate from actual mission clock time.",
+          "Production remains blocked until final legal/data mapping review is GREEN."
+        ]
+      },
+      "policyHash": "ae0794c9fb2d0408c545ff0fb58293bfe2a4fdc7147741f19429872cdbf44d4a",
+      "sealedAt": "2026-10-27T12:30:00.000Z",
+      "sealedBy": "pog-courier-fair-pay-lab"
+    }
+  ],
+  "instrumentationGate": {
+    "green": false,
+    "available": [
+      "missionAcceptedAt",
+      "merchantReadyAt",
+      "pickedUpAt",
+      "deliveredAt"
+    ],
+    "partial": [
+      "tipCredit"
+    ],
+    "missing": [
+      "courierArrivedPickupAt",
+      "requiredRepositionStartedAt/EndedAt",
+      "otherPaidWorkStartedAt/EndedAt",
+      "eligibleIncomeCredit",
+      "expenseReimbursementCredit"
+    ]
+  },
+  "belgiumExample": {
+    "missionDiagnostics": {
+      "merchantReadyBeforeArrivalSeconds": 600,
+      "pickupDwellSeconds": 600
+    },
+    "facts": [
+      {
+        "factId": "mission-lab-1:active-pre-pickup",
+        "kind": "TIME",
+        "category": "ACTIVE_MISSION",
+        "courierId": "be-lab-example-1",
+        "countryCode": "BE",
+        "weekKey": "2026-W44",
+        "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
+        "source": "PAYROLL_NORMALIZER",
+        "recordedAt": "2026-10-27T08:20:00.000Z",
+        "orderId": "order-lab-1",
+        "missionId": "mission-lab-1",
+        "merchantId": "merchant-lab-1",
+        "startedAt": "2026-10-27T08:00:00.000Z",
+        "endedAt": "2026-10-27T08:20:00.000Z",
+        "evidenceRefs": [
+          "m1-accepted",
+          "m1-arrived"
+        ]
+      },
+      {
+        "factId": "mission-lab-1:pickup-dwell",
+        "kind": "TIME",
+        "category": "PLATFORM_CONTROLLED_WAITING",
+        "courierId": "be-lab-example-1",
+        "countryCode": "BE",
+        "weekKey": "2026-W44",
+        "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
+        "source": "PAYROLL_NORMALIZER",
+        "recordedAt": "2026-10-27T08:30:00.000Z",
+        "orderId": "order-lab-1",
+        "missionId": "mission-lab-1",
+        "merchantId": "merchant-lab-1",
+        "startedAt": "2026-10-27T08:20:00.000Z",
+        "endedAt": "2026-10-27T08:30:00.000Z",
+        "evidenceRefs": [
+          "m1-arrived",
+          "m1-picked"
+        ]
+      },
+      {
+        "factId": "mission-lab-1:active-delivery",
+        "kind": "TIME",
+        "category": "ACTIVE_MISSION",
+        "courierId": "be-lab-example-1",
+        "countryCode": "BE",
+        "weekKey": "2026-W44",
+        "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
+        "source": "PAYROLL_NORMALIZER",
+        "recordedAt": "2026-10-27T09:00:00.000Z",
+        "orderId": "order-lab-1",
+        "missionId": "mission-lab-1",
+        "merchantId": "merchant-lab-1",
+        "startedAt": "2026-10-27T08:30:00.000Z",
+        "endedAt": "2026-10-27T09:00:00.000Z",
+        "evidenceRefs": [
+          "m1-picked",
+          "m1-delivered"
+        ]
+      },
+      {
+        "factId": "reposition-lab-1:required_reposition",
+        "kind": "TIME",
+        "category": "REQUIRED_REPOSITION",
+        "courierId": "be-lab-example-1",
+        "countryCode": "BE",
+        "weekKey": "2026-W44",
+        "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
+        "source": "PAYROLL_NORMALIZER",
+        "recordedAt": "2026-10-27T09:15:00.000Z",
+        "startedAt": "2026-10-27T09:00:00.000Z",
+        "endedAt": "2026-10-27T09:15:00.000Z",
+        "evidenceRefs": [
+          "r1-start",
+          "r1-end"
+        ]
+      },
+      {
+        "factId": "other-paid-lab-1:other_paid",
+        "kind": "TIME",
+        "category": "OTHER_PAID",
+        "courierId": "be-lab-example-1",
+        "countryCode": "BE",
+        "weekKey": "2026-W44",
+        "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
+        "source": "PAYROLL_NORMALIZER",
+        "recordedAt": "2026-10-27T09:30:00.000Z",
+        "startedAt": "2026-10-27T09:15:00.000Z",
+        "endedAt": "2026-10-27T09:30:00.000Z",
+        "evidenceRefs": [
+          "w1-start",
+          "w1-end"
+        ]
+      },
+      {
+        "factId": "income-lab-1",
+        "kind": "MONEY",
+        "category": "ELIGIBLE_INCOME",
+        "courierId": "be-lab-example-1",
+        "countryCode": "BE",
+        "weekKey": "2026-W44",
+        "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
+        "source": "PAYMENTS",
+        "recordedAt": "2026-10-27T12:00:00.000Z",
+        "amountMinor": 2600,
+        "currency": "EUR"
+      },
+      {
+        "factId": "tip-lab-1",
+        "kind": "MONEY",
+        "category": "TIP",
+        "courierId": "be-lab-example-1",
+        "countryCode": "BE",
+        "weekKey": "2026-W44",
+        "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
+        "source": "PAYMENTS",
+        "recordedAt": "2026-10-27T12:00:00.000Z",
+        "amountMinor": 500,
+        "currency": "EUR"
+      },
+      {
+        "factId": "expense-lab-1",
+        "kind": "MONEY",
+        "category": "EXPENSE_REIMBURSEMENT",
+        "courierId": "be-lab-example-1",
+        "countryCode": "BE",
+        "weekKey": "2026-W44",
+        "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
+        "source": "OPS",
+        "recordedAt": "2026-10-27T12:00:00.000Z",
+        "amountMinor": 300,
+        "currency": "EUR"
+      }
+    ],
+    "statement": {
+      "statementId": "9c6c574d92fdbde7ba3a53033a48a035aba209463c8bff3c960e875c9a44cb63",
+      "statementVersion": "COURIER_WEEKLY_STATEMENT_V0.1",
+      "courierId": "be-lab-example-1",
+      "weekKey": "2026-W44",
+      "countryCode": "BE",
+      "currency": "EUR",
+      "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
+      "policyHash": "5f0ca2b5349dee3921aede627b0519355d32857df5624866ce7e26b53cdb229c",
+      "factsHash": "5c7bd1b727c32c999520e2ee19b885f898072a80fa89e9560c7ee56924695cac",
+      "factIds": [
+        "expense-lab-1",
+        "income-lab-1",
+        "mission-lab-1:active-delivery",
+        "mission-lab-1:active-pre-pickup",
+        "mission-lab-1:pickup-dwell",
+        "other-paid-lab-1:other_paid",
+        "reposition-lab-1:required_reposition",
+        "tip-lab-1"
+      ],
+      "factCount": 8,
+      "computation": {
+        "courierId": "be-lab-example-1",
+        "weekKey": "2026-W44",
+        "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
+        "workerStatus": "EMPLOYEE",
+        "paidSeconds": 5400,
+        "mobilizedSeconds": 5400,
+        "activeMissionSeconds": 3000,
+        "activityGuaranteeSeconds": null,
+        "utilizationRatio": 0.5555555555555556,
+        "legalFloorCents": 0,
+        "pogFairnessFloorCents": 2850,
+        "activityGuaranteeFloorCents": 0,
+        "governingFloorCents": 2850,
+        "eligibleIncomeCents": 2600,
+        "differentialDueCents": 250,
+        "grossPayDueCents": 2850,
+        "tipsPassThroughCents": 500,
+        "expenseReimbursementsCents": 300,
+        "totalCashDueCents": 3650,
+        "differentialPaymentDelayDays": null,
+        "productionEligible": false,
+        "warnings": [
+          "COUNTRY_POLICY_NOT_LEGALLY_GREEN",
+          "LEGAL_FLOOR_NOT_CONFIGURED",
+          "LOW_UTILIZATION_IS_POG_ZONE_RISK_NOT_COURIER_DEBT"
+        ]
+      },
+      "explanation": {
+        "paidSeconds": 5400,
+        "activeMissionSeconds": 3000,
+        "activityGuaranteeSeconds": null,
+        "waitingSeconds": 600,
+        "repositionSeconds": 900,
+        "otherPaidSeconds": 900,
+        "excludedSeconds": 0,
+        "eligibleIncomeCents": 2600,
+        "governingFloorCents": 2850,
+        "differentialDueCents": 250,
+        "tipsCents": 500,
+        "expenseReimbursementsCents": 300,
+        "totalCashDueCents": 3650
+      },
+      "contestable": true,
+      "warnings": [
+        "COUNTRY_POLICY_NOT_LEGALLY_GREEN",
+        "LEGAL_FLOOR_NOT_CONFIGURED",
+        "LOW_UTILIZATION_IS_POG_ZONE_RISK_NOT_COURIER_DEBT"
+      ]
+    }
+  }
+}

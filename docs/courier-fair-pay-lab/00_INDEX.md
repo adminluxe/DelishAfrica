@@ -46,7 +46,7 @@ Belgium is the first laboratory. France is the first regulatory reference adapte
 
 ## QA lock
 
-27 October 2026: **13/13 tests PASS** with `pnpm dlx tsx --test`.
+27 October 2026: **25/25 tests PASS** with `pnpm dlx tsx --test`.
 
 The test suite currently proves:
 - paid waiting/repositioning can be protected in Belgian employee LAB policy;
@@ -66,3 +66,9 @@ The test suite currently proves:
 - `05_RELEASE_GATES.md`
 - `06_BELGIUM_SCENARIOS_20261027.json`
 - `07_LAB_STATUS_20261027.md`
+- `08_BELGIUM_SENSITIVITY_20261027.json`
+- `09_LAB_AUDIT_ARTIFACTS_20261027.json`
+- `10_TELEMETRY_PIPELINE.md`
+- `11_POLICY_LEDGER_AND_STATEMENT.md`
+- `12_BELGIUM_SENSITIVITY_FINDINGS.md`
+- `13_MASTER_TODO.md`

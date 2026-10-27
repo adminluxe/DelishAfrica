@@ -88,6 +88,7 @@ test('France reference adapter keeps 19 EUR activity guarantee separate', () => 
       otherPaidSeconds: 0,
       excludedSeconds: 0,
     },
+    activityGuaranteeSeconds: 3600,
     eligibleIncomeCents: 1800,
     tipsCents: 700,
     expenseReimbursementsCents: 0,
@@ -144,4 +145,44 @@ test('zone becomes viable above break-even density', () => {
   equal(zone.deliveriesPerPaidHour, 3);
   equal(zone.viableAtCurrentDensity, true);
   equal(zone.residualContributionCents, 6000);
+});
+
+test('France guarantee requires the explicit legal activity estimate', () => {
+  throws(() => computeFairPay({
+    courierId: 'fr-missing-estimate',
+    weekKey: '2026-W44',
+    workTime: {
+      activeMissionSeconds: 7200,
+      platformControlledWaitingSeconds: 0,
+      requiredRepositionSeconds: 0,
+      otherPaidSeconds: 0,
+      excludedSeconds: 0,
+    },
+    eligibleIncomeCents: 1800,
+    tipsCents: 0,
+    expenseReimbursementsCents: 0,
+  }, createFranceIndependentReferencePolicy()), /ACTIVITY_GUARANTEE_DURATION_REQUIRED/);
+});
+
+test('France guarantee uses estimated duration, not actual mission clock', () => {
+  const result = computeFairPay({
+    courierId: 'fr-estimate-separated',
+    weekKey: '2026-W44',
+    workTime: {
+      activeMissionSeconds: 7200,
+      platformControlledWaitingSeconds: 0,
+      requiredRepositionSeconds: 0,
+      otherPaidSeconds: 0,
+      excludedSeconds: 0,
+    },
+    activityGuaranteeSeconds: 3600,
+    eligibleIncomeCents: 1800,
+    tipsCents: 0,
+    expenseReimbursementsCents: 0,
+  }, createFranceIndependentReferencePolicy());
+
+  equal(result.activeMissionSeconds, 7200);
+  equal(result.activityGuaranteeSeconds, 3600);
+  equal(result.activityGuaranteeFloorCents, 1900);
+  equal(result.differentialDueCents, 100);
 });
