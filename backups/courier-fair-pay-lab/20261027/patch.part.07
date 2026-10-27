@@ -1,0 +1,531 @@
++  CourierPayrollTimeCategory,
++} from '../../../../packages/contracts/src/courier-payroll';
++
++export interface MissionPayrollNormalizationResult {
++  complete: boolean;
++  missingSignals: CourierPayrollClockEventType[];
++  facts: CourierPayrollFact[];
++  diagnostics: {
++    merchantReadyBeforeArrivalSeconds: number | null;
++    pickupDwellSeconds: number | null;
++  };
++}
++
++function eventOf(
++  events: CourierPayrollClockEvent[],
++  type: CourierPayrollClockEventType,
++): CourierPayrollClockEvent | undefined {
++  return events.find((event) => event.eventType === type);
++}
++
++function secondsBetween(a: string, b: string): number {
++  const millis = Date.parse(b) - Date.parse(a);
++  if (millis < 0 || millis % 1000 !== 0) {
++    throw new Error('COURIER_PAYROLL_TELEMETRY_TIME_ORDER_INVALID');
++  }
++  return millis / 1000;
++}
++
++function signedSecondsBetween(a: string, b: string): number {
++  const millis = Date.parse(b) - Date.parse(a);
++  if (millis % 1000 !== 0) {
++    throw new Error('COURIER_PAYROLL_TELEMETRY_TIME_PRECISION_INVALID');
++  }
++  return millis / 1000;
++}
++
++function scopeKey(event: CourierPayrollClockEvent): string {
++  return [
++    event.courierId,
++    event.countryCode.toUpperCase(),
++    event.weekKey,
++    event.policyId,
++    event.missionId || '',
++    event.orderId || '',
++  ].join('::');
++}
++
++function assertMissionScope(events: CourierPayrollClockEvent[]): void {
++  const keys = new Set(events.map(scopeKey));
++  if (keys.size !== 1) {
++    throw new Error('COURIER_PAYROLL_TELEMETRY_MIXED_MISSION_SCOPE');
++  }
++  const ids = new Set<string>();
++  const eventTypes = new Set<string>();
++  for (const event of events) {
++    if (!isCourierPayrollClockEvent(event)) {
++      throw new Error('COURIER_PAYROLL_TELEMETRY_INVALID_EVENT');
++    }
++    if (ids.has(event.eventId)) {
++      throw new Error('COURIER_PAYROLL_TELEMETRY_DUPLICATE_EVENT');
++    }
++    ids.add(event.eventId);
++    if (eventTypes.has(event.eventType)) {
++      throw new Error('COURIER_PAYROLL_TELEMETRY_DUPLICATE_EVENT_TYPE');
++    }
++    eventTypes.add(event.eventType);
++  }
++}
++
++function timeFact(
++  base: CourierPayrollClockEvent,
++  factId: string,
++  category: CourierPayrollTimeCategory,
++  start: CourierPayrollClockEvent,
++  end: CourierPayrollClockEvent,
++): CourierPayrollTimeFact | null {
++  if (Date.parse(start.occurredAt) === Date.parse(end.occurredAt)) return null;
++  secondsBetween(start.occurredAt, end.occurredAt);
++  return {
++    factId,
++    kind: 'TIME',
++    category,
++    courierId: base.courierId,
++    countryCode: base.countryCode,
++    weekKey: base.weekKey,
++    policyId: base.policyId,
++    source: 'PAYROLL_NORMALIZER',
++    recordedAt: end.occurredAt,
++    orderId: base.orderId,
++    missionId: base.missionId,
++    merchantId: base.merchantId,
++    startedAt: start.occurredAt,
++    endedAt: end.occurredAt,
++    evidenceRefs: [start.eventId, end.eventId],
++  };
++}
++
++export function normalizeMissionPayrollTelemetry(
++  events: CourierPayrollClockEvent[],
++): MissionPayrollNormalizationResult {
++  if (!Array.isArray(events) || events.length === 0) {
++    throw new Error('COURIER_PAYROLL_TELEMETRY_EVENTS_REQUIRED');
++  }
++  assertMissionScope(events);
++
++  const accepted = eventOf(events, 'MISSION_ACCEPTED');
++  const arrived = eventOf(events, 'PICKUP_ARRIVED');
++  const pickedUp = eventOf(events, 'PICKED_UP');
++  const delivered = eventOf(events, 'DELIVERED');
++  const merchantReady = eventOf(events, 'MERCHANT_READY');
++  const required: CourierPayrollClockEventType[] = [
++    'MISSION_ACCEPTED',
++    'PICKUP_ARRIVED',
++    'PICKED_UP',
++    'DELIVERED',
++  ];
++  const missingSignals = required.filter((type) => !eventOf(events, type));
++
++  const facts: CourierPayrollFact[] = [];
++  if (accepted?.estimatedActivitySeconds != null) {
++    const durationFact: CourierPayrollDurationFact = {
++      factId: `${accepted.missionId || accepted.orderId}:activity-estimate`,
++      kind: 'DURATION',
++      category: 'ACTIVITY_GUARANTEE_ESTIMATE',
++      courierId: accepted.courierId,
++      countryCode: accepted.countryCode,
++      weekKey: accepted.weekKey,
++      policyId: accepted.policyId,
++      source: 'PAYROLL_NORMALIZER',
++      recordedAt: accepted.occurredAt,
++      orderId: accepted.orderId,
++      missionId: accepted.missionId,
++      merchantId: accepted.merchantId,
++      seconds: accepted.estimatedActivitySeconds,
++      evidenceRefs: [accepted.eventId],
++    };
++    facts.push(durationFact);
++  }
++
++  if (missingSignals.length > 0) {
++    return {
++      complete: false,
++      missingSignals,
++      facts,
++      diagnostics: {
++        merchantReadyBeforeArrivalSeconds: null,
++        pickupDwellSeconds: null,
++      },
++    };
++  }
++
++  const prePickup = timeFact(
++    accepted!,
++    `${accepted!.missionId || accepted!.orderId}:active-pre-pickup`,
++    'ACTIVE_MISSION',
++    accepted!,
++    arrived!,
++  );
++  const dwell = timeFact(
++    accepted!,
++    `${accepted!.missionId || accepted!.orderId}:pickup-dwell`,
++    'PLATFORM_CONTROLLED_WAITING',
++    arrived!,
++    pickedUp!,
++  );
++  const delivery = timeFact(
++    accepted!,
++    `${accepted!.missionId || accepted!.orderId}:active-delivery`,
++    'ACTIVE_MISSION',
++    pickedUp!,
++    delivered!,
++  );
++  if (prePickup) facts.push(prePickup);
++  if (dwell) facts.push(dwell);
++  if (delivery) facts.push(delivery);
++
++  return {
++    complete: true,
++    missingSignals: [],
++    facts,
++    diagnostics: {
++      merchantReadyBeforeArrivalSeconds:
++        merchantReady && arrived
++          ? signedSecondsBetween(merchantReady.occurredAt, arrived.occurredAt)
++          : null,
++      pickupDwellSeconds:
++        arrived && pickedUp
++          ? secondsBetween(arrived.occurredAt, pickedUp.occurredAt)
++          : null,
++    },
++  };
++}
++
++export interface PaidWorkSegmentNormalizationResult {
++  complete: boolean;
++  incompleteSegments: string[];
++  facts: CourierPayrollTimeFact[];
++}
++
++export function normalizePaidWorkSegments(
++  events: CourierPayrollClockEvent[],
++): PaidWorkSegmentNormalizationResult {
++  const segmentEvents = events.filter((event) =>
++    [
++      'REPOSITION_STARTED',
++      'REPOSITION_ENDED',
++      'OTHER_PAID_STARTED',
++      'OTHER_PAID_ENDED',
++    ].includes(event.eventType),
++  );
++
++  for (const event of segmentEvents) {
++    if (!isCourierPayrollClockEvent(event)) {
++      throw new Error('COURIER_PAYROLL_TELEMETRY_INVALID_EVENT');
++    }
++    if (!event.segmentId) {
++      throw new Error('COURIER_PAYROLL_TELEMETRY_SEGMENT_ID_REQUIRED');
++    }
++  }
++
++  const groups = new Map<string, CourierPayrollClockEvent[]>();
++  for (const event of segmentEvents) {
++    const family = event.eventType.startsWith('REPOSITION')
++      ? 'REPOSITION'
++      : 'OTHER_PAID';
++    const key = [
++      event.courierId,
++      event.countryCode.toUpperCase(),
++      event.weekKey,
++      event.policyId,
++      family,
++      event.segmentId,
++    ].join('::');
++    const bucket = groups.get(key) || [];
++    bucket.push(event);
++    groups.set(key, bucket);
++  }
++
++  const facts: CourierPayrollTimeFact[] = [];
++  const incompleteSegments: string[] = [];
++
++  for (const bucket of groups.values()) {
++    const start = bucket.find((event) => event.eventType.endsWith('_STARTED'));
++    const end = bucket.find((event) => event.eventType.endsWith('_ENDED'));
++    const segmentId = bucket[0].segmentId!;
++
++    if (!start || !end) {
++      incompleteSegments.push(segmentId);
++      continue;
++    }
++    if (bucket.length !== 2) {
++      throw new Error('COURIER_PAYROLL_TELEMETRY_SEGMENT_DUPLICATE');
++    }
++
++    const category: CourierPayrollTimeCategory =
++      start.eventType === 'REPOSITION_STARTED'
++        ? 'REQUIRED_REPOSITION'
++        : 'OTHER_PAID';
++    const fact = timeFact(
++      start,
++      `${segmentId}:${category.toLowerCase()}`,
++      category,
++      start,
++      end,
++    );
++    if (fact) facts.push(fact);
++  }
++
++  return {
++    complete: incompleteSegments.length === 0,
++    incompleteSegments: incompleteSegments.sort(),
++    facts,
++  };
++}
+diff --git a/services/api-nest/src/courier-payroll/weekly-calculation-job.ts b/services/api-nest/src/courier-payroll/weekly-calculation-job.ts
+new file mode 100644
+index 0000000..968e927
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/weekly-calculation-job.ts
+@@ -0,0 +1,38 @@
++import type { PayrollExecutionMode } from './courier-payroll.types';
++import type { SealedCountryPayPolicy } from './policy-ledger';
++import { InMemoryCourierPayrollLedger } from './lab-ledger-repository';
++import { buildCourierWeeklyStatement } from './weekly-statement';
++
++export interface WeeklyCalculationJobInput {
++  courierId: string;
++  weekKey: string;
++  sealedPolicy: SealedCountryPayPolicy;
++  mode?: PayrollExecutionMode;
++}
++
++export function runWeeklyCalculationJob(
++  ledger: InMemoryCourierPayrollLedger,
++  input: WeeklyCalculationJobInput,
++) {
++  ledger.appendPolicy(input.sealedPolicy);
++  const facts = ledger.listFacts(
++    input.courierId,
++    input.weekKey,
++    input.sealedPolicy.policy.policyId,
++  );
++  if (facts.length === 0) {
++    throw new Error('COURIER_PAYROLL_WEEKLY_JOB_NO_FACTS');
++  }
++
++  const statement = buildCourierWeeklyStatement(
++    facts,
++    input.sealedPolicy,
++    input.mode ?? 'LAB',
++  );
++  const persistence = ledger.appendStatement(statement);
++
++  return {
++    statement,
++    persistence,
++  };
++}
+diff --git a/services/api-nest/src/courier-payroll/weekly-statement.ts b/services/api-nest/src/courier-payroll/weekly-statement.ts
+new file mode 100644
+index 0000000..aa1590e
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/weekly-statement.ts
+@@ -0,0 +1,96 @@
++import type { CourierPayrollFact } from '../../../../packages/contracts/src/courier-payroll';
++import { CountryPayPolicy, FairPayComputation, PayrollExecutionMode } from './courier-payroll.types';
++import { computeFairPay } from './fair-pay-kernel';
++import {
++  assertSealedPolicyIntegrity,
++  SealedCountryPayPolicy,
++  stableJsonHash,
++} from './policy-ledger';
++import { projectWeeklyPayrollInput } from './payroll-projector';
++
++export const COURIER_WEEKLY_STATEMENT_VERSION = 'COURIER_WEEKLY_STATEMENT_V0.1';
++
++export interface CourierWeeklyStatement {
++  statementId: string;
++  statementVersion: string;
++  courierId: string;
++  weekKey: string;
++  countryCode: string;
++  currency: string;
++  policyId: string;
++  policyHash: string;
++  factsHash: string;
++  factIds: string[];
++  factCount: number;
++  computation: FairPayComputation;
++  explanation: {
++    paidSeconds: number;
++    activeMissionSeconds: number;
++    activityGuaranteeSeconds: number | null;
++    waitingSeconds: number;
++    repositionSeconds: number;
++    otherPaidSeconds: number;
++    excludedSeconds: number;
++    eligibleIncomeCents: number;
++    governingFloorCents: number;
++    differentialDueCents: number;
++    tipsCents: number;
++    expenseReimbursementsCents: number;
++    totalCashDueCents: number;
++  };
++  contestable: true;
++  warnings: string[];
++}
++
++function sortedFacts(facts: CourierPayrollFact[]): CourierPayrollFact[] {
++  return [...facts].sort((a, b) => a.factId.localeCompare(b.factId));
++}
++
++export function buildCourierWeeklyStatement(
++  facts: CourierPayrollFact[],
++  sealedPolicy: SealedCountryPayPolicy,
++  mode: PayrollExecutionMode = 'LAB',
++): CourierWeeklyStatement {
++  assertSealedPolicyIntegrity(sealedPolicy);
++  const policy: CountryPayPolicy = sealedPolicy.policy;
++  const orderedFacts = sortedFacts(facts);
++  const projection = projectWeeklyPayrollInput(orderedFacts, policy);
++  const computation = computeFairPay(projection.input, policy, mode);
++  const factsHash = stableJsonHash(orderedFacts);
++
++  const statementWithoutId = {
++    statementVersion: COURIER_WEEKLY_STATEMENT_VERSION,
++    courierId: projection.input.courierId,
++    weekKey: projection.input.weekKey,
++    countryCode: policy.countryCode,
++    currency: policy.currency,
++    policyId: policy.policyId,
++    policyHash: sealedPolicy.policyHash,
++    factsHash,
++    factIds: projection.factIds,
++    factCount: projection.factCount,
++    computation,
++    explanation: {
++      paidSeconds: computation.paidSeconds,
++      activeMissionSeconds: projection.input.workTime.activeMissionSeconds,
++      activityGuaranteeSeconds: computation.activityGuaranteeSeconds,
++      waitingSeconds: projection.input.workTime.platformControlledWaitingSeconds,
++      repositionSeconds: projection.input.workTime.requiredRepositionSeconds,
++      otherPaidSeconds: projection.input.workTime.otherPaidSeconds,
++      excludedSeconds: projection.input.workTime.excludedSeconds,
++      eligibleIncomeCents: computation.eligibleIncomeCents,
++      governingFloorCents: computation.governingFloorCents,
++      differentialDueCents: computation.differentialDueCents,
++      tipsCents: computation.tipsPassThroughCents,
++      expenseReimbursementsCents: computation.expenseReimbursementsCents,
++      totalCashDueCents: computation.totalCashDueCents,
++    },
++    contestable: true as const,
++    warnings: computation.warnings,
++  };
++
++  return {
++    statementId: stableJsonHash(statementWithoutId),
++    ...statementWithoutId,
++  };
++}
+diff --git a/services/api-nest/src/courier-payroll/zone-viability.ts b/services/api-nest/src/courier-payroll/zone-viability.ts
+new file mode 100644
+index 0000000..ec4860b
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/zone-viability.ts
+@@ -0,0 +1,103 @@
++import {
++  ZoneViabilityInput,
++  ZoneViabilityResult,
++} from './courier-payroll.types';
++
++function finiteNonNegative(value: number, field: string): number {
++  if (!Number.isFinite(value) || value < 0) {
++    throw new Error(`COURIER_VIABILITY_INVALID_${field.toUpperCase()}`);
++  }
++  return value;
++}
++
++export function simulateZoneViability(
++  input: ZoneViabilityInput,
++): ZoneViabilityResult {
++  const paidHours = finiteNonNegative(input.paidHours, 'paidHours');
++  const activeMissionHours = finiteNonNegative(
++    input.activeMissionHours,
++    'activeMissionHours',
++  );
++  const deliveries = finiteNonNegative(input.deliveries, 'deliveries');
++  const employerCostPerPaidHourCents = finiteNonNegative(
++    input.employerCostPerPaidHourCents,
++    'employerCostPerPaidHourCents',
++  );
++  const contributionBeforeCourierCentsPerDelivery = finiteNonNegative(
++    input.contributionBeforeCourierCentsPerDelivery,
++    'contributionBeforeCourierCentsPerDelivery',
++  );
++  const fixedZoneCostCents = finiteNonNegative(
++    input.fixedZoneCostCents ?? 0,
++    'fixedZoneCostCents',
++  );
++  const targetResidual = finiteNonNegative(
++    input.targetResidualContributionCentsPerDelivery ?? 0,
++    'targetResidualContributionCentsPerDelivery',
++  );
++
++  if (activeMissionHours > paidHours) {
++    throw new Error('COURIER_VIABILITY_ACTIVE_HOURS_EXCEED_PAID_HOURS');
++  }
++
++  const deliveriesPerPaidHour = paidHours === 0 ? 0 : deliveries / paidHours;
++  const utilizationRatio = paidHours === 0 ? 0 : activeMissionHours / paidHours;
++  const totalEmployerCourierCostCents =
++    employerCostPerPaidHourCents * paidHours;
++  const courierCostPerDeliveryCents =
++    deliveries === 0 ? 0 : totalEmployerCourierCostCents / deliveries;
++  const grossContributionBeforeCourierCents =
++    contributionBeforeCourierCentsPerDelivery * deliveries;
++  const residualContributionCents =
++    grossContributionBeforeCourierCents -
++    totalEmployerCourierCostCents -
++    fixedZoneCostCents;
++  const residualContributionPerDeliveryCents =
++    deliveries === 0 ? 0 : residualContributionCents / deliveries;
++
++  const breakEvenDeliveriesPerPaidHour =
++    contributionBeforeCourierCentsPerDelivery === 0
++      ? null
++      : employerCostPerPaidHourCents /
++        contributionBeforeCourierCentsPerDelivery;
++
++  const residualCapacity =
++    contributionBeforeCourierCentsPerDelivery - targetResidual;
++  const targetDeliveriesPerPaidHour =
++    residualCapacity <= 0
++      ? null
++      : employerCostPerPaidHourCents / residualCapacity;
++
++  const warnings: string[] = [];
++  if (utilizationRatio < 0.7 && paidHours > 0) {
++    warnings.push('LOW_UTILIZATION_REQUIRES_ZONE_OR_STAFFING_ACTION');
++  }
++  if (residualContributionCents < 0) {
++    warnings.push('ZONE_ECONOMICS_NEGATIVE_POG_ABSORBS_SHORTFALL');
++  }
++  if (
++    breakEvenDeliveriesPerPaidHour != null &&
++    deliveriesPerPaidHour < breakEvenDeliveriesPerPaidHour
++  ) {
++    warnings.push('DENSITY_BELOW_BREAK_EVEN');
++  }
++
++  return {
++    zoneId: input.zoneId,
++    paidHours,
++    deliveries,
++    deliveriesPerPaidHour,
++    utilizationRatio,
++    totalEmployerCourierCostCents,
++    courierCostPerDeliveryCents,
++    grossContributionBeforeCourierCents,
++    fixedZoneCostCents,
++    residualContributionCents,
++    residualContributionPerDeliveryCents,
++    breakEvenDeliveriesPerPaidHour,
++    targetDeliveriesPerPaidHour,
++    viableAtCurrentDensity: residualContributionCents >= 0,
++    workerPayProtected: true,
++    warnings,
++  };
++}
+
+[executed on device: purpletoshiba (90e8e634-9b37-494e-b0bb-834c5c7e7d00)]
