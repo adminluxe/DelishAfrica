@@ -218,3 +218,77 @@ export function recordLabClockEvents(
   assertCourierFairPayLabEnabled(env);
   return ledger.appendClockEvents(events);
 }
+
+
+export type ExplicitPaidSegmentFamily = 'REPOSITION' | 'OTHER_PAID';
+export type ExplicitPaidSegmentBoundary = 'STARTED' | 'ENDED';
+
+export interface ExplicitPaidSegmentEventInput {
+  family: ExplicitPaidSegmentFamily;
+  boundary: ExplicitPaidSegmentBoundary;
+  courierId: string;
+  countryCode: string;
+  weekKey: string;
+  policyId: string;
+  segmentId: string;
+  occurredAt: string;
+  source?: CourierPayrollClockEvent['source'];
+  missionId?: string;
+  orderId?: string;
+  evidenceRefs?: string[];
+}
+
+export function buildExplicitPaidSegmentEvent(
+  input: ExplicitPaidSegmentEventInput,
+): CourierPayrollClockEvent {
+  const courierId = String(input.courierId || '').trim();
+  const countryCode = String(input.countryCode || '').trim().toUpperCase();
+  const weekKey = String(input.weekKey || '').trim();
+  const policyId = String(input.policyId || '').trim();
+  const segmentId = String(input.segmentId || '').trim();
+  const occurredAt = String(input.occurredAt || '').trim();
+  if (
+    !courierId ||
+    !countryCode ||
+    !weekKey ||
+    !policyId ||
+    !segmentId ||
+    !occurredAt ||
+    !Number.isFinite(Date.parse(occurredAt))
+  ) {
+    throw new Error('COURIER_PAYROLL_EXPLICIT_SEGMENT_INPUT_INVALID');
+  }
+  const eventType = `${input.family}_${input.boundary}` as
+    CourierPayrollClockEvent['eventType'];
+  return {
+    eventId: [
+      'payroll-segment',
+      policyId,
+      courierId,
+      segmentId,
+      eventType.toLowerCase(),
+      occurredAt,
+    ].join(':'),
+    eventType,
+    courierId,
+    countryCode,
+    weekKey,
+    policyId,
+    source: input.source || 'OPS',
+    occurredAt,
+    segmentId,
+    ...(input.missionId ? { missionId: String(input.missionId).trim() } : {}),
+    ...(input.orderId ? { orderId: String(input.orderId).trim() } : {}),
+    ...(Array.isArray(input.evidenceRefs)
+      ? {
+          evidenceRefs: Array.from(
+            new Set(
+              input.evidenceRefs
+                .map((value) => String(value || '').trim())
+                .filter(Boolean),
+            ),
+          ).sort(),
+        }
+      : {}),
+  };
+}

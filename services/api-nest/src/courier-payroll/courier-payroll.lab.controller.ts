@@ -46,6 +46,34 @@ export class CourierPayrollLabController {
     };
   }
 
+  @Post('segments/start')
+  segmentStart(
+    @Req() request: OrdersRequest,
+    @Body() body: AnyRecord = {},
+  ) {
+    const principal = this.requireOps(request);
+    this.requireEnabled();
+    return {
+      ok: true,
+      labOnly: true,
+      ...this.recordPaidSegmentBoundary(body, 'STARTED', principal.subject),
+    };
+  }
+
+  @Post('segments/end')
+  segmentEnd(
+    @Req() request: OrdersRequest,
+    @Body() body: AnyRecord = {},
+  ) {
+    const principal = this.requireOps(request);
+    this.requireEnabled();
+    return {
+      ok: true,
+      labOnly: true,
+      ...this.recordPaidSegmentBoundary(body, 'ENDED', principal.subject),
+    };
+  }
+
   @Post('calculate')
   calculate(
     @Req() request: OrdersRequest,
@@ -113,6 +141,24 @@ export class CourierPayrollLabController {
     };
   }
 
+  @Post('courier/statements')
+  courierStatements(
+    @Req() request: OrdersRequest,
+    @Body() body: AnyRecord = {},
+  ) {
+    const principal = this.requireCourier(request);
+    this.requireEnabled();
+    const weekKey = String(body.weekKey || '').trim() || undefined;
+    const courierId = this.access.courierId(principal);
+    const statements = this.bridge.listStatementsForCourier(courierId, weekKey);
+    return {
+      ok: true,
+      labOnly: true,
+      courierId,
+      statements,
+    };
+  }
+
   @Post('statement')
   statement(
     @Req() request: OrdersRequest,
@@ -139,6 +185,63 @@ export class CourierPayrollLabController {
       labOnly: true,
       statement,
     };
+  }
+
+  private recordPaidSegmentBoundary(
+    body: AnyRecord,
+    boundary: 'STARTED' | 'ENDED',
+    operatorSubject: string,
+  ) {
+    const familyRaw = String(body.family || '').trim().toUpperCase();
+    const family =
+      familyRaw === 'REPOSITION'
+        ? 'REPOSITION'
+        : familyRaw === 'OTHER_PAID'
+          ? 'OTHER_PAID'
+          : null;
+    const courierId = String(body.courierId || '').trim();
+    const segmentId = String(body.segmentId || '').trim();
+    const occurredAt = String(body.occurredAt || '').trim();
+    if (
+      !family ||
+      !courierId ||
+      !segmentId ||
+      !occurredAt ||
+      !Number.isFinite(Date.parse(occurredAt))
+    ) {
+      throw new ForbiddenException({
+        ok: false,
+        code: 'courier_payroll_paid_segment_input_invalid',
+      });
+    }
+    const suppliedEvidence = Array.isArray(body.evidenceRefs)
+      ? body.evidenceRefs
+      : [];
+    const evidenceRefs = [
+      ...suppliedEvidence.map((value: unknown) => String(value || '').trim()),
+      'ops-subject:' + String(operatorSubject || '').trim(),
+    ].filter(Boolean);
+    return this.bridge.recordExplicitPaidSegmentBoundary({
+      family,
+      boundary,
+      courierId,
+      segmentId,
+      occurredAt,
+      evidenceRefs,
+      ...(body.orderId ? { orderId: String(body.orderId).trim() } : {}),
+      ...(body.missionId ? { missionId: String(body.missionId).trim() } : {}),
+    });
+  }
+
+  private requireCourier(request: OrdersRequest) {
+    const principal = this.access.principal(request);
+    if (principal.role !== 'courier') {
+      throw new ForbiddenException({
+        ok: false,
+        code: 'courier_payroll_courier_role_required',
+      });
+    }
+    return principal;
   }
 
   private requireOps(request: OrdersRequest) {

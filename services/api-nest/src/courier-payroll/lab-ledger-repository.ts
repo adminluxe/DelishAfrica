@@ -92,6 +92,27 @@ export class InMemoryCourierPayrollLedger
     return this.clone(this.statements.get(statementId)?.value ?? null);
   }
 
+  listStatements(
+    courierId: string,
+    weekKey?: string,
+    policyId?: string,
+  ): CourierWeeklyStatement[] {
+    return Array.from(this.statements.values())
+      .map((stored) => stored.value)
+      .filter(
+        (statement) =>
+          statement.courierId === courierId &&
+          (!weekKey || statement.weekKey === weekKey) &&
+          (!policyId || statement.policyId === policyId),
+      )
+      .sort(
+        (a, b) =>
+          b.weekKey.localeCompare(a.weekKey) ||
+          a.statementId.localeCompare(b.statementId),
+      )
+      .map((statement) => this.clone(statement));
+  }
+
   listClockEvents(
     courierId: string,
     weekKey: string,

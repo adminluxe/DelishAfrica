@@ -188,3 +188,44 @@ test('file ledger rejects duplicate persisted IDs even with identical payload', 
     );
   });
 });
+
+
+test('statement listing is courier-scoped and supports week filtering', () => {
+  withTempLedger((root) => {
+    const x = fixture();
+    const ledger = new FileCourierPayrollLedger({ rootDir: root });
+    const result = runCourierFairPayLabPipeline(ledger, {
+      sealedPolicy: x.policy,
+      courierId: x.context.courierId,
+      weekKey: x.context.weekKey,
+      clockEvents: x.clockEvents,
+      monetaryFacts: x.monetaryFacts,
+      env: { DA_COURIER_FAIR_PAY_LAB_ENABLED: 'true' },
+    });
+    equal(result.finalizable, true);
+    if (!result.finalizable) throw new Error('expected finalizable');
+
+    const own = ledger.listStatements(x.context.courierId);
+    equal(own.length, 1);
+    equal(own[0].courierId, x.context.courierId);
+    equal(own[0].statementId, result.statement.statementId);
+
+    equal(ledger.listStatements('courier-other').length, 0);
+    equal(
+      ledger.listStatements(x.context.courierId, x.context.weekKey).length,
+      1,
+    );
+    equal(
+      ledger.listStatements(x.context.courierId, '2026-W43').length,
+      0,
+    );
+    equal(
+      ledger.listStatements(
+        x.context.courierId,
+        x.context.weekKey,
+        x.policy.policy.policyId,
+      ).length,
+      1,
+    );
+  });
+});

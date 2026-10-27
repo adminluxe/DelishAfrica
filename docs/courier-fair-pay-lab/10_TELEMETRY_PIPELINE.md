@@ -34,15 +34,28 @@ Apps/services émettent des faits terrain. Ils ne calculent pas eux-mêmes la pa
 - iOS Expo/Hermes bundle: PASS;
 - device E2E: restant.
 
+### AVAILABLE — OPS LAB segments
+
+`REPOSITION_STARTED / REPOSITION_ENDED`
+`OTHER_PAID_STARTED / OTHER_PAID_ENDED`
+
+Controls:
+- couples START/END explicites;
+- `segmentId` partagé;
+- evidence obligatoire;
+- opérateur OPS authentifié ajouté aux evidence refs;
+- weekKey calculé dans le fuseau de la policy;
+- ledger append-only;
+- replay idempotent;
+- normalisation uniquement lorsque la paire est complète.
+
+These are **OPS-only LAB producers**. They are not yet production operational sources and are not inferred from GPS.
+
 ### PARTIAL
 
 `eligibleIncomeCredit`, `tipCredit`, `expenseReimbursementCredit`
 - builders evidence-backed: oui;
 - mapping réel paiement/payroll/policy: restant.
-
-### MISSING
-- `requiredRepositionStartedAt/EndedAt` runtime;
-- `otherPaidWorkStartedAt/EndedAt` runtime.
 
 ## Pickup waiting
 

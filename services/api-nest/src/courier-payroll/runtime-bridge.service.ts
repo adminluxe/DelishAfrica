@@ -7,11 +7,16 @@ import {
   assertCourierFairPayLabEnabled,
   courierFairPayLabEnabled,
 } from './lab-config';
-import { assertSingleIsoWeek } from './iso-week';
+import { assertSingleIsoWeek, isoWeekKey } from './iso-week';
 import { sealCountryPayPolicy } from './policy-ledger';
 import { runClockNormalizationJob } from './clock-normalization-job';
 import { runWeeklyCalculationJob } from './weekly-calculation-job';
-import { buildRuntimeOrderClockEvents } from './runtime-producer-adapters';
+import {
+  buildExplicitPaidSegmentEvent,
+  buildRuntimeOrderClockEvents,
+  type ExplicitPaidSegmentFamily,
+  type ExplicitPaidSegmentBoundary,
+} from './runtime-producer-adapters';
 import { buildOrchidPayCourierSettlementIntent } from './orchidpay-settlement-intent';
 import { sendOrchidPayCourierShadowIntent } from './orchidpay-shadow-client';
 
@@ -180,6 +185,70 @@ export class CourierPayrollRuntimeBridge {
     };
   }
 
+  recordExplicitPaidSegmentBoundary(input: {
+    family: ExplicitPaidSegmentFamily;
+    boundary: ExplicitPaidSegmentBoundary;
+    courierId: string;
+    segmentId: string;
+    occurredAt: string;
+    evidenceRefs: string[];
+    orderId?: string;
+    missionId?: string;
+  }) {
+    assertCourierFairPayLabEnabled();
+    const evidenceRefs = Array.from(
+      new Set(
+        (input.evidenceRefs || [])
+          .map((value) => String(value || '').trim())
+          .filter(Boolean),
+      ),
+    ).sort();
+    if (evidenceRefs.length === 0) {
+      throw new Error('COURIER_PAYROLL_EXPLICIT_SEGMENT_EVIDENCE_REQUIRED');
+    }
+
+    const config = this.runtimeConfig();
+    const policy = this.ledger().getPolicy(config.policyId);
+    if (!policy) {
+      this.bootstrapActivePolicy('delish-explicit-paid-segment');
+    }
+    const sealedPolicy = this.ledger().getPolicy(config.policyId);
+    if (!sealedPolicy) {
+      throw new Error('COURIER_PAYROLL_LAB_POLICY_NOT_BOOTSTRAPPED');
+    }
+
+    const weekKey = isoWeekKey(
+      input.occurredAt,
+      sealedPolicy.policy.payrollTimeZone,
+    );
+    const event = buildExplicitPaidSegmentEvent({
+      family: input.family,
+      boundary: input.boundary,
+      courierId: input.courierId,
+      countryCode: config.countryCode,
+      weekKey,
+      policyId: config.policyId,
+      segmentId: input.segmentId,
+      occurredAt: input.occurredAt,
+      source: 'OPS',
+      evidenceRefs,
+      ...(input.orderId ? { orderId: input.orderId } : {}),
+      ...(input.missionId ? { missionId: input.missionId } : {}),
+    });
+    const persistence = this.ledger().appendClockEvent(event);
+    const normalization = runClockNormalizationJob(
+      this.ledger(),
+      event.courierId,
+      weekKey,
+      config.policyId,
+    );
+    return {
+      event,
+      persistence,
+      normalization,
+    };
+  }
+
   appendMonetaryFact(fact: CourierPayrollFact) {
     assertCourierFairPayLabEnabled();
     const config = this.runtimeConfig();
@@ -229,6 +298,16 @@ export class CourierPayrollRuntimeBridge {
   getStatement(statementId: string) {
     assertCourierFairPayLabEnabled();
     return this.ledger().getStatement(statementId);
+  }
+
+  listStatementsForCourier(courierId: string, weekKey?: string) {
+    assertCourierFairPayLabEnabled();
+    const config = this.runtimeConfig();
+    return this.ledger().listStatements(
+      String(courierId || '').trim(),
+      weekKey ? String(weekKey).trim() : undefined,
+      config.policyId,
+    );
   }
 
   buildOrchidPayShadowIntent(

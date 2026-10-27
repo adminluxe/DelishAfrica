@@ -18,6 +18,11 @@ export interface CourierPayrollLedgerRepository {
 
   getPolicy(policyId: string): SealedCountryPayPolicy | null;
   getStatement(statementId: string): CourierWeeklyStatement | null;
+  listStatements(
+    courierId: string,
+    weekKey?: string,
+    policyId?: string,
+  ): CourierWeeklyStatement[];
 
   listClockEvents(
     courierId: string,

@@ -1397,6 +1397,16 @@ export default function CourierIntegratedMapScreen() {
           >
             <Text style={styles.secondaryCompactText}>Cockpit</Text>
           </Pressable>
+          {FAIR_PAY_LAB_UI_ENABLED ? (
+            <Pressable
+              style={({ pressed }) => [styles.secondaryCompact, pressed && styles.pressed]}
+              onPress={() => router.push("/fair-pay" as any)}
+              accessibilityRole="button"
+              accessibilityLabel="Ouvrir mon relevé Fair Pay"
+            >
+              <Text style={styles.secondaryCompactText}>Fair Pay</Text>
+            </Pressable>
+          ) : null}
         </View>
 
         <Text style={styles.fastFootnote}>

@@ -125,3 +125,110 @@ test('runtime bridge contains lab errors instead of breaking order flow', () => 
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+
+test('explicit reposition and other-paid segments normalize append-only in LAB', () => {
+  const root = mkdtempSync(join(tmpdir(), 'da-runtime-explicit-segments-'));
+  try {
+    withEnv(
+      {
+        DA_COURIER_FAIR_PAY_LAB_ENABLED: 'true',
+        DA_COURIER_FAIR_PAY_COUNTRY_CODE: 'BE',
+        DA_COURIER_FAIR_PAY_POLICY_ID: POLICY_ID,
+        DA_COURIER_FAIR_PAY_LAB_LEDGER_DIR: root,
+      },
+      () => {
+        const bridge = new CourierPayrollRuntimeBridge();
+        const repositionStart = bridge.recordExplicitPaidSegmentBoundary({
+          family: 'REPOSITION',
+          boundary: 'STARTED',
+          courierId: 'courier-segment-1',
+          segmentId: 'repo-1',
+          occurredAt: '2026-10-27T10:00:00.000Z',
+          evidenceRefs: ['ops-case:repo-1'],
+        });
+        equal(repositionStart.persistence.inserted, true);
+        equal(repositionStart.normalization.complete, false);
+
+        const repositionEnd = bridge.recordExplicitPaidSegmentBoundary({
+          family: 'REPOSITION',
+          boundary: 'ENDED',
+          courierId: 'courier-segment-1',
+          segmentId: 'repo-1',
+          occurredAt: '2026-10-27T10:15:00.000Z',
+          evidenceRefs: ['ops-case:repo-1'],
+        });
+        equal(repositionEnd.persistence.inserted, true);
+        equal(repositionEnd.normalization.complete, true);
+
+        const otherStart = bridge.recordExplicitPaidSegmentBoundary({
+          family: 'OTHER_PAID',
+          boundary: 'STARTED',
+          courierId: 'courier-segment-1',
+          segmentId: 'other-1',
+          occurredAt: '2026-10-27T10:20:00.000Z',
+          evidenceRefs: ['ops-case:other-1'],
+        });
+        equal(otherStart.normalization.complete, false);
+        const otherEnd = bridge.recordExplicitPaidSegmentBoundary({
+          family: 'OTHER_PAID',
+          boundary: 'ENDED',
+          courierId: 'courier-segment-1',
+          segmentId: 'other-1',
+          occurredAt: '2026-10-27T10:35:00.000Z',
+          evidenceRefs: ['ops-case:other-1'],
+        });
+        equal(otherEnd.normalization.complete, true);
+
+        const replay = bridge.recordExplicitPaidSegmentBoundary({
+          family: 'OTHER_PAID',
+          boundary: 'ENDED',
+          courierId: 'courier-segment-1',
+          segmentId: 'other-1',
+          occurredAt: '2026-10-27T10:35:00.000Z',
+          evidenceRefs: ['ops-case:other-1'],
+        });
+        equal(replay.persistence.inserted, false);
+        equal(replay.persistence.idempotentReplay, true);
+
+        const status = bridge.status();
+        equal(status.counts?.clockEvents, 4);
+        equal(status.counts?.facts, 2);
+      },
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('explicit paid segments require evidence', () => {
+  const root = mkdtempSync(join(tmpdir(), 'da-runtime-segment-evidence-'));
+  try {
+    withEnv(
+      {
+        DA_COURIER_FAIR_PAY_LAB_ENABLED: 'true',
+        DA_COURIER_FAIR_PAY_COUNTRY_CODE: 'BE',
+        DA_COURIER_FAIR_PAY_POLICY_ID: POLICY_ID,
+        DA_COURIER_FAIR_PAY_LAB_LEDGER_DIR: root,
+      },
+      () => {
+        let error = '';
+        try {
+          new CourierPayrollRuntimeBridge().recordExplicitPaidSegmentBoundary({
+            family: 'REPOSITION',
+            boundary: 'STARTED',
+            courierId: 'courier-segment-2',
+            segmentId: 'repo-no-evidence',
+            occurredAt: '2026-10-27T10:00:00.000Z',
+            evidenceRefs: [],
+          });
+        } catch (candidate) {
+          error = candidate instanceof Error ? candidate.message : String(candidate);
+        }
+        ok(error.includes('EVIDENCE_REQUIRED'));
+      },
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
