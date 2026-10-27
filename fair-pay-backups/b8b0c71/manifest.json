@@ -1,0 +1,78 @@
+{
+  "checkpoint": "b8b0c719547bdea28aefd596c87f52540f2ea327",
+  "base": "9a7d69b0ffcfbdd7d0e3b44d1320f17d947d1bb3",
+  "patchBytes": 203409,
+  "patchSha256": "09bf62ae1f9e073de7fdd05b2d4b3e43dcd2020f7d81014cdac7aeed6ff32126",
+  "encoding": "base64-per-chunk",
+  "chunks": [
+    {
+      "name": "part-00",
+      "bytes": 20000,
+      "sha256": "d26cd5e5575133c7fed7fc165cfc60923d42835c3218afce32370847701771cc",
+      "remoteBase64Verified": true
+    },
+    {
+      "name": "part-01",
+      "bytes": 20000,
+      "sha256": "dac2aea3ce71f0496baadc15efbe0b3c1ee9ae4c0c0c1fb1c90c0a49bbfec0a8",
+      "remoteBase64Verified": true
+    },
+    {
+      "name": "part-02",
+      "bytes": 20000,
+      "sha256": "bea603af118d3e2a5be6aa4f67f1868e63d2f93c22e5627f95566d8923335139",
+      "remoteBase64Verified": true
+    },
+    {
+      "name": "part-03",
+      "bytes": 20000,
+      "sha256": "44fbf49591dcd119e252ded9c4de6a982ad08da9c6989fd1f5bdf2ece35fea6f",
+      "remoteBase64Verified": true
+    },
+    {
+      "name": "part-04",
+      "bytes": 20000,
+      "sha256": "5891d01cfdd7efac6d76343eee175c83ffd568c0396ec5614ab0524c7ce4b689",
+      "remoteBase64Verified": true
+    },
+    {
+      "name": "part-05",
+      "bytes": 20000,
+      "sha256": "f433de06bd4a28fe07ca42fc880f5cd30dea01de109a5be157ad3793c4fd8837",
+      "remoteBase64Verified": true
+    },
+    {
+      "name": "part-06",
+      "bytes": 20000,
+      "sha256": "2d5de6fbb0d8dd66eba2f00acc0b7c7ef808140d80e6335555e77af436c6b790",
+      "remoteBase64Verified": true
+    },
+    {
+      "name": "part-07",
+      "bytes": 20000,
+      "sha256": "d6678a43e81d6b69eb51e2e549bc85315458692e590f0707902515a3db7cccf0",
+      "remoteBase64Verified": true
+    },
+    {
+      "name": "part-08",
+      "bytes": 20000,
+      "sha256": "db72d286c894fee08bb0a927159d1397e13b989c588d6b8609558c5aad43dcc2",
+      "remoteBase64Verified": true
+    },
+    {
+      "name": "part-09",
+      "bytes": 20000,
+      "sha256": "cb5e5cb60d13fc895cf644ba6a04c47fec41a311d1f9685aa802b890031e7b04",
+      "remoteBase64Verified": true
+    },
+    {
+      "name": "part-10",
+      "bytes": 3409,
+      "sha256": "84df4eabb1f292741c66425b5b301889ff586dbf3aed46708c242e436deafcec",
+      "remoteBase64Verified": true
+    }
+  ],
+  "restore": "Concatenate decoded chunks in lexical order, then verify patchSha256 before git am."
+}
+
+[executed on device: purpletoshiba (90e8e634-9b37-494e-b0bb-834c5c7e7d00)]
