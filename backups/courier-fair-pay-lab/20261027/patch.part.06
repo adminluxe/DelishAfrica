@@ -1,0 +1,702 @@
+@@ -0,0 +1,40 @@
++import { simulateZoneViability } from './zone-viability';
++
++export interface BelgiumLabScenario {
++  name: 'LOW' | 'BASE' | 'HIGH';
++  paidHours: number;
++  activeMissionHours: number;
++  deliveries: number;
++}
++
++export const BELGIUM_LAB_ASSUMPTIONS = {
++  employerCostPerPaidHourCents: 3000,
++  contributionBeforeCourierCentsPerDelivery: 1200,
++  targetResidualContributionCentsPerDelivery: 200,
++} as const;
++
++export const BELGIUM_LAB_SCENARIOS: BelgiumLabScenario[] = [
++  { name: 'LOW', paidHours: 10, activeMissionHours: 5, deliveries: 15 },
++  { name: 'BASE', paidHours: 10, activeMissionHours: 7.5, deliveries: 25 },
++  { name: 'HIGH', paidHours: 10, activeMissionHours: 8.5, deliveries: 30 },
++];
++
++export function runBelgiumLabScenarios() {
++  return BELGIUM_LAB_SCENARIOS.map((scenario) => ({
++    scenario: scenario.name,
++    ...simulateZoneViability({
++      zoneId: `BRU-LAB-${scenario.name}`,
++      paidHours: scenario.paidHours,
++      activeMissionHours: scenario.activeMissionHours,
++      deliveries: scenario.deliveries,
++      ...BELGIUM_LAB_ASSUMPTIONS,
++    }),
++  }));
++}
++
++if (require.main === module) {
++  process.stdout.write(JSON.stringify({
++    assumptions: BELGIUM_LAB_ASSUMPTIONS,
++    results: runBelgiumLabScenarios(),
++  }, null, 2) + '\n');
++}
+diff --git a/services/api-nest/src/courier-payroll/operational-density.ts b/services/api-nest/src/courier-payroll/operational-density.ts
+new file mode 100644
+index 0000000..9473ff4
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/operational-density.ts
+@@ -0,0 +1,52 @@
++export interface OperationalDensityInput {
++  baseTravelAndHandlingMinutesPerDelivery: number;
++  merchantWaitMinutesPerDelivery: number;
++  batchEfficiencyMultiplier?: number;
++}
++
++export interface OperationalDensityResult {
++  cycleMinutesPerDelivery: number;
++  batchEfficiencyMultiplier: number;
++  deliveriesPerPaidHour: number;
++}
++
++function positive(value: number, field: string): number {
++  if (!Number.isFinite(value) || value <= 0) {
++    throw new Error(`COURIER_DENSITY_INVALID_${field.toUpperCase()}`);
++  }
++  return value;
++}
++
++function nonNegative(value: number, field: string): number {
++  if (!Number.isFinite(value) || value < 0) {
++    throw new Error(`COURIER_DENSITY_INVALID_${field.toUpperCase()}`);
++  }
++  return value;
++}
++
++export function estimateOperationalDensity(
++  input: OperationalDensityInput,
++): OperationalDensityResult {
++  const baseMinutes = positive(
++    input.baseTravelAndHandlingMinutesPerDelivery,
++    'baseTravelAndHandlingMinutesPerDelivery',
++  );
++  const waitMinutes = nonNegative(
++    input.merchantWaitMinutesPerDelivery,
++    'merchantWaitMinutesPerDelivery',
++  );
++  const batchEfficiencyMultiplier = positive(
++    input.batchEfficiencyMultiplier ?? 1,
++    'batchEfficiencyMultiplier',
++  );
++
++  const cycleMinutesPerDelivery = baseMinutes + waitMinutes;
++  const deliveriesPerPaidHour =
++    (60 / cycleMinutesPerDelivery) * batchEfficiencyMultiplier;
++
++  return {
++    cycleMinutesPerDelivery,
++    batchEfficiencyMultiplier,
++    deliveriesPerPaidHour,
++  };
++}
+diff --git a/services/api-nest/src/courier-payroll/payroll-pipeline.spec.ts b/services/api-nest/src/courier-payroll/payroll-pipeline.spec.ts
+new file mode 100644
+index 0000000..ae46f19
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/payroll-pipeline.spec.ts
+@@ -0,0 +1,164 @@
++import { equal, ok, throws } from 'node:assert/strict';
++import { test } from 'node:test';
++import type { CourierPayrollFact } from '../../../../packages/contracts/src/courier-payroll';
++import { isCourierPayrollFact } from '../../../../packages/contracts/src/courier-payroll';
++import { createBelgiumEmployeeLabPolicy } from './adapters/belgium';
++import { payrollInstrumentationGate } from './instrumentation-coverage';
++import { estimateOperationalDensity } from './operational-density';
++import { assertPolicyTransition, assertSealedPolicyIntegrity, sealCountryPayPolicy } from './policy-ledger';
++import { projectWeeklyPayrollInput } from './payroll-projector';
++import { buildCourierWeeklyStatement } from './weekly-statement';
++import { normalizeMissionPayrollTelemetry, normalizePaidWorkSegments } from './telemetry-normalizer';
++
++const common = {
++  courierId: 'be-lab-1',
++  countryCode: 'BE',
++  weekKey: '2026-W44',
++  policyId: 'BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1',
++  recordedAt: '2026-10-27T12:00:00.000Z',
++} as const;
++
++function timeFact(factId: string, category: any, start: string, end: string, source: any): CourierPayrollFact {
++  return { ...common, factId, kind: 'TIME', category, source, startedAt: start, endedAt: end };
++}
++
++function moneyFact(factId: string, category: any, amountMinor: number, source: any): CourierPayrollFact {
++  return { ...common, factId, kind: 'MONEY', category, source, amountMinor, currency: 'EUR' };
++}
++
++function belgiumFacts(): CourierPayrollFact[] {
++  return [
++    timeFact('t1', 'ACTIVE_MISSION', '2026-10-27T08:00:00.000Z', '2026-10-27T10:00:00.000Z', 'API_ORDER'),
++    timeFact('t2', 'PLATFORM_CONTROLLED_WAITING', '2026-10-27T10:00:00.000Z', '2026-10-27T11:00:00.000Z', 'COURIER_APP'),
++    timeFact('t3', 'ACTIVE_MISSION', '2026-10-27T11:00:00.000Z', '2026-10-27T12:00:00.000Z', 'API_ORDER'),
++    timeFact('t4', 'REQUIRED_REPOSITION', '2026-10-27T12:00:00.000Z', '2026-10-27T12:30:00.000Z', 'OPS'),
++    timeFact('t5', 'OTHER_PAID', '2026-10-27T12:30:00.000Z', '2026-10-27T13:00:00.000Z', 'OPS'),
++    moneyFact('m1', 'ELIGIBLE_INCOME', 9000, 'PAYMENTS'),
++    moneyFact('m2', 'TIP', 1200, 'PAYMENTS'),
++    moneyFact('m3', 'EXPENSE_REIMBURSEMENT', 800, 'OPS'),
++  ];
++}
++
++test('shared facts validate and project to five paid hours', () => {
++  const facts = belgiumFacts();
++  facts.forEach((fact) => equal(isCourierPayrollFact(fact), true));
++  const p = projectWeeklyPayrollInput(facts, createBelgiumEmployeeLabPolicy());
++  equal(p.input.workTime.activeMissionSeconds, 10800);
++  equal(p.input.workTime.platformControlledWaitingSeconds, 3600);
++  equal(p.input.workTime.requiredRepositionSeconds, 1800);
++  equal(p.input.workTime.otherPaidSeconds, 1800);
++  equal(p.input.eligibleIncomeCents, 9000);
++  equal(p.input.tipsCents, 1200);
++  equal(p.input.expenseReimbursementsCents, 800);
++});
++
++test('overlapping time facts are rejected instead of double-counted', () => {
++  const facts = belgiumFacts();
++  facts.push(timeFact('overlap', 'OTHER_PAID', '2026-10-27T09:30:00.000Z', '2026-10-27T10:30:00.000Z', 'OPS'));
++  throws(() => projectWeeklyPayrollInput(facts, createBelgiumEmployeeLabPolicy()), /TIME_FACT_OVERLAP/);
++});
++
++test('weekly statement is deterministic and keeps tips/expenses additive', () => {
++  const policy = createBelgiumEmployeeLabPolicy();
++  const sealed = sealCountryPayPolicy(policy, '2026-10-27T11:00:00.000Z', 'pog-fair-pay-lab');
++  const facts = belgiumFacts();
++  const a = buildCourierWeeklyStatement(facts, sealed);
++  const b = buildCourierWeeklyStatement([...facts].reverse(), sealed);
++  equal(a.statementId, b.statementId);
++  equal(a.explanation.paidSeconds, 18000);
++  equal(a.explanation.governingFloorCents, 9500);
++  equal(a.explanation.differentialDueCents, 500);
++  equal(a.explanation.totalCashDueCents, 11500);
++  equal(a.contestable, true);
++});
++test('sealed policy detects mutation and same-version rewrite', () => {
++  const policy = createBelgiumEmployeeLabPolicy();
++  const sealed = sealCountryPayPolicy(policy, '2026-10-27T11:00:00.000Z', 'pog-fair-pay-lab');
++  const mutated = JSON.parse(JSON.stringify(sealed));
++  mutated.policy.pogFairnessFloorCentsPerPaidHour = 1800;
++  throws(() => assertSealedPolicyIntegrity(mutated), /HASH_MISMATCH/);
++
++  const rewritten = sealCountryPayPolicy(
++    { ...policy, pogFairnessFloorCentsPerPaidHour: 1800 },
++    '2026-10-27T12:00:00.000Z',
++    'pog-fair-pay-lab',
++  );
++  throws(() => assertPolicyTransition(sealed, rewritten), /IMMUTABLE_VERSION_MUTATED/);
++});
++
++test('draft policy still cannot build a production statement', () => {
++  const policy = createBelgiumEmployeeLabPolicy();
++  const sealed = sealCountryPayPolicy(policy, '2026-10-27T11:00:00.000Z', 'pog-fair-pay-lab');
++  throws(() => buildCourierWeeklyStatement(belgiumFacts(), sealed, 'PRODUCTION'), /COUNTRY_POLICY_NOT_GREEN/);
++});
++
++test('instrumentation gate exposes missing payroll signals', () => {
++  const gate = payrollInstrumentationGate();
++  equal(gate.green, false);
++  ok(gate.available.includes('missionAcceptedAt'));
++  ok(gate.available.includes('pickedUpAt'));
++  ok(gate.missing.includes('courierArrivedPickupAt'));
++  ok(gate.missing.includes('requiredRepositionStartedAt/EndedAt'));
++});
++
++test('merchant wait and batching materially change density', () => {
++  const noWait = estimateOperationalDensity({
++    baseTravelAndHandlingMinutesPerDelivery: 15,
++    merchantWaitMinutesPerDelivery: 0,
++  });
++  const tenMinuteWait = estimateOperationalDensity({
++    baseTravelAndHandlingMinutesPerDelivery: 15,
++    merchantWaitMinutesPerDelivery: 10,
++  });
++  const batched = estimateOperationalDensity({
++    baseTravelAndHandlingMinutesPerDelivery: 15,
++    merchantWaitMinutesPerDelivery: 5,
++    batchEfficiencyMultiplier: 1.2,
++  });
++  equal(noWait.deliveriesPerPaidHour, 4);
++  equal(Number(tenMinuteWait.deliveriesPerPaidHour.toFixed(2)), 2.4);
++  equal(Number(batched.deliveriesPerPaidHour.toFixed(2)), 3.6);
++});
++
++test('mission telemetry normalizes only when the payroll clock is complete', () => {
++  const events: any[] = [
++    { eventId:'e1', eventType:'MISSION_ACCEPTED', courierId:'be-lab-1', countryCode:'BE', weekKey:'2026-W44', policyId:'BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1', source:'API_ORDER', occurredAt:'2026-10-27T08:00:00.000Z', orderId:'o1', missionId:'m1', merchantId:'shop1', estimatedActivitySeconds:3600 },
++    { eventId:'e2', eventType:'MERCHANT_READY', courierId:'be-lab-1', countryCode:'BE', weekKey:'2026-W44', policyId:'BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1', source:'MERCHANT_APP', occurredAt:'2026-10-27T08:10:00.000Z', orderId:'o1', missionId:'m1', merchantId:'shop1' },
++    { eventId:'e3', eventType:'PICKUP_ARRIVED', courierId:'be-lab-1', countryCode:'BE', weekKey:'2026-W44', policyId:'BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1', source:'COURIER_APP', occurredAt:'2026-10-27T08:20:00.000Z', orderId:'o1', missionId:'m1', merchantId:'shop1' },
++    { eventId:'e4', eventType:'PICKED_UP', courierId:'be-lab-1', countryCode:'BE', weekKey:'2026-W44', policyId:'BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1', source:'API_ORDER', occurredAt:'2026-10-27T08:30:00.000Z', orderId:'o1', missionId:'m1', merchantId:'shop1' },
++    { eventId:'e5', eventType:'DELIVERED', courierId:'be-lab-1', countryCode:'BE', weekKey:'2026-W44', policyId:'BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1', source:'API_ORDER', occurredAt:'2026-10-27T09:00:00.000Z', orderId:'o1', missionId:'m1', merchantId:'shop1' },
++  ];
++  const out = normalizeMissionPayrollTelemetry(events);
++  equal(out.complete, true);
++  equal(out.facts.length, 4);
++  equal(out.diagnostics.merchantReadyBeforeArrivalSeconds, 600);
++  equal(out.diagnostics.pickupDwellSeconds, 600);
++  const duration = out.facts.find((fact:any) => fact.kind === 'DURATION') as any;
++  equal(duration.seconds, 3600);
++});
++
++test('missing pickup arrival blocks mission time normalization', () => {
++  const events: any[] = [
++    { eventId:'e1', eventType:'MISSION_ACCEPTED', courierId:'be-lab-1', countryCode:'BE', weekKey:'2026-W44', policyId:'BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1', source:'API_ORDER', occurredAt:'2026-10-27T08:00:00.000Z', orderId:'o1', missionId:'m1', estimatedActivitySeconds:3600 },
++    { eventId:'e2', eventType:'PICKED_UP', courierId:'be-lab-1', countryCode:'BE', weekKey:'2026-W44', policyId:'BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1', source:'API_ORDER', occurredAt:'2026-10-27T08:30:00.000Z', orderId:'o1', missionId:'m1' },
++    { eventId:'e3', eventType:'DELIVERED', courierId:'be-lab-1', countryCode:'BE', weekKey:'2026-W44', policyId:'BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1', source:'API_ORDER', occurredAt:'2026-10-27T09:00:00.000Z', orderId:'o1', missionId:'m1' },
++  ];
++  const out = normalizeMissionPayrollTelemetry(events);
++  equal(out.complete, false);
++  ok(out.missingSignals.includes('PICKUP_ARRIVED'));
++  equal(out.facts.filter((fact:any) => fact.kind === 'TIME').length, 0);
++  equal(out.facts.filter((fact:any) => fact.kind === 'DURATION').length, 1);
++});
++
++test('OPS paid segments normalize only with explicit start/end pairing', () => {
++  const events: any[] = [
++    { eventId:'r1', eventType:'REPOSITION_STARTED', courierId:'be-lab-1', countryCode:'BE', weekKey:'2026-W44', policyId:'BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1', source:'OPS', occurredAt:'2026-10-27T09:00:00.000Z', segmentId:'reposition-1' },
++    { eventId:'r2', eventType:'REPOSITION_ENDED', courierId:'be-lab-1', countryCode:'BE', weekKey:'2026-W44', policyId:'BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1', source:'COURIER_APP', occurredAt:'2026-10-27T09:15:00.000Z', segmentId:'reposition-1' },
++    { eventId:'w1', eventType:'OTHER_PAID_STARTED', courierId:'be-lab-1', countryCode:'BE', weekKey:'2026-W44', policyId:'BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1', source:'OPS', occurredAt:'2026-10-27T09:20:00.000Z', segmentId:'other-1' },
++  ];
++  const out = normalizePaidWorkSegments(events);
++  equal(out.complete, false);
++  equal(out.facts.length, 1);
++  equal(out.facts[0].category, 'REQUIRED_REPOSITION');
++  ok(out.incompleteSegments.includes('other-1'));
++});
+diff --git a/services/api-nest/src/courier-payroll/payroll-projector.ts b/services/api-nest/src/courier-payroll/payroll-projector.ts
+new file mode 100644
+index 0000000..c4b5cf0
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/payroll-projector.ts
+@@ -0,0 +1,176 @@
++import {
++  assertCourierPayrollFact,
++  CourierPayrollDurationFact,
++  CourierPayrollFact,
++  CourierPayrollMoneyFact,
++  CourierPayrollTimeFact,
++} from '../../../../packages/contracts/src/courier-payroll';
++import {
++  CountryPayPolicy,
++  WeeklyCourierPayInput,
++  WorkTimeBreakdown,
++} from './courier-payroll.types';
++
++export interface ProjectedWeeklyPayrollInput {
++  input: WeeklyCourierPayInput;
++  factIds: string[];
++  factCount: number;
++}
++
++function secondsBetween(startedAt: string, endedAt: string): number {
++  const millis = Date.parse(endedAt) - Date.parse(startedAt);
++  if (millis <= 0 || millis % 1000 !== 0) {
++    throw new Error('COURIER_PAYROLL_TIME_INTERVAL_INVALID');
++  }
++  return millis / 1000;
++}
++
++function assertSameScope(
++  fact: CourierPayrollFact,
++  courierId: string,
++  weekKey: string,
++  policy: CountryPayPolicy,
++): void {
++  if (fact.courierId !== courierId) {
++    throw new Error('COURIER_PAYROLL_FACT_MIXED_COURIER');
++  }
++  if (fact.weekKey !== weekKey) {
++    throw new Error('COURIER_PAYROLL_FACT_MIXED_WEEK');
++  }
++  if (fact.policyId !== policy.policyId) {
++    throw new Error('COURIER_PAYROLL_FACT_POLICY_MISMATCH');
++  }
++  if (fact.countryCode.toUpperCase() !== policy.countryCode.toUpperCase()) {
++    throw new Error('COURIER_PAYROLL_FACT_COUNTRY_MISMATCH');
++  }
++}
++
++function assertNoDuplicateFacts(facts: CourierPayrollFact[]): void {
++  const ids = new Set<string>();
++  for (const fact of facts) {
++    if (ids.has(fact.factId)) throw new Error('COURIER_PAYROLL_DUPLICATE_FACT');
++    ids.add(fact.factId);
++  }
++}
++
++function assertUniqueDurationEstimates(facts: CourierPayrollDurationFact[]): void {
++  const missionKeys = new Set<string>();
++  for (const fact of facts) {
++    const key = String(fact.missionId || fact.orderId || '').trim();
++    if (!key) {
++      throw new Error('COURIER_PAYROLL_DURATION_FACT_MISSION_REQUIRED');
++    }
++    if (missionKeys.has(key)) {
++      throw new Error('COURIER_PAYROLL_DUPLICATE_ACTIVITY_ESTIMATE');
++    }
++    missionKeys.add(key);
++  }
++}
++
++function assertNoTimeOverlap(facts: CourierPayrollTimeFact[]): void {
++  const ordered = [...facts].sort(
++    (a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt),
++  );
++  for (let i = 1; i < ordered.length; i += 1) {
++    if (Date.parse(ordered[i].startedAt) < Date.parse(ordered[i - 1].endedAt)) {
++      throw new Error('COURIER_PAYROLL_TIME_FACT_OVERLAP');
++    }
++  }
++}
++
++export function projectWeeklyPayrollInput(
++  facts: CourierPayrollFact[],
++  policy: CountryPayPolicy,
++): ProjectedWeeklyPayrollInput {
++  if (!Array.isArray(facts) || facts.length === 0) {
++    throw new Error('COURIER_PAYROLL_FACTS_REQUIRED');
++  }
++  facts.forEach(assertCourierPayrollFact);
++  assertNoDuplicateFacts(facts);
++
++  const courierId = facts[0].courierId;
++  const weekKey = facts[0].weekKey;
++  facts.forEach((fact) => assertSameScope(fact, courierId, weekKey, policy));
++
++  const timeFacts = facts.filter(
++    (fact): fact is CourierPayrollTimeFact => fact.kind === 'TIME',
++  );
++  const moneyFacts = facts.filter(
++    (fact): fact is CourierPayrollMoneyFact => fact.kind === 'MONEY',
++  );
++  const durationFacts = facts.filter(
++    (fact): fact is CourierPayrollDurationFact => fact.kind === 'DURATION',
++  );
++  assertUniqueDurationEstimates(durationFacts);
++  assertNoTimeOverlap(timeFacts);
++
++  const workTime: WorkTimeBreakdown = {
++    activeMissionSeconds: 0,
++    platformControlledWaitingSeconds: 0,
++    requiredRepositionSeconds: 0,
++    otherPaidSeconds: 0,
++    excludedSeconds: 0,
++  };
++
++  for (const fact of timeFacts) {
++    const seconds = secondsBetween(fact.startedAt, fact.endedAt);
++    switch (fact.category) {
++      case 'ACTIVE_MISSION':
++        workTime.activeMissionSeconds += seconds;
++        break;
++      case 'PLATFORM_CONTROLLED_WAITING':
++        workTime.platformControlledWaitingSeconds += seconds;
++        break;
++      case 'REQUIRED_REPOSITION':
++        workTime.requiredRepositionSeconds += seconds;
++        break;
++      case 'OTHER_PAID':
++        workTime.otherPaidSeconds += seconds;
++        break;
++      case 'EXCLUDED':
++        workTime.excludedSeconds += seconds;
++        break;
++    }
++  }
++
++  let activityGuaranteeSeconds = 0;
++  let eligibleIncomeCents = 0;
++  let tipsCents = 0;
++  let expenseReimbursementsCents = 0;
++
++  for (const fact of durationFacts) {
++    if (fact.category === 'ACTIVITY_GUARANTEE_ESTIMATE') {
++      activityGuaranteeSeconds += fact.seconds;
++      if (!Number.isSafeInteger(activityGuaranteeSeconds)) {
++        throw new Error('COURIER_PAYROLL_ACTIVITY_ESTIMATE_OVERFLOW');
++      }
++    }
++  }
++
++  for (const fact of moneyFacts) {
++    if (fact.currency.toUpperCase() !== policy.currency.toUpperCase()) {
++      throw new Error('COURIER_PAYROLL_FACT_CURRENCY_MISMATCH');
++    }
++    if (fact.category === 'ELIGIBLE_INCOME') {
++      eligibleIncomeCents += fact.amountMinor;
++    } else if (fact.category === 'TIP') {
++      tipsCents += fact.amountMinor;
++    } else if (fact.category === 'EXPENSE_REIMBURSEMENT') {
++      expenseReimbursementsCents += fact.amountMinor;
++    }
++  }
++
++  return {
++    input: {
++      courierId,
++      weekKey,
++      workTime,
++      ...(durationFacts.length > 0 ? { activityGuaranteeSeconds } : {}),
++      eligibleIncomeCents,
++      tipsCents,
++      expenseReimbursementsCents,
++    },
++    factIds: facts.map((fact) => fact.factId).sort(),
++    factCount: facts.length,
++  };
++}
+diff --git a/services/api-nest/src/courier-payroll/policy-ledger.ts b/services/api-nest/src/courier-payroll/policy-ledger.ts
+new file mode 100644
+index 0000000..bf2a158
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/policy-ledger.ts
+@@ -0,0 +1,83 @@
++import { createHash } from 'node:crypto';
++import { CountryPayPolicy } from './courier-payroll.types';
++
++export interface SealedCountryPayPolicy {
++  policy: CountryPayPolicy;
++  policyHash: string;
++  sealedAt: string;
++  sealedBy: string;
++}
++
++export function canonicalizeJson(value: unknown): string {
++  if (value === null || typeof value !== 'object') {
++    return JSON.stringify(value);
++  }
++  if (Array.isArray(value)) {
++    return '[' + value.map(canonicalizeJson).join(',') + ']';
++  }
++  const object = value as Record<string, unknown>;
++  return (
++    '{' +
++    Object.keys(object)
++      .sort()
++      .map((key) => JSON.stringify(key) + ':' + canonicalizeJson(object[key]))
++      .join(',') +
++    '}'
++  );
++}
++
++export function stableJsonHash(value: unknown): string {
++  return createHash('sha256').update(canonicalizeJson(value), 'utf8').digest('hex');
++}
++
++export function countryPayPolicyHash(policy: CountryPayPolicy): string {
++  return stableJsonHash(policy);
++}
++
++export function sealCountryPayPolicy(
++  policy: CountryPayPolicy,
++  sealedAt: string,
++  sealedBy: string,
++): SealedCountryPayPolicy {
++  if (!policy.policyId.trim()) throw new Error('COURIER_POLICY_ID_REQUIRED');
++  if (!sealedBy.trim()) throw new Error('COURIER_POLICY_SEALER_REQUIRED');
++  if (!Number.isFinite(Date.parse(sealedAt))) {
++    throw new Error('COURIER_POLICY_SEALED_AT_INVALID');
++  }
++  return {
++    policy: JSON.parse(JSON.stringify(policy)) as CountryPayPolicy,
++    policyHash: countryPayPolicyHash(policy),
++    sealedAt,
++    sealedBy,
++  };
++}
++
++export function assertSealedPolicyIntegrity(
++  sealed: SealedCountryPayPolicy,
++): void {
++  if (countryPayPolicyHash(sealed.policy) !== sealed.policyHash) {
++    throw new Error('COURIER_POLICY_HASH_MISMATCH');
++  }
++}
++
++export function assertPolicyTransition(
++  previous: SealedCountryPayPolicy,
++  next: SealedCountryPayPolicy,
++): void {
++  assertSealedPolicyIntegrity(previous);
++  assertSealedPolicyIntegrity(next);
++
++  if (previous.policy.policyId === next.policy.policyId) {
++    if (previous.policyHash !== next.policyHash) {
++      throw new Error('COURIER_POLICY_IMMUTABLE_VERSION_MUTATED');
++    }
++    return;
++  }
++
++  if (
++    previous.policy.countryCode !== next.policy.countryCode ||
++    previous.policy.workerStatus !== next.policy.workerStatus
++  ) {
++    throw new Error('COURIER_POLICY_TRANSITION_SCOPE_CHANGED');
++  }
++}
+diff --git a/services/api-nest/src/courier-payroll/runtime-producer-adapters.ts b/services/api-nest/src/courier-payroll/runtime-producer-adapters.ts
+new file mode 100644
+index 0000000..d9ccf65
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/runtime-producer-adapters.ts
+@@ -0,0 +1,139 @@
++import type { CanonicalOrderTruth } from '../../../../packages/contracts/src/order';
++import type { CourierPayrollClockEvent } from '../../../../packages/contracts/src/courier-payroll-telemetry';
++import { assertCourierFairPayLabEnabled } from './lab-config';
++import { InMemoryCourierPayrollLedger } from './lab-ledger-repository';
++
++export interface PayrollProducerContext {
++  countryCode: string;
++  weekKey: string;
++  policyId: string;
++  courierId?: string;
++  missionId?: string;
++  estimatedActivitySeconds?: number;
++}
++
++function eventId(
++  orderId: string,
++  eventType: CourierPayrollClockEvent['eventType'],
++  occurredAt: string,
++): string {
++  return `payroll:${orderId}:${eventType.toLowerCase()}:${occurredAt}`;
++}
++
++export function buildCanonicalOrderClockEvents(
++  order: CanonicalOrderTruth,
++  context: PayrollProducerContext,
++): CourierPayrollClockEvent[] {
++  const courierId = String(
++    context.courierId || order.assignment?.courierId || '',
++  ).trim();
++  if (!courierId) return [];
++
++  const base = {
++    courierId,
++    countryCode: context.countryCode,
++    weekKey: context.weekKey,
++    policyId: context.policyId,
++    source: 'API_ORDER' as const,
++    orderId: order.identity.id,
++    missionId: context.missionId || `${order.identity.id}:delivery`,
++    merchantId: order.restaurant.id,
++  };
++  const events: CourierPayrollClockEvent[] = [];
++
++  if (order.timestamps.acceptedAt) {
++    events.push({
++      ...base,
++      eventId: eventId(
++        order.identity.id,
++        'MISSION_ACCEPTED',
++        order.timestamps.acceptedAt,
++      ),
++      eventType: 'MISSION_ACCEPTED',
++      occurredAt: order.timestamps.acceptedAt,
++      ...(context.estimatedActivitySeconds != null
++        ? { estimatedActivitySeconds: context.estimatedActivitySeconds }
++        : {}),
++    });
++  }
++
++  if (order.timestamps.readyAt) {
++    events.push({
++      ...base,
++      eventId: eventId(
++        order.identity.id,
++        'MERCHANT_READY',
++        order.timestamps.readyAt,
++      ),
++      eventType: 'MERCHANT_READY',
++      occurredAt: order.timestamps.readyAt,
++    });
++  }
++
++  if (order.timestamps.pickedUpAt) {
++    events.push({
++      ...base,
++      eventId: eventId(
++        order.identity.id,
++        'PICKED_UP',
++        order.timestamps.pickedUpAt,
++      ),
++      eventType: 'PICKED_UP',
++      occurredAt: order.timestamps.pickedUpAt,
++    });
++  }
++
++  if (order.timestamps.deliveredAt) {
++    events.push({
++      ...base,
++      eventId: eventId(
++        order.identity.id,
++        'DELIVERED',
++        order.timestamps.deliveredAt,
++      ),
++      eventType: 'DELIVERED',
++      occurredAt: order.timestamps.deliveredAt,
++    });
++  }
++
++  return events.sort(
++    (a, b) =>
++      Date.parse(a.occurredAt) - Date.parse(b.occurredAt) ||
++      a.eventId.localeCompare(b.eventId),
++  );
++}
++
++export interface PickupArrivalInput extends PayrollProducerContext {
++  orderId: string;
++  merchantId?: string;
++  occurredAt: string;
++  courierId: string;
++  missionId: string;
++}
++
++export function buildCourierPickupArrivalEvent(
++  input: PickupArrivalInput,
++): CourierPayrollClockEvent {
++  return {
++    eventId: eventId(input.orderId, 'PICKUP_ARRIVED', input.occurredAt),
++    eventType: 'PICKUP_ARRIVED',
++    courierId: input.courierId,
++    countryCode: input.countryCode,
++    weekKey: input.weekKey,
++    policyId: input.policyId,
++    source: 'COURIER_APP',
++    occurredAt: input.occurredAt,
++    orderId: input.orderId,
++    missionId: input.missionId,
++    merchantId: input.merchantId,
++  };
++}
++
++export function recordLabClockEvents(
++  ledger: InMemoryCourierPayrollLedger,
++  events: CourierPayrollClockEvent[],
++  env: Record<string, string | undefined> = process.env,
++) {
++  assertCourierFairPayLabEnabled(env);
++  return ledger.appendClockEvents(events);
++}
+diff --git a/services/api-nest/src/courier-payroll/telemetry-normalizer.ts b/services/api-nest/src/courier-payroll/telemetry-normalizer.ts
+new file mode 100644
+index 0000000..7121303
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/telemetry-normalizer.ts
+@@ -0,0 +1,283 @@
++import type {
++  CourierPayrollClockEvent,
++  CourierPayrollClockEventType,
++} from '../../../../packages/contracts/src/courier-payroll-telemetry';
++import { isCourierPayrollClockEvent } from '../../../../packages/contracts/src/courier-payroll-telemetry';
++import type {
++  CourierPayrollDurationFact,
++  CourierPayrollFact,
++  CourierPayrollTimeFact,
+
+[executed on device: purpletoshiba (90e8e634-9b37-494e-b0bb-834c5c7e7d00)]
