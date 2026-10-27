@@ -1,0 +1,702 @@
++- other paid: 15 min;
++- eligible income: 26.00 EUR;
++- LAB floor: 28.50 EUR;
++- true-up: 2.50 EUR;
++- tips: +5.00 EUR;
++- expenses: +3.00 EUR;
++- total cash due: 36.50 EUR;
++- production eligible: false.
++
++## Current instrumentation gate
++
++AVAILABLE:
++- mission accepted;
++- merchant ready contract/state;
++- picked up;
++- delivered.
++
++PARTIAL:
++- tip credit mapping.
++
++MISSING:
++- pickup arrival;
++- required-reposition runtime events;
++- other-paid runtime events;
++- eligible-income credit;
++- expense-reimbursement credit.
++
++The gate is therefore RED by design.
++
++## Economics snapshot
++
++Illustrative assumptions:
++- employer cost: 30 EUR/paid hour;
++- contribution before Courier: 12 EUR/delivery.
++
++Break-even:
++2.5 deliveries/paid hour.
++
++Target for 2 EUR residual per delivery:
++3.0 deliveries/paid hour.
++
++With a 17-minute non-wait cycle, 9 minutes of merchant wait moves the unbatched LAB model below zero under these assumptions.
++
++## Next tranche
++
++1. LAB persistence: append-only facts, policy ledger and statements.
++2. Producer adapters behind disabled feature flag:
++   - API accepted/pickup/delivered;
++   - Merchant ready;
++   - Courier pickup arrival;
++   - OPS reposition/other paid.
++3. Idempotent weekly job.
++4. Read-only statement API + Courier UI prototype.
++5. Belgian legal/payroll data pack.
++6. Replace LAB economic inputs with real POG data.
++7. Complete off-machine backup of each checkpoint.
++
++## Governance
++
++Airtable:
++- action: `recgQh8D6upiGQpAe`
++- initial QA proof: `recfGhklGVJkXuhmN`
++
++PurpleCRM:
++- CSC stakeholder record carries Fair Pay Lab status and consultation topics.
++
++## Doctrine
++
++**A bad zone is a POG problem.**
++
++It is never converted into unpaid worker time or a hidden reduction of earned pay.
+diff --git a/docs/courier-fair-pay-lab/08_BELGIUM_SENSITIVITY_20261027.json b/docs/courier-fair-pay-lab/08_BELGIUM_SENSITIVITY_20261027.json
+new file mode 100644
+index 0000000..c63550a
+--- /dev/null
++++ b/docs/courier-fair-pay-lab/08_BELGIUM_SENSITIVITY_20261027.json
+@@ -0,0 +1,621 @@
++{
++  "economics": [
++    {
++      "employerCostPerPaidHourCents": 2600,
++      "contributionBeforeCourierCentsPerDelivery": 900,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 2.888888888888889,
++      "targetDeliveriesPerPaidHour": 3.7142857142857144
++    },
++    {
++      "employerCostPerPaidHourCents": 2600,
++      "contributionBeforeCourierCentsPerDelivery": 1000,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 2.6,
++      "targetDeliveriesPerPaidHour": 3.25
++    },
++    {
++      "employerCostPerPaidHourCents": 2600,
++      "contributionBeforeCourierCentsPerDelivery": 1100,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 2.3636363636363638,
++      "targetDeliveriesPerPaidHour": 2.888888888888889
++    },
++    {
++      "employerCostPerPaidHourCents": 2600,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 2.1666666666666665,
++      "targetDeliveriesPerPaidHour": 2.6
++    },
++    {
++      "employerCostPerPaidHourCents": 2600,
++      "contributionBeforeCourierCentsPerDelivery": 1300,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 2,
++      "targetDeliveriesPerPaidHour": 2.3636363636363638
++    },
++    {
++      "employerCostPerPaidHourCents": 2600,
++      "contributionBeforeCourierCentsPerDelivery": 1400,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 1.8571428571428572,
++      "targetDeliveriesPerPaidHour": 2.1666666666666665
++    },
++    {
++      "employerCostPerPaidHourCents": 2800,
++      "contributionBeforeCourierCentsPerDelivery": 900,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 3.111111111111111,
++      "targetDeliveriesPerPaidHour": 4
++    },
++    {
++      "employerCostPerPaidHourCents": 2800,
++      "contributionBeforeCourierCentsPerDelivery": 1000,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 2.8,
++      "targetDeliveriesPerPaidHour": 3.5
++    },
++    {
++      "employerCostPerPaidHourCents": 2800,
++      "contributionBeforeCourierCentsPerDelivery": 1100,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 2.5454545454545454,
++      "targetDeliveriesPerPaidHour": 3.111111111111111
++    },
++    {
++      "employerCostPerPaidHourCents": 2800,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 2.3333333333333335,
++      "targetDeliveriesPerPaidHour": 2.8
++    },
++    {
++      "employerCostPerPaidHourCents": 2800,
++      "contributionBeforeCourierCentsPerDelivery": 1300,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 2.1538461538461537,
++      "targetDeliveriesPerPaidHour": 2.5454545454545454
++    },
++    {
++      "employerCostPerPaidHourCents": 2800,
++      "contributionBeforeCourierCentsPerDelivery": 1400,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 2,
++      "targetDeliveriesPerPaidHour": 2.3333333333333335
++    },
++    {
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 900,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 3.3333333333333335,
++      "targetDeliveriesPerPaidHour": 4.285714285714286
++    },
++    {
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1000,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 3,
++      "targetDeliveriesPerPaidHour": 3.75
++    },
++    {
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1100,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 2.727272727272727,
++      "targetDeliveriesPerPaidHour": 3.3333333333333335
++    },
++    {
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 2.5,
++      "targetDeliveriesPerPaidHour": 3
++    },
++    {
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1300,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 2.3076923076923075,
++      "targetDeliveriesPerPaidHour": 2.727272727272727
++    },
++    {
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1400,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 2.142857142857143,
++      "targetDeliveriesPerPaidHour": 2.5
++    },
++    {
++      "employerCostPerPaidHourCents": 3200,
++      "contributionBeforeCourierCentsPerDelivery": 900,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 3.5555555555555554,
++      "targetDeliveriesPerPaidHour": 4.571428571428571
++    },
++    {
++      "employerCostPerPaidHourCents": 3200,
++      "contributionBeforeCourierCentsPerDelivery": 1000,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 3.2,
++      "targetDeliveriesPerPaidHour": 4
++    },
++    {
++      "employerCostPerPaidHourCents": 3200,
++      "contributionBeforeCourierCentsPerDelivery": 1100,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 2.909090909090909,
++      "targetDeliveriesPerPaidHour": 3.5555555555555554
++    },
++    {
++      "employerCostPerPaidHourCents": 3200,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 2.6666666666666665,
++      "targetDeliveriesPerPaidHour": 3.2
++    },
++    {
++      "employerCostPerPaidHourCents": 3200,
++      "contributionBeforeCourierCentsPerDelivery": 1300,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 2.4615384615384617,
++      "targetDeliveriesPerPaidHour": 2.909090909090909
++    },
++    {
++      "employerCostPerPaidHourCents": 3200,
++      "contributionBeforeCourierCentsPerDelivery": 1400,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 2.2857142857142856,
++      "targetDeliveriesPerPaidHour": 2.6666666666666665
++    },
++    {
++      "employerCostPerPaidHourCents": 3400,
++      "contributionBeforeCourierCentsPerDelivery": 900,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 3.7777777777777777,
++      "targetDeliveriesPerPaidHour": 4.857142857142857
++    },
++    {
++      "employerCostPerPaidHourCents": 3400,
++      "contributionBeforeCourierCentsPerDelivery": 1000,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 3.4,
++      "targetDeliveriesPerPaidHour": 4.25
++    },
++    {
++      "employerCostPerPaidHourCents": 3400,
++      "contributionBeforeCourierCentsPerDelivery": 1100,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 3.090909090909091,
++      "targetDeliveriesPerPaidHour": 3.7777777777777777
++    },
++    {
++      "employerCostPerPaidHourCents": 3400,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 2.8333333333333335,
++      "targetDeliveriesPerPaidHour": 3.4
++    },
++    {
++      "employerCostPerPaidHourCents": 3400,
++      "contributionBeforeCourierCentsPerDelivery": 1300,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 2.6153846153846154,
++      "targetDeliveriesPerPaidHour": 3.090909090909091
++    },
++    {
++      "employerCostPerPaidHourCents": 3400,
++      "contributionBeforeCourierCentsPerDelivery": 1400,
++      "targetResidualContributionCentsPerDelivery": 200,
++      "breakEvenDeliveriesPerPaidHour": 2.4285714285714284,
++      "targetDeliveriesPerPaidHour": 2.8333333333333335
++    }
++  ],
++  "operations": [
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 15,
++      "merchantWaitMinutesPerDelivery": 0,
++      "batchEfficiencyMultiplier": 1,
++      "deliveriesPerPaidHour": 4,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 1800
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 15,
++      "merchantWaitMinutesPerDelivery": 0,
++      "batchEfficiencyMultiplier": 1.1,
++      "deliveriesPerPaidHour": 4.4,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 2280
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 15,
++      "merchantWaitMinutesPerDelivery": 0,
++      "batchEfficiencyMultiplier": 1.2,
++      "deliveriesPerPaidHour": 4.8,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 2760
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 15,
++      "merchantWaitMinutesPerDelivery": 3,
++      "batchEfficiencyMultiplier": 1,
++      "deliveriesPerPaidHour": 3.3333333333333335,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 1000
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 15,
++      "merchantWaitMinutesPerDelivery": 3,
++      "batchEfficiencyMultiplier": 1.1,
++      "deliveriesPerPaidHour": 3.666666666666667,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 1400
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 15,
++      "merchantWaitMinutesPerDelivery": 3,
++      "batchEfficiencyMultiplier": 1.2,
++      "deliveriesPerPaidHour": 4,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 1800
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 15,
++      "merchantWaitMinutesPerDelivery": 6,
++      "batchEfficiencyMultiplier": 1,
++      "deliveriesPerPaidHour": 2.857142857142857,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 428.57142857142844
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 15,
++      "merchantWaitMinutesPerDelivery": 6,
++      "batchEfficiencyMultiplier": 1.1,
++      "deliveriesPerPaidHour": 3.1428571428571432,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 771.428571428572
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 15,
++      "merchantWaitMinutesPerDelivery": 6,
++      "batchEfficiencyMultiplier": 1.2,
++      "deliveriesPerPaidHour": 3.4285714285714284,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 1114.2857142857138
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 15,
++      "merchantWaitMinutesPerDelivery": 9,
++      "batchEfficiencyMultiplier": 1,
++      "deliveriesPerPaidHour": 2.5,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 0
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 15,
++      "merchantWaitMinutesPerDelivery": 9,
++      "batchEfficiencyMultiplier": 1.1,
++      "deliveriesPerPaidHour": 2.75,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 300
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 15,
++      "merchantWaitMinutesPerDelivery": 9,
++      "batchEfficiencyMultiplier": 1.2,
++      "deliveriesPerPaidHour": 3,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 600
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 15,
++      "merchantWaitMinutesPerDelivery": 12,
++      "batchEfficiencyMultiplier": 1,
++      "deliveriesPerPaidHour": 2.2222222222222223,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": -333.33333333333303
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 15,
++      "merchantWaitMinutesPerDelivery": 12,
++      "batchEfficiencyMultiplier": 1.1,
++      "deliveriesPerPaidHour": 2.4444444444444446,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": -66.66666666666652
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 15,
++      "merchantWaitMinutesPerDelivery": 12,
++      "batchEfficiencyMultiplier": 1.2,
++      "deliveriesPerPaidHour": 2.6666666666666665,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 200
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 17,
++      "merchantWaitMinutesPerDelivery": 0,
++      "batchEfficiencyMultiplier": 1,
++      "deliveriesPerPaidHour": 3.5294117647058822,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 1235.2941176470586
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 17,
++      "merchantWaitMinutesPerDelivery": 0,
++      "batchEfficiencyMultiplier": 1.1,
++      "deliveriesPerPaidHour": 3.882352941176471,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 1658.8235294117649
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 17,
++      "merchantWaitMinutesPerDelivery": 0,
++      "batchEfficiencyMultiplier": 1.2,
++      "deliveriesPerPaidHour": 4.235294117647059,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 2082.3529411764703
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 17,
++      "merchantWaitMinutesPerDelivery": 3,
++      "batchEfficiencyMultiplier": 1,
++      "deliveriesPerPaidHour": 3,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 600
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 17,
++      "merchantWaitMinutesPerDelivery": 3,
++      "batchEfficiencyMultiplier": 1.1,
++      "deliveriesPerPaidHour": 3.3000000000000003,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 960.0000000000005
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 17,
++      "merchantWaitMinutesPerDelivery": 3,
++      "batchEfficiencyMultiplier": 1.2,
++      "deliveriesPerPaidHour": 3.5999999999999996,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 1320
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 17,
++      "merchantWaitMinutesPerDelivery": 6,
++      "batchEfficiencyMultiplier": 1,
++      "deliveriesPerPaidHour": 2.608695652173913,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 130.4347826086955
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 17,
++      "merchantWaitMinutesPerDelivery": 6,
++      "batchEfficiencyMultiplier": 1.1,
++      "deliveriesPerPaidHour": 2.8695652173913047,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 443.4782608695655
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 17,
++      "merchantWaitMinutesPerDelivery": 6,
++      "batchEfficiencyMultiplier": 1.2,
++      "deliveriesPerPaidHour": 3.130434782608696,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 756.521739130435
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 17,
++      "merchantWaitMinutesPerDelivery": 9,
++      "batchEfficiencyMultiplier": 1,
++      "deliveriesPerPaidHour": 2.3076923076923075,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": -230.76923076923094
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 17,
++      "merchantWaitMinutesPerDelivery": 9,
++      "batchEfficiencyMultiplier": 1.1,
++      "deliveriesPerPaidHour": 2.5384615384615383,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 46.15384615384619
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 17,
++      "merchantWaitMinutesPerDelivery": 9,
++      "batchEfficiencyMultiplier": 1.2,
++      "deliveriesPerPaidHour": 2.7692307692307687,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 323.0769230769224
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 17,
++      "merchantWaitMinutesPerDelivery": 12,
++      "batchEfficiencyMultiplier": 1,
++      "deliveriesPerPaidHour": 2.0689655172413794,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": -517.2413793103447
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 17,
++      "merchantWaitMinutesPerDelivery": 12,
++      "batchEfficiencyMultiplier": 1.1,
++      "deliveriesPerPaidHour": 2.275862068965518,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": -268.9655172413786
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 17,
++      "merchantWaitMinutesPerDelivery": 12,
++      "batchEfficiencyMultiplier": 1.2,
++      "deliveriesPerPaidHour": 2.4827586206896552,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": -20.689655172413495
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 20,
++      "merchantWaitMinutesPerDelivery": 0,
++      "batchEfficiencyMultiplier": 1,
++      "deliveriesPerPaidHour": 3,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 600
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 20,
++      "merchantWaitMinutesPerDelivery": 0,
++      "batchEfficiencyMultiplier": 1.1,
++      "deliveriesPerPaidHour": 3.3000000000000003,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 960.0000000000005
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 20,
++      "merchantWaitMinutesPerDelivery": 0,
++      "batchEfficiencyMultiplier": 1.2,
++      "deliveriesPerPaidHour": 3.5999999999999996,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 1320
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 20,
++      "merchantWaitMinutesPerDelivery": 3,
++      "batchEfficiencyMultiplier": 1,
++      "deliveriesPerPaidHour": 2.608695652173913,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 130.4347826086955
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 20,
++      "merchantWaitMinutesPerDelivery": 3,
++      "batchEfficiencyMultiplier": 1.1,
++      "deliveriesPerPaidHour": 2.8695652173913047,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 443.4782608695655
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 20,
++      "merchantWaitMinutesPerDelivery": 3,
++      "batchEfficiencyMultiplier": 1.2,
++      "deliveriesPerPaidHour": 3.130434782608696,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 756.521739130435
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 20,
++      "merchantWaitMinutesPerDelivery": 6,
++      "batchEfficiencyMultiplier": 1,
++      "deliveriesPerPaidHour": 2.3076923076923075,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": -230.76923076923094
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 20,
++      "merchantWaitMinutesPerDelivery": 6,
++      "batchEfficiencyMultiplier": 1.1,
++      "deliveriesPerPaidHour": 2.5384615384615383,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 46.15384615384619
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 20,
++      "merchantWaitMinutesPerDelivery": 6,
++      "batchEfficiencyMultiplier": 1.2,
++      "deliveriesPerPaidHour": 2.7692307692307687,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": 323.0769230769224
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 20,
++      "merchantWaitMinutesPerDelivery": 9,
++      "batchEfficiencyMultiplier": 1,
++      "deliveriesPerPaidHour": 2.0689655172413794,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": -517.2413793103447
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 20,
++      "merchantWaitMinutesPerDelivery": 9,
++      "batchEfficiencyMultiplier": 1.1,
++      "deliveriesPerPaidHour": 2.275862068965518,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": -268.9655172413786
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 20,
++      "merchantWaitMinutesPerDelivery": 9,
++      "batchEfficiencyMultiplier": 1.2,
++      "deliveriesPerPaidHour": 2.4827586206896552,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": -20.689655172413495
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 20,
++      "merchantWaitMinutesPerDelivery": 12,
++      "batchEfficiencyMultiplier": 1,
++      "deliveriesPerPaidHour": 1.875,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": -750
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 20,
++      "merchantWaitMinutesPerDelivery": 12,
++      "batchEfficiencyMultiplier": 1.1,
++      "deliveriesPerPaidHour": 2.0625,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": -525
++    },
++    {
++      "baseTravelAndHandlingMinutesPerDelivery": 20,
++      "merchantWaitMinutesPerDelivery": 12,
++      "batchEfficiencyMultiplier": 1.2,
++      "deliveriesPerPaidHour": 2.25,
++      "employerCostPerPaidHourCents": 3000,
++      "contributionBeforeCourierCentsPerDelivery": 1200,
++      "residualContributionPerPaidHourCents": -300
++    }
++  ]
++}
+diff --git a/docs/courier-fair-pay-lab/09_LAB_AUDIT_ARTIFACTS_20261027.json b/docs/courier-fair-pay-lab/09_LAB_AUDIT_ARTIFACTS_20261027.json
+new file mode 100644
+
+[executed on device: purpletoshiba (90e8e634-9b37-494e-b0bb-834c5c7e7d00)]
