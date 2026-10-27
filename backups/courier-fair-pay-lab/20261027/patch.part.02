@@ -1,0 +1,702 @@
+index 0000000..fba6d2e
+--- /dev/null
++++ b/docs/courier-fair-pay-lab/09_LAB_AUDIT_ARTIFACTS_20261027.json
+@@ -0,0 +1,302 @@
++{
++  "policyLedger": [
++    {
++      "policy": {
++        "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
++        "countryCode": "BE",
++        "currency": "EUR",
++        "workerStatus": "EMPLOYEE",
++        "validationStatus": "DRAFT",
++        "effectiveFrom": null,
++        "legalFloorCentsPerPaidHour": null,
++        "pogFairnessFloorCentsPerPaidHour": 1900,
++        "paidTimeRules": {
++          "activeMission": true,
++          "platformControlledWaiting": true,
++          "requiredReposition": true,
++          "otherPaid": true
++        },
++        "weeklyActivityGuarantee": null,
++        "tipsPassThrough": true,
++        "tipsExcludedFromFloors": true,
++        "expenseReimbursementsExcludedFromFloors": true,
++        "productionActivationAllowed": false,
++        "notes": [
++          "LAB ONLY: 19 EUR/hour is a POG fairness hypothesis, not a Belgian legal rate.",
++          "Legal floor remains unset until the competent Belgian joint committee/CBA and worker classification are validated.",
++          "POG lab principle: platform-controlled waiting and required repositioning are not pushed onto the courier as unpaid zone risk.",
++          "Production must remain blocked until Belgian legal review is GREEN."
++        ]
++      },
++      "policyHash": "5f0ca2b5349dee3921aede627b0519355d32857df5624866ce7e26b53cdb229c",
++      "sealedAt": "2026-10-27T12:30:00.000Z",
++      "sealedBy": "pog-courier-fair-pay-lab"
++    },
++    {
++      "policy": {
++        "policyId": "FR-INDEPENDENT-ARPE-2026-09-01-v1",
++        "countryCode": "FR",
++        "currency": "EUR",
++        "workerStatus": "INDEPENDENT",
++        "validationStatus": "LEGAL_REVIEW",
++        "effectiveFrom": "2026-09-01",
++        "legalFloorCentsPerPaidHour": null,
++        "pogFairnessFloorCentsPerPaidHour": null,
++        "paidTimeRules": {
++          "activeMission": true,
++          "platformControlledWaiting": false,
++          "requiredReposition": false,
++          "otherPaid": false
++        },
++        "weeklyActivityGuarantee": {
++          "rateCentsPerHour": 1900,
++          "differentialPaymentDelayDays": 7,
++          "calculationVersion": "FR-ARPE-2026-09-01-v1"
++        },
++        "tipsPassThrough": true,
++        "tipsExcludedFromFloors": true,
++        "expenseReimbursementsExcludedFromFloors": true,
++        "productionActivationAllowed": false,
++        "notes": [
++          "Reference adapter for the ARPE weekly activity-income guarantee.",
++          "The ARPE guarantee uses an explicit estimated activity duration (activityGuaranteeSeconds), kept separate from actual mission clock time.",
++          "Production remains blocked until final legal/data mapping review is GREEN."
++        ]
++      },
++      "policyHash": "ae0794c9fb2d0408c545ff0fb58293bfe2a4fdc7147741f19429872cdbf44d4a",
++      "sealedAt": "2026-10-27T12:30:00.000Z",
++      "sealedBy": "pog-courier-fair-pay-lab"
++    }
++  ],
++  "instrumentationGate": {
++    "green": false,
++    "available": [
++      "missionAcceptedAt",
++      "merchantReadyAt",
++      "pickedUpAt",
++      "deliveredAt"
++    ],
++    "partial": [
++      "tipCredit"
++    ],
++    "missing": [
++      "courierArrivedPickupAt",
++      "requiredRepositionStartedAt/EndedAt",
++      "otherPaidWorkStartedAt/EndedAt",
++      "eligibleIncomeCredit",
++      "expenseReimbursementCredit"
++    ]
++  },
++  "belgiumExample": {
++    "missionDiagnostics": {
++      "merchantReadyBeforeArrivalSeconds": 600,
++      "pickupDwellSeconds": 600
++    },
++    "facts": [
++      {
++        "factId": "mission-lab-1:active-pre-pickup",
++        "kind": "TIME",
++        "category": "ACTIVE_MISSION",
++        "courierId": "be-lab-example-1",
++        "countryCode": "BE",
++        "weekKey": "2026-W44",
++        "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
++        "source": "PAYROLL_NORMALIZER",
++        "recordedAt": "2026-10-27T08:20:00.000Z",
++        "orderId": "order-lab-1",
++        "missionId": "mission-lab-1",
++        "merchantId": "merchant-lab-1",
++        "startedAt": "2026-10-27T08:00:00.000Z",
++        "endedAt": "2026-10-27T08:20:00.000Z",
++        "evidenceRefs": [
++          "m1-accepted",
++          "m1-arrived"
++        ]
++      },
++      {
++        "factId": "mission-lab-1:pickup-dwell",
++        "kind": "TIME",
++        "category": "PLATFORM_CONTROLLED_WAITING",
++        "courierId": "be-lab-example-1",
++        "countryCode": "BE",
++        "weekKey": "2026-W44",
++        "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
++        "source": "PAYROLL_NORMALIZER",
++        "recordedAt": "2026-10-27T08:30:00.000Z",
++        "orderId": "order-lab-1",
++        "missionId": "mission-lab-1",
++        "merchantId": "merchant-lab-1",
++        "startedAt": "2026-10-27T08:20:00.000Z",
++        "endedAt": "2026-10-27T08:30:00.000Z",
++        "evidenceRefs": [
++          "m1-arrived",
++          "m1-picked"
++        ]
++      },
++      {
++        "factId": "mission-lab-1:active-delivery",
++        "kind": "TIME",
++        "category": "ACTIVE_MISSION",
++        "courierId": "be-lab-example-1",
++        "countryCode": "BE",
++        "weekKey": "2026-W44",
++        "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
++        "source": "PAYROLL_NORMALIZER",
++        "recordedAt": "2026-10-27T09:00:00.000Z",
++        "orderId": "order-lab-1",
++        "missionId": "mission-lab-1",
++        "merchantId": "merchant-lab-1",
++        "startedAt": "2026-10-27T08:30:00.000Z",
++        "endedAt": "2026-10-27T09:00:00.000Z",
++        "evidenceRefs": [
++          "m1-picked",
++          "m1-delivered"
++        ]
++      },
++      {
++        "factId": "reposition-lab-1:required_reposition",
++        "kind": "TIME",
++        "category": "REQUIRED_REPOSITION",
++        "courierId": "be-lab-example-1",
++        "countryCode": "BE",
++        "weekKey": "2026-W44",
++        "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
++        "source": "PAYROLL_NORMALIZER",
++        "recordedAt": "2026-10-27T09:15:00.000Z",
++        "startedAt": "2026-10-27T09:00:00.000Z",
++        "endedAt": "2026-10-27T09:15:00.000Z",
++        "evidenceRefs": [
++          "r1-start",
++          "r1-end"
++        ]
++      },
++      {
++        "factId": "other-paid-lab-1:other_paid",
++        "kind": "TIME",
++        "category": "OTHER_PAID",
++        "courierId": "be-lab-example-1",
++        "countryCode": "BE",
++        "weekKey": "2026-W44",
++        "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
++        "source": "PAYROLL_NORMALIZER",
++        "recordedAt": "2026-10-27T09:30:00.000Z",
++        "startedAt": "2026-10-27T09:15:00.000Z",
++        "endedAt": "2026-10-27T09:30:00.000Z",
++        "evidenceRefs": [
++          "w1-start",
++          "w1-end"
++        ]
++      },
++      {
++        "factId": "income-lab-1",
++        "kind": "MONEY",
++        "category": "ELIGIBLE_INCOME",
++        "courierId": "be-lab-example-1",
++        "countryCode": "BE",
++        "weekKey": "2026-W44",
++        "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
++        "source": "PAYMENTS",
++        "recordedAt": "2026-10-27T12:00:00.000Z",
++        "amountMinor": 2600,
++        "currency": "EUR"
++      },
++      {
++        "factId": "tip-lab-1",
++        "kind": "MONEY",
++        "category": "TIP",
++        "courierId": "be-lab-example-1",
++        "countryCode": "BE",
++        "weekKey": "2026-W44",
++        "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
++        "source": "PAYMENTS",
++        "recordedAt": "2026-10-27T12:00:00.000Z",
++        "amountMinor": 500,
++        "currency": "EUR"
++      },
++      {
++        "factId": "expense-lab-1",
++        "kind": "MONEY",
++        "category": "EXPENSE_REIMBURSEMENT",
++        "courierId": "be-lab-example-1",
++        "countryCode": "BE",
++        "weekKey": "2026-W44",
++        "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
++        "source": "OPS",
++        "recordedAt": "2026-10-27T12:00:00.000Z",
++        "amountMinor": 300,
++        "currency": "EUR"
++      }
++    ],
++    "statement": {
++      "statementId": "9c6c574d92fdbde7ba3a53033a48a035aba209463c8bff3c960e875c9a44cb63",
++      "statementVersion": "COURIER_WEEKLY_STATEMENT_V0.1",
++      "courierId": "be-lab-example-1",
++      "weekKey": "2026-W44",
++      "countryCode": "BE",
++      "currency": "EUR",
++      "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
++      "policyHash": "5f0ca2b5349dee3921aede627b0519355d32857df5624866ce7e26b53cdb229c",
++      "factsHash": "5c7bd1b727c32c999520e2ee19b885f898072a80fa89e9560c7ee56924695cac",
++      "factIds": [
++        "expense-lab-1",
++        "income-lab-1",
++        "mission-lab-1:active-delivery",
++        "mission-lab-1:active-pre-pickup",
++        "mission-lab-1:pickup-dwell",
++        "other-paid-lab-1:other_paid",
++        "reposition-lab-1:required_reposition",
++        "tip-lab-1"
++      ],
++      "factCount": 8,
++      "computation": {
++        "courierId": "be-lab-example-1",
++        "weekKey": "2026-W44",
++        "policyId": "BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1",
++        "workerStatus": "EMPLOYEE",
++        "paidSeconds": 5400,
++        "mobilizedSeconds": 5400,
++        "activeMissionSeconds": 3000,
++        "activityGuaranteeSeconds": null,
++        "utilizationRatio": 0.5555555555555556,
++        "legalFloorCents": 0,
++        "pogFairnessFloorCents": 2850,
++        "activityGuaranteeFloorCents": 0,
++        "governingFloorCents": 2850,
++        "eligibleIncomeCents": 2600,
++        "differentialDueCents": 250,
++        "grossPayDueCents": 2850,
++        "tipsPassThroughCents": 500,
++        "expenseReimbursementsCents": 300,
++        "totalCashDueCents": 3650,
++        "differentialPaymentDelayDays": null,
++        "productionEligible": false,
++        "warnings": [
++          "COUNTRY_POLICY_NOT_LEGALLY_GREEN",
++          "LEGAL_FLOOR_NOT_CONFIGURED",
++          "LOW_UTILIZATION_IS_POG_ZONE_RISK_NOT_COURIER_DEBT"
++        ]
++      },
++      "explanation": {
++        "paidSeconds": 5400,
++        "activeMissionSeconds": 3000,
++        "activityGuaranteeSeconds": null,
++        "waitingSeconds": 600,
++        "repositionSeconds": 900,
++        "otherPaidSeconds": 900,
++        "excludedSeconds": 0,
++        "eligibleIncomeCents": 2600,
++        "governingFloorCents": 2850,
++        "differentialDueCents": 250,
++        "tipsCents": 500,
++        "expenseReimbursementsCents": 300,
++        "totalCashDueCents": 3650
++      },
++      "contestable": true,
++      "warnings": [
++        "COUNTRY_POLICY_NOT_LEGALLY_GREEN",
++        "LEGAL_FLOOR_NOT_CONFIGURED",
++        "LOW_UTILIZATION_IS_POG_ZONE_RISK_NOT_COURIER_DEBT"
++      ]
++    }
++  }
++}
+diff --git a/docs/courier-fair-pay-lab/10_TELEMETRY_PIPELINE.md b/docs/courier-fair-pay-lab/10_TELEMETRY_PIPELINE.md
+new file mode 100644
+index 0000000..d331059
+--- /dev/null
++++ b/docs/courier-fair-pay-lab/10_TELEMETRY_PIPELINE.md
+@@ -0,0 +1,85 @@
++# Courier Fair Pay — Telemetry Pipeline V0.1
++
++## Rule
++
++Apps and operational services emit factual events. They do not calculate wages.
++
++Flow:
++
++`Client / Merchant / Courier / API / OPS / Payments events`
++→ `raw clock + money telemetry`
++→ `strict normalizer`
++→ `canonical payroll facts`
++→ `weekly projector`
++→ `Fair Pay Kernel`
++→ `weekly statement`
++
++## Existing signals found in the current codebase
++
++AVAILABLE:
++- mission/order acceptance: `acceptedAt`;
++- merchant/order ready state: `readyAt` / status `ready`;
++- pickup: `pickedUpAt`;
++- delivery: `deliveredAt`.
++
++PARTIAL:
++- tips/payment domain exists, but no canonical Courier payroll fact mapping is established.
++
++MISSING / must be explicit:
++- `courierArrivedPickupAt`;
++- required reposition start/end;
++- other paid work start/end;
++- legally validated eligible-income credit;
++- expense reimbursement credit.
++
++## Why pickup arrival is mandatory
++
++`acceptedAt`, `readyAt` and `pickedUpAt` do not prove when the courier reached the merchant.
++
++Therefore the kernel must not infer restaurant waiting from those timestamps.
++
++No `PICKUP_ARRIVED` event → no normalized mission time facts for payroll finalization.
++
++## Normalized mission clock
++
++When all four clock signals exist:
++
++`MISSION_ACCEPTED → PICKUP_ARRIVED`
++= ACTIVE_MISSION
++
++`PICKUP_ARRIVED → PICKED_UP`
++= PLATFORM_CONTROLLED_WAITING / pickup dwell
++
++`PICKED_UP → DELIVERED`
++= ACTIVE_MISSION
++
++The merchant-ready event is retained as an operational diagnostic. It does not independently create or erase worker entitlement.
++
++## France-specific duration
++
++The French activity guarantee uses a separate `ACTIVITY_GUARANTEE_ESTIMATE` duration fact.
++
++It is not derived from actual mission timestamps.
++
++If a country policy requires an activity guarantee and the explicit estimate is absent, calculation fails with:
++
++`COURIER_PAYROLL_ACTIVITY_GUARANTEE_DURATION_REQUIRED`
++
++## OPS segments
++
++Required repositioning and other paid work are normalized only from explicit START/END pairs sharing a segment ID.
++
++Missing end/start → segment remains incomplete and cannot silently enter payroll.
++
++## Audit
++
++Every normalized fact contains:
++- stable fact ID;
++- policy ID;
++- country;
++- courier;
++- week;
++- raw evidence event IDs;
++- source = `PAYROLL_NORMALIZER`.
++
++This lets every statement amount be traced back to factual events.
+diff --git a/docs/courier-fair-pay-lab/11_POLICY_LEDGER_AND_STATEMENT.md b/docs/courier-fair-pay-lab/11_POLICY_LEDGER_AND_STATEMENT.md
+new file mode 100644
+index 0000000..3df004c
+--- /dev/null
++++ b/docs/courier-fair-pay-lab/11_POLICY_LEDGER_AND_STATEMENT.md
+@@ -0,0 +1,60 @@
++# Policy Ledger & Weekly Statement V0.1
++
++## Immutable policy principle
++
++Every country/status policy is sealed with SHA-256 over canonical JSON.
++
++Snapshot 27 October 2026:
++
++- Belgium `BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1`
++  - hash: `5f0ca2b5349dee3921aede627b0519355d32857df5624866ce7e26b53cdb229c`
++  - validation: DRAFT
++  - production: blocked
++
++- France `FR-INDEPENDENT-ARPE-2026-09-01-v1`
++  - hash: `ae0794c9fb2d0408c545ff0fb58293bfe2a4fdc7147741f19429872cdbf44d4a`
++  - validation: LEGAL_REVIEW
++  - production: blocked
++
++A policy cannot be modified under the same `policyId` without triggering an integrity error.
++
++A changed rule requires a new version.
++
++## Weekly statement
++
++Statement identity is deterministic from:
++- policy hash;
++- sorted source facts;
++- calculation result;
++- statement version.
++
++Example Belgium statement:
++- statement ID: `9c6c574d92fdbde7ba3a53033a48a035aba209463c8bff3c960e875c9a44cb63`
++- facts hash: `5c7bd1b727c32c999520e2ee19b885f898072a80fa89e9560c7ee56924695cac`
++- paid time: 5,400 seconds = 90 min;
++- active mission: 3,000 seconds = 50 min;
++- pickup waiting/dwell: 600 seconds = 10 min;
++- required reposition: 900 seconds = 15 min;
++- other paid work: 900 seconds = 15 min;
++- eligible income: 26.00 EUR;
++- POG LAB floor: 28.50 EUR;
++- true-up: 2.50 EUR;
++- tips: 5.00 EUR;
++- expenses: 3.00 EUR;
++- total cash due: 36.50 EUR.
++
++Warnings are preserved in the statement:
++- country policy not legally GREEN;
++- legal floor not configured;
++- low utilization belongs to POG zone risk.
++
++## Contestability
++
++The statement contract is explicitly `contestable: true`.
++
++Future production implementation must add:
++- visible explanation;
++- support/dispute entry point;
++- human correction workflow;
++- immutable correction trail;
++- settlement state/payment reference.
+diff --git a/docs/courier-fair-pay-lab/12_BELGIUM_SENSITIVITY_FINDINGS.md b/docs/courier-fair-pay-lab/12_BELGIUM_SENSITIVITY_FINDINGS.md
+new file mode 100644
+index 0000000..08b2769
+--- /dev/null
++++ b/docs/courier-fair-pay-lab/12_BELGIUM_SENSITIVITY_FINDINGS.md
+@@ -0,0 +1,71 @@
++# Belgium Sensitivity Findings — LAB
++
++All numbers in this file are laboratory assumptions, not approved production economics.
++
++## Economic sweep
++
++Variables swept:
++- employer courier cost: 26–34 EUR / paid hour;
++- contribution available before Courier: 9–14 EUR / delivery;
++- target residual contribution: 2 EUR / delivery.
++
++At 30 EUR employer cost per paid hour:
++
++| Contribution before Courier | Break-even deliveries/h | Deliveries/h for 2 EUR residual/order |
++| ---: | ---: | ---: |
++| 9 EUR | 3.33 | 4.29 |
++| 10 EUR | 3.00 | 3.75 |
++| 11 EUR | 2.73 | 3.33 |
++| 12 EUR | 2.50 | 3.00 |
++| 13 EUR | 2.31 | 2.73 |
++| 14 EUR | 2.14 | 2.50 |
++
++The implication is structural: contribution per order and delivery density are coupled. There is no single universal viable density.
++
++## Waiting-time sensitivity
++
++Illustrative operational assumption:
++- 17 min base travel/handling per delivery;
++- employer cost 30 EUR/h;
++- contribution before Courier 12 EUR/delivery.
++
++Without batching:
++
++| Merchant wait/order | Deliveries/h | Residual/h |
++| ---: | ---: | ---: |
++| 0 min | 3.53 | +12.35 EUR |
++| 3 min | 3.00 | +6.00 EUR |
++| 6 min | 2.61 | +1.30 EUR |
++| 9 min | 2.31 | -2.31 EUR |
++| 12 min | 2.07 | -5.17 EUR |
++
++With a LAB batch-efficiency multiplier of 1.20:
++
++| Merchant wait/order | Deliveries/h | Residual/h |
++| ---: | ---: | ---: |
++| 0 min | 4.24 | +20.82 EUR |
++| 3 min | 3.60 | +13.20 EUR |
++| 6 min | 3.13 | +7.57 EUR |
++| 9 min | 2.77 | +3.23 EUR |
++| 12 min | 2.48 | -0.21 EUR |
++
++## Interpretation
++
++Merchant waiting can erase the economics of a fair-pay fleet even when courier pay itself is correctly designed.
++
++Therefore Merchant readiness is not merely UX. It is part of Payroll viability.
++
++Batching can recover capacity, but it must never be treated as permission to overload or create unsafe route pressure.
++
++## Required pilot measurements
++
++Before accepting these laboratory thresholds:
++- actual employer cost;
++- actual contribution before Courier;
++- real merchant wait distribution;
++- actual non-wait cycle time;
++- achievable safe batching;
++- cancellation/incident effect;
++- demand profile by 15/30-minute interval.
++
++The simulator must be recalibrated with observed pilot data.
+diff --git a/docs/courier-fair-pay-lab/13_MASTER_TODO.md b/docs/courier-fair-pay-lab/13_MASTER_TODO.md
+new file mode 100644
+index 0000000..7dc1b72
+--- /dev/null
++++ b/docs/courier-fair-pay-lab/13_MASTER_TODO.md
+@@ -0,0 +1,109 @@
++# Courier Fair Pay Lab — Master TODO
++
++Updated: 27 October 2026
++
++## A. Kernel / mathematics
++
++- [x] Separate Fair Pay from Zone Viability.
++- [x] Legal floor / POG floor / country guarantee arbitration.
++- [x] Tips excluded from floor satisfaction.
++- [x] Expenses excluded from floor satisfaction.
++- [x] Low utilization treated as POG risk.
++- [x] Belgium employee LAB adapter.
++- [x] France ARPE reference adapter.
++- [x] Separate France estimated activity duration from actual clock time.
++- [x] Break-even and target-density engine.
++- [x] Merchant wait / batching density model.
++- [x] Belgium economics sensitivity sweep.
++
++## B. Audit / ledger
++
++- [x] Immutable policy hash.
++- [x] Same-version mutation detection.
++- [x] Canonical source fact contract.
++- [x] Duplicate fact protection.
++- [x] Time-overlap protection.
++- [x] Duplicate mission activity-estimate protection.
++- [x] Deterministic weekly statement.
++- [x] Fact hash + policy hash + statement hash.
++- [x] Statement marked contestable.
++
++## C. Telemetry
++
++- [x] Shared raw clock-event contract.
++- [x] Mission event normalizer.
++- [x] OPS reposition/other-paid segment normalizer.
++- [x] Existing acceptance/ready/pickup/delivery fields inventoried.
++- [ ] Instrument `PICKUP_ARRIVED` in Courier.
++- [ ] Audit runtime population of `readyAt`.
++- [ ] Emit accepted/picked-up/delivered payroll clock events from API.
++- [ ] Emit merchant-ready payroll clock event.
++- [ ] Emit reposition start/end from OPS/Courier.
++- [ ] Establish canonical tip credit.
++- [ ] Establish canonical expense reimbursement credit.
++- [ ] Establish legally validated eligible-income credit.
++
++## D. Persistence / execution
++
++- [ ] Append-only payroll fact store.
++- [ ] Persistent policy ledger.
++- [ ] Weekly statement persistence.
++- [ ] Idempotent weekly calculation job.
++- [ ] Settlement/payment status model.
++- [ ] Correction/reversal model without silent negative adjustments.
++- [ ] Statement API.
++- [ ] Courier statement UI.
++- [ ] Human dispute/correction workflow.
++
++## E. Belgium legal/payroll gates
++
++- [ ] Final worker-status architecture.
++- [ ] Competent joint committee/CBA.
++- [ ] Legal/conventional wage floor.
++- [ ] Premiums/working-time rules.
++- [ ] Waiting/reposition/break classification.
++- [ ] Employer contributions/holiday cost model.
++- [ ] Accident/work-risk insurance.
++- [ ] Equipment/expense policy.
++- [ ] Scheduling/part-time/flex model.
++- [ ] Payroll cadence/payslip requirements.
++- [ ] Dispute/representation process.
++- [ ] Qualified Belgian legal review.
++- [ ] Policy transition DRAFT → LEGAL_REVIEW → GREEN.
++
++## F. Pilot economics
++
++- [x] LOW / BASE / HIGH illustrative scenarios.
++- [x] 30 economic sensitivity combinations.
++- [x] 45 operational sensitivity combinations.
++- [ ] Replace lab cost/hour with real employer cost.
++- [ ] Replace lab contribution/order with actual unit economics.
++- [ ] Instrument waiting by merchant.
++- [ ] Instrument empty/reposition km/time.
++- [ ] Instrument batching.
++- [ ] Define first Brussels micro-zone.
++- [ ] Define staffing windows.
++- [ ] Run four-week controlled pilot.
++- [ ] Establish scale/no-scale decision thresholds.
++
++## G. Release safety
++
++- [x] DRAFT policy blocked from production execution.
++- [x] Current branch isolated from production.
++- [x] Local Git commits used as checkpoints.
++- [ ] Remote branch content backup completed.
++- [ ] Full build/typecheck in restored workspace toolchain.
++- [ ] Production feature flag.
++- [ ] No default/fallback country adapter.
++- [ ] Final end-to-end pre-release certification.
++
++## Current QA
++
++**25 / 25 tests PASS.**
++
++Next priority:
++1. persistence schema in LAB;
++2. API/Courier/Merchant event producers behind disabled feature flag;
++3. weekly job + statement API in LAB;
++4. Belgium legal-data pack;
++5. recalibrate economics with real POG figures.
+diff --git a/docs/courier-fair-pay-lab/sql/001_COURIER_FAIR_PAY_APPEND_ONLY_DRAFT.sql b/docs/courier-fair-pay-lab/sql/001_COURIER_FAIR_PAY_APPEND_ONLY_DRAFT.sql
+new file mode 100644
+index 0000000..44c5f05
+--- /dev/null
++++ b/docs/courier-fair-pay-lab/sql/001_COURIER_FAIR_PAY_APPEND_ONLY_DRAFT.sql
+@@ -0,0 +1,130 @@
++-- DelishAfrica® Courier Fair Pay Lab
++-- DRAFT ONLY — NOT APPLIED
++-- PostgreSQL append-only persistence model.
++
++BEGIN;
++
++CREATE TABLE IF NOT EXISTS courier_payroll_policy_ledger (
++  policy_id text PRIMARY KEY,
++  policy_hash char(64) NOT NULL UNIQUE,
++  country_code text NOT NULL,
++  currency text NOT NULL,
++  worker_status text NOT NULL,
++  validation_status text NOT NULL,
++  effective_from date,
++  production_activation_allowed boolean NOT NULL DEFAULT false,
++  policy_json jsonb NOT NULL,
++  sealed_at timestamptz NOT NULL,
++  sealed_by text NOT NULL,
++  created_at timestamptz NOT NULL DEFAULT now(),
++  CHECK (validation_status IN ('DRAFT', 'LEGAL_REVIEW', 'GREEN')),
++  CHECK (worker_status IN ('EMPLOYEE', 'INDEPENDENT')),
++  CHECK (
++    production_activation_allowed = false
++    OR (validation_status = 'GREEN' AND effective_from IS NOT NULL)
++  )
++);
++
++CREATE TABLE IF NOT EXISTS courier_payroll_clock_events (
++  event_id text PRIMARY KEY,
++  event_hash char(64) NOT NULL,
++  courier_id text NOT NULL,
++  country_code text NOT NULL,
++  week_key text NOT NULL,
++  policy_id text NOT NULL REFERENCES courier_payroll_policy_ledger(policy_id),
++  event_type text NOT NULL,
++  source text NOT NULL,
++  occurred_at timestamptz NOT NULL,
++  order_id text,
++  mission_id text,
+
+[executed on device: purpletoshiba (90e8e634-9b37-494e-b0bb-834c5c7e7d00)]
