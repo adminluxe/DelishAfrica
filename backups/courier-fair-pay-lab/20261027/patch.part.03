@@ -1,0 +1,702 @@
++  merchant_id text,
++  segment_id text,
++  event_json jsonb NOT NULL,
++  created_at timestamptz NOT NULL DEFAULT now()
++);
++
++CREATE TABLE IF NOT EXISTS courier_payroll_facts (
++  fact_id text PRIMARY KEY,
++  fact_hash char(64) NOT NULL,
++  courier_id text NOT NULL,
++  country_code text NOT NULL,
++  week_key text NOT NULL,
++  policy_id text NOT NULL REFERENCES courier_payroll_policy_ledger(policy_id),
++  kind text NOT NULL,
++  category text NOT NULL,
++  recorded_at timestamptz NOT NULL,
++  order_id text,
++  mission_id text,
++  merchant_id text,
++  fact_json jsonb NOT NULL,
++  created_at timestamptz NOT NULL DEFAULT now(),
++  CHECK (kind IN ('TIME', 'MONEY', 'DURATION'))
++);
++
++CREATE TABLE IF NOT EXISTS courier_payroll_statements (
++  statement_id char(64) PRIMARY KEY,
++  statement_version text NOT NULL,
++  courier_id text NOT NULL,
++  country_code text NOT NULL,
++  week_key text NOT NULL,
++  policy_id text NOT NULL REFERENCES courier_payroll_policy_ledger(policy_id),
++  policy_hash char(64) NOT NULL,
++  facts_hash char(64) NOT NULL,
++  production_eligible boolean NOT NULL DEFAULT false,
++  statement_json jsonb NOT NULL,
++  created_at timestamptz NOT NULL DEFAULT now()
++);
++
++CREATE INDEX IF NOT EXISTS courier_payroll_clock_week_idx
++  ON courier_payroll_clock_events (courier_id, week_key, policy_id);
++
++CREATE INDEX IF NOT EXISTS courier_payroll_facts_week_idx
++  ON courier_payroll_facts (courier_id, week_key, policy_id);
++
++CREATE INDEX IF NOT EXISTS courier_payroll_statement_week_idx
++  ON courier_payroll_statements (courier_id, week_key, policy_id);
++
++CREATE OR REPLACE FUNCTION courier_payroll_forbid_mutation()
++RETURNS trigger
++LANGUAGE plpgsql
++AS $$
++BEGIN
++  RAISE EXCEPTION 'courier_payroll_append_only_violation';
++END;
++$$;
++
++DROP TRIGGER IF EXISTS courier_payroll_policy_no_update
++  ON courier_payroll_policy_ledger;
++CREATE TRIGGER courier_payroll_policy_no_update
++BEFORE UPDATE OR DELETE ON courier_payroll_policy_ledger
++FOR EACH ROW EXECUTE FUNCTION courier_payroll_forbid_mutation();
++
++DROP TRIGGER IF EXISTS courier_payroll_clock_no_update
++  ON courier_payroll_clock_events;
++CREATE TRIGGER courier_payroll_clock_no_update
++BEFORE UPDATE OR DELETE ON courier_payroll_clock_events
++FOR EACH ROW EXECUTE FUNCTION courier_payroll_forbid_mutation();
++
++DROP TRIGGER IF EXISTS courier_payroll_facts_no_update
++  ON courier_payroll_facts;
++CREATE TRIGGER courier_payroll_facts_no_update
++BEFORE UPDATE OR DELETE ON courier_payroll_facts
++FOR EACH ROW EXECUTE FUNCTION courier_payroll_forbid_mutation();
++
++DROP TRIGGER IF EXISTS courier_payroll_statements_no_update
++  ON courier_payroll_statements;
++CREATE TRIGGER courier_payroll_statements_no_update
++BEFORE UPDATE OR DELETE ON courier_payroll_statements
++FOR EACH ROW EXECUTE FUNCTION courier_payroll_forbid_mutation();
++
++COMMIT;
++
++-- Deliberately absent:
++-- 1) no UPDATE-based correction path;
++-- 2) no DELETE path;
++-- 3) no negative-pay adjustment table;
++-- 4) no production scheduler;
++-- 5) no migration execution command.
++--
++-- Corrections must be designed as explicit superseding facts/statements
++-- with preserved audit history before this draft can move to implementation.
+diff --git a/packages/contracts/package.json b/packages/contracts/package.json
+index bef7810..965ddc3 100644
+--- a/packages/contracts/package.json
++++ b/packages/contracts/package.json
+@@ -28,6 +28,14 @@
+     "./live-location": {
+       "types": "./src/live-location.ts",
+       "default": "./src/live-location.ts"
++    },
++    "./courier-payroll": {
++      "types": "./src/courier-payroll.ts",
++      "default": "./src/courier-payroll.ts"
++    },
++    "./courier-payroll-telemetry": {
++      "types": "./src/courier-payroll-telemetry.ts",
++      "default": "./src/courier-payroll-telemetry.ts"
+     }
+   },
+   "scripts": {
+diff --git a/packages/contracts/src/courier-payroll-telemetry.ts b/packages/contracts/src/courier-payroll-telemetry.ts
+new file mode 100644
+index 0000000..8a16295
+--- /dev/null
++++ b/packages/contracts/src/courier-payroll-telemetry.ts
+@@ -0,0 +1,71 @@
++import type { ISODateTime } from "./order";
++import type { CourierPayrollFactSource } from "./courier-payroll";
++
++export type CourierPayrollClockEventType =
++  | "MISSION_ACCEPTED"
++  | "MERCHANT_READY"
++  | "PICKUP_ARRIVED"
++  | "PICKED_UP"
++  | "DELIVERED"
++  | "REPOSITION_STARTED"
++  | "REPOSITION_ENDED"
++  | "OTHER_PAID_STARTED"
++  | "OTHER_PAID_ENDED";
++
++export interface CourierPayrollClockEvent {
++  eventId: string;
++  eventType: CourierPayrollClockEventType;
++  courierId: string;
++  countryCode: string;
++  weekKey: string;
++  policyId: string;
++  source: CourierPayrollFactSource;
++  occurredAt: ISODateTime;
++  orderId?: string;
++  missionId?: string;
++  merchantId?: string;
++  segmentId?: string;
++  estimatedActivitySeconds?: number;
++  evidenceRefs?: string[];
++}
++
++export function isCourierPayrollClockEvent(
++  value: unknown,
++): value is CourierPayrollClockEvent {
++  if (!value || typeof value !== "object") return false;
++  const event = value as Partial<CourierPayrollClockEvent>;
++  const allowed: CourierPayrollClockEventType[] = [
++    "MISSION_ACCEPTED",
++    "MERCHANT_READY",
++    "PICKUP_ARRIVED",
++    "PICKED_UP",
++    "DELIVERED",
++    "REPOSITION_STARTED",
++    "REPOSITION_ENDED",
++    "OTHER_PAID_STARTED",
++    "OTHER_PAID_ENDED",
++  ];
++  if (
++    !event.eventId ||
++    !event.courierId ||
++    !event.countryCode ||
++    !event.weekKey ||
++    !event.policyId ||
++    !event.source ||
++    !event.eventType ||
++    !allowed.includes(event.eventType)
++  ) {
++    return false;
++  }
++  if (!event.occurredAt || !Number.isFinite(Date.parse(event.occurredAt))) {
++    return false;
++  }
++  if (
++    event.estimatedActivitySeconds != null &&
++    (!Number.isSafeInteger(event.estimatedActivitySeconds) ||
++      event.estimatedActivitySeconds < 0)
++  ) {
++    return false;
++  }
++  return true;
++}
+diff --git a/packages/contracts/src/courier-payroll.ts b/packages/contracts/src/courier-payroll.ts
+new file mode 100644
+index 0000000..4088d36
+--- /dev/null
++++ b/packages/contracts/src/courier-payroll.ts
+@@ -0,0 +1,147 @@
++import type { ISODateTime } from "./order";
++
++export type CourierPayrollFactSource =
++  | "API_ORDER"
++  | "COURIER_APP"
++  | "MERCHANT_APP"
++  | "OPS"
++  | "PAYMENTS"
++  | "PAYROLL_NORMALIZER";
++
++export type CourierPayrollTimeCategory =
++  | "ACTIVE_MISSION"
++  | "PLATFORM_CONTROLLED_WAITING"
++  | "REQUIRED_REPOSITION"
++  | "OTHER_PAID"
++  | "EXCLUDED";
++
++export type CourierPayrollMoneyCategory =
++  | "ELIGIBLE_INCOME"
++  | "TIP"
++  | "EXPENSE_REIMBURSEMENT";
++
++export type CourierPayrollDurationCategory = "ACTIVITY_GUARANTEE_ESTIMATE";
++
++export interface CourierPayrollFactBase {
++  factId: string;
++  courierId: string;
++  countryCode: string;
++  weekKey: string;
++  policyId: string;
++  source: CourierPayrollFactSource;
++  recordedAt: ISODateTime;
++  orderId?: string;
++  missionId?: string;
++  merchantId?: string;
++  evidenceRefs?: string[];
++}
++
++export interface CourierPayrollTimeFact extends CourierPayrollFactBase {
++  kind: "TIME";
++  category: CourierPayrollTimeCategory;
++  startedAt: ISODateTime;
++  endedAt: ISODateTime;
++}
++
++export interface CourierPayrollMoneyFact extends CourierPayrollFactBase {
++  kind: "MONEY";
++  category: CourierPayrollMoneyCategory;
++  amountMinor: number;
++  currency: string;
++}
++
++export interface CourierPayrollDurationFact extends CourierPayrollFactBase {
++  kind: "DURATION";
++  category: CourierPayrollDurationCategory;
++  seconds: number;
++}
++
++export type CourierPayrollFact =
++  | CourierPayrollTimeFact
++  | CourierPayrollMoneyFact
++  | CourierPayrollDurationFact;
++
++function text(value: unknown): string {
++  return String(value ?? "").trim();
++}
++
++function validIsoDateTime(value: unknown): boolean {
++  const raw = text(value);
++  if (!raw) return false;
++  const parsed = Date.parse(raw);
++  return Number.isFinite(parsed);
++}
++
++function validBase(fact: Partial<CourierPayrollFactBase>): boolean {
++  return Boolean(
++    text(fact.factId) &&
++      text(fact.courierId) &&
++      text(fact.countryCode) &&
++      text(fact.weekKey) &&
++      text(fact.policyId) &&
++      text(fact.source) &&
++      validIsoDateTime(fact.recordedAt),
++  );
++}
++
++export function isCourierPayrollFact(
++  value: unknown,
++): value is CourierPayrollFact {
++  if (!value || typeof value !== "object") return false;
++  const fact = value as Partial<CourierPayrollFact>;
++  if (!validBase(fact)) return false;
++
++  if (fact.kind === "TIME") {
++    const time = fact as Partial<CourierPayrollTimeFact>;
++    if (
++      ![
++        "ACTIVE_MISSION",
++        "PLATFORM_CONTROLLED_WAITING",
++        "REQUIRED_REPOSITION",
++        "OTHER_PAID",
++        "EXCLUDED",
++      ].includes(String(time.category))
++    ) {
++      return false;
++    }
++    if (!validIsoDateTime(time.startedAt) || !validIsoDateTime(time.endedAt)) {
++      return false;
++    }
++    return Date.parse(String(time.endedAt)) > Date.parse(String(time.startedAt));
++  }
++
++  if (fact.kind === "MONEY") {
++    const money = fact as Partial<CourierPayrollMoneyFact>;
++    if (
++      !["ELIGIBLE_INCOME", "TIP", "EXPENSE_REIMBURSEMENT"].includes(
++        String(money.category),
++      )
++    ) {
++      return false;
++    }
++    return (
++      Number.isSafeInteger(money.amountMinor) &&
++      Number(money.amountMinor) >= 0 &&
++      Boolean(text(money.currency))
++    );
++  }
++
++  if (fact.kind === "DURATION") {
++    const duration = fact as Partial<CourierPayrollDurationFact>;
++    return (
++      duration.category === "ACTIVITY_GUARANTEE_ESTIMATE" &&
++      Number.isSafeInteger(duration.seconds) &&
++      Number(duration.seconds) >= 0
++    );
++  }
++
++  return false;
++}
++
++export function assertCourierPayrollFact(
++  value: unknown,
++): asserts value is CourierPayrollFact {
++  if (!isCourierPayrollFact(value)) {
++    throw new Error("COURIER_PAYROLL_INVALID_FACT");
++  }
++}
+diff --git a/packages/contracts/src/index.ts b/packages/contracts/src/index.ts
+index 2e12699..1a4e237 100644
+--- a/packages/contracts/src/index.ts
++++ b/packages/contracts/src/index.ts
+@@ -4,3 +4,5 @@ export * from "./projections";
+ 
+ export * from "./api-order-adapter";
+ export * from "./live-location";
++export * from "./courier-payroll";
++export * from "./courier-payroll-telemetry";
+diff --git a/services/api-nest/src/courier-compensation/france-weekly-guarantee.spec.ts b/services/api-nest/src/courier-compensation/france-weekly-guarantee.spec.ts
+new file mode 100644
+index 0000000..d42c9ab
+--- /dev/null
++++ b/services/api-nest/src/courier-compensation/france-weekly-guarantee.spec.ts
+@@ -0,0 +1,149 @@
++import { equal, throws } from 'node:assert/strict';
++import { test } from 'node:test';
++import {
++  computeFranceCourierWeeklyGuarantee,
++  computeFranceCourierWeeklyGuarantees,
++  minimumGuaranteedIncomeCents,
++} from './france-weekly-guarantee';
++
++test('19 €/activity-hour weekly floor excludes tips from covered income', () => {
++  const result = computeFranceCourierWeeklyGuarantee([
++    {
++      courierId: 'courier-1',
++      missionId: 'mission-1',
++      weekKey: '2026-W44',
++      estimatedActivitySeconds: 3600,
++      activityIncomeCents: 1800,
++      tipsCents: 500,
++    },
++  ]);
++
++  equal(result.minimumGuaranteedIncomeCents, 1900);
++  equal(result.coveredIncomeCents, 1800);
++  equal(result.tipsExcludedCents, 500);
++  equal(result.differentialDueCents, 100);
++  equal(result.guaranteeSatisfied, false);
++  equal(result.differentialPaymentDelayDays, 7);
++});
++
++test('weekly aggregation uses cumulative estimated activity duration', () => {
++  const result = computeFranceCourierWeeklyGuarantee([
++    {
++      courierId: 'courier-1',
++      missionId: 'mission-1',
++      weekKey: '2026-W44',
++      estimatedActivitySeconds: 1800,
++      activityIncomeCents: 950,
++    },
++    {
++      courierId: 'courier-1',
++      missionId: 'mission-2',
++      weekKey: '2026-W44',
++      estimatedActivitySeconds: 1800,
++      activityIncomeCents: 950,
++    },
++  ]);
++
++  equal(result.coveredActivitySeconds, 3600);
++  equal(result.minimumGuaranteedIncomeCents, 1900);
++  equal(result.differentialDueCents, 0);
++  equal(result.guaranteeSatisfied, true);
++});
++
++test('minimum guarantee rounds upward to the next cent', () => {
++  equal(minimumGuaranteedIncomeCents(1), 1);
++  equal(minimumGuaranteedIncomeCents(1800), 950);
++  equal(minimumGuaranteedIncomeCents(3600), 1900);
++});
++
++test('records are grouped by courier and week', () => {
++  const results = computeFranceCourierWeeklyGuarantees([
++    {
++      courierId: 'courier-b',
++      missionId: 'mission-3',
++      weekKey: '2026-W44',
++      estimatedActivitySeconds: 3600,
++      activityIncomeCents: 1700,
++    },
++    {
++      courierId: 'courier-a',
++      missionId: 'mission-1',
++      weekKey: '2026-W44',
++      estimatedActivitySeconds: 1800,
++      activityIncomeCents: 900,
++    },
++    {
++      courierId: 'courier-a',
++      missionId: 'mission-2',
++      weekKey: '2026-W44',
++      estimatedActivitySeconds: 1800,
++      activityIncomeCents: 1000,
++    },
++  ]);
++
++  equal(results.length, 2);
++  equal(results[0].courierId, 'courier-a');
++  equal(results[0].differentialDueCents, 0);
++  equal(results[1].courierId, 'courier-b');
++  equal(results[1].differentialDueCents, 200);
++});
++
++test('mixed courier/week inputs are rejected by single-week calculation', () => {
++  throws(
++    () =>
++      computeFranceCourierWeeklyGuarantee([
++        {
++          courierId: 'courier-1',
++          missionId: 'mission-1',
++          weekKey: '2026-W44',
++          estimatedActivitySeconds: 100,
++          activityIncomeCents: 100,
++        },
++        {
++          courierId: 'courier-2',
++          missionId: 'mission-2',
++          weekKey: '2026-W44',
++          estimatedActivitySeconds: 100,
++          activityIncomeCents: 100,
++        },
++      ]),
++    /MIXED_COURIERS/,
++  );
++
++  throws(
++    () =>
++      computeFranceCourierWeeklyGuarantee([
++        {
++          courierId: 'courier-1',
++          missionId: 'mission-1',
++          weekKey: '2026-W44',
++          estimatedActivitySeconds: 100,
++          activityIncomeCents: 100,
++        },
++        {
++          courierId: 'courier-1',
++          missionId: 'mission-2',
++          weekKey: '2026-W45',
++          estimatedActivitySeconds: 100,
++          activityIncomeCents: 100,
++        },
++      ]),
++    /MIXED_WEEKS/,
++  );
++});
++
++test('negative or unsafe numeric values are rejected', () => {
++  throws(
++    () =>
++      computeFranceCourierWeeklyGuarantee([
++        {
++          courierId: 'courier-1',
++          missionId: 'mission-1',
++          weekKey: '2026-W44',
++          estimatedActivitySeconds: -1,
++          activityIncomeCents: 100,
++        },
++      ]),
++    /INVALID_ESTIMATEDACTIVITYSECONDS/,
++  );
++});
+diff --git a/services/api-nest/src/courier-compensation/france-weekly-guarantee.ts b/services/api-nest/src/courier-compensation/france-weekly-guarantee.ts
+new file mode 100644
+index 0000000..6125d15
+--- /dev/null
++++ b/services/api-nest/src/courier-compensation/france-weekly-guarantee.ts
+@@ -0,0 +1,147 @@
++export const FRANCE_COURIER_MIN_ACTIVITY_RATE_CENTS_PER_HOUR = 1900;
++export const FRANCE_COURIER_DIFFERENTIAL_PAYMENT_DELAY_DAYS = 7;
++export const FRANCE_COURIER_GUARANTEE_VERSION = 'FR-ARPE-2026-09-01-v1';
++
++export interface FranceCourierActivityRecord {
++  courierId: string;
++  missionId: string;
++  weekKey: string;
++  estimatedActivitySeconds: number;
++  activityIncomeCents: number;
++  tipsCents?: number;
++}
++
++export interface FranceCourierWeeklyGuaranteeResult {
++  courierId: string;
++  weekKey: string;
++  coveredMissionCount: number;
++  coveredActivitySeconds: number;
++  coveredIncomeCents: number;
++  tipsExcludedCents: number;
++  minimumGuaranteedIncomeCents: number;
++  differentialDueCents: number;
++  guaranteeSatisfied: boolean;
++  calculationVersion: string;
++  differentialPaymentDelayDays: number;
++}
++
++function assertNonNegativeSafeInteger(value: number, field: string): void {
++  if (!Number.isSafeInteger(value) || value < 0) {
++    throw new Error(`FRANCE_COURIER_GUARANTEE_INVALID_${field.toUpperCase()}`);
++  }
++}
++
++function assertRequiredText(value: string, field: string): void {
++  if (!String(value || '').trim()) {
++    throw new Error(`FRANCE_COURIER_GUARANTEE_INVALID_${field.toUpperCase()}`);
++  }
++}
++
++export function minimumGuaranteedIncomeCents(
++  coveredActivitySeconds: number,
++): number {
++  assertNonNegativeSafeInteger(coveredActivitySeconds, 'coveredActivitySeconds');
++
++  if (coveredActivitySeconds === 0) return 0;
++
++  return Math.ceil(
++    (coveredActivitySeconds * FRANCE_COURIER_MIN_ACTIVITY_RATE_CENTS_PER_HOUR) /
++      3600,
++  );
++}
++
++export function computeFranceCourierWeeklyGuarantee(
++  records: FranceCourierActivityRecord[],
++): FranceCourierWeeklyGuaranteeResult {
++  if (!Array.isArray(records) || records.length === 0) {
++    throw new Error('FRANCE_COURIER_GUARANTEE_EMPTY_WEEK');
++  }
++
++  const courierId = String(records[0].courierId || '').trim();
++  const weekKey = String(records[0].weekKey || '').trim();
++  assertRequiredText(courierId, 'courierId');
++  assertRequiredText(weekKey, 'weekKey');
++
++  let coveredActivitySeconds = 0;
++  let coveredIncomeCents = 0;
++  let tipsExcludedCents = 0;
++
++  for (const record of records) {
++    assertRequiredText(record.courierId, 'courierId');
++    assertRequiredText(record.missionId, 'missionId');
++    assertRequiredText(record.weekKey, 'weekKey');
++
++    if (String(record.courierId).trim() !== courierId) {
++      throw new Error('FRANCE_COURIER_GUARANTEE_MIXED_COURIERS');
++    }
++    if (String(record.weekKey).trim() !== weekKey) {
++      throw new Error('FRANCE_COURIER_GUARANTEE_MIXED_WEEKS');
++    }
++
++    assertNonNegativeSafeInteger(
++      record.estimatedActivitySeconds,
++      'estimatedActivitySeconds',
++    );
++    assertNonNegativeSafeInteger(record.activityIncomeCents, 'activityIncomeCents');
++
++    const tipsCents = record.tipsCents ?? 0;
++    assertNonNegativeSafeInteger(tipsCents, 'tipsCents');
++
++    coveredActivitySeconds += record.estimatedActivitySeconds;
++    coveredIncomeCents += record.activityIncomeCents;
++    tipsExcludedCents += tipsCents;
++
++    if (
++      !Number.isSafeInteger(coveredActivitySeconds) ||
++      !Number.isSafeInteger(coveredIncomeCents) ||
++      !Number.isSafeInteger(tipsExcludedCents)
++    ) {
++      throw new Error('FRANCE_COURIER_GUARANTEE_TOTAL_OVERFLOW');
++    }
++  }
++
++  const minimumGuaranteedIncome =
++    minimumGuaranteedIncomeCents(coveredActivitySeconds);
++  const differentialDueCents = Math.max(
++    0,
++    minimumGuaranteedIncome - coveredIncomeCents,
++  );
++
++  return {
++    courierId,
++    weekKey,
++    coveredMissionCount: records.length,
++    coveredActivitySeconds,
++    coveredIncomeCents,
++    tipsExcludedCents,
++    minimumGuaranteedIncomeCents: minimumGuaranteedIncome,
++    differentialDueCents,
++    guaranteeSatisfied: differentialDueCents === 0,
++    calculationVersion: FRANCE_COURIER_GUARANTEE_VERSION,
++    differentialPaymentDelayDays:
++      FRANCE_COURIER_DIFFERENTIAL_PAYMENT_DELAY_DAYS,
++  };
++}
++
++export function computeFranceCourierWeeklyGuarantees(
++  records: FranceCourierActivityRecord[],
++): FranceCourierWeeklyGuaranteeResult[] {
++  const grouped = new Map<string, FranceCourierActivityRecord[]>();
++
++  for (const record of records) {
++    assertRequiredText(record.courierId, 'courierId');
++    assertRequiredText(record.weekKey, 'weekKey');
++    const key = `${String(record.courierId).trim()}::${String(record.weekKey).trim()}`;
++    const bucket = grouped.get(key) || [];
++    bucket.push(record);
++    grouped.set(key, bucket);
++  }
++
++  return Array.from(grouped.values())
++    .map((bucket) => computeFranceCourierWeeklyGuarantee(bucket))
++    .sort((a, b) =>
++      a.weekKey === b.weekKey
++        ? a.courierId.localeCompare(b.courierId)
++        : a.weekKey.localeCompare(b.weekKey),
++    );
++}
+diff --git a/services/api-nest/src/courier-payroll/adapters/belgium.ts b/services/api-nest/src/courier-payroll/adapters/belgium.ts
+new file mode 100644
+index 0000000..bbd20c3
+--- /dev/null
++++ b/services/api-nest/src/courier-payroll/adapters/belgium.ts
+@@ -0,0 +1,40 @@
++import { CountryPayPolicy } from '../courier-payroll.types';
++
++export interface BelgiumEmployeeLabPolicyOptions {
++  legalFloorCentsPerPaidHour?: number | null;
++  pogFairnessFloorCentsPerPaidHour?: number;
++}
++
++export function createBelgiumEmployeeLabPolicy(
++  options: BelgiumEmployeeLabPolicyOptions = {},
++): CountryPayPolicy {
++  return {
++    policyId: 'BE-EMPLOYEE-POG-FAIR-PAY-LAB-v0.1',
++    countryCode: 'BE',
++    currency: 'EUR',
++    workerStatus: 'EMPLOYEE',
++    validationStatus: 'DRAFT',
++    effectiveFrom: null,
++    legalFloorCentsPerPaidHour:
++      options.legalFloorCentsPerPaidHour ?? null,
++    pogFairnessFloorCentsPerPaidHour:
++      options.pogFairnessFloorCentsPerPaidHour ?? 1900,
++    paidTimeRules: {
++      activeMission: true,
++      platformControlledWaiting: true,
++      requiredReposition: true,
++      otherPaid: true,
++    },
++    weeklyActivityGuarantee: null,
++    tipsPassThrough: true,
++    tipsExcludedFromFloors: true,
++    expenseReimbursementsExcludedFromFloors: true,
++    productionActivationAllowed: false,
++    notes: [
++      'LAB ONLY: 19 EUR/hour is a POG fairness hypothesis, not a Belgian legal rate.',
++      'Legal floor remains unset until the competent Belgian joint committee/CBA and worker classification are validated.',
++      'POG lab principle: platform-controlled waiting and required repositioning are not pushed onto the courier as unpaid zone risk.',
+
+[executed on device: purpletoshiba (90e8e634-9b37-494e-b0bb-834c5c7e7d00)]
