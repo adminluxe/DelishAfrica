@@ -4,6 +4,8 @@ export * from './file-ledger-repository';
 export * from './fair-pay-kernel';
 export * from './zone-viability';
 export * from './employer-cost';
+export * from './dispute.types';
+export * from './file-dispute-repository';
 export * from './orchidpay-settlement-intent';
 export * from './orchidpay-shadow-client';
 export * from './lab-scenarios';

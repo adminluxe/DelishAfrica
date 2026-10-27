@@ -69,7 +69,8 @@ Updated: 27 October 2026 — checkpoint Fair Pay ↔ ORCHIDPAY
 - [ ] Production outbox publish contract.
 - [ ] Production payout/rail authorization.
 - [x] Courier statement UI — own statements only, LAB-only.
-- [ ] Human dispute/correction workflow.
+- [x] Human dispute workflow append-only + Courier UI + OPS review.
+- [x] Correction-required resolution separated from correction execution.
 
 ## E. Belgique legal/payroll
 - [ ] Worker-status final.
@@ -83,7 +84,8 @@ Updated: 27 October 2026 — checkpoint Fair Pay ↔ ORCHIDPAY
 - [ ] Equipment/expense policy.
 - [ ] Scheduling/part-time/flex.
 - [ ] Payroll cadence/payslip.
-- [ ] Dispute/representation process.
+- [x] Dispute workflow LAB (human review, append-only, own-statement isolation).
+- [ ] Representation/support rights + SLA production.
 - [ ] Qualified Belgian legal review.
 - [ ] DRAFT → LEGAL_REVIEW → GREEN.
 
@@ -112,7 +114,8 @@ Updated: 27 October 2026 — checkpoint Fair Pay ↔ ORCHIDPAY
 - [x] ORCHIDPAY lab archive + patch SHA-256 sur VPS et Toshiba.
 - [x] ORCHIDPAY lab contract sauvegardé sur GitHub.
 - [x] Full backend TypeScript PASS.
-- [x] Full Nest build PASS avec TypeScript 5.4.5.
+- [x] Backend TypeScript noEmit + emit build PASS.
+- [ ] Stabiliser wrapper Nest CLI (SIGSEGV intermittent; checkpoint antérieur PASS).
 - [x] Full Courier typecheck avec deps restaurées.
 - [x] Full Courier iOS bundle avec deps restaurées.
 - [x] No fallback country adapter.
@@ -144,7 +147,7 @@ Updated: 27 October 2026 — checkpoint Fair Pay ↔ ORCHIDPAY
 ## Current QA
 
 DelishAfrica Fair Pay / runtime / ORCHIDPAY client:
-**67 / 67 tests PASS**
+**72 / 72 tests PASS**
 
 Backend:
 - TypeScript: **PASS**
@@ -152,7 +155,7 @@ Backend:
 
 Courier:
 - TypeScript: **PASS**
-- Expo iOS/Hermes bundle: **PASS** — 1114 modules, bundle 3.33 MB
+- Expo iOS/Hermes bundle: **PASS** — 1114 modules, bundle 3.34 MB
 - Device E2E: **OPEN**
 
 ORCHIDPAY shadow consumer:
@@ -165,10 +168,10 @@ Production:
 **BLOCKED / NOT DEPLOYED / NO PAYOUT**
 
 ## Next priority
-1. sceller et pousser le checkpoint 67/67 + statement UI + Employer Cost;
-2. synchroniser Airtable/PurpleCRM avec le nouveau checkpoint;
-3. construire le workflow humain dispute/correction append-only;
-4. préparer le question pack CSC / Maison des Livreurs;
+1. sceller et pousser le checkpoint 72/72 + contestation humaine;
+2. synchroniser Airtable/PurpleCRM;
+3. préparer le question pack CSC / Maison des Livreurs;
+4. préparer le contrat ORCHIDPAY party/payee + balanced-ledger DRAFT;
 5. remplacer les hypothèses payroll par des valeurs validées (CP/CCT, charges, assurance);
 6. calibrer les unit economics réels;
 7. réconcilier l'autorité DB ORCHIDPAY avant toute migration.

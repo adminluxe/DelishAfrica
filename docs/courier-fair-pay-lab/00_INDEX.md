@@ -47,9 +47,9 @@ Belgium is the first laboratory. France is the first regulatory reference adapte
 ## QA lock
 
 27 October 2026:
-- DelishAfrica Fair Pay/runtime/ORCHIDPAY client: **61/61 tests PASS**;
+- DelishAfrica Fair Pay/runtime/ORCHIDPAY client: **72/72 tests PASS**;
 - backend TypeScript: **PASS**;
-- Nest build: **PASS** with TypeScript 5.4.5;
+- TypeScript emit build: **PASS**; Nest CLI wrapper: **intermittent SIGSEGV** after prior successful checkpoint;
 - Courier TypeScript: **PASS**;
 - Courier Expo iOS/Hermes bundle: **PASS**;
 - ORCHIDPAY shadow consumer: **9/9 PASS**;
@@ -89,3 +89,4 @@ The suite currently proves, among other invariants:
 - `18_ORCHIDPAY_INTEGRATION_EVIDENCE.md`
 - `19_BELGIUM_LEGAL_PAYROLL_DATA_PACK_20261027.md`
 - `20_BELGIUM_EMPLOYER_COST_ENGINE.md`
+- `21_HUMAN_DISPUTE_WORKFLOW.md`

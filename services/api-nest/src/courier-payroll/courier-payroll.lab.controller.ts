@@ -141,6 +141,104 @@ export class CourierPayrollLabController {
     };
   }
 
+  @Post('courier/disputes/open')
+  courierDisputeOpen(
+    @Req() request: OrdersRequest,
+    @Body() body: AnyRecord = {},
+  ) {
+    const principal = this.requireCourier(request);
+    this.requireEnabled();
+    const statementId = String(body.statementId || '').trim();
+    const reasonCode = String(body.reasonCode || '').trim();
+    const note = String(body.note || '').trim();
+    if (!statementId || !reasonCode || !note) {
+      throw new ForbiddenException({
+        ok: false,
+        code: 'courier_payroll_dispute_input_required',
+      });
+    }
+    const courierId = this.access.courierId(principal);
+    return {
+      ok: true,
+      labOnly: true,
+      ...this.bridge.openDispute({
+        statementId,
+        courierId,
+        actorSubject: principal.subject,
+        reasonCode,
+        note,
+        evidenceRefs: ['courier-app:fair-pay'],
+      }),
+    };
+  }
+
+  @Post('courier/disputes')
+  courierDisputes(@Req() request: OrdersRequest) {
+    const principal = this.requireCourier(request);
+    this.requireEnabled();
+    const courierId = this.access.courierId(principal);
+    return {
+      ok: true,
+      labOnly: true,
+      courierId,
+      disputes: this.bridge.listDisputesForCourier(courierId),
+    };
+  }
+
+  @Post('disputes/list')
+  disputesList(@Req() request: OrdersRequest) {
+    this.requireOps(request);
+    this.requireEnabled();
+    return {
+      ok: true,
+      labOnly: true,
+      disputes: this.bridge.listAllDisputes(),
+    };
+  }
+
+  @Post('disputes/review')
+  disputesReview(
+    @Req() request: OrdersRequest,
+    @Body() body: AnyRecord = {},
+  ) {
+    const principal = this.requireOps(request);
+    this.requireEnabled();
+    const disputeId = String(body.disputeId || '').trim();
+    const eventType = String(body.eventType || '').trim().toUpperCase();
+    const reasonCode = String(body.reasonCode || '').trim();
+    const note = String(body.note || '').trim();
+    const allowed = new Set([
+      'REVIEW_STARTED',
+      'RESOLVED_NO_CHANGE',
+      'RESOLVED_CORRECTION_REQUIRED',
+    ]);
+    if (!disputeId || !allowed.has(eventType) || !reasonCode || !note) {
+      throw new ForbiddenException({
+        ok: false,
+        code: 'courier_payroll_dispute_review_input_invalid',
+      });
+    }
+    const evidenceRefs = Array.isArray(body.evidenceRefs)
+      ? body.evidenceRefs.map((value: unknown) => String(value || '').trim()).filter(Boolean)
+      : [];
+    evidenceRefs.push('ops-subject:' + principal.subject);
+    return {
+      ok: true,
+      labOnly: true,
+      dispute: this.bridge.reviewDispute({
+        disputeId,
+        eventType: eventType as
+          | 'REVIEW_STARTED'
+          | 'RESOLVED_NO_CHANGE'
+          | 'RESOLVED_CORRECTION_REQUIRED',
+        actorSubject: principal.subject,
+        reasonCode,
+        note,
+        evidenceRefs,
+      }),
+    };
+  }
+
   @Post('courier/statements')
   courierStatements(
     @Req() request: OrdersRequest,

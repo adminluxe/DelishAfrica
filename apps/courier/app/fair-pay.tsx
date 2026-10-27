@@ -24,6 +24,22 @@ const API_BASE_URL = RAW_API.replace(/\/$/, "").endsWith("/api/v1")
   ? RAW_API.replace(/\/$/, "")
   : `${RAW_API.replace(/\/$/, "")}/api/v1`;
 
+type DisputeStatus =
+  | "OPEN"
+  | "UNDER_REVIEW"
+  | "RESOLVED_NO_CHANGE"
+  | "RESOLVED_CORRECTION_REQUIRED";
+
+type Dispute = {
+  disputeId: string;
+  statementId: string;
+  courierId: string;
+  status: DisputeStatus;
+  openedAt: string;
+  updatedAt: string;
+  reasonCode: string;
+};
+
 type Statement = {
   statementId: string;
   statementVersion: string;
@@ -77,6 +93,50 @@ function duration(seconds: number) {
   return hours > 0 ? `${hours} h ${String(minutes).padStart(2, "0")}` : `${minutes} min`;
 }
 
+async function loadDisputes(): Promise<Dispute[]> {
+  const response = await daOrdersFetch(
+    `${API_BASE_URL}/courier-payroll/lab/courier/disputes`,
+    {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    },
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(
+      String(payload?.message || payload?.error || payload?.code || `HTTP ${response.status}`),
+    );
+  }
+  return Array.isArray(payload?.disputes) ? payload.disputes : [];
+}
+
+async function openDispute(
+  statementId: string,
+  reasonCode: string,
+): Promise<Dispute> {
+  const response = await daOrdersFetch(
+    `${API_BASE_URL}/courier-payroll/lab/courier/disputes/open`,
+    {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({
+        statementId,
+        reasonCode,
+        note: "Revue du relevé demandée depuis l’app Courier.",
+      }),
+    },
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(
+      String(payload?.message || payload?.error || payload?.code || `HTTP ${response.status}`),
+    );
+  }
+  if (!payload?.dispute) throw new Error("Contestations: réponse serveur incomplète.");
+  return payload.dispute as Dispute;
+}
+
 async function loadStatements(): Promise<Statement[]> {
   const response = await daOrdersFetch(
     `${API_BASE_URL}/courier-payroll/lab/courier/statements`,
@@ -114,7 +174,9 @@ function Row({
 
 export default function FairPayStatementScreen() {
   const [statements, setStatements] = useState<Statement[]>([]);
+  const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [openingDispute, setOpeningDispute] = useState<string | null>(null);
   const [message, setMessage] = useState("Chargement du relevé Fair Pay…");
 
   const load = useCallback(async () => {
@@ -125,8 +187,12 @@ export default function FairPayStatementScreen() {
     }
     setRefreshing(true);
     try {
-      const next = await loadStatements();
+      const [next, nextDisputes] = await Promise.all([
+        loadStatements(),
+        loadDisputes(),
+      ]);
       setStatements(next);
+      setDisputes(nextDisputes);
       setMessage(
         next.length
           ? `${next.length} relevé${next.length > 1 ? "s" : ""} vérifiable${next.length > 1 ? "s" : ""}.`
@@ -142,6 +208,25 @@ export default function FairPayStatementScreen() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const requestReview = useCallback(
+    async (statementId: string, reasonCode: string) => {
+      setOpeningDispute(statementId);
+      try {
+        const dispute = await openDispute(statementId, reasonCode);
+        setDisputes((current) => [
+          ...current.filter((item) => item.disputeId !== dispute.disputeId),
+          dispute,
+        ]);
+        setMessage("Demande de vérification enregistrée. Un humain devra l’instruire.");
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "Contestations indisponibles.");
+      } finally {
+        setOpeningDispute(null);
+      }
+    },
+    [],
+  );
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -185,6 +270,9 @@ export default function FairPayStatementScreen() {
 
         {statements.map((statement) => {
           const x = statement.explanation;
+          const dispute = disputes.find(
+            (item) => item.statementId === statement.statementId,
+          );
           return (
             <View key={statement.statementId} style={styles.statement}>
               <View style={styles.statementHeader}>
@@ -252,11 +340,49 @@ export default function FairPayStatementScreen() {
 
               <View style={styles.contest}>
                 <Text style={styles.contestTitle}>Contestable par conception</Text>
-                <Text style={styles.contestBody}>
-                  Le canal de contestation humain est encore en construction dans ce LAB.
-                  Aucune correction ne pourra effacer le relevé précédent : elle créera une
-                  nouvelle version traçable.
-                </Text>
+                {dispute ? (
+                  <>
+                    <Text style={styles.contestBody}>
+                      Demande enregistrée · {dispute.status.replaceAll("_", " ")}
+                    </Text>
+                    <Text style={styles.contestMeta}>
+                      {dispute.reasonCode} · {dispute.disputeId.slice(0, 12)}…
+                    </Text>
+                    <Text style={styles.contestBody}>
+                      Une décision humaine est obligatoire. Si une correction est validée,
+                      elle créera de nouveaux faits et un nouveau relevé sans effacer celui-ci.
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.contestBody}>
+                      Si quelque chose vous paraît incorrect, demandez une vérification humaine.
+                      Le relevé reste immuable pendant l’instruction.
+                    </Text>
+                    <View style={styles.disputeActions}>
+                      {[
+                        ["TIME_REVIEW_REQUESTED", "Temps"],
+                        ["AMOUNT_REVIEW_REQUESTED", "Montant"],
+                        ["OTHER_REVIEW_REQUESTED", "Autre"],
+                      ].map(([reasonCode, label]) => (
+                        <Pressable
+                          key={reasonCode}
+                          disabled={openingDispute === statement.statementId}
+                          onPress={() => void requestReview(statement.statementId, reasonCode)}
+                          style={({ pressed }) => [
+                            styles.disputeButton,
+                            pressed && styles.pressed,
+                            openingDispute === statement.statementId && styles.disabled,
+                          ]}
+                        >
+                          <Text style={styles.disputeButtonText}>
+                            {openingDispute === statement.statementId ? "…" : label}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </>
+                )}
               </View>
             </View>
           );
@@ -307,6 +433,11 @@ const styles = StyleSheet.create({
   contest: { marginTop: 5, borderRadius: 18, padding: 13, backgroundColor: "rgba(217,169,40,0.07)", borderWidth: 1, borderColor: "rgba(217,169,40,0.18)" },
   contestTitle: { color: "#E7C35E", fontSize: 12, fontWeight: "900" },
   contestBody: { color: "rgba(240,229,194,0.68)", fontSize: 11.5, lineHeight: 17, marginTop: 5 },
+  contestMeta: { color: "rgba(231,195,94,0.62)", fontSize: 9.5, lineHeight: 15, marginTop: 5, fontWeight: "800" },
+  disputeActions: { flexDirection: "row", gap: 8, marginTop: 10, flexWrap: "wrap" },
+  disputeButton: { minHeight: 38, paddingHorizontal: 13, borderRadius: 999, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(231,195,94,0.34)", backgroundColor: "rgba(231,195,94,0.08)" },
+  disputeButtonText: { color: "#E7C35E", fontSize: 10.5, fontWeight: "900" },
+  disabled: { opacity: 0.45 },
   refresh: { minHeight: 54, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "#8EF0B3" },
   refreshText: { color: "#052013", fontSize: 13, fontWeight: "900" },
   pressed: { opacity: 0.72, transform: [{ scale: 0.99 }] },

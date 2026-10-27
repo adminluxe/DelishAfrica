@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import { resolve } from 'node:path';
 import type { CourierPayrollFact } from '../../../../packages/contracts/src/courier-payroll';
 import { createBelgiumEmployeeLabPolicy } from './adapters/belgium';
 import { createFranceIndependentReferencePolicy } from './adapters/france';
 import { FileCourierPayrollLedger } from './file-ledger-repository';
+import { FileCourierPayrollDisputeStore } from './file-dispute-repository';
 import {
   assertCourierFairPayLabEnabled,
   courierFairPayLabEnabled,
@@ -26,6 +28,7 @@ const POLICY_FR = 'FR-INDEPENDENT-ARPE-2026-09-01-v1';
 @Injectable()
 export class CourierPayrollRuntimeBridge {
   private ledgerInstance: FileCourierPayrollLedger | null = null;
+  private disputeStoreInstance: FileCourierPayrollDisputeStore | null = null;
 
   enabled(): boolean {
     return courierFairPayLabEnabled();
@@ -310,6 +313,70 @@ export class CourierPayrollRuntimeBridge {
     );
   }
 
+  openDispute(input: {
+    statementId: string;
+    courierId: string;
+    actorSubject: string;
+    reasonCode: string;
+    note: string;
+    evidenceRefs?: string[];
+    occurredAt?: string;
+  }) {
+    assertCourierFairPayLabEnabled();
+    const statement = this.ledger().getStatement(input.statementId);
+    if (!statement) {
+      throw new Error('COURIER_PAYROLL_STATEMENT_NOT_FOUND');
+    }
+    if (statement.courierId !== String(input.courierId || '').trim()) {
+      throw new Error('COURIER_PAYROLL_DISPUTE_STATEMENT_FORBIDDEN');
+    }
+    return this.disputes().open({
+      statementId: statement.statementId,
+      courierId: statement.courierId,
+      weekKey: statement.weekKey,
+      policyId: statement.policyId,
+      actorSubject: String(input.actorSubject || '').trim(),
+      reasonCode: String(input.reasonCode || '').trim(),
+      note: String(input.note || '').trim(),
+      evidenceRefs: [
+        ...(input.evidenceRefs || []),
+        'statement:' + statement.statementId,
+        'policy:' + statement.policyHash,
+        'facts:' + statement.factsHash,
+      ],
+      occurredAt: input.occurredAt || new Date().toISOString(),
+    });
+  }
+
+  listDisputesForCourier(courierId: string) {
+    assertCourierFairPayLabEnabled();
+    return this.disputes().listForCourier(String(courierId || '').trim());
+  }
+
+  listAllDisputes() {
+    assertCourierFairPayLabEnabled();
+    return this.disputes().listAll();
+  }
+
+  reviewDispute(input: {
+    disputeId: string;
+    eventType:
+      | 'REVIEW_STARTED'
+      | 'RESOLVED_NO_CHANGE'
+      | 'RESOLVED_CORRECTION_REQUIRED';
+    actorSubject: string;
+    reasonCode: string;
+    note: string;
+    evidenceRefs: string[];
+    occurredAt?: string;
+  }) {
+    assertCourierFairPayLabEnabled();
+    return this.disputes().review({
+      ...input,
+      occurredAt: input.occurredAt || new Date().toISOString(),
+    });
+  }
+
   buildOrchidPayShadowIntent(
     statementId: string,
     generatedAt = new Date().toISOString(),
@@ -338,6 +405,20 @@ export class CourierPayrollRuntimeBridge {
     const intent = this.buildOrchidPayShadowIntent(statementId, generatedAt);
     const delivery = await sendOrchidPayCourierShadowIntent(intent);
     return { intent, delivery };
+  }
+
+  private disputes(): FileCourierPayrollDisputeStore {
+    if (!this.disputeStoreInstance) {
+      const rootDir = String(
+        process.env.DA_COURIER_FAIR_PAY_LAB_LEDGER_DIR ||
+          '.runtime/courier-fair-pay-lab-ledger',
+      ).trim();
+      if (!rootDir) throw new Error('COURIER_PAYROLL_LAB_LEDGER_DIR_REQUIRED');
+      this.disputeStoreInstance = new FileCourierPayrollDisputeStore(
+        resolve(rootDir, 'disputes'),
+      );
+    }
+    return this.disputeStoreInstance;
   }
 
   private ledger(): FileCourierPayrollLedger {
