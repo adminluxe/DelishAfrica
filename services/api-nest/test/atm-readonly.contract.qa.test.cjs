@@ -92,6 +92,23 @@ const QA=()=>{
   process.env.DA_ATM_READONLY_QA_ENABLED='YES';
   process.env.NODE_ENV='test';
 };
+// HF18: a legacy/test Keycloak identity may still authenticate while having
+// no officially approved merchant membership or linked establishment.
+// This must NEVER grant ATM finance, stock, or supplier reads.
+test('legacy test identity without membership is denied all ATM read models',async()=>{
+  QA();const s=setup({memberships:[]});
+  for(const area of ['finance','inventory','suppliers'])
+    await expectDenied(s.core.read(area,bearer),403,'merchant_read_grant_required');
+  assert.equal(s.reads(),0);
+  assert.ok(s.calls.includes('membership'));
+});
+test('legacy test identity without approved establishment ownership is denied',async()=>{
+  QA();const s=setup({owned:[]});
+  for(const area of ['finance','inventory','suppliers'])
+    await expectDenied(s.core.read(area,bearer),403,'merchant_read_grant_required');
+  assert.equal(s.reads(),0);
+  assert.ok(s.calls.includes('owned'));
+});
 test('missing or malformed bearer returns 401 before merchant or financial read',async()=>{
   QA();const s=setup();
   await expectDenied(s.core.read('finance',undefined),401);

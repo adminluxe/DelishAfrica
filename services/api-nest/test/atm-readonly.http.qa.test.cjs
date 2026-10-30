@@ -43,11 +43,12 @@ async function http(path,headers={},method='GET') {
 }
 test('isolated Nest real HTTP: production gating, auth, RBAC, 200 read schemas, no writes',
   async()=>{
+    let memberships=[member];
     const trust={
       resolveBearer:async authorization=>authorization==='Bearer qa-signed-test-double'
         ? {...principal,role}:null,
       listOwned:async()=>[ownership],
-      listMemberships:async()=>[member],
+      listMemberships:async()=>memberships,
     };
     const core=new AtmReadonlyCore(trust,testSource);
     const testing=await Test.createTestingModule({
@@ -90,6 +91,15 @@ test('isolated Nest real HTTP: production gating, auth, RBAC, 200 read schemas, 
       }
       assert.equal((await http('/merchant/inventory/me',
         {...auth,'x-da-partner-slug':'foreign-merchant'})).status,403);
+      // Legacy XR account: bearer identity may be valid, but the establishment
+      // and membership must be approved by the actual merchant authority.
+      memberships=[];
+      for (const [path] of routes) {
+        const denied=await http(path,auth);
+        assert.equal(denied.status,403,'no approved membership must deny '+path);
+        assert.doesNotMatch(denied.body,/qa-merchant-id/);
+      }
+      memberships=[member];
     } finally {
       await app.close();
       delete process.env.DA_ATM_READONLY_QA_ENABLED;
