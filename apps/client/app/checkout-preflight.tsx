@@ -1,3 +1,4 @@
+import { getStripeNativeModule } from "../utils/daStripeNativeBridge";
 import { daOrdersFetch, daAccountStorageKey, daAccountScopeId } from "../utils/daOrdersApi";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -216,7 +217,7 @@ function loadStripeNative(): {
   error: string | null;
 } {
   try {
-    const stripeModule = require("@stripe/stripe-react-native") as StripeNativeModule;
+    const stripeModule = getStripeNativeModule() as StripeNativeModule | null;
     if (
       !stripeModule ||
       typeof stripeModule.initPaymentSheet !== "function" ||
@@ -478,6 +479,14 @@ function orderMatchesCommit(order: Record<string, any> | null, commit: PendingPa
   );
 }
 
+function isCompensatingOrder(order: Record<string, any> | null): boolean {
+  if (!order) return false;
+  const state = String(order.daCompensation?.state || "");
+  return String(order.status || "").toLowerCase() === "cancelled" &&
+    order.recordKind === "unfulfillable_payment_compensation" &&
+    ["pending", "processing", "retry", "pending_provider", "succeeded", "review"].includes(state);
+}
+
 async function confirmCommittedOrder(commit: PendingPaymentCommit): Promise<Record<string, any> | null> {
   for (const waitMs of [0, 450, 1200]) {
     if (waitMs) await sleep(waitMs);
@@ -525,7 +534,13 @@ export default function CheckoutPreflightScreen() {
   const cartSnapshot = getCartSnapshot();
   const deliveryZone = profile
     ? validateDeliveryZone(
-        { address: profile.address, city: profile.city },
+        {
+          address: profile.address,
+          city: profile.city,
+          countryCode: profile.territory?.countryCode,
+          postalCode: profile.territory?.postalCode,
+          adminArea: profile.territory?.adminArea,
+        },
         cartSnapshot.serviceAreaLabel,
       )
     : validateDeliveryZone(null, cartSnapshot.serviceAreaLabel);
@@ -571,8 +586,34 @@ export default function CheckoutPreflightScreen() {
     );
   }
 
+  async function acknowledgeCompensation(
+    commit: PendingPaymentCommit,
+    currentOrder: Record<string, any> | null,
+  ): Promise<boolean> {
+    if (!isCompensatingOrder(currentOrder)) return false;
+    if (String(currentOrder?.orderId || currentOrder?.id || "") !== commit.orderId ||
+        String(currentOrder?.payment?.paymentIntentId || "") !== commit.paymentIntentId) {
+      return false;
+    }
+    // Clear the locked paid-commit state ONLY after the server returned a
+    // durable cancelled order with a compensating payment journal.
+    await clearPendingPaymentCommit();
+    setPendingCommit(null);
+    const state = String(currentOrder?.daCompensation?.state || "");
+    const note = state === "succeeded"
+      ? "Le remboursement a été traité par notre prestataire bancaire."
+      : state === "review"
+        ? "Notre assistance doit vérifier le remboursement."
+        : "Le remboursement est en cours de suivi sécurisé.";
+    setPhase("Commande annulée · " + note);
+    Alert.alert("Commande annulée", note + " Aucun nouveau paiement ne sera lancé automatiquement.");
+    return true;
+  }
+
   async function reconcilePaidCommit(commit: PendingPaymentCommit) {
     setPhase("Vérification de votre commande déjà payée...");
+    const existing = await readOrder(commit.orderId).catch(() => null);
+    if (await acknowledgeCompensation(commit, existing)) return;
     let confirmed = await confirmCommittedOrder(commit);
     if (!confirmed) {
       setPhase("Nous retrouvons votre commande sans relancer le paiement...");
@@ -647,7 +688,13 @@ export default function CheckoutPreflightScreen() {
         return;
       }
       const activeZone = validateDeliveryZone(
-        { address: checkoutProfile.address, city: checkoutProfile.city },
+        {
+          address: checkoutProfile.address,
+          city: checkoutProfile.city,
+          countryCode: checkoutProfile.territory?.countryCode,
+          postalCode: checkoutProfile.territory?.postalCode,
+          adminArea: checkoutProfile.territory?.adminArea,
+        },
         activeCart.serviceAreaLabel,
       );
 
@@ -661,6 +708,16 @@ export default function CheckoutPreflightScreen() {
       const addressRecheck = await daResolveAddress(checkoutProfile.addressTruth!.placeId);
       if (!addressRecheck.address.deliverable || addressRecheck.address.placeId !== checkoutProfile.addressTruth!.placeId) {
         throw new Error("L’adresse de livraison n’est plus confirmée. Sélectionnez-la à nouveau.");
+      }
+      const recheckedZone = validateDeliveryZone({
+        address: addressRecheck.address.formattedAddress,
+        city: addressRecheck.territory.city,
+        countryCode: addressRecheck.territory.countryCode,
+        postalCode: addressRecheck.territory.postalCode,
+        adminArea: addressRecheck.territory.adminArea,
+      }, activeCart.serviceAreaLabel);
+      if (!recheckedZone.ok || checkoutProfile.territory?.key !== addressRecheck.territory.key) {
+        throw new Error("La destination a changé ou ne relève plus d'une ville de lancement. Confirmez votre adresse à nouveau.");
       }
       if (activeFingerprint !== cartFingerprint(getCartSnapshot())) {
         throw new Error("Le panier a changé pendant la vérification. Revenez au panier avant de payer.");
@@ -766,6 +823,8 @@ export default function CheckoutPreflightScreen() {
       }
 
       if (paidCommit) {
+        const currentOrder = await readOrder(paidCommit.orderId).catch(() => null);
+        if (await acknowledgeCompensation(paidCommit, currentOrder)) return;
         setPendingCommit(paidCommit);
         setPhase(`Paiement protégé · ${message}`);
         Alert.alert("Commande à finaliser", message);

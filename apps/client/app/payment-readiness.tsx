@@ -1,3 +1,4 @@
+import { getStripeNativeModule } from "../utils/daStripeNativeBridge";
 import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -75,7 +76,7 @@ function loadStripeNative(): {
   error: string | null;
 } {
   try {
-    const stripeModule = require("@stripe/stripe-react-native") as StripeNativeModule;
+    const stripeModule = getStripeNativeModule() as StripeNativeModule | null;
 
     if (
       !stripeModule ||

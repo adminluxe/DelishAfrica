@@ -44,6 +44,7 @@ const ROUTES: RouteCard[] = [
   { eyebrow: "COMMANDES", title: "Décider", body: "Accepter, préparer, marquer prête et suivre le service.", path: "/orders" },
   { eyebrow: "CUISINE", title: "Kitchen Pulse", body: "Cadence, priorités et lecture opérationnelle du service.", path: "/kitchen-pulse" },
   { eyebrow: "ÉTABLISSEMENT", title: "Mon espace", body: "Présence, confiance, territoire et disponibilité.", path: "/partner-space" },
+  { eyebrow: "FINANCES", title: "Mes finances", body: "Activité, relevés et versements validés.", path: "/finances" },
   { eyebrow: "PILOTAGE", title: "Ops Dashboard", body: "Vision synthétique des signaux utiles au restaurant.", path: "/ops-dashboard" },
 ];
 

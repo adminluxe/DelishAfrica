@@ -1,3 +1,5 @@
+import { launchCoverageDisplayLabel } from "./daDeliveryZones";
+
 export type DAApiMenuAvailability = {
 mode?: "weekday" | "always" | string;
 orderableNow?: boolean;
@@ -169,9 +171,12 @@ const rawMenu = Array.isArray(raw?.menuItems)
 : [];
 
 const status = String(raw?.status || "placeholder").toLowerCase();
+// Server authority: never infer acceptance from catalogue status, delivery metadata or menu.
 const acceptingOrders =
-Boolean(raw?.acceptingOrders) ||
-(status === "active" && delivery.enabled !== false && rawMenu.length > 0);
+status === "active" &&
+raw?.acceptingOrders === true &&
+delivery.enabled === true &&
+rawMenu.length > 0;
 
 return {
 id,
@@ -195,7 +200,7 @@ acceptingOrders,
 delivery: {
 enabled: delivery.enabled !== false,
 prepTimeMinutes: delivery.prepTimeMinutes === undefined ? undefined : numberOr(delivery.prepTimeMinutes, 20),
-serviceAreaLabel: delivery.serviceAreaLabel ? String(delivery.serviceAreaLabel) : "Bruxelles",
+serviceAreaLabel: launchCoverageDisplayLabel(raw?.city, raw?.country, delivery.platformCoverageLabel || delivery.serviceAreaLabel),
 minimumOrderAmount: numberOr(delivery.minimumOrderAmount ?? raw?.minimumOrderAmount ?? 0, 0),
 deliveryFee: numberOr(delivery.deliveryFee ?? raw?.deliveryFee ?? 0, 0),
 deliveryRadiusKm: delivery.deliveryRadiusKm === undefined ? undefined : numberOr(delivery.deliveryRadiusKm, 0),
@@ -210,6 +215,7 @@ return Boolean(restaurant && restaurant.status === "active" && restaurant.accept
 
 export function restaurantStatusLabel(restaurant: DARestaurant): string {
 if (isRestaurantOrderable(restaurant)) return "Ouvert aux commandes";
+if (restaurant.status === "pending_verification") return "Validation partenaire en cours";
 if (restaurant.status === "placeholder") return "Bientôt disponible";
 if (restaurant.status === "coming_soon") return "Bientôt disponible";
 if (restaurant.status === "paused") return "Service en pause";
