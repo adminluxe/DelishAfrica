@@ -32,9 +32,9 @@ const API = RAW_API.replace(/\/$/, "").endsWith("/api/v1")
 type RouteCard = { eyebrow: string; title: string; body: string; path: string };
 
 const ROUTES: RouteCard[] = [
-  { eyebrow: "OFFRES", title: "Missions", body: "Voir les propositions qui appartiennent à votre identité Courier.", path: "/orders" },
-  { eyebrow: "INTELLIGENCE", title: "Route Oracle", body: "ETA, score terrain et acceptation authentifiée.", path: "/route-oracle" },
-  { eyebrow: "NAVIGATION", title: "Carte Live", body: "Retrait, itinéraire et progression de la mission.", path: "/courier-real-map" },
+  { eyebrow: "OFFRES", title: "Missions", body: "Retrouver les propositions qui vous sont adressées.", path: "/orders" },
+  { eyebrow: "MISSIONS", title: "Mon prochain trajet", body: "Comprendre la prochaine étape et choisir sa mission.", path: "/route-oracle" },
+  { eyebrow: "NAVIGATION", title: "Ma carte de mission", body: "Retrait, itinéraire et progression de la mission.", path: "/courier-integrated-map" },
   { eyebrow: "FINANCES", title: "Mes finances", body: "Activité, relevés et versements validés.", path: "/finances" },
   { eyebrow: "PRÉSENCE", title: "Mon espace", body: "Disponibilité, zone active, confiance et profil terrain.", path: "/courier-space" },
 ];
@@ -129,8 +129,8 @@ export default function CourierSurfaceHome() {
   }, [offers]);
 
   const offersFreshnessLabel = offersObservedAt
-    ? `Dernière réponse dispatch · ${new Date(offersObservedAt).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" })}`
-    : "Aucune réponse dispatch confirmée dans cette session.";
+    ? `Dernière actualisation · ${new Date(offersObservedAt).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" })}`
+    : "Les missions attendent une actualisation.";
 
   const go = (path: string) => router.push(path as any);
   const rainTileHeight = Math.max(760, viewportHeight + 240);
@@ -172,7 +172,7 @@ export default function CourierSurfaceHome() {
         <View style={styles.topline}>
           <View style={styles.toplineCopy}>
             <Text style={styles.brand}>DELISHAFRICA®</Text>
-            <Text style={styles.role}>COURIER · ROUTE CURRENT · S10N</Text>
+            <Text style={styles.role}>COURIER · VOTRE PROCHAIN CAP</Text>
           </View>
           <Pressable
             onPress={() => go("/courier-space")}
@@ -188,38 +188,38 @@ export default function CourierSurfaceHome() {
         <View style={[styles.identity, authReady ? styles.identityReady : styles.identityPending]}>
           <View style={[styles.identityDot, authReady && styles.identityDotReady]} />
           <View style={styles.identityCopy}>
-            <Text style={styles.identityLabel}>COURIER AUTHORITY</Text>
+            <Text style={styles.identityLabel}>VOTRE ESPACE COURSIER</Text>
             <Text style={styles.identityText}>
               {loading
-                ? "Synchronisation de votre identité terrain…"
+                ? "Connexion à votre espace…"
                 : authReady
-                  ? "Identité Courier active · offres isolées par assignment"
-                  : "Connexion Courier requise pour charger les missions"}
+                  ? "Votre espace est connecté. Vos missions sont disponibles."
+                  : "Vérifiez votre connexion pour retrouver vos missions."}
             </Text>
           </View>
-          {loading ? <ActivityIndicator size="small" /> : <Text style={styles.identityState}>{authReady ? "LIVE" : "GATE"}</Text>}
+          {loading ? <ActivityIndicator size="small" /> : <Text style={styles.identityState}>{authReady ? "CONNECTÉ" : "À VÉRIFIER"}</Text>}
         </View>
 
         <WaterIntelRail
           tone="courier"
           mode="oracle"
-          label="ORACLE · ROUTE CURRENT"
-          title={authReady ? `${stats.proposed + stats.accepted} signal${stats.proposed + stats.accepted > 1 ? "s" : ""} terrain en lecture.` : "Le terrain attend votre identité."}
-          body="ETA, offres, présence et progression se lisent dans un même courant. Oracle recommande ; vous décidez."
-          status={loading ? "SYNC" : authReady ? "LIVE" : "GATE"}
+          label="VOTRE ACTIVITÉ"
+          title={authReady ? `${stats.proposed + stats.accepted} mission${stats.proposed + stats.accepted > 1 ? "s" : ""} à retrouver.` : "Retrouvez votre espace coursier."}
+          body="Vos missions et les prochaines étapes restent à portée de main."
+          status={loading ? "ACTUALISATION" : authReady ? "À JOUR" : "À VÉRIFIER"}
           signalClass={loading ? "estimated" : authReady ? "confirmed" : "offline"}
-          evidence={authReady ? "Offres lues depuis /orders/demo/courier/offers sous votre identité Courier." : "Aucune offre serveur n’est présentée sans session Courier valide."}
+          evidence={authReady ? "Ces missions sont associées à votre compte coursier." : "Reconnectez-vous si vos missions ne s’affichent pas."}
           freshnessLabel={offersFreshnessLabel}
           reduceMotion={reduceMotion}
           onPress={() => go(authReady ? "/terrain-live" : "/auth-session")}
-          accessibilityLabel="Ouvrir Route Current et la lecture terrain"
+          accessibilityLabel="Ouvrir mon activité et mes missions"
         />
 
         <Text style={styles.kicker}>MISSION · ETA · RETRAIT · LIVRAISON</Text>
         <Text style={styles.hero}>Le terrain décide.{`\n`}Vous gardez le contrôle.</Text>
         <Text style={styles.subtitle}>
-          Les offres serveur, Route Oracle, la carte et votre présence avancent ensemble, sans confondre
-          recommandation et décision.
+          Vos missions, votre disponibilité et votre itinéraire se retrouvent ici.
+          Un prochain geste clair, à votre rythme.
         </Text>
 
         <View style={styles.stats}>
@@ -234,10 +234,10 @@ export default function CourierSurfaceHome() {
           accessibilityRole="button"
         >
           <View style={styles.primaryCopy}>
-            <Text style={styles.primaryEyebrow}>{authReady ? "SERVER DISPATCH" : "IDENTITÉ D’ABORD"}</Text>
+            <Text style={styles.primaryEyebrow}>{authReady ? "VOS MISSIONS" : "VOTRE CONNEXION"}</Text>
             <Text style={styles.primaryTitle}>{authReady ? "Voir mes missions" : "Ouvrir la connexion Courier"}</Text>
             <Text style={styles.primaryBody}>
-              {authReady ? "Seules les offres rattachées à votre sujet Courier sont visibles." : "Une session OIDC Courier est nécessaire."}
+              {authReady ? "Retrouvez les propositions qui vous sont adressées." : "Connectez-vous à votre compte coursier."}
             </Text>
           </View>
           <Text style={styles.primaryArrow}>→</Text>

@@ -1,7 +1,9 @@
+import { assessJourneySignal, type JourneySignal } from "../../../../packages/contracts/src/missionJourney";
 import { daOrdersFetch } from "../../utils/daOrdersApi";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AccessibilityInfo,
+  AppState,
   ActivityIndicator,
   Animated,
   Alert,
@@ -64,11 +66,7 @@ type Order = {
   };
 };
 
-type LiveLocationRead = {
-  freshness?: "live" | "recent" | "stale" | "stopped" | "missing";
-  ageSeconds?: number | null;
-  location?: { courierName?: string; stage?: "to_restaurant" | "to_customer" } | null;
-};
+type LiveLocationRead = JourneySignal;
 
 const RAW_API =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
@@ -133,14 +131,19 @@ function extractOrders(payload: any): Order[] {
   return [];
 }
 async function postJson(path: string, body: Record<string, unknown> = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
   const response = await daOrdersFetch(`${API_BASE_URL}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify(body),
+    signal: controller.signal,
   });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload?.message || payload?.error || `HTTP ${response.status}`);
+  if (!response.ok) { const error = new Error("La connexion au service est indisponible.") as Error & { status: number }; error.status = response.status; throw error; }
   return payload;
+  } finally { clearTimeout(timeout); }
 }
 function statusLabel(status: string) {
   if (status === "pending") return "À accepter";
@@ -150,66 +153,29 @@ function statusLabel(status: string) {
   if (status === "delivered") return "Livrée";
   return status;
 }
-function signalLabel(read?: LiveLocationRead) {
-  if (read?.freshness === "live") return `Coursier en mouvement${read.ageSeconds ? ` · ${read.ageSeconds}s` : ""}`;
-  if (read?.freshness === "recent") return `Signal récent${read.ageSeconds ? ` · ${read.ageSeconds}s` : ""}`;
-  if (read?.freshness === "stale") return "Signal à rafraîchir";
-  if (read?.freshness === "stopped") return "Partage arrêté";
-  return "Signal coursier en attente";
-}
+function signalLabel(read?: LiveLocationRead, now = Date.now()) { return assessJourneySignal(read, now).label; }
 
 type MerchantHandoffView = { label: string; kitchen: string; terrain: string; bridge: string; proof: string; active: boolean };
-
-function assignmentEtaMin(order: Order): number | null {
-  const raw = order.assignmentProposal?.totalEtaMin ?? order.assignmentProposal?.etaMin;
-  const value = Number(raw);
-  return Number.isFinite(value) && value > 0 ? value : null;
-}
-
-function merchantHandoffView(order: Order, read?: LiveLocationRead): MerchantHandoffView {
+function merchantHandoffView(order: Order, read?: LiveLocationRead, now = Date.now()): MerchantHandoffView {
   const status = statusOf(order);
-  const eta = assignmentEtaMin(order);
-  const fresh = read?.freshness === "live" || read?.freshness === "recent";
-  const approaching = fresh && read?.location?.stage === "to_restaurant";
-  const courier = read?.location?.courierName || "Coursier non confirmé";
-  const signalAge = Number(read?.ageSeconds);
-  const signalDetail = Number.isFinite(signalAge) ? ` · ${Math.max(0, Math.round(signalAge))}s` : "";
-
-  if (status === "picked_up") return {
-    label: "RELAIS CONFIRMÉ", kitchen: "Remise effectuée", terrain: `${courier} · vers client`,
-    bridge: "Le point de rencontre est derrière nous : le cockpit peut maintenant suivre le trajet client.",
-    proof: `Preuve : statut picked_up${fresh ? ` + signal terrain ${read?.freshness}${signalDetail}` : ""}.`, active: true,
-  };
-  if (status === "ready" && approaching) return {
-    label: "POINT DE RENCONTRE OUVERT", kitchen: "Commande prête", terrain: `${courier} · en approche`,
-    bridge: "Les deux courants se rejoignent : la cuisine est prête et un signal terrain récent indique une approche restaurant.",
-    proof: `Preuve : statut ready + location ${read?.freshness}${signalDetail}.`, active: true,
-  };
-  if (status === "ready") return {
-    label: "PRÊTE · TERRAIN À CONFIRMER", kitchen: "Commande prête", terrain: eta !== null ? `ETA dispatch estimée · ${Math.max(1, Math.round(eta))} min` : "Aucun signal terrain récent",
-    bridge: "Ne transformons pas une commande prête en promesse de remise : le terrain doit encore être confirmé.",
-    proof: eta !== null ? "Preuve : statut ready + ETA dispatch ; aucune location récente confirmée." : "Preuve : statut ready uniquement.", active: true,
-  };
-  if (status === "accepted") return {
-    label: approaching ? "COURANTS EN RAPPROCHEMENT" : "CUISINE EN COURS", kitchen: "Préparation confirmée", terrain: approaching ? `${courier} · approche restaurant` : eta !== null ? `ETA dispatch estimée · ${Math.max(1, Math.round(eta))} min` : "Terrain en attente",
-    bridge: approaching ? "Le coursier se rapproche pendant la préparation. La remise reste fermée tant que la cuisine n’est pas marquée prête." : "Le système observe les deux rythmes sans forcer la cuisine ni le coursier.",
-    proof: approaching ? `Preuve : statut accepted + location ${read?.freshness}${signalDetail}.` : eta !== null ? "Preuve : statut accepted + ETA dispatch estimée." : "Preuve : statut accepted uniquement.", active: true,
-  };
-  return {
-    label: "RELAIS FERMÉ", kitchen: "Commande à accepter", terrain: "Aucune coordination requise",
-    bridge: "La rencontre cuisine ↔ coursier ne démarre qu’après acceptation réelle de la commande.",
-    proof: `Preuve : statut ${status || "pending"}.`, active: false,
-  };
+  const signal = assessJourneySignal(read, now);
+  const toRestaurant = signal.usable && read?.location?.stage === "to_restaurant";
+  const courier = read?.location?.courierName || "Votre coursier";
+  if (status === "picked_up") return { label: "RETRAIT CONFIRMÉ", kitchen: "Remise effectuée", terrain: "Vers le client", bridge: "La commande a quitté le restaurant. Le client retrouve la suite de sa livraison dans son suivi.", proof: signal.label, active: true };
+  if (status === "ready") return { label: "PRÊTE POUR LE RETRAIT", kitchen: "Commande prête", terrain: toRestaurant ? `${courier} · position partagée` : "Position du coursier en attente", bridge: toRestaurant ? "Le coursier partage sa position pour le retrait. Gardez la commande à portée de main." : "La commande est prête. L’heure d’arrivée du coursier reste à confirmer.", proof: signal.label, active: true };
+  if (status === "accepted") return { label: "EN PRÉPARATION", kitchen: "Préparation confirmée", terrain: "Retrait à venir", bridge: "Préparez la commande à votre rythme, puis indiquez lorsqu’elle est prête.", proof: "Le retrait sera la prochaine étape.", active: true };
+  if (["delivered", "completed"].includes(status)) return { label: "LIVRAISON TERMINÉE", kitchen: "Remise effectuée", terrain: "Livraison confirmée", bridge: "Le client a reçu sa commande.", proof: "La commande est terminée.", active: false };
+  return { label: "COMMANDE EN ATTENTE", kitchen: "Commande à accepter", terrain: "Retrait à venir", bridge: "Vérifiez la commande et ses indications avant de l’accepter.", proof: "La préparation démarre après votre acceptation.", active: false };
 }
 
-function MerchantHandoffCurrent({ order, read }: { order: Order; read?: LiveLocationRead }) {
-  const view = merchantHandoffView(order, read);
+function MerchantHandoffCurrent({ order, read, now }: { order: Order; read?: LiveLocationRead; now: number }) {
+  const view = merchantHandoffView(order, read, now);
   return (
     <View style={styles.confluenceCard}>
       <View style={styles.confluenceTop}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.confluenceKicker}>CONFLUENCE · HANDOFF CURRENT</Text>
-          <Text style={styles.confluenceTitle}>Accorder cuisine et terrain.</Text>
+          <Text style={styles.confluenceKicker}>CUISINE · RETRAIT · LIVRAISON</Text>
+          <Text style={styles.confluenceTitle}>Le prochain geste, au bon moment.</Text>
         </View>
         <View style={[styles.confluenceBadge, view.active && styles.confluenceBadgeActive]}>
           <Text style={[styles.confluenceBadgeText, view.active && styles.confluenceBadgeTextActive]}>{view.label}</Text>
@@ -218,7 +184,7 @@ function MerchantHandoffCurrent({ order, read }: { order: Order; read?: LiveLoca
       <View style={styles.confluenceStreams}>
         <View style={styles.confluenceStream}><Text style={styles.confluenceStreamLabel}>CUISINE</Text><Text style={styles.confluenceStreamValue}>{view.kitchen}</Text></View>
         <View style={styles.confluenceJoin}><View style={styles.confluenceJoinLine} /><View style={[styles.confluenceJoinDrop, view.active && styles.confluenceJoinDropActive]} /><View style={styles.confluenceJoinLine} /></View>
-        <View style={styles.confluenceStream}><Text style={styles.confluenceStreamLabel}>TERRAIN</Text><Text style={styles.confluenceStreamValue}>{view.terrain}</Text></View>
+        <View style={styles.confluenceStream}><Text style={styles.confluenceStreamLabel}>COURSIER</Text><Text style={styles.confluenceStreamValue}>{view.terrain}</Text></View>
       </View>
       <Text style={styles.confluenceBridge}>{view.bridge}</Text>
       <Text style={styles.confluenceProof}>{view.proof}</Text>
@@ -362,11 +328,13 @@ export default function MerchantOrdersFocus() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [message, setMessage] = useState("Cockpit prêt.");
+  const [message, setMessage] = useState("Vos commandes sont prêtes à être consultées.");
   const [sessionRequired, setSessionRequired] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [liveLocations, setLiveLocations] = useState<Record<string, LiveLocationRead>>({});
+  const [signalNow, setSignalNow] = useState(Date.now());
+  useEffect(() => { const timer = setInterval(() => setSignalNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   const reduceMotion = useReduceMotionPreference();
   const statusMutationRef = useRef<string | null>(null);
 
@@ -386,9 +354,9 @@ export default function MerchantOrdersFocus() {
       setMessage(`${list.length} commande${list.length > 1 ? "s" : ""} synchronisée${list.length > 1 ? "s" : ""}.`);
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error || '');
-      const needsSession = reason.includes('merchant_oidc_session_required') || reason.includes('Session restaurateur indisponible');
+      const needsSession = [401, 403].includes((error as any)?.status) || reason.includes('merchant_oidc_session_required') || reason.includes('Session restaurateur indisponible');
       setSessionRequired(needsSession);
-      setMessage(needsSession ? "Connexion Merchant requise" : reason || "Synchronisation indisponible");
+      setMessage(needsSession ? "Connectez-vous pour retrouver vos commandes." : "Actualisation indisponible. Réessayez dans un instant.");
     } finally {
       setRefreshing(false);
     }
@@ -435,23 +403,27 @@ export default function MerchantOrdersFocus() {
   useEffect(() => {
     let cancelled = false;
     const candidates = active.filter((order) => ["ready", "picked_up"].includes(statusOf(order)));
+    let inFlight = false;
     async function refreshSignals() {
+      if (inFlight || AppState.currentState && AppState.currentState !== "active") return;
+      inFlight = true;
       if (!candidates.length) {
         if (!cancelled) setLiveLocations({});
-        return;
+        inFlight = false; return;
       }
       const rows = await Promise.all(
         candidates.map(async (order) => {
           const id = orderId(order);
           try {
             const payload = await postJson("/orders/demo/location/get", { orderId: id });
-            return [id, payload as LiveLocationRead] as const;
-          } catch {
-            return [id, { freshness: "missing", location: null } as LiveLocationRead] as const;
+            return [id, { ...payload, receivedAtMs: Date.now() } as LiveLocationRead] as const;
+          } catch (error) {
+            return [id, [401, 403, 404].includes((error as any)?.status) ? { freshness: "missing", location: null } as LiveLocationRead : null] as const;
           }
         }),
       );
-      if (!cancelled) setLiveLocations(Object.fromEntries(rows));
+      if (!cancelled) setLiveLocations((previous) => Object.fromEntries(rows.map(([id, value]) => [id, value || previous[id] || { freshness: "missing", location: null }])));
+      inFlight = false;
     }
     void refreshSignals();
     const timer = setInterval(() => void refreshSignals(), 6000);
@@ -563,12 +535,12 @@ export default function MerchantOrdersFocus() {
             </View>
           ) : null}
           <HandoffRail status={status} compact={compact} reduceMotion={reduceMotion} />
-          {!compact ? <MerchantHandoffCurrent order={order} read={liveLocations[id]} /> : null}
+          {!compact ? <MerchantHandoffCurrent order={order} read={liveLocations[id]}  now={signalNow} /> : null}
           {["ready", "picked_up"].includes(status) ? (
             <View style={[styles.signalRow, compact && styles.signalRowCompact]}>
-              <View style={[styles.signalDot, ["live", "recent"].includes(String(liveLocations[id]?.freshness)) && styles.signalDotLive]} />
+              <View style={[styles.signalDot, assessJourneySignal(liveLocations[id], signalNow).usable && styles.signalDotLive]} />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.signalTitle, compact && styles.signalTitleCompact]}>{signalLabel(liveLocations[id])}</Text>
+                <Text style={[styles.signalTitle, compact && styles.signalTitleCompact]}>{signalLabel(liveLocations[id], signalNow)}</Text>
                 <Text style={[styles.signalMeta, compact && styles.signalMetaCompact]}>{liveLocations[id]?.location?.courierName || "Mission Live"}</Text>
               </View>
             </View>

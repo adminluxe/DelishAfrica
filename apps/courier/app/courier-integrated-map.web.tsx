@@ -1,7 +1,7 @@
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 
 /**
  * DelishAfrica® Courier: safe browser fallback.
@@ -10,24 +10,27 @@ import { router } from "expo-router";
  * No invented location, ETA, driver status, or live order data.
  */
 export default function CourierIntegratedMapWeb() {
+  const params = useLocalSearchParams<{ orderId?: string | string[]; publicId?: string | string[] }>();
+  const rawId = params.orderId || params.publicId;
+  const orderId = Array.isArray(rawId) ? rawId[0] : rawId;
   return (
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={s.scroll}>
         <View style={s.top}>
           <Text style={s.brand}>DELISHAFRICA®  /  COURIER</Text>
-          <View style={s.badge}><Text style={s.badgeText}>NAVIGATION SÉCURISÉE</Text></View>
+          <View style={s.badge}><Text style={s.badgeText}>VOTRE ESPACE COURIER</Text></View>
         </View>
         <Text style={s.eyebrow}>VOTRE MISSION • VOTRE RYTHME</Text>
         <Text style={s.title}>Le terrain, sans approximation.</Text>
         <Text style={s.copy}>
           L’itinéraire GPS et la carte interactive sont disponibles dans l’application
-          native sur iOS et Android. Sur le web, consultez les détails vérifiés
+          Android. Sur le web, consultez les détails vérifiés
           de votre mission sans afficher de position inventée.
         </Text>
         <View style={s.card}>
           <View style={s.dot} />
           <View style={s.cardContent}>
-            <Text style={s.cardKicker}>CARTE NATIVE</Text>
+            <Text style={s.cardKicker}>VOTRE CARTE DE MISSION</Text>
             <Text style={s.cardTitle}>Repères réels, guidage fiable.</Text>
             <Text style={s.cardCopy}>
               L’autorisation de localisation n’est demandée que dans l’application
@@ -36,7 +39,7 @@ export default function CourierIntegratedMapWeb() {
           </View>
         </View>
         <Pressable accessibilityRole="button" style={s.primary}
-          onPress={() => router.push("/courier-real-map")}>
+          onPress={() => router.push(orderId ? { pathname: "/orders" as any, params: { orderId } } : "/orders")}>
           <Text style={s.primaryText}>Voir les détails de mission</Text>
           <Text style={s.chevron}>›</Text>
         </Pressable>
@@ -45,8 +48,7 @@ export default function CourierIntegratedMapWeb() {
           <Text style={s.secondaryText}>Retour à l’espace coursier</Text>
         </Pressable>
         <Text style={s.footer}>
-          DelishAfrica® — Informations réelles uniquement. Aucun itinéraire
-          estimé n’est présenté comme confirmé.
+          DelishAfrica® — Informations réelles uniquement. Chaque étape garde son sens.
         </Text>
       </ScrollView>
     </SafeAreaView>

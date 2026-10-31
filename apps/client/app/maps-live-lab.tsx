@@ -3,6 +3,7 @@ import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useEffect, useRef, useState } from "react";
 import {
   AccessibilityInfo,
+  AppState,
   ActivityIndicator,
   Platform,
   Pressable,
@@ -16,7 +17,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Location from "expo-location";
-import { useLiveMapEngine } from "../components/live/LiveMapEngine";
+import { useJourneyRoute } from "../utils/useJourneyRoute";
+import { assessJourneySignal, journeyDestinationPoint, journeyDistanceMeters, journeyPickupPoint, journeyPoint, journeyRouteProgress, journeyTravelMode, type JourneySignal } from "../../../packages/contracts/src/missionJourney";
 import { LiveRouteEngine } from "../components/live/LiveRouteEngine";
 import { DestinationApproachMarker } from "../components/live/DestinationApproachMarker";
 import { LivingCourierMarker } from "../components/live/LivingCourierMarker";
@@ -38,74 +40,12 @@ const API_BASE_URL = RAW_API.replace(/\/$/, "").endsWith("/api/v1")
   ? RAW_API.replace(/\/$/, "")
   : `${RAW_API.replace(/\/$/, "")}/api/v1`;
 
-const ROUTES_PREVIEW_URL = `${API_BASE_URL}/routes/preview`;
-
-const DEFAULT_RESTAURANT = {
-  latitude: 50.83558,
-  longitude: 4.36756,
-};
-
-const DEFAULT_CLIENT = {
-  latitude: 50.84662,
-  longitude: 4.35281,
-};
-
-const COURIER_START = {
-  latitude: 50.8327,
-  longitude: 4.3741,
-};
-
-function buildFallbackRoute(restaurant: Coordinate, client: Coordinate): Coordinate[] {
-  return [
-    COURIER_START,
-    {
-      latitude: (COURIER_START.latitude + restaurant.latitude) / 2,
-      longitude: (COURIER_START.longitude + restaurant.longitude) / 2,
-    },
-    restaurant,
-    {
-      latitude: (restaurant.latitude + client.latitude) / 2,
-      longitude: (restaurant.longitude + client.longitude) / 2,
-    },
-    client,
-  ];
-}
-
 type Coordinate = {
   latitude: number;
   longitude: number;
 };
 
-type RoutePreviewResponse = {
-  ok?: boolean;
-  provider?: string;
-  distanceMeters?: number;
-  durationSeconds?: number;
-  etaMinutes?: number;
-  polyline?: string | null;
-  fallback?: boolean;
-  meta?: {
-    reason?: string;
-  };
-};
-
-type LiveCourierLocationResponse = {
-ok?: boolean;
-freshness?: "live" | "recent" | "stale" | "stopped" | "missing";
-ageSeconds?: number | null;
-location?: {
-active?: boolean;
-courierName?: string;
-stage?: "to_restaurant" | "to_customer";
-point?: {
-latitude?: number;
-longitude?: number;
-headingDegrees?: number;
-accuracyMeters?: number;
-capturedAt?: string;
-};
-} | null;
-};
+type LiveCourierLocationResponse = JourneySignal;
 
 type DeliveredTruthOrder = {
   id?: string;
@@ -157,15 +97,7 @@ function networkKey(value: unknown): string {
   return String(value || "").trim().toLocaleLowerCase("fr").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
-function coordinateFrom(value: unknown): Coordinate | null {
-  if (!value || typeof value !== "object") return null;
-  const record = value as Record<string, unknown>;
-  const latitude = Number(record.latitude ?? record.lat);
-  const longitude = Number(record.longitude ?? record.lng);
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return null;
-  return { latitude, longitude };
-}
+const coordinateFrom = journeyPoint;
 
 function addressFrom(value: unknown): string {
   if (typeof value === "string") return value.trim();
@@ -181,6 +113,7 @@ function addressFrom(value: unknown): string {
 async function geocodeNetworkAddress(address: string): Promise<Coordinate | null> {
   if (!address) return null;
   try {
+    if (!(await Location.getForegroundPermissionsAsync()).granted) return null;
     const matches = await Location.geocodeAsync(address);
     return matches[0] ? coordinateFrom(matches[0]) : null;
   } catch {
@@ -189,20 +122,13 @@ async function geocodeNetworkAddress(address: string): Promise<Coordinate | null
 }
 
 async function resolveOrderNetworkCoordinates(order: DeliveredTruthOrder): Promise<{
-  restaurant: Coordinate;
-  client: Coordinate;
+  restaurant: Coordinate | null;
+  client: Coordinate | null;
 }> {
   const restaurant = order.restaurant;
   const restaurantObject = restaurant && typeof restaurant === "object" ? restaurant : null;
-  const explicitRestaurant =
-    coordinateFrom(order.restaurantLocation) ||
-    coordinateFrom(restaurantObject?.location) ||
-    coordinateFrom(restaurantObject);
-  const explicitClient =
-    coordinateFrom(order.delivery?.location) ||
-    coordinateFrom(order.customer?.location) ||
-    coordinateFrom(order.delivery?.address) ||
-    coordinateFrom(order.customer?.address);
+  const explicitRestaurant = journeyPickupPoint(order);
+  const explicitClient = journeyDestinationPoint(order);
 
   let partner: any = null;
   if (!explicitRestaurant) {
@@ -216,7 +142,8 @@ async function resolveOrderNetworkCoordinates(order: DeliveredTruthOrder): Promi
         networkKey(restaurantObject?.slug),
         networkKey(deliveredTruthRestaurant(order)),
       ].filter(Boolean));
-      partner = partners.find((entry: any) => [entry?.id, entry?.slug, entry?.name].map(networkKey).some((key: string) => wanted.has(key))) || null;
+      const matches = partners.filter((entry: any) => [entry?.id, entry?.slug, entry?.name].map(networkKey).some((key: string) => wanted.has(key)));
+      partner = matches.length === 1 ? matches[0] : null;
     } catch {
       partner = null;
     }
@@ -236,8 +163,8 @@ async function resolveOrderNetworkCoordinates(order: DeliveredTruthOrder): Promi
   const geocodedClient = explicitClient ? null : await geocodeNetworkAddress(clientAddress);
 
   return {
-    restaurant: explicitRestaurant || partnerPoint || geocodedRestaurant || DEFAULT_RESTAURANT,
-    client: explicitClient || geocodedClient || DEFAULT_CLIENT,
+    restaurant: explicitRestaurant || partnerPoint || geocodedRestaurant,
+    client: explicitClient || geocodedClient,
   };
 }
 
@@ -278,32 +205,7 @@ function normalizeDeliveredTruthOrders(
 }
 
 
-function coordinateProgress(route: Coordinate[], point: Coordinate): number {
-if (route.length < 2) return 0;
-let bestIndex = 0;
-let bestDistance = Number.POSITIVE_INFINITY;
-route.forEach((candidate, index) => {
-const lat = candidate.latitude - point.latitude;
-const lng = candidate.longitude - point.longitude;
-const distance = lat * lat + lng * lng;
-if (distance < bestDistance) {
-bestDistance = distance;
-bestIndex = index;
-}
-});
-return Math.max(0, Math.min(1, bestIndex / (route.length - 1)));
-}
 
-function liveSignalLabel(
-freshness: LiveCourierLocationResponse["freshness"],
-ageSeconds?: number | null,
-): string {
-if (freshness === "live") return ageSeconds ? `Signal réel · ${ageSeconds}s` : "Signal réel";
-if (freshness === "recent") return ageSeconds ? `Signal récent · ${ageSeconds}s` : "Signal récent";
-if (freshness === "stale") return "Signal à rafraîchir";
-if (freshness === "stopped") return "Partage arrêté";
-return "En attente du coursier";
-}
 
 type MapsModule = {
   default: React.ComponentType<any>;
@@ -370,55 +272,7 @@ function loadMapsModule(): MapsModule | null {
 }
 // DA_P4A5J_IPA_PROVEN_MAPS_MODULE_LOADER_V1
 
-function decodePolyline(encoded: string): Coordinate[] {
-  const points: Coordinate[] = [];
-  let index = 0;
-  let latitude = 0;
-  let longitude = 0;
 
-  while (index < encoded.length) {
-    let result = 0;
-    let shift = 0;
-    let byte = 0;
-
-    do {
-      byte = encoded.charCodeAt(index++) - 63;
-      result |= (byte & 0x1f) << shift;
-      shift += 5;
-    } while (byte >= 0x20 && index < encoded.length);
-
-    latitude += result & 1 ? ~(result >> 1) : result >> 1;
-
-    result = 0;
-    shift = 0;
-
-    do {
-      byte = encoded.charCodeAt(index++) - 63;
-      result |= (byte & 0x1f) << shift;
-      shift += 5;
-    } while (byte >= 0x20 && index < encoded.length);
-
-    longitude += result & 1 ? ~(result >> 1) : result >> 1;
-
-    points.push({
-      latitude: latitude / 1e5,
-      longitude: longitude / 1e5,
-    });
-  }
-
-  return points.filter(
-    (point) => Number.isFinite(point.latitude) && Number.isFinite(point.longitude),
-  );
-}
-
-function thinRoute(points: Coordinate[], maxPoints = 90): Coordinate[] {
-  if (points.length <= maxPoints) return points;
-  const step = Math.max(1, Math.floor(points.length / maxPoints));
-  const thinned = points.filter((_, index) => index % step === 0);
-  const last = points[points.length - 1];
-  if (thinned[thinned.length - 1] !== last) thinned.push(last);
-  return thinned;
-}
 
 function formatDistance(distanceMeters: number): string {
   if (!Number.isFinite(distanceMeters) || distanceMeters <= 0) return "—";
@@ -452,123 +306,20 @@ function storySteps(restaurantName: string) {
   ] as const;
 }
 
-function resolveStoryModel({
-  orderDelivered,
-  orderLifecycleStatus,
-  progressValue,
-  remainingEtaMinutes,
-  arrivalPresenceReady,
-  restaurantName,
-  hasUsableLiveLocation,
-}: {
-  orderDelivered: boolean;
-  orderLifecycleStatus: string;
-  progressValue: number;
-  remainingEtaMinutes: number;
-  arrivalPresenceReady: boolean;
-  restaurantName: string;
-  hasUsableLiveLocation: boolean;
+function resolveStoryModel({ orderDelivered, orderLifecycleStatus, restaurantName, hasUsableLiveLocation, etaLabel, distanceToClient, hasOrder }: {
+  orderDelivered: boolean; orderLifecycleStatus: string; restaurantName: string; hasUsableLiveLocation: boolean;
+  etaLabel: string | null; distanceToClient: number | null; hasOrder: boolean;
 }): StoryModel {
-  if (orderDelivered) {
-    return {
-      stage: "delivered",
-      stepIndex: 2,
-      liveLabel: "LIVRÉE",
-      title: "Bon appétit.",
-      subtitle:
-        "Le voyage se termine. Votre expérience DelishAfrica peut commencer.",
-      kicker: "COMMANDE LIVRÉE",
-      status: "Votre commande vous a été remise.",
-    };
+  if (!hasOrder) return { stage: "kitchen", stepIndex: 0, liveLabel: "EN ATTENTE", title: "Votre suivi attend sa commande.", subtitle: "Ouvrez le suivi depuis une commande accessible dans votre compte.", kicker: "COMMANDE À SÉLECTIONNER", status: "Informations en attente" };
+  if (orderDelivered) return { stage: "delivered", stepIndex: 2, liveLabel: "LIVRÉE", title: "Bon appétit.", subtitle: "La remise de votre commande est confirmée.", kicker: "COMMANDE LIVRÉE", status: "Votre commande vous a été remise." };
+  if (["cancelled", "canceled", "rejected"].includes(orderLifecycleStatus)) return { stage: "kitchen", stepIndex: 0, liveLabel: "CLÔTURÉE", title: "Cette commande est clôturée.", subtitle: "Consultez votre commande pour retrouver les détails.", kicker: "SUIVI TERMINÉ", status: "Le suivi de cette commande est arrêté." };
+  if (!["picked_up", "on_the_way", "in_transit"].includes(orderLifecycleStatus)) {
+    if (orderLifecycleStatus === "ready") return { stage: "pickup", stepIndex: 0, liveLabel: "PRÊTE", title: `Votre commande est prête chez ${restaurantName}.`, subtitle: "La prochaine étape est sa récupération par le coursier.", kicker: "RETRAIT AU RESTAURANT", status: "La commande attend son départ." };
+    return { stage: "kitchen", stepIndex: 0, liveLabel: orderLifecycleStatus === "accepted" ? "EN CUISINE" : "EN ATTENTE", title: orderLifecycleStatus === "accepted" ? `${restaurantName} prépare votre commande.` : "Votre commande attend la confirmation du restaurant.", subtitle: "Vous retrouverez ici chaque étape de votre commande.", kicker: "VOTRE COMMANDE", status: orderLifecycleStatus === "accepted" ? "La préparation est confirmée." : "Confirmation en attente" };
   }
-
-  if (orderLifecycleStatus !== "picked_up") {
-    if (orderLifecycleStatus === "ready") {
-      return {
-        stage: "pickup",
-        stepIndex: 0,
-        liveLabel: "PRÊTE",
-        title: `Votre coursier rejoint ${restaurantName}.`,
-        subtitle:
-          "La commande est prête. Le trajet s’animera après la récupération.",
-        kicker: "PRÊTE AU DÉPART",
-        status: "Votre coursier doit encore récupérer la commande.",
-      };
-    }
-
-    return {
-      stage: "kitchen",
-      stepIndex: 0,
-      liveLabel: "EN COURS",
-      title: `${restaurantName} prépare votre commande.`,
-      subtitle:
-        "Chaque étape devient visible, sans vous noyer dans la technique.",
-      kicker: "EN CUISINE",
-      status:
-        orderLifecycleStatus === "accepted"
-          ? "La cuisine est en mouvement."
-          : "Votre commande est bien confirmée.",
-    };
-  }
-
-  if (!hasUsableLiveLocation) {
-    return {
-      stage: "pickup",
-      stepIndex: 1,
-      liveLabel: "EN ATTENTE",
-      title: "Le suivi démarre avec le signal réel du coursier.",
-      subtitle:
-        "La commande est récupérée, mais aucun point terrain récent n’est encore partagé.",
-      kicker: "SIGNAL COURIER ATTENDU",
-      status: "En attente du coursier",
-    };
-  }
-
-  if (progressValue >= 1) {
-    return arrivalPresenceReady
-      ? {
-          stage: "handoff",
-          stepIndex: 2,
-          liveLabel: "ARRIVÉ",
-          title: "La remise commence.",
-          subtitle:
-            "Le coursier est au point de destination et attend la confirmation terrain.",
-          kicker: "REMISE EN COURS",
-          status: "Le coursier vous retrouve à l’adresse indiquée.",
-        }
-      : {
-          stage: "handoff",
-          stepIndex: 2,
-          liveLabel: "ARRIVÉ",
-          title: "Votre coursier est arrivé.",
-          subtitle:
-            "La carte se concentre sur les derniers instants avant la remise.",
-          kicker: "COURSIER ARRIVÉ",
-          status: "La remise va commencer.",
-        };
-  }
-
-  if (progressValue >= 0.82) {
-    return {
-      stage: "approach",
-      stepIndex: 1,
-      liveLabel: "PROCHE",
-      title: "Votre coursier approche.",
-      subtitle: "Les derniers mètres deviennent le centre de l’expérience.",
-      kicker: "ARRIVÉE IMMINENTE",
-      status: "Préparez-vous, votre coursier est tout proche.",
-    };
-  }
-
-  return {
-    stage: "journey",
-    stepIndex: 1,
-    liveLabel: "LIVE",
-    title: "Votre commande avance vers vous.",
-    subtitle: `${remainingEtaMinutes} min estimées avant la remise.`,
-    kicker: "COURSIER EN MOUVEMENT",
-    status: `Arrivée estimée · ${remainingEtaMinutes} min`,
-  };
+  if (!hasUsableLiveLocation) return { stage: "journey", stepIndex: 1, liveLabel: "À ACTUALISER", title: "Votre commande est en route.", subtitle: "La dernière position attend une actualisation. Le coursier peut continuer sa mission.", kicker: "POSITION EN ATTENTE", status: "Nouvelle position attendue" };
+  if (distanceToClient !== null && distanceToClient <= 500) return { stage: "approach", stepIndex: 1, liveLabel: "À PROXIMITÉ", title: "Votre coursier se trouve à proximité.", subtitle: "Gardez vos indications d’accès disponibles pour faciliter la remise.", kicker: "LES DERNIERS MÈTRES", status: "La remise reste à confirmer." };
+  return { stage: "journey", stepIndex: 1, liveLabel: "EN ROUTE", title: "Votre commande avance vers vous.", subtitle: etaLabel ? `Trajet restant estimé : ${etaLabel}.` : "L’heure d’arrivée sera précisée dès qu’un itinéraire récent sera disponible.", kicker: "VERS VOTRE ADRESSE", status: etaLabel ? `Arrivée estimée · ${etaLabel}` : "Arrivée à préciser" };
 }
 
 function MotionAwarePanel({
@@ -654,7 +405,7 @@ function FlowPulse({
   );
 }
 
-export default function MapsLiveLabScreen() {
+function MapsLiveLabScreen() {
   // DA_V3C11F_ROUTE_PARAMS
   const routeParams = useLocalSearchParams<{
     orderId?: string | string[];
@@ -673,27 +424,20 @@ export default function MapsLiveLabScreen() {
   // DA_P3B5_DELIVERED_TRUTH_BRIDGE_RUNTIME_V2_V1E
   const [orderDelivered, setOrderDelivered] = useState(false);
   const [trackedOrder, setTrackedOrder] = useState<DeliveredTruthOrder | null>(null);
-  const [restaurantCoordinate, setRestaurantCoordinate] = useState<Coordinate>(DEFAULT_RESTAURANT);
-  const [clientCoordinate, setClientCoordinate] = useState<Coordinate>(DEFAULT_CLIENT);
-  const hydratedOrderRef = useRef("");
+  const [orderSyncPending, setOrderSyncPending] = useState(true);
+  const [restaurantCoordinate, setRestaurantCoordinate] = useState<Coordinate | null>(null);
+  const [clientCoordinate, setClientCoordinate] = useState<Coordinate | null>(null);
   // DA_P3C2_CLIENT_ORDER_TRUTH_ENGINE_RUNTIME_V2_V1
   const [orderLifecycleStatus, setOrderLifecycleStatus] =
     useState("pending");
   const deliveredTruthInFlightRef = useRef(false);
 const liveLocationInFlightRef = useRef(false);
 const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | null>(null);
+  const [signalNow, setSignalNow] = useState(Date.now());
+  useEffect(() => { const timer = setInterval(() => setSignalNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
 
   const [nativeReady, setNativeReady] = useState(false);
   const [mapsModule, setMapsModule] = useState<MapsModule | null>(null);
-  const [routeCoordinates, setRouteCoordinates] = useState<Coordinate[]>(buildFallbackRoute(DEFAULT_RESTAURANT, DEFAULT_CLIENT));
-  const [routeInfo, setRouteInfo] = useState<RoutePreviewResponse>({
-    provider: "local_preview",
-    etaMinutes: 12,
-    distanceMeters: 0,
-    fallback: true,
-  });
-  const [loadingRoute, setLoadingRoute] = useState(true);
-  const [routeError, setRouteError] = useState<string | null>(null);
   const [running, setRunning] = useState(true);
   const [followCourier, setFollowCourier] = useState(true);
   const [reduceMotionEnabled, setReduceMotionEnabled] = useState(false);
@@ -750,8 +494,7 @@ const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | n
 
   useEffect(() => {
     const identity = deliveredTruthId(trackedOrder);
-    if (!trackedOrder || !identity || hydratedOrderRef.current === identity) return;
-    hydratedOrderRef.current = identity;
+    if (!trackedOrder || !identity) { setRestaurantCoordinate(null); setClientCoordinate(null); return; }
     let cancelled = false;
     void resolveOrderNetworkCoordinates(trackedOrder).then((resolved) => {
       if (cancelled) return;
@@ -761,112 +504,32 @@ const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | n
     return () => {
       cancelled = true;
     };
-  }, [trackedOrder]);
+  }, [deliveredTruthId(trackedOrder || undefined), JSON.stringify(trackedOrder?.restaurantLocation), JSON.stringify(trackedOrder?.restaurant), JSON.stringify(trackedOrder?.delivery), JSON.stringify(trackedOrder?.customer), JSON.stringify(trackedOrder?.deliveryAddress)]);
 
-  const loadRealRoute = async () => {
-    setLoadingRoute(true);
-    setRouteError(null);
-
-    try {
-      const response = await fetch(ROUTES_PREVIEW_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          origin: { lat: COURIER_START.latitude, lng: COURIER_START.longitude },
-          destination: { lat: clientCoordinate.latitude, lng: clientCoordinate.longitude },
-          waypoints: [{ lat: restaurantCoordinate.latitude, lng: restaurantCoordinate.longitude }],
-          mode: "DRIVE",
-          // DA_V3C11F_ORDER_ID_BRIDGE
-          orderId: routeOrderId || undefined,
-        }),
-      });
-
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-      const data = (await response.json()) as RoutePreviewResponse;
-      const decoded = data.polyline ? thinRoute(decodePolyline(data.polyline)) : [];
-
-      if (!mountedRef.current) return;
-
-      setRouteInfo(data);
-      setRouteCoordinates(decoded.length >= 2 ? decoded : buildFallbackRoute(restaurantCoordinate, clientCoordinate));
-      setRunning(true);
-    } catch (error) {
-      if (!mountedRef.current) return;
-      setRouteCoordinates(buildFallbackRoute(restaurantCoordinate, clientCoordinate));
-      setRouteInfo({
-        provider: "local_preview",
-        etaMinutes: 12,
-        distanceMeters: 0,
-        fallback: true,
-      });
-      setRouteError(error instanceof Error ? error.message : "Route indisponible");
-    } finally {
-      if (mountedRef.current) setLoadingRoute(false);
-    }
-  };
-
-  useEffect(() => {
-    void loadRealRoute();
-  }, [restaurantCoordinate.latitude, restaurantCoordinate.longitude, clientCoordinate.latitude, clientCoordinate.longitude]);
-
-  // DA_P3A1_LIVE_MAP_ENGINE_FOUNDATION_RUNTIME_V2_V1
-  const { courier, heading } = useLiveMapEngine({
-    routeCoordinates,
-    running: false,
-    enabled: nativeReady && Boolean(mapsModule),
-    cycleDurationMs: reduceMotionEnabled ? 26000 : 18000,
-    tickMs: reduceMotionEnabled ? 320 : 80,
-  });
-
-  const livePoint = liveLocation?.location?.point;
-  const hasUsableLiveLocation = Boolean(
-    liveLocation?.ok &&
-      liveLocation.location?.active &&
-      (liveLocation.freshness === "live" || liveLocation.freshness === "recent") &&
-      Number.isFinite(Number(livePoint?.latitude)) &&
-      Number.isFinite(Number(livePoint?.longitude)),
-  );
-  const visibleCourier: Coordinate = hasUsableLiveLocation
-    ? {
-        latitude: Number(livePoint?.latitude),
-        longitude: Number(livePoint?.longitude),
-      }
-    : courier;
-  const visibleHeading =
-    hasUsableLiveLocation && Number.isFinite(Number(livePoint?.headingDegrees))
-      ? Number(livePoint?.headingDegrees)
-      : heading;
-  const visibleProgressValue = hasUsableLiveLocation
-    ? coordinateProgress(routeCoordinates, visibleCourier)
-    : 0;
-  const visibleProgress = Math.round(visibleProgressValue * 100);
-  const liveJourneyVisible =
-    hasUsableLiveLocation &&
-    orderLifecycleStatus === "picked_up" &&
-    !orderDelivered;
-
+  const signal = assessJourneySignal(liveLocation, signalNow);
+  const hasUsableLiveLocation = signal.usable;
+  // A coordinate used for camera calculations is never rendered as a courier without a usable signal.
+  const visibleCourier: Coordinate = signal.point || clientCoordinate || restaurantCoordinate || { latitude: 0, longitude: 0 };
+  const visibleHeading = Number(liveLocation?.location?.point?.headingDegrees || 0);
+  const liveJourneyVisible = hasUsableLiveLocation && ["picked_up", "on_the_way", "in_transit"].includes(orderLifecycleStatus) && !orderDelivered;
+  const liveRoute = useJourneyRoute({ apiBaseUrl: API_BASE_URL, orderId: routeOrderId,
+    origin: hasUsableLiveLocation ? signal.point : null,
+    destination: liveJourneyVisible ? clientCoordinate : restaurantCoordinate,
+    mode: journeyTravelMode(liveLocation?.location?.travelMode), phase: orderLifecycleStatus,
+    enabled: Boolean(trackedOrder && !orderDelivered && hasUsableLiveLocation && ["ready", "picked_up", "on_the_way", "in_transit"].includes(orderLifecycleStatus)) });
+  const routeCoordinates = liveRoute.route?.points || [];
+  const loadingRoute = liveRoute.loading;
+  const routeError = liveRoute.unavailable;
+  const loadRealRoute = liveRoute.refresh;
+  const projection = hasUsableLiveLocation ? journeyRouteProgress(routeCoordinates, visibleCourier) : null;
+  const visibleProgressValue = projection?.progress || 0;
+  const distanceToClient = liveJourneyVisible && clientCoordinate ? journeyDistanceMeters(visibleCourier, clientCoordinate) : null;
   // DA_P3B2_ARRIVAL_PRESENCE_SEQUENCE_ENGINE_RUNTIME_V2_V1B
-  const [arrivalPresenceReady, setArrivalPresenceReady] =
-    useState(false);
+  const arrivalPresenceReady = false;
 
   // DA_P3B4_TERMINAL_PRESENCE_MOTION_ENGINE_RUNTIME_V2_V1D
   const terminalPresenceMotion =
     useRef(new Animated.Value(1)).current;
-
-
-  useEffect(() => {
-    if (visibleProgressValue < 1) {
-      setArrivalPresenceReady(false);
-      return;
-    }
-
-    const arrivalPresenceTimer = setTimeout(() => {
-      setArrivalPresenceReady(true);
-    }, 1800);
-
-    return () => clearTimeout(arrivalPresenceTimer);
-  }, [visibleProgressValue]);
 
 
   useEffect(() => {
@@ -875,12 +538,13 @@ const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | n
       null;
 
     async function refreshDeliveredTruth() {
-      if (!routeOrderId || deliveredTruthInFlightRef.current) {
+      if (!routeOrderId || deliveredTruthInFlightRef.current || AppState.currentState && AppState.currentState !== "active") {
         return;
       }
 
       deliveredTruthInFlightRef.current = true;
-
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
       try {
         const response = await daOrdersFetch(
           `${API_BASE_URL}/orders/demo/list`,
@@ -890,6 +554,7 @@ const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | n
               "Content-Type": "application/json",
             },
             body: JSON.stringify({}),
+            signal: controller.signal,
           },
         );
 
@@ -915,6 +580,7 @@ const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | n
           matchingStatus === "completed";
 
         if (!cancelled) {
+          setOrderSyncPending(false);
           setTrackedOrder(matchingOrder || null);
           setOrderLifecycleStatus(matchingStatus || "pending");
           setOrderDelivered(delivered);
@@ -925,8 +591,9 @@ const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | n
           deliveredTruthInterval = null;
         }
       } catch {
-        // Preserve the current UI state on transient read failures.
+        if (!cancelled) setOrderSyncPending(true);
       } finally {
+        clearTimeout(timeout);
         deliveredTruthInFlightRef.current = false;
       }
     }
@@ -953,19 +620,24 @@ const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | n
     let timer: ReturnType<typeof setInterval> | null = null;
 
     async function refreshLiveLocation() {
-      if (!routeOrderId || liveLocationInFlightRef.current) return;
+      if (!routeOrderId || liveLocationInFlightRef.current || AppState.currentState && AppState.currentState !== "active") return;
       liveLocationInFlightRef.current = true;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
       try {
         const response = await daOrdersFetch(`${API_BASE_URL}/orders/demo/location/get`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify({ orderId: routeOrderId }),
+          signal: controller.signal,
         });
         const payload = (await response.json().catch(() => null)) as LiveCourierLocationResponse | null;
-        if (!cancelled && response.ok) setLiveLocation(payload);
+        if (!cancelled && response.ok) setLiveLocation(payload ? { ...payload, receivedAtMs: Date.now() } : null);
+        else if (!cancelled && [401, 403, 404].includes(response.status)) setLiveLocation(null);
       } catch {
         // Preserve the last known point during a transient network gap.
       } finally {
+        clearTimeout(timeout);
         liveLocationInFlightRef.current = false;
       }
     }
@@ -1021,48 +693,17 @@ const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | n
     throttleMs: 650,
   });
 
-  const routeSourceLabel =
-    routeInfo.provider === "google_routes" && !routeInfo.fallback && !routeError
-      ? "Trajet vérifié"
-      : "Continuité locale";
-  const routeDistanceLabel = formatDistance(routeInfo.distanceMeters || 0);
-  const routeSummary =
-    routeDistanceLabel === "—"
-      ? routeSourceLabel
-      : `${routeSourceLabel} · ${routeDistanceLabel}`;
-  const etaMinutes = Math.max(
-    1,
-    Math.round(routeInfo.etaMinutes || 12),
-  );
-
-  // DA_P3A10C_LIVE_ETA_COUNTDOWN_ENGINE_RUNTIME_V2_V1
-  const remainingProgress = Math.max(
-    0,
-    1 - Math.max(0, Math.min(1, visibleProgressValue)),
-  );
-  const remainingEtaMinutes = Math.max(
-    1,
-    Math.ceil(etaMinutes * remainingProgress),
-  );
-
+  const routeSummary = liveRoute.route ? `Itinéraire actualisé · ${formatDistance(liveRoute.eta?.distanceMeters || liveRoute.route.distanceMeters)}` : "Itinéraire en attente";
   const trackedRestaurantName = deliveredTruthRestaurant(trackedOrder);
-  const story = resolveStoryModel({
-    orderDelivered,
-    orderLifecycleStatus,
-    progressValue: visibleProgressValue,
-    remainingEtaMinutes,
-    arrivalPresenceReady,
-    restaurantName: trackedRestaurantName,
-    hasUsableLiveLocation,
-  });
+  const story = resolveStoryModel({ orderDelivered, orderLifecycleStatus, restaurantName: trackedRestaurantName,
+    hasUsableLiveLocation, etaLabel: liveRoute.eta?.label || null, distanceToClient, hasOrder: Boolean(trackedOrder) });
   const activeStorySteps = storySteps(trackedRestaurantName);
   const compactLayout =
     viewportHeight < 780 ||
     story.stage === "journey" ||
     story.stage === "approach" ||
     story.stage === "handoff";
-  const canControlJourney =
-    liveJourneyVisible && visibleProgressValue < 1;
+  const canControlJourney = liveJourneyVisible;
   const cameraFollowLabel =
     visibleProgressValue >= 1
       ? "Centrer la remise"
@@ -1073,10 +714,11 @@ const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | n
           : "Reprendre le suivi";
 
   const fitJourney = () => {
-    if (!mapReadyRef.current || routeCoordinates.length < 2) return;
+    const points = routeCoordinates.length >= 2 ? routeCoordinates : [restaurantCoordinate, clientCoordinate, signal.point].filter((point): point is Coordinate => Boolean(point));
+    if (!mapReadyRef.current || !points.length) return;
 
     requestAnimationFrame(() => {
-      mapRef.current?.fitToCoordinates?.(routeCoordinates, {
+      mapRef.current?.fitToCoordinates?.(points, {
         edgePadding: {
           top: compactLayout ? 178 : 236,
           right: 52,
@@ -1106,7 +748,7 @@ const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | n
   };
 
   const focusHandoff = () => {
-    if (!mapReadyRef.current) return;
+    if (!mapReadyRef.current || !clientCoordinate) return;
 
     setFollowCourier(false);
     requestAnimationFrame(() => {
@@ -1158,8 +800,7 @@ const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | n
     lastAutoStageRef.current = story.stage;
 
     if (story.stage === "journey") {
-      setFollowCourier(true);
-      focusCourierNow();
+      if (followCourier && liveJourneyVisible) focusCourierNow();
       return;
     }
 
@@ -1205,12 +846,12 @@ const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | n
   const Marker = mapsModule.Marker;
   return (
     <View style={styles.screen}>
-      <MapView
+      {restaurantCoordinate || clientCoordinate || signal.point ? <MapView
         ref={mapRef}
         style={StyleSheet.absoluteFillObject}
         initialRegion={{
-          latitude: (restaurantCoordinate.latitude + clientCoordinate.latitude) / 2,
-          longitude: (restaurantCoordinate.longitude + clientCoordinate.longitude) / 2,
+          latitude: (signal.point || restaurantCoordinate || clientCoordinate || { latitude: 0, longitude: 0 }).latitude,
+          longitude: (signal.point || restaurantCoordinate || clientCoordinate || { latitude: 0, longitude: 0 }).longitude,
           latitudeDelta: 0.03,
           longitudeDelta: 0.03,
         }}
@@ -1223,21 +864,21 @@ const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | n
         accessibilityLabel={`Carte de suivi. ${story.title} ${story.status}`}
       >
         {/* DA_P3A4_LIVE_ROUTE_ENGINE_RUNTIME_V2_V1 */}
-        <LiveRouteEngine
+        {routeCoordinates.length >= 2 ? <LiveRouteEngine
           routeCoordinates={routeCoordinates}
           progressValue={visibleProgressValue}
           baseColor={"#B76A3A"}
           baseWidth={6}
-        />
+        /> : null}
 
-        <Marker coordinate={restaurantCoordinate} title={trackedRestaurantName} description="Restaurant partenaire">
+        {restaurantCoordinate ? <Marker coordinate={restaurantCoordinate} title={trackedRestaurantName} description="Restaurant partenaire">
           <View style={[styles.marker, styles.restaurantMarker]}>
             <Text style={styles.markerEmoji}>🍲</Text>
           </View>
-        </Marker>
+        </Marker> : null}
 
         {/* DA_P3A7_DESTINATION_APPROACH_ENGINE_RUNTIME_V2_V1 */}
-        <Marker
+        {clientCoordinate ? <Marker
           coordinate={clientCoordinate}
           title="Destination"
           description="Adresse client"
@@ -1245,7 +886,7 @@ const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | n
           tracksViewChanges={false}
         >
           <DestinationApproachMarker progressValue={visibleProgressValue} />
-        </Marker>
+        </Marker> : null}
 
         {/* DA_P3A2_COURIER_MARKER_ROTATION_RUNTIME_V2_V1 */}
         {/* DA_P3A5_LIVING_COURIER_MARKER_RUNTIME_V2_V1 */}
@@ -1253,10 +894,10 @@ const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | n
 <LivingCourierMarker
           coordinate={visibleCourier}
           heading={visibleHeading}
-          running={running || hasUsableLiveLocation}
+          running={running && !reduceMotionEnabled}
         />
         ) : null}
-      </MapView>
+      </MapView> : <View style={styles.fallbackContent}><Text style={styles.fallbackText}>Les repères apparaîtront dès que les coordonnées de votre commande seront disponibles.</Text></View>}
 
       <SafeAreaView pointerEvents="box-none" style={styles.overlay}>
         <MotionAwarePanel reduceMotion={reduceMotionEnabled} direction="top">
@@ -1280,7 +921,7 @@ const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | n
               style={[styles.subtitle, compactLayout && styles.subtitleCompact]}
               numberOfLines={compactLayout ? 2 : 3}
             >
-              {story.subtitle}
+              {orderSyncPending && trackedOrder ? "Dernière étape connue. La commande attend une actualisation." : story.subtitle}
             </Text>
             <View style={styles.sourceRow}>
               {loadingRoute ? (
@@ -1289,20 +930,20 @@ const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | n
               <Text style={styles.sourceText} numberOfLines={1}>
                 {loadingRoute
                   ? "Nous dessinons votre trajet…"
-                  : `${routeSummary} · ${liveSignalLabel(liveLocation?.freshness, liveLocation?.ageSeconds)}`}
+                  : `${routeSummary} · ${signal.label}`}
               </Text>
             </View>
             {routeError ? (
               <Text style={styles.routeWarning}>
-                Réseau instable · la continuité de trajet reste active
+                Calcul du trajet indisponible · l’arrivée reste à préciser
               </Text>
             ) : null}
             <View style={styles.liveTruthRow}>
               <View style={[styles.liveTruthDot, hasUsableLiveLocation && styles.liveTruthDotActive]} />
               <Text style={styles.liveTruthText} numberOfLines={1}>
                 {hasUsableLiveLocation
-                  ? `${liveLocation?.location?.courierName || "Coursier"} · position terrain`
-                  : liveSignalLabel(liveLocation?.freshness, liveLocation?.ageSeconds)}
+                  ? `${liveLocation?.location?.courierName || "Coursier"} · ${signal.label}`
+                  : signal.label}
               </Text>
             </View>
           </View>
@@ -1397,23 +1038,6 @@ const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | n
                     {story.status}
                   </Text>
                 </Animated.View>
-                <Text
-                  style={styles.progressText}
-                  numberOfLines={1}
-                  accessibilityLabel={`Progression ${visibleProgress} pour cent`}
-                >
-                  {visibleProgress}%
-                </Text>
-              </View>
-
-              <View
-                accessible
-                accessibilityRole="progressbar"
-                accessibilityLabel="Progression du trajet"
-                accessibilityValue={{ min: 0, max: 100, now: visibleProgress }}
-                style={styles.progressTrack}
-              >
-                <View style={[styles.progressFill, { width: `${visibleProgress}%` }]} />
               </View>
 
               <Text style={styles.handoffCaption}>CUISINE → TRAJET → REMISE</Text>
@@ -1465,8 +1089,8 @@ const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | n
                   accessibilityLabel={
                     canControlJourney
                       ? running
-                        ? "Mettre le mouvement en pause"
-                        : "Reprendre le mouvement"
+                        ? "Réduire les animations de la carte, le suivi continue"
+                        : "Réactiver les animations de la carte"
                       : "Voir l’ensemble du trajet"
                   }
                   style={styles.secondaryButton}
@@ -1482,8 +1106,8 @@ const [liveLocation, setLiveLocation] = useState<LiveCourierLocationResponse | n
                   <Text style={styles.secondaryButtonText}>
                     {canControlJourney
                       ? running
-                        ? "Mettre en pause"
-                        : "Reprendre"
+                        ? "Calmer la carte"
+                        : "Animer la carte"
                       : "Voir le trajet"}
                   </Text>
                 </Pressable>
@@ -1709,3 +1333,9 @@ const styles = StyleSheet.create({
   diagnosticLabel: { marginTop: 10, color: "#B9A69B", fontSize: 11, fontWeight: "800", letterSpacing: 1.1, textTransform: "uppercase" },
   diagnosticValue: { marginTop: 4, color: "#FFFFFF", fontSize: 16, fontWeight: "800" },
 });
+
+export default function MissionMapEntry() {
+  const params = useLocalSearchParams<{ orderId?: string | string[]; publicId?: string | string[] }>();
+  const identity = params.publicId || params.orderId || "";
+  return <MapsLiveLabScreen key={String(identity)} />;
+}

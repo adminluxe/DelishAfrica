@@ -41,11 +41,11 @@ type RouteCard = {
 };
 
 const ROUTES: RouteCard[] = [
-  { eyebrow: "COMMANDES", title: "Décider", body: "Accepter, préparer, marquer prête et suivre le service.", path: "/orders" },
-  { eyebrow: "CUISINE", title: "Kitchen Pulse", body: "Cadence, priorités et lecture opérationnelle du service.", path: "/kitchen-pulse" },
-  { eyebrow: "ÉTABLISSEMENT", title: "Mon espace", body: "Présence, confiance, territoire et disponibilité.", path: "/partner-space" },
+  { eyebrow: "COMMANDES", title: "Mes commandes", body: "Accepter, préparer, marquer prête et suivre le service.", path: "/orders" },
+  { eyebrow: "CUISINE", title: "Ma cuisine", body: "Retrouver les préparations et les priorités du service.", path: "/kitchen-pulse" },
+  { eyebrow: "ÉTABLISSEMENT", title: "Mon espace", body: "Établissement, horaires et disponibilité.", path: "/partner-space" },
   { eyebrow: "FINANCES", title: "Mes finances", body: "Activité, relevés et versements validés.", path: "/finances" },
-  { eyebrow: "PILOTAGE", title: "Ops Dashboard", body: "Vision synthétique des signaux utiles au restaurant.", path: "/ops-dashboard" },
+  { eyebrow: "PILOTAGE", title: "Mon activité", body: "Voir les informations utiles à votre restaurant.", path: "/ops-dashboard" },
 ];
 
 function extractOrders(payload: any): any[] {
@@ -171,8 +171,8 @@ export default function MerchantSurfaceHome() {
   }, [orders]);
 
   const ordersFreshnessLabel = ordersObservedAt
-    ? `Dernière réponse serveur · ${new Date(ordersObservedAt).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" })}`
-    : "Aucune réponse serveur confirmée dans cette session.";
+    ? `Dernière actualisation · ${new Date(ordersObservedAt).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" })}`
+    : "Les commandes attendent une actualisation.";
 
   const go = (path: string) => router.push(path as any);
   const condensationOpacity = condensationPhase.interpolate({
@@ -224,7 +224,7 @@ export default function MerchantSurfaceHome() {
         <View style={styles.topline}>
           <View style={styles.toplineCopy}>
             <Text style={styles.brand}>DELISHAFRICA®</Text>
-            <Text style={styles.role}>MERCHANT · KITCHEN TIDE · S10N</Text>
+            <Text style={styles.role}>MERCHANT · VOTRE SERVICE</Text>
           </View>
           <Pressable
             onPress={() => go("/partner-space")}
@@ -240,37 +240,37 @@ export default function MerchantSurfaceHome() {
         <View style={[styles.authority, ownership.ready ? styles.authorityReady : styles.authorityPending]}>
           <View style={[styles.authorityDot, ownership.ready && styles.authorityDotReady]} />
           <View style={styles.authorityCopy}>
-            <Text style={styles.authorityLabel}>BUSINESS AUTHORITY</Text>
+            <Text style={styles.authorityLabel}>VOTRE ÉTABLISSEMENT</Text>
             <Text style={styles.authorityText}>
               {loading
                 ? "Vérification de votre établissement…"
                 : ownership.ready
-                  ? `${ownership.partner} · rôle ${ownership.role}`
-                  : "Identité Merchant reconnue · rattachement établissement à finaliser"}
+                  ? `${ownership.partner} · accès confirmé`
+                  : "Connectez-vous pour retrouver votre établissement."}
             </Text>
           </View>
-          {loading ? <ActivityIndicator size="small" /> : <Text style={styles.authorityState}>{ownership.ready ? "LIÉ" : "GATE"}</Text>}
+          {loading ? <ActivityIndicator size="small" /> : <Text style={styles.authorityState}>{ownership.ready ? "CONNECTÉ" : "À VÉRIFIER"}</Text>}
         </View>
 
         <WaterIntelRail
           tone="merchant"
           mode="pulse"
-          label="PULSE · KITCHEN TIDE"
-          title={stats.pending > 0 ? `${stats.pending} décision${stats.pending > 1 ? "s" : ""} remonte${stats.pending > 1 ? "nt" : ""} à la surface.` : "Le service respire."}
-          body={`${stats.kitchen} en cuisine · ${stats.ready} prête${stats.ready > 1 ? "s" : ""} · la priorité reste lisible et la décision reste humaine.`}
-          status={loading ? "SYNC" : ordersSynced ? "LIVE" : "À ACTUALISER"}
+          label="LE RYTHME DU SERVICE"
+          title={!ordersSynced ? "Retrouvons vos commandes." : stats.pending > 0 ? `${stats.pending} décision${stats.pending > 1 ? "s" : ""} remonte${stats.pending > 1 ? "nt" : ""} à la surface.` : "Le service respire."}
+          body={ordersSynced ? `${stats.kitchen} en cuisine · ${stats.ready} prête${stats.ready > 1 ? "s" : ""} · chaque priorité à portée de main.` : "Une actualisation est nécessaire pour afficher votre service."}
+          status={loading ? "ACTUALISATION" : ordersSynced ? "À JOUR" : "À ACTUALISER"}
           signalClass={loading ? "estimated" : ordersSynced ? "confirmed" : "stale"}
-          evidence={ordersSynced ? "Comptages issus de /orders/demo/list pour votre session Merchant." : "Le rail conserve uniquement le dernier état local disponible."}
+          evidence={ordersSynced ? "Les commandes sont actualisées pour votre établissement." : "Actualisez votre connexion pour retrouver les commandes."}
           freshnessLabel={ordersFreshnessLabel}
           reduceMotion={reduceMotion}
           onPress={() => go("/operations-live")}
-          accessibilityLabel="Ouvrir Kitchen Tide et la vue opérationnelle temps réel"
+          accessibilityLabel="Ouvrir le suivi du service"
         />
 
-        <Text style={styles.kicker}>CUISINE · SERVICE · REMISE · LIVE</Text>
+        <Text style={styles.kicker}>CUISINE · SERVICE · REMISE</Text>
         <Text style={styles.hero}>Une décision claire.{`\n`}Le service avance.</Text>
         <Text style={styles.subtitle}>
-          Le cockpit rassemble commandes, cuisine, présence et pilotage dans une lecture immédiate,
+          Vos commandes, votre cuisine et votre activité se retrouvent ici,
           avec chaque priorité à portée de geste.
         </Text>
 
@@ -289,7 +289,7 @@ export default function MerchantSurfaceHome() {
             <Text style={styles.primaryEyebrow}>{ownership.ready ? "SERVICE ACTIF" : "IDENTITÉ D’ABORD"}</Text>
             <Text style={styles.primaryTitle}>{ownership.ready ? "Ouvrir les commandes" : "Sécuriser mon accès"}</Text>
             <Text style={styles.primaryBody}>
-              {ownership.ready ? "Votre établissement est lié à cette identité Merchant." : "Reconnectez l’identité Merchant si nécessaire."}
+              {ownership.ready ? "Les commandes de votre établissement vous attendent." : "Connectez-vous à votre compte restaurateur."}
             </Text>
           </View>
           <Text style={styles.primaryArrow}>→</Text>

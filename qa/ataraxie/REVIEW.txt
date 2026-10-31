@@ -1,0 +1,72 @@
+DELISHAFRICA - CANDIDAT ATARAXIE - 31 OCTOBRE 2026
+Statut : sources et assemblages JavaScript verifies ; essai Android reel restant.
+Branche locale VPS : feat/ataraxie-triplette-20261031
+
+COMPORTEMENT LIVRE DANS LE CANDIDAT
+- Accueils Merchant et Courier : retrait du S10N visible et du jargon technique
+  dans les parcours traites. Messages de connexion, missions et service clarifies.
+- Courier : les deux anciennes entrees de carte convergent sur la carte native.
+  L'identifiant de mission est conserve. Un lien inconnu n'affiche aucune autre
+  commande. Si plusieurs missions sont possibles, un choix est demande.
+- Carte Courier : retrait et livraison distingues, reperes issus de la commande
+  ou d'une correspondance unique avec le restaurant ; aucune adresse absente
+  n'est remplacee par un point de demonstration.
+- Modes velo, moto, voiture et marche choisis explicitement. Itineraire calcule
+  depuis le GPS reel vers la prochaine etape. Les reponses de secours du moteur
+  de routage ne produisent ni trace fictive ni heure d'arrivee.
+- Partage GPS volontaire pour une mission acceptee et prete au retrait.
+  Il persiste entre les ecrans de l'app. Un bandeau permet de revenir a la mission
+  et d'arreter le partage depuis les autres ecrans.
+- Premier plan uniquement : mise en pause lors du passage en arriere-plan,
+  nouvelle validation de mission au retour. Aucun suivi ecran verrouille promis.
+- Client et Merchant : l'age des positions augmente aussi sans nouvelle reponse
+  reseau. Une position ancienne ou imprecise cesse d'alimenter le suivi actif.
+- Client : suppression du trajet partant d'un coursier fixe et du delai de 12 min
+  par defaut. L'ETA depend d'un itineraire recent et du mode effectivement partage.
+  Une proximite GPS n'est jamais transformee en confirmation de livraison.
+- Merchant : retrait des preuves techniques de statut et des ETA de dispatch sans
+  fraicheur connue. Conservation des actions de preparation et des alertes alimentaires.
+- API candidate : validation des coordonnees et des horodatages ; protection
+  contre les positions et arrets tardifs provenant d'une ancienne session GPS.
+  Un echec d'ecriture ne confirme pas la reception d'une position.
+
+VERIFICATION EFFECTUEE
+- 25/25 tests cibles : selection de mission, coordonnees absentes, vieillissement,
+  geometrie, route de secours, permission refusee, partage prive, panne reseau,
+  changement de mission, retour au premier plan, session arretee, ecriture disque.
+- TypeScript sans emission : Client, Merchant, Courier et API - reussite.
+- Expo export Android : Client, Merchant, Courier - reussite.
+- Expo export web : Client, Merchant, Courier - reussite.
+- Controles de hash avant chaque modification du candidat ; sauvegardes et
+  manifestes conserves avec les journaux dans DA_RUNTIME/DA_ATARAXIE_20261031.
+Ces exports valident le JavaScript. Ils ne sont ni des APK/AAB ni une preuve de
+bon fonctionnement des permissions, des tuiles ou du GPS sur un appareil Android.
+
+LIMITES ET PASSAGE AU TEST FERME
+1. Essai indispensable sur telephones Android reels : coursier + client + marchand,
+   avec une commande complete, les permissions refusees, une coupure reseau,
+   le changement d'ecran et le passage en arriere-plan. Aucun essai terrain fait ici.
+2. Tester les tuiles et Google Routes dans l'environnement cible, pour chaque mode.
+   Aucun appel Google facturable ni verification des quotas/cles de production fait ici.
+   Un mode non pris en charge affiche une arrivee a preciser.
+3. L'ETA est une fourchette de presentation autour d'une duree routiere recente ;
+   elle ne constitue pas un intervalle statistique de confiance ni un engagement horaire.
+   Les appels de recalcul sont limites : au plus un essai / 30 s, et renouvellement
+   a 60 s si immobile. Le budget de requetes reste a observer en test reel.
+4. L'API candidate doit etre testee et deployee dans l'environnement de test avant
+   les nouveaux clients : travelMode et la protection sharingSessionId y sont ajoutes.
+   L'API actuellement en service n'a pas ete deployee ou redemarree.
+5. Aucune production Play, aucune nouvelle version iOS, aucun identifiant ni code
+   de version modifies. Les builds 3.0.3 soumis a Google ne contiennent pas encore
+   ces changements. Aucune invitation de testeur envoyee.
+6. La base active du VPS et main sur GitHub divergent. La branche candidate est
+   isolee et basee sur un instantane des sources deja presentes sur le VPS, afin de
+   conserver les travaux preexistants. Aucun merge dans main effectue.
+   Le depot GitHub est public : aucune nouvelle source du candidat n'y est poussee.
+
+RETOUR ARRIERE ET REVUE
+Le premier commit conserve la base preexistante ; le second porte les changements
+Ataraxie. L'archive d'accompagnement contient le correctif entre ces commits,
+les seuls fichiers modifies, les hashes et les journaux. Appliquer/revoquer le
+correctif uniquement apres git apply --check sur la base appropriee.
+L'arbre canonique /opt/delishafrica/monorepo n'a pas ete modifie par cette intervention.
