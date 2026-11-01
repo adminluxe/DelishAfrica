@@ -1,3 +1,4 @@
+import { daOrdersFetch } from "./daOrdersApi";
 import { useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 import {
@@ -52,7 +53,7 @@ export function useJourneyRoute(options: Options) {
       controller = new AbortController();
       const timeout = setTimeout(() => controller?.abort(), 8000);
       try {
-        const response = await fetch(`${value.apiBaseUrl}/routes/preview`, {
+        const response = await daOrdersFetch(`${value.apiBaseUrl}/routes/mission-preview`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify({

@@ -27,6 +27,22 @@
     },
     "preview": {
       "channel": "preview"
+    },
+    "ataraxie-closed": {
+      "extends": "production",
+      "distribution": "store",
+      "channel": "ataraxie-closed",
+      "environment": "production",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "DA_ATARAXIE_ANDROID_BUILD": "1",
+        "EXPO_PUBLIC_API_BASE_URL": "https://ataraxie-api.delishafrica.me/api/v1",
+        "EXPO_PUBLIC_API_URL": "https://ataraxie-api.delishafrica.me/api/v1",
+        "EXPO_PUBLIC_RELEASE_RING": "ataraxie-closed"
+      }
     }
   },
   "submit": {

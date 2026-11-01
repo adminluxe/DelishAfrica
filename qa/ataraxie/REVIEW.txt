@@ -1,3 +1,6 @@
+MISE A JOUR 1 NOVEMBRE 2026 : voir RELEASE-304.md pour les preparatifs Android
+3.0.4, le routage authentifie, les controles supplementaires et les blocages.
+
 DELISHAFRICA - CANDIDAT ATARAXIE - 31 OCTOBRE 2026
 Statut : sources et assemblages JavaScript verifies ; essai Android reel restant.
 Branche locale VPS : feat/ataraxie-triplette-20261031

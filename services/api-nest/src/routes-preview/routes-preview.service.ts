@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { readFileSync } from 'fs';
 import {
 RoutePoint,
 RoutePreviewInput,
@@ -12,6 +13,7 @@ const DEFAULT_SOURCE = 'terrain-os';
 const EARTH_RADIUS_KM = 6371;
 
 function toNumber(value: unknown): number | null {
+if (value === null || value === undefined || typeof value === "boolean" || typeof value === "string" && !value.trim()) return null;
 const n = Number(value);
 return Number.isFinite(n) ? n : null;
 }
@@ -103,7 +105,7 @@ return null;
 
 @Injectable()
 export class RoutesPreviewService {
-async preview(input: RoutePreviewInput = {}): Promise<RoutePreviewResponse> {
+async preview(input: RoutePreviewInput = {}, options: { allowGoogle?: boolean } = {}): Promise<RoutePreviewResponse> {
 const origin = normalizePoint(input.origin);
 const destination = normalizePoint(input.destination);
 const waypoints = Array.isArray(input.waypoints)
@@ -127,7 +129,8 @@ confidence: 0.2,
 });
 }
 
-const apiKey = this.googleApiKey();
+// Only the authenticated mission endpoint may consume the paid routing provider.
+const apiKey = options.allowGoogle ? this.googleApiKey() : "";
 
 if (!apiKey) {
 return this.fallback({
@@ -159,7 +162,7 @@ polyline: google.polyline,
 confidence: 0.9,
 fallback: false,
 meta: {
-trafficAware: true,
+trafficAware: mode === "DRIVE",
 computedAt: new Date().toISOString(),
 mode,
 source,
@@ -185,13 +188,11 @@ confidence: 0.62,
 }
 
 private googleApiKey(): string {
-const raw =
-process.env.GOOGLE_ROUTES_API_KEY ||
-process.env.GOOGLE_MAPS_API_KEY ||
-process.env.GOOGLE_API_KEY ||
-'';
-
-return String(raw || '').trim();
+const raw = process.env.GOOGLE_ROUTES_API_KEY || process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_API_KEY || '';
+if (raw.trim()) return raw.trim();
+const file = String(process.env.GOOGLE_ROUTES_API_KEY_FILE || '').trim();
+if (!file) return '';
+try { return readFileSync(file, 'utf8').trim(); } catch { return ''; }
 }
 
 private fallback(args: {

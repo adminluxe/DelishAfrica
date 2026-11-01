@@ -2,6 +2,13 @@ import { ConfigContext, ExpoConfig } from "expo/config";
 
 // DA_DEV_VARIANT_SIDE_BY_SIDE_V3 — DEV binary coexists with Store/TestFlight.
 const IS_DEV = process.env.APP_VARIANT === "development";
+// This release overlay is Android-only. Existing iOS version settings are preserved.
+const IS_ATARAXIE_ANDROID = process.env.DA_ATARAXIE_ANDROID_BUILD === "1" && process.env.EAS_BUILD_PLATFORM === "android";
+const ANDROID_MAPS_KEY = process.env.DA_COURIER_ANDROID_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_ANDROID_API_KEY || "";
+if (IS_ATARAXIE_ANDROID && process.env.EAS_BUILD === "true" && !ANDROID_MAPS_KEY.trim()) {
+  throw new Error("ATARAXIE_ANDROID_MAPS_KEY_MISSING_COURIER");
+}
+
 const COURIER_APP_NAME = IS_DEV ? "DelishAfrica Courier DEV" : "DelishAfrica Courier";
 const COURIER_DISPLAY_NAME = IS_DEV ? "DA Courier DEV" : "DelishAfrica Courier";
 const COURIER_SCHEME = IS_DEV ? "delishafricacourierdev" : "delishafricacourier";
@@ -22,7 +29,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: "delishafrica-courier",
   owner: "delishafrica",
   scheme: COURIER_SCHEME,
-  version: "3.0.0",
+  version: IS_ATARAXIE_ANDROID ? "3.0.4" : "3.0.0",
   orientation: "portrait",
   userInterfaceStyle: "dark",
   backgroundColor: COURIER_BOOT_BACKGROUND,
@@ -51,6 +58,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     ...config.android,
     package: COURIER_ANDROID_PACKAGE,
+    config: {
+      ...(config.android?.config || {}),
+      googleMaps: { ...(config.android?.config?.googleMaps || {}), ...(ANDROID_MAPS_KEY ? { apiKey: ANDROID_MAPS_KEY } : {}) },
+    },
     splash: {
       image: SPLASH_IMAGE,
       resizeMode: "contain",

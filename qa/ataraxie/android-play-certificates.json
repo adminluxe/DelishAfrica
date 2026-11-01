@@ -1,0 +1,28 @@
+{
+  "verifiedAt": "2026-11-01",
+  "source": "Google Play Console > Signature d’application",
+  "purpose": "Maps SDK Android restrictions for Google Play closed testing",
+  "secretMaterial": false,
+  "apps": [
+    {
+      "package": "com.delishafrica.client",
+      "playSigningSha1": [
+        "46:A8:40:71:CD:07:FC:AF:40:D3:34:93:4A:AA:C6:8D:58:0B:F2:D1",
+        "0C:5E:E6:35:EC:5C:99:24:09:EA:DA:1D:23:D0:F4:DC:4C:E8:E8:EC",
+        "6F:0A:55:10:21:8B:2A:71:9D:E3:9C:D3:3F:AF:4C:BE:E7:9E:24:DC"
+      ],
+      "currentSigningSha1": "46:A8:40:71:CD:07:FC:AF:40:D3:34:93:4A:AA:C6:8D:58:0B:F2:D1",
+      "uploadCertificateSha1": "2C:74:07:17:DE:A1:A9:A0:28:21:4C:99:97:67:D4:9A:72:1F:8F:6A"
+    },
+    {
+      "package": "com.delishafrica.courier",
+      "playSigningSha1": [
+        "AD:27:3F:4D:D6:DA:F1:82:CC:2F:FE:5B:E7:A0:67:C5:1B:F2:77:B6",
+        "FE:BD:48:CC:68:0A:46:36:F8:7B:25:30:BB:F3:2E:7A:F1:F9:0F:F8",
+        "5B:7C:1B:F8:51:A3:05:73:24:74:E1:28:87:C3:EA:A9:DB:17:71:43"
+      ],
+      "currentSigningSha1": "AD:27:3F:4D:D6:DA:F1:82:CC:2F:FE:5B:E7:A0:67:C5:1B:F2:77:B6",
+      "uploadCertificateSha1": "9A:28:2C:E2:80:7A:43:3F:C5:9C:4A:D9:35:2A:FD:9C:9A:69:F1:AE"
+    }
+  ]
+}
