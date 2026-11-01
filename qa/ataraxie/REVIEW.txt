@@ -73,3 +73,17 @@ Ataraxie. L'archive d'accompagnement contient le correctif entre ces commits,
 les seuls fichiers modifies, les hashes et les journaux. Appliquer/revoquer le
 correctif uniquement apres git apply --check sur la base appropriee.
 L'arbre canonique /opt/delishafrica/monorepo n'a pas ete modifie par cette intervention.
+
+
+REPRISE 2026-11-01 - CONSTRUCTION ANDROID FERMEE
+- L'API QA dispose maintenant de son DNS et de son tunnel permanent dedie.
+- 6/6 controles HTTP publics valides, routes privees protegees ; conteneur de
+  production conserve sans redemarrage.
+- Une tentative Merchant (code 14) a echoue avant assemblage natif :
+  runtime local 3.0.0 contre runtime serveur 3.0.4.
+- Lancer les candidats Android avec le script build-android-closed.mjs.
+  Il fixe EAS_BUILD_PLATFORM=android sur la machine de lancement, controle
+  version/package/canal/API/runtime et ne publie pas de release Play.
+- Connexion Google Cloud SDK non accordee : refus du controle automatique
+  concernant les droits OAuth hors ligne. Aucune cle Google creee a cette passe.
+- La validation reelle sur appareils Android reste obligatoire.
