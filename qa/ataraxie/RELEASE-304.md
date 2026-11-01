@@ -55,6 +55,10 @@ les apps, les archives sources, les journaux ni les variables Expo publiques.
 - Injection de la clé Maps Android contrôlée avec une valeur fictive locale.
   Aucun build ne doit être publié avec cette valeur fictive.
 - Les exports JS Android/web du candidat initial sont documentés dans REVIEW.txt.
+- Archives locales EAS : réussite pour les trois profils Android, 1131 chemins
+  chacun ; aucun chemin sensible détecté et aucune correspondance aux motifs
+  de clés privées, clés Google, secrets OAuth ou Stripe testés. Ce contrôle
+  ciblé ne constitue pas un audit exhaustif de secrets. Aucun envoi effectué.
 
 Aucun AAB 3.0.4 construit, aucun essai physique Android effectué.
 Le partage GPS reste limité au premier plan ; un guidage externe le suspend.
