@@ -166,6 +166,9 @@ export class OrdersAccessService {
     }
 
     if (principal.role === 'merchant') {
+      // Fulfillment requires approved commercial membership, not ownership alone.
+      // This does not restrict read-only onboarding/catalogue access.
+      await this.requireApprovedMerchantFulfillment(principal, currentOrder);
       const allowed = MERCHANT_TRANSITIONS[current] || [];
       if (!allowed.includes(next)) {
         throw new ForbiddenException({
@@ -232,6 +235,36 @@ export class OrdersAccessService {
       throw new ForbiddenException({ ok: false, code: 'merchant_order_ownership_required' });
     }
     return slugs;
+  }
+
+  private async requireApprovedMerchantFulfillment(principal: DaAuthPrincipal, order: AnyOrder): Promise<void> {
+    if (principal.authSource !== 'external' || !principal.ownershipEligible || !principal.issuer) {
+      throw new ForbiddenException({ ok: false, code: 'merchant_order_membership_required' });
+    }
+    const slug = this.orderMerchantSlug(order);
+    const owned = await this.catalog.listOwnedBySubject(principal.subject);
+    const ownership = owned.find((candidate) => this.slug(candidate.slug) === slug);
+    if (!ownership) {
+      throw new ForbiddenException({ ok: false, code: 'merchant_order_membership_required' });
+    }
+    const memberships = await this.catalog.listMerchantMembershipsBySubject(
+      principal.issuer, principal.subject,
+    );
+    const approved = memberships.some((membership) =>
+      membership.issuer === principal.issuer
+      && membership.subject === principal.subject
+      && membership.partnerId === ownership.partnerId
+      && this.slug(membership.slug) === slug
+      && membership.accessEligible === true
+      && membership.membershipStatus === 'active'
+      && membership.contractStatus === 'active'
+      && membership.kybStatus === 'verified'
+      && membership.revokedAt === null
+      && ['draft', 'published'].includes(membership.partnerLifecycleStatus),
+    );
+    if (!approved) {
+      throw new ForbiddenException({ ok: false, code: 'merchant_order_membership_required' });
+    }
   }
 
   private orderMerchantSlug(order: AnyOrder): string {

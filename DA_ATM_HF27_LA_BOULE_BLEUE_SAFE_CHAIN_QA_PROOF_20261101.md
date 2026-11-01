@@ -34,3 +34,12 @@
 6. **Release** : pas de merge, pas de push Store, pas de build EAS supplémentaire, réserves POG #56/#57 OPEN.
 
 **Verdict :** chaîne HTTP serveur intégrée QA prouvée et double verrou réparé localement ; La Boule Bleue est **préparée**, **pas réactivée publiquement**. Contrat, KYB, membership, authentification iPhone réelle, runtime QA et recette physique demeurent HOLD.
+
+## HF27b — Security hardening: merchant order fulfillment requires eligible membership (QA only)
+
+- New **RED** observed in the isolated HF27 Nest HTTP test: a merchant with matching Keycloak role and catalog ownership, but a pending membership/contract/KYB, received **HTTP 201 accepted** from POST /api/v1/orders/status. This could advance the pre-existing pending order without commercial authorization if a merchant authenticated in production. Not proof that such a live action has happened.
+- The QA-only change in `services/api-nest/src/orders/orders.access.service.ts` adds a fail-closed check **only before merchant order-status transitions**, preserving read-only onboarding and catalogue visibility.
+- It verifies `authSource=external`, `ownershipEligible`, exact issuer and subject, matching partner ID and slug against ownership, `accessEligible=true`, `membershipStatus=active`, `contractStatus=active`, `kybStatus=verified`, unrevoked membership, and partner lifecycle draft/published. Otherwise HTTP 403 with `merchant_order_membership_required`.
+- The HF27 test now shows **403** with pending membership and nine additional negative configurations: wrong partner, issuer, subject, suspended membership, suspended contract, rejected KYB, revoked timestamp, suspended partner, and accessEligible=false; **201** status transitions succeed once the entirely synthetic membership is approved in memory.
+- Re-run `node node_modules/typescript/bin/tsc -p services/api-nest/tsconfig.json --incremental false` = exit 0; complete suite `node --test services/api-nest/test/*.qa.test.cjs` = **104/104 PASS**, exit 0.
+- Scope: no Keycloak change, no merchant activation, no live order mutation. Ops and Courier transitions remain subject to their existing permissions; the extra membership gate is scoped to Merchant transition authorization. No claim that external physical E2E is certified.

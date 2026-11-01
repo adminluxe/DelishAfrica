@@ -82,9 +82,20 @@ test('HF27 La Boule Bleue: isolated Client > Merchant > Courier > ATM one-order 
     menuItems:[{sku:'HF27-QA-NOT-A-REAL-MENU-ITEM',name:'Synthetic QA meal',
       amount:7000,category:'QA',day:null}]};
   const owners=[{slug:SLUG,partnerId:'hf27-qa-tenant',ownershipRole:'owner'}];
+  let membershipEligible=false;
+  let membershipOverride={};
   const catalog={
     findPublishedBySlug:async slug=>slug===SLUG?partner:null,
     listOwnedBySubject:async subject=>subject===TEMP_SUBJECT.merchant?owners:[],
+    listMerchantMembershipsBySubject:async(issuer,subject)=>[{
+      issuer,subject,partnerId:'hf27-qa-tenant',slug:SLUG,
+      membershipStatus:membershipEligible?'active':'pending',
+      contractStatus:membershipEligible?'active':'pending',
+      kybStatus:membershipEligible?'verified':'pending',
+      accessEligible:membershipEligible,partnerLifecycleStatus:'published',
+      revokedAt:null,startsAt:null,expiresAt:null,membershipRole:'owner',
+      ...membershipOverride,
+    }],
   };
   const orderPolicy=new CatalogOrderPolicyService(catalog);
   const payments={authorizedQuoteForInput:async()=>null,
@@ -176,6 +187,28 @@ test('HF27 La Boule Bleue: isolated Client > Merchant > Courier > ATM one-order 
     assert.equal(merchantList.body.count,1);
     assert.equal(merchantList.body.orders[0].orderId,input.id);
     assert.equal((await post('list','otherMerchant',{merchantSlug:SLUG})).status,403);
+    // RED-first: owning a venue must not authorize fulfillment when contract/KYB are pending.
+    const pendingMembership=await post('status','merchant',{id:input.id,status:'accepted'});
+    assert.equal(pendingMembership.status,403,JSON.stringify(pendingMembership.body));
+    membershipEligible=true;
+    // Fail-closed regression matrix: no cross-tenant, inactive, revoked or bad KYB fulfillment.
+    const badMemberships=[
+      {partnerId:'hf27-unrelated-tenant'},
+      {issuer:'https://untrusted.invalid/realms/other'},
+      {subject:'hf27-unrelated-subject'},
+      {membershipStatus:'suspended'},
+      {contractStatus:'suspended'},
+      {kybStatus:'rejected'},
+      {revokedAt:'2026-11-01T00:00:00.000Z'},
+      {partnerLifecycleStatus:'suspended'},
+      {accessEligible:false},
+    ];
+    for(const patch of badMemberships){
+      membershipOverride=patch;
+      const refused=await post('status','merchant',{id:input.id,status:'accepted'});
+      assert.equal(refused.status,403,JSON.stringify({patch,result:refused.body}));
+    }
+    membershipOverride={};
 
     for(const state of ['accepted','ready']){
       const r=await post('status','merchant',{id:input.id,status:state});
