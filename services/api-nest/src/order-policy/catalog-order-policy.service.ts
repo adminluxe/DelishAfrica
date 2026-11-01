@@ -139,7 +139,9 @@ export class CatalogOrderPolicyService {
     const rawPartner = partner as AnyRecord;
     const status = String(rawPartner.status || '').toLowerCase();
     const delivery = (rawPartner.delivery || {}) as AnyRecord;
-    if (status !== 'active' || delivery.enabled === false) {
+    // Fail closed when the partner explicitly suspends order intake, even if
+    // its public status is active. Keep compatibility for legacy missing flags.
+    if (status !== 'active' || delivery.enabled === false || rawPartner.acceptingOrders === false) {
       throw new BadRequestException({
         ok: false,
         code: 'partner_not_orderable',
