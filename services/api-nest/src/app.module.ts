@@ -23,6 +23,7 @@ import { AtmosphereModule } from './atmosphere/atmosphere.module';
 
 import { LegalModule } from './legal/legal.module';
 import { IdentityLifecycleModule } from './identity-lifecycle/identity-lifecycle.module';
+import { AtmReadonlyModule } from './atm-readonly/atm-readonly.module';
 // DA_J7B_LEGAL_MODULE
 @Module({
   imports: [
@@ -47,6 +48,8 @@ import { IdentityLifecycleModule } from './identity-lifecycle/identity-lifecycle
     MerchantInvitationsModule,
     ConfluenceAiModule,
     AtmosphereModule,
+    ...(process.env.NODE_ENV !== 'production' &&
+        process.env.DA_ATM_READONLY_QA_ENABLED === 'YES' ? [AtmReadonlyModule] : []),
   ],
   controllers: [AppController],
 })

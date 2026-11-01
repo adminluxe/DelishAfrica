@@ -69,6 +69,36 @@ export class FinancialStateRepository implements OnModuleDestroy {
     return result.rows.map((row) => row.payload);
   }
 
+  /**
+   * QA BFF only: merchant scope MUST come from a validated server membership.
+   * Parameterized SQL, bounded rows, no writes or client-provided merchant ID.
+   */
+  async listRecentMerchantPaymentReferences(merchantSlug: string, limit = 10): Promise<
+    Array<{orderId: string; merchantSlug: string; paymentIntentId: string}>
+  > {
+    if (!/^[a-z0-9][a-z0-9_-]{1,119}$/.test(merchantSlug) ||
+        !Number.isSafeInteger(limit) || limit < 1 || limit > 20)
+      throw new ServiceUnavailableException({ok: false, code: 'merchant_scope_invalid'});
+    const pool = await this.ensurePool();
+    const result = await pool.query<{
+      order_id: string; merchant_slug: string; payment_intent_id: string;
+    }>(
+      `SELECT order_id, merchant_slug, payment_intent_id
+         FROM da_orders_state
+        WHERE merchant_slug = $1
+          AND payment_intent_id IS NOT NULL
+          AND length(payment_intent_id) BETWEEN 1 AND 128
+        ORDER BY mirrored_at DESC
+        LIMIT $2`,
+      [merchantSlug, limit],
+    );
+    return result.rows.map(row => ({
+      orderId: row.order_id,
+      merchantSlug: row.merchant_slug,
+      paymentIntentId: row.payment_intent_id,
+    }));
+  }
+
   async findOrder(id: string): Promise<JsonRecord | null> {
     const key = String(id || '').trim();
     if (!key) return null;

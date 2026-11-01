@@ -66,7 +66,9 @@ function safeWrite(nextOrders: AnyOrder[]): void {
     encoding: 'utf8',
     mode: 0o600,
   });
-  const descriptor = fs.openSync(temporary, 'r');
+  // Windows requires a writable file handle for FlushFileBuffers / fsync.
+  // Preserve the same atomic temp-file fsync + rename semantics on Linux.
+  const descriptor = fs.openSync(temporary, 'r+');
   fs.fsyncSync(descriptor);
   fs.closeSync(descriptor);
   fs.renameSync(temporary, STORE_FILE);
