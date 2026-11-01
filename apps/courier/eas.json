@@ -46,6 +46,14 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {},
+    "ataraxie-closed": {
+      "android": {
+        "track": "alpha",
+        "releaseStatus": "completed",
+        "changesNotSentForReview": false,
+        "applicationId": "com.delishafrica.courier"
+      }
+    }
   }
 }

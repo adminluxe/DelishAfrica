@@ -106,3 +106,16 @@ REPRISE 2026-11-01 - CLES QA ET GARDE DE LANCEMENT
   et WALK a Bruxelles. TWO_WHEELER renvoie un repli sans trace ; les apps
   doivent conserver leur arrivee a preciser, sans utiliser son ETA approxime.
 - Merchant 3.0.4 (15) construit ; validation physique restant a effectuer.
+
+
+REPRISE 2026-11-01 - BINAIRES ET SOUMISSION FERMEE
+- AAB 3.0.4 construits : Client 14, Merchant 15, Courier 13.
+- Manifestes protobuf natifs controles : packages et versions exacts,
+  API QA embarquee dans les trois bundles ; metadata Maps configuree dans
+  Client et Courier ; aucune permission de localisation arriere-plan.
+- Le script de soumission exige : build FINISHED, projet et package exacts,
+  version 3.0.4/code attendu, revue native reussie, API QA et profil alpha.
+- Le profil de soumission specifie uniquement Android/alpha/completed.
+  Le test ferme sert a rendre ces AAB installables pour les essais physiques.
+  Aucun envoi Android production ni iOS n'est autorise par ces scripts.
+- Les permissions de publication des autres profils EAS restent inchangees.
