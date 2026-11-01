@@ -2,8 +2,10 @@ import { ConfigContext, ExpoConfig } from "expo/config";
 
 // DA_DEV_VARIANT_SIDE_BY_SIDE_V3 — DEV binary coexists with Store/TestFlight.
 const IS_DEV = process.env.APP_VARIANT === "development";
-// This release overlay is Android-only. Existing iOS version settings are preserved.
+// Release overlays apply only on the explicitly selected platform and QA profile.
 const IS_ATARAXIE_ANDROID = process.env.DA_ATARAXIE_ANDROID_BUILD === "1" && process.env.EAS_BUILD_PLATFORM === "android";
+const IS_ATARAXIE_IOS = process.env.DA_ATARAXIE_IOS_BUILD === "1" && process.env.EAS_BUILD_PLATFORM === "ios";
+const IS_ATARAXIE = IS_ATARAXIE_ANDROID || IS_ATARAXIE_IOS;
 
 const MERCHANT_APP_NAME = IS_DEV ? "DelishAfrica Merchant DEV" : "DelishAfrica Merchant";
 const MERCHANT_DISPLAY_NAME = IS_DEV ? "DA Merchant DEV" : "DelishAfrica Merchant";
@@ -25,7 +27,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: "delishafrica-merchant",
   owner: "delishafrica",
   scheme: MERCHANT_SCHEME,
-  version: IS_ATARAXIE_ANDROID ? "3.0.4" : "3.0.0",
+  version: IS_ATARAXIE ? "3.0.4" : "3.0.0",
   orientation: "portrait",
   userInterfaceStyle: "dark",
   backgroundColor: MERCHANT_BOOT_BACKGROUND,

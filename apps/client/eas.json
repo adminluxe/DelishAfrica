@@ -43,6 +43,23 @@
         "EXPO_PUBLIC_API_URL": "https://ataraxie-api.delishafrica.me/api/v1",
         "EXPO_PUBLIC_RELEASE_RING": "ataraxie-closed"
       }
+    },
+    "ataraxie-ios-qa": {
+      "extends": "production",
+      "distribution": "store",
+      "channel": "ataraxie-ios-qa",
+      "environment": "production",
+      "autoIncrement": true,
+      "ios": {
+        "simulator": false,
+        "buildConfiguration": "Release"
+      },
+      "env": {
+        "DA_ATARAXIE_IOS_BUILD": "1",
+        "EXPO_PUBLIC_API_BASE_URL": "https://ataraxie-api.delishafrica.me/api/v1",
+        "EXPO_PUBLIC_API_URL": "https://ataraxie-api.delishafrica.me/api/v1",
+        "EXPO_PUBLIC_RELEASE_RING": "ataraxie-ios-qa"
+      }
     }
   },
   "submit": {
@@ -53,6 +70,11 @@
         "releaseStatus": "completed",
         "changesNotSentForReview": false,
         "applicationId": "com.delishafrica.client"
+      }
+    },
+    "ataraxie-ios-qa": {
+      "ios": {
+        "ascAppId": "6807363823"
       }
     }
   }

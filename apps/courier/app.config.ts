@@ -2,8 +2,10 @@ import { ConfigContext, ExpoConfig } from "expo/config";
 
 // DA_DEV_VARIANT_SIDE_BY_SIDE_V3 — DEV binary coexists with Store/TestFlight.
 const IS_DEV = process.env.APP_VARIANT === "development";
-// This release overlay is Android-only. Existing iOS version settings are preserved.
+// Release overlays apply only on the explicitly selected platform and QA profile.
 const IS_ATARAXIE_ANDROID = process.env.DA_ATARAXIE_ANDROID_BUILD === "1" && process.env.EAS_BUILD_PLATFORM === "android";
+const IS_ATARAXIE_IOS = process.env.DA_ATARAXIE_IOS_BUILD === "1" && process.env.EAS_BUILD_PLATFORM === "ios";
+const IS_ATARAXIE = IS_ATARAXIE_ANDROID || IS_ATARAXIE_IOS;
 const ANDROID_MAPS_KEY = process.env.DA_COURIER_ANDROID_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_ANDROID_API_KEY || "";
 if (IS_ATARAXIE_ANDROID && process.env.EAS_BUILD === "true" && !ANDROID_MAPS_KEY.trim()) {
   throw new Error("ATARAXIE_ANDROID_MAPS_KEY_MISSING_COURIER");
@@ -29,7 +31,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: "delishafrica-courier",
   owner: "delishafrica",
   scheme: COURIER_SCHEME,
-  version: IS_ATARAXIE_ANDROID ? "3.0.4" : "3.0.0",
+  version: IS_ATARAXIE ? "3.0.4" : "3.0.0",
   orientation: "portrait",
   userInterfaceStyle: "dark",
   backgroundColor: COURIER_BOOT_BACKGROUND,

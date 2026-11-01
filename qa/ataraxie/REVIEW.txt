@@ -119,3 +119,21 @@ REPRISE 2026-11-01 - BINAIRES ET SOUMISSION FERMEE
   Le test ferme sert a rendre ces AAB installables pour les essais physiques.
   Aucun envoi Android production ni iOS n'est autorise par ces scripts.
 - Les permissions de publication des autres profils EAS restent inchangees.
+
+
+REPRISE 2026-11-02 - COMPLEMENT IOS 3.0.4 DEMANDE PAR LE PROPRIETAIRE
+- La demande actuelle etend la recette Ataraxie aux trois apps iOS.
+- Profil iOS dedie ataraxie-ios-qa : version/runtime3.0.4, API QA isolee,
+  canal OTA distinct. Les profils Android et production anterieurs sont preserves.
+- 6/6 precontroles EAS passes : Client/Merchant/Courier sur iOS et Android.
+- Les cartes iOS ne forcent pas Google comme fournisseur natif ; l'autolinking
+  Client voit bien le module react-native-maps1.20.1. Aucun besoin de nouvelle cle.
+- L'export local iOS Client est bloque par expo-router/entry introuvable dans les
+  node_modules partages du VPS. Aucune modification des dependances canoniques.
+  La construction EAS effectue l'installation verrouillee et la compilation native.
+- build-ios-qa.mjs exige version/bundle/projet/API/canal et compile ios seulement,
+  avec --freeze-credentials, sans auto-submit. Aucune rotation de certificat demandee.
+- review_ipa.py verifie ZIP, metadata, API QA/canal OTA/runtime embarques,
+  provisioning CMS sans validation de chaine Apple, entitlements et module carte.
+  Ce controle ne remplace ni la validation Apple, ni codesign macOS, ni la recette iPhone.
+- La publication App Store publique demeure une etape distincte de TestFlight.
