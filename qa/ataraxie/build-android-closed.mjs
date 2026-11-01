@@ -30,7 +30,17 @@ const checks = {
   qaApi: appConfig.extra?.EXPO_PUBLIC_API_BASE_URL === expectedApi && appConfig.extra?.EXPO_PUBLIC_API_URL === expectedApi,
   runtime: appConfig.runtimeVersion?.policy === 'appVersion',
 };
-if (app !== 'merchant') checks.androidMapsKeyPresent = !!appConfig.android?.config?.googleMaps?.apiKey?.trim();
+if (app !== 'merchant') {
+  // EAS public config omits android.config, and secret values stay on EAS.
+  // Inspect variable names only; the app config enforces a nonempty key on EAS.
+  const variableName = app === 'client'
+    ? 'DA_CLIENT_ANDROID_GOOGLE_MAPS_API_KEY'
+    : 'DA_COURIER_ANDROID_GOOGLE_MAPS_API_KEY';
+  const metadata = run(['env:list', buildProfile.environment || 'production', '--scope', 'project', '--format', 'short'], { timeout: 90000 });
+  const namesOnlyOutput = (metadata.stdout + metadata.stderr).replace(/\x1b\[[0-9;]*[A-Za-z]/g, '');
+  checks.androidMapsVariableConfigured = metadata.status === 0
+    && new RegExp('(?:^|\\n)\\s*' + variableName + '=').test(namesOnlyOutput);
+}
 console.log(JSON.stringify({ app, platform: 'android', version: appConfig.version, profile: 'ataraxie-closed', checks }, null, 2));
 if (!Object.values(checks).every(Boolean)) {
   throw new Error('Closed-test preflight failed. No build requested.');

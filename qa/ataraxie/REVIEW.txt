@@ -87,3 +87,22 @@ REPRISE 2026-11-01 - CONSTRUCTION ANDROID FERMEE
 - Connexion Google Cloud SDK non accordee : refus du controle automatique
   concernant les droits OAuth hors ligne. Aucune cle Google creee a cette passe.
 - La validation reelle sur appareils Android reste obligatoire.
+
+
+REPRISE 2026-11-01 - CLES QA ET GARDE DE LANCEMENT
+- Cle Routes QA dediee, bornee au service Routes et aux deux IP publiques du VPS.
+- Cle Maps Client dediee, bornee au SDK Android et aux signatures Client relevees
+  dans Play Console (3 signatures) ainsi qu'au certificat d'importation EAS.
+- Connexion Google Cloud SDK temporaire revoquee apres creation des deux cles.
+  Les restrictions et dates de modification des deux cles preexistantes sont
+  conservees a l'identique.
+- La copie d'une cle Courier depuis Google Cloud a ete refusee et non executee.
+  Le build Courier doit conserver sa variable deja configuree sur EAS, sans
+  exporter sa valeur. Aucun nouveau droit ou identifiant n'est necessaire.
+- La configuration publique renvoyee par eas config masque android.config.
+  Le garde de lancement controle donc le NOM de variable configure sur EAS ;
+  la configuration native refuse toujours le build si la valeur manque sur EAS.
+- Le calcul Google reel a ete valide au niveau du service pour DRIVE, BICYCLE
+  et WALK a Bruxelles. TWO_WHEELER renvoie un repli sans trace ; les apps
+  doivent conserver leur arrivee a preciser, sans utiliser son ETA approxime.
+- Merchant 3.0.4 (15) construit ; validation physique restant a effectuer.
