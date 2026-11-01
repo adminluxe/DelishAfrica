@@ -6,7 +6,7 @@ const crypto = require('node:crypto');
 const Module = require('node:module');
 const oldLoad = Module._load;
 Module._load = function (request, parent, isMain) {
-  if (/\\.runtime-vendor[\\\\/]pg-runtime[\\\\/]node_modules[\\\\/]pg$/.test(request))
+  if (typeof request === 'string' && request.replace(/\\/g, '/').endsWith('/.runtime-vendor/pg-runtime/node_modules/pg'))
     return { Pool: class NO_DB_IN_HF26 { constructor() { throw Error('HF26_DB_ACCESS_FORBIDDEN'); } } };
   return oldLoad.call(this, request, parent, isMain);
 };

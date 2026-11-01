@@ -1,6 +1,8 @@
 'use strict';
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
+const path=require('node:path');
+const qaTokenPath=path.resolve(process.cwd(),'.hf29-qa-mock-token-not-read');
 const {
   ServerOnlyOrchidBridgeRead,OrchidBridgeScopedShadowSource,
 }=require('../dist/atm-readonly/orchid-bridge-source.qa.js');
@@ -87,7 +89,7 @@ test('server-only transport: missing secret file denies before HTTP',async()=>{
   await assert.rejects(api.readReconciliation(order.orderId));
 });
 test('server-only transport only calls authorized loopback GET and never leaks token to URL',async()=>{
-  enable();process.env.DA_ATM_ORCHID_BFF_TOKEN_FILE='C:\\qa-test\\read-only-token';
+  enable();process.env.DA_ATM_ORCHID_BFF_TOKEN_FILE=qaTokenPath;
   const observed=[];
   const api=new ServerOnlyOrchidBridgeRead(async(url,opts)=>{
     observed.push({url,opts});
@@ -106,7 +108,7 @@ test('server-only transport only calls authorized loopback GET and never leaks t
   assert.doesNotMatch(url,/fake-secret/);
 });
 test('transport refuses redirect and non-JSON content',async()=>{
-  enable();process.env.DA_ATM_ORCHID_BFF_TOKEN_FILE='C:\\qa-test\\read-only-token';
+  enable();process.env.DA_ATM_ORCHID_BFF_TOKEN_FILE=qaTokenPath;
   const api=new ServerOnlyOrchidBridgeRead(async()=>({
     status:302,headers:new Headers({'content-type':'application/json'}),
     text:async()=>'{}',
@@ -114,7 +116,7 @@ test('transport refuses redirect and non-JSON content',async()=>{
   await assert.rejects(api.readReconciliation('qa-order'));
 });
 test('untrusted bridge order id rejected before reading secret',async()=>{
-  enable();process.env.DA_ATM_ORCHID_BFF_TOKEN_FILE='C:\\qa-test\\read-only-token';
+  enable();process.env.DA_ATM_ORCHID_BFF_TOKEN_FILE=qaTokenPath;
   let calls=0;
   const api=new ServerOnlyOrchidBridgeRead(async()=>{calls++;throw Error('SHOULD_NOT_FETCH');},
     ()=>{calls++;return 'fake-secret-is-32-characters-or-longer-aa';});
