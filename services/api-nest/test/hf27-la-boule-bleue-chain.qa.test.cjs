@@ -84,10 +84,11 @@ test('HF27 La Boule Bleue: isolated Client > Merchant > Courier > ATM one-order 
   const owners=[{slug:SLUG,partnerId:'hf27-qa-tenant',ownershipRole:'owner'}];
   let membershipEligible=false;
   let membershipOverride={};
+  let membershipRowsPresent=true;
   const catalog={
     findPublishedBySlug:async slug=>slug===SLUG?partner:null,
     listOwnedBySubject:async subject=>subject===TEMP_SUBJECT.merchant?owners:[],
-    listMerchantMembershipsBySubject:async(issuer,subject)=>[{
+    listMerchantMembershipsBySubject:async(issuer,subject)=>membershipRowsPresent?[{
       issuer,subject,partnerId:'hf27-qa-tenant',slug:SLUG,
       membershipStatus:membershipEligible?'active':'pending',
       contractStatus:membershipEligible?'active':'pending',
@@ -95,7 +96,7 @@ test('HF27 La Boule Bleue: isolated Client > Merchant > Courier > ATM one-order 
       accessEligible:membershipEligible,partnerLifecycleStatus:'published',
       revokedAt:null,startsAt:null,expiresAt:null,membershipRole:'owner',
       ...membershipOverride,
-    }],
+    }]:[],
   };
   const orderPolicy=new CatalogOrderPolicyService(catalog);
   const payments={authorizedQuoteForInput:async()=>null,
@@ -191,6 +192,12 @@ test('HF27 La Boule Bleue: isolated Client > Merchant > Courier > ATM one-order 
     const pendingMembership=await post('status','merchant',{id:input.id,status:'accepted'});
     assert.equal(pendingMembership.status,403,JSON.stringify(pendingMembership.body));
     membershipEligible=true;
+    // HF28 Thieyp regression: authenticated Merchant and ownership, but no
+    // membership for the same Keycloak subject, must never fulfill an order.
+    membershipRowsPresent=false;
+    const noMatchingMembership=await post('status','merchant',{id:input.id,status:'accepted'});
+    assert.equal(noMatchingMembership.status,403,JSON.stringify(noMatchingMembership.body));
+    membershipRowsPresent=true;
     // Fail-closed regression matrix: no cross-tenant, inactive, revoked or bad KYB fulfillment.
     const badMemberships=[
       {partnerId:'hf27-unrelated-tenant'},
