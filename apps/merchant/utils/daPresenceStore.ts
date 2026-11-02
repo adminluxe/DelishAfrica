@@ -1,70 +1,50 @@
-import * as SecureStore from "expo-secure-store";
-import { daAccountScopeId, daAccountStorageKey } from "./daOrdersApi";
-
-const CACHE_KEY = "__DELISHAFRICA_PARTNER_PROFILE_LITE_V1__";
-const SECURE_KEY = "delishafrica.partner.presence.v1";
+import * as SecureStore from 'expo-secure-store';
+import { daAccountScopeId } from './daOrdersApi';
+import { daMerchantIdentityEpoch, daAssertMerchantIdentity } from './daIdentityEpoch';
+const SECURE_KEY = 'delishafrica.partner.presence.v1';
 const memory = new Map<string, object>();
-let activeScope: string | null = null;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
+let active: { scope: string; epoch: number } | null = null;
+function isRecord(value: unknown): value is Record<string, unknown> { return Boolean(value) && typeof value === 'object' && !Array.isArray(value); }
 export function readPartnerPresenceCache<T extends object>(): T | null {
-  if (!activeScope) return null;
-  const value = memory.get(activeScope);
-  return isRecord(value) ? (value as T) : null;
+  if (!active || active.epoch !== daMerchantIdentityEpoch()) return null;
+  return (memory.get(active.scope) as T) || null;
 }
-
-function writePartnerPresenceCache<T extends object>(scope: string, profile: T | null) {
-  activeScope = scope;
-  if (profile) memory.set(scope, profile);
-  else memory.delete(scope);
-  if (profile) (globalThis as any)[`${CACHE_KEY}.${scope}`] = profile;
-  else delete (globalThis as any)[`${CACHE_KEY}.${scope}`];
+function write(scope: string, epoch: number, profile: object | null) {
+  daAssertMerchantIdentity(epoch);
+  active = { scope, epoch };
+  if (profile) memory.set(scope, profile); else memory.delete(scope);
 }
-
+async function context() {
+  const scope = await daAccountScopeId();
+  return { scope, epoch: daMerchantIdentityEpoch(), key: SECURE_KEY + '.v3.' + scope };
+}
 export async function loadPartnerPresence<T extends object>(): Promise<T | null> {
-  const scope = await daAccountScopeId();
-  const cached = memory.get(scope) as T | undefined;
-  try {
-    if (!(await SecureStore.isAvailableAsync())) return cached || null;
-    const scopedKey = await daAccountStorageKey(SECURE_KEY);
-    const raw = await SecureStore.getItemAsync(scopedKey);
-    if (!raw) return cached || null;
-    const parsed: unknown = JSON.parse(raw);
-    if (!isRecord(parsed)) return cached || null;
-    writePartnerPresenceCache(scope, parsed as T);
-    return parsed as T;
-  } catch {
-    return cached || null;
-  }
-}
-
-export async function savePartnerPresence<T extends object>(profile: T): Promise<T> {
-  const scope = await daAccountScopeId();
-  const previous = memory.get(scope) as T | undefined;
-  writePartnerPresenceCache(scope, profile);
-  try {
-    if (!(await SecureStore.isAvailableAsync())) throw new Error("Le stockage sécurisé de l’appareil est indisponible.");
-    const scopedKey = await daAccountStorageKey(SECURE_KEY);
-    await SecureStore.setItemAsync(scopedKey, JSON.stringify(profile));
-    return profile;
-  } catch (error) {
-    writePartnerPresenceCache(scope, previous || null);
-    throw error;
-  }
-}
-
-export async function clearPartnerPresence() {
-  const scope = await daAccountScopeId();
-  writePartnerPresenceCache(scope, null);
+  const c = await context();
+  let profile: T | null = null;
   try {
     if (await SecureStore.isAvailableAsync()) {
-      const scopedKey = await daAccountStorageKey(SECURE_KEY);
-      await SecureStore.deleteItemAsync(scopedKey);
+      const raw = await SecureStore.getItemAsync(c.key);
+      const parsed: unknown = raw ? JSON.parse(raw) : null;
+      if (isRecord(parsed)) profile = parsed as T;
     }
-  } catch {
-    // Current account memory is already cleared.
-  }
+  } catch { /* Only the same verified scope may be used offline. */ }
+  daAssertMerchantIdentity(c.epoch);
+  profile = profile || (memory.get(c.scope) as T) || null;
+  write(c.scope, c.epoch, profile);
+  return profile;
+}
+export async function savePartnerPresence<T extends object>(profile: T, expectedEpoch = daMerchantIdentityEpoch()): Promise<T> {
+  daAssertMerchantIdentity(expectedEpoch);
+  const c = await context();
+  daAssertMerchantIdentity(expectedEpoch);
+  if (!(await SecureStore.isAvailableAsync())) throw new Error('Le stockage sécurisé de l’appareil est indisponible.');
+  await SecureStore.setItemAsync(c.key, JSON.stringify(profile));
+  daAssertMerchantIdentity(c.epoch);
+  write(c.scope, c.epoch, profile);
+  return profile;
+}
+export async function clearPartnerPresence() {
+  const c = await context();
+  if (await SecureStore.isAvailableAsync()) await SecureStore.deleteItemAsync(c.key);
+  write(c.scope, c.epoch, null);
 }

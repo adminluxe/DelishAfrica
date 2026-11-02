@@ -1,3 +1,5 @@
+import { daMerchantIdentityEpoch, daAdvanceMerchantIdentity } from './daIdentityEpoch';
+import { verifiedMerchantIdentity } from '../../../packages/contracts/src/merchantIdentity';
 import { daApiBase } from './daApiEnvironment';
 /*
  * DELISHAFRICA — Merchant OIDC session
@@ -156,7 +158,7 @@ function assertClaims(
   if (options.nonce && claims.nonce !== options.nonce) {
     throw new Error('oidc_nonce_mismatch');
   }
-  if (options.requireMerchantRole && !merchantRoles(claims).includes('merchant')) {
+  if (options.requireMerchantRole && !merchantRoles(claims).some(role => role === 'merchant' || role === 'delishafrica-merchant')) {
     throw new Error('oidc_merchant_role_missing');
   }
 }
@@ -191,18 +193,17 @@ async function fetchDiscoveryStrict(AuthSession: ExpoAuthSessionModule): Promise
 }
 
 async function apiVerifyExternal(accessToken: string): Promise<Record<string, unknown>> {
-  const data = await requestJson(`${apiBase()}/auth/verify`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ token: accessToken }),
-  });
-
-  if (data?.ok === false || data?.authenticated === false) {
-    throw new Error(`api_external_verification_failed:${String(data?.reason || 'rejected')}`);
-  }
-  const role = data?.user?.role || data?.principal?.role || data?.role;
-  if (role && role !== 'merchant') throw new Error('api_external_role_mismatch');
+  const claims = decodeJwt(accessToken);
+  const data = await requestJson(apiBase() + '/auth/merchant/me', { headers: { Authorization: 'Bearer ' + accessToken }, redirect: 'error' });
+  if (!verifiedMerchantIdentity(data, String(claims.sub || ''))) throw new Error('api_external_identity_unverified');
   return data as Record<string, unknown>;
+}
+
+let tokenMutation: Promise<unknown> = Promise.resolve();
+function mutateTokens(fn: () => Promise<void>): Promise<void> {
+  const next = tokenMutation.catch(() => undefined).then(fn);
+  tokenMutation = next.catch(() => undefined);
+  return next;
 }
 
 async function saveTokens(
@@ -210,7 +211,10 @@ async function saveTokens(
   tokenResponse: any,
   accessClaims: MerchantOidcClaims,
   apiVerification: Record<string, unknown>,
+  expectedEpoch: number,
 ): Promise<void> {
+  return mutateTokens(async () => {
+    if (expectedEpoch !== daMerchantIdentityEpoch()) throw new Error('merchant_identity_changed');
   const expiresAt =
     typeof accessClaims.exp === 'number'
       ? accessClaims.exp
@@ -232,14 +236,17 @@ async function saveTokens(
   await SecureStore.setItemAsync(EXPIRES_KEY, String(expiresAt));
   await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
   await SecureStore.setItemAsync(API_VERIFICATION_KEY, JSON.stringify(apiVerification));
+  if (expectedEpoch !== daMerchantIdentityEpoch()) throw new Error('merchant_identity_changed');
+  daAdvanceMerchantIdentity();
+  });
 }
 
-async function clearTokens(SecureStore: ExpoSecureStoreModule): Promise<void> {
-  await Promise.all(
-    [ACCESS_KEY, REFRESH_KEY, ID_KEY, EXPIRES_KEY, USER_KEY, API_VERIFICATION_KEY].map((key) =>
-      SecureStore.deleteItemAsync(key),
-    ),
-  );
+async function clearTokens(SecureStore: ExpoSecureStoreModule, expectedEpoch?: number): Promise<void> {
+  if (expectedEpoch !== undefined && expectedEpoch !== daMerchantIdentityEpoch()) return;
+  daAdvanceMerchantIdentity();
+  await mutateTokens(async () => {
+    await Promise.all([ACCESS_KEY, REFRESH_KEY, ID_KEY, EXPIRES_KEY, USER_KEY, API_VERIFICATION_KEY].map(key => SecureStore.deleteItemAsync(key)));
+  });
 }
 
 export function daMerchantOidcConstants() {
@@ -271,6 +278,7 @@ export function daMerchantOidcRuntimeStatus(): MerchantOidcRuntimeStatus {
 }
 
 export async function daMerchantOidcLogin(): Promise<MerchantOidcSession> {
+  const loginEpoch = daAdvanceMerchantIdentity();
   const { AuthSession, Crypto, WebBrowser, SecureStore } = loadModules();
   WebBrowser.maybeCompleteAuthSession();
 
@@ -316,15 +324,17 @@ export async function daMerchantOidcLogin(): Promise<MerchantOidcSession> {
   const idClaims = decodeJwt(tokenResponse.idToken);
   assertClaims(accessClaims, { requireMerchantRole: true });
   assertClaims(idClaims, { nonce });
+  if (!accessClaims.sub || accessClaims.sub !== idClaims.sub) throw new Error('oidc_subject_mismatch');
 
   const apiVerification = await apiVerifyExternal(tokenResponse.accessToken);
-  await saveTokens(SecureStore, tokenResponse, accessClaims, apiVerification);
+  await saveTokens(SecureStore, tokenResponse, accessClaims, apiVerification, loginEpoch);
   return await daMerchantOidcSession();
 }
 
 let merchantRefreshInFlight: Promise<MerchantOidcSession> | null = null;
 
 async function readMerchantOidcSession(allowRefresh: boolean): Promise<MerchantOidcSession> {
+  await tokenMutation;
   let SecureStore: ExpoSecureStoreModule;
   try {
     SecureStore = loadModules().SecureStore;
@@ -384,6 +394,7 @@ async function readMerchantOidcSession(allowRefresh: boolean): Promise<MerchantO
 }
 
 async function performMerchantOidcRefresh(): Promise<MerchantOidcSession> {
+  const refreshEpoch = daMerchantIdentityEpoch();
   const { AuthSession, SecureStore } = loadModules();
   const refreshToken = await SecureStore.getItemAsync(REFRESH_KEY);
   if (!refreshToken) throw new Error('oidc_refresh_token_missing');
@@ -406,12 +417,12 @@ async function performMerchantOidcRefresh(): Promise<MerchantOidcSession> {
       refreshToken: tokenResponse.refreshToken || refreshToken,
       idToken: preservedIdToken || undefined,
     };
-    await saveTokens(SecureStore, rotated, accessClaims, apiVerification);
+    await saveTokens(SecureStore, rotated, accessClaims, apiVerification, refreshEpoch);
     return await readMerchantOidcSession(false);
   } catch (error: any) {
     const normalized = String(error?.message || error).toLowerCase();
     if (normalized.includes('invalid_grant') || normalized.includes('invalid refresh')) {
-      await clearTokens(SecureStore).catch(() => undefined);
+      await clearTokens(SecureStore, refreshEpoch).catch(() => undefined);
     }
     throw error;
   }
@@ -447,6 +458,7 @@ export async function daMerchantOidcLogout(): Promise<void> {
     SecureStore.getItemAsync(REFRESH_KEY),
   ]);
 
+  await clearTokens(SecureStore);
   try {
     const discovery = await fetchDiscoveryStrict(AuthSession);
     if (refreshToken && discovery.revocationEndpoint) {
@@ -468,6 +480,6 @@ export async function daMerchantOidcLogout(): Promise<void> {
       await WebBrowser.openAuthSessionAsync(url.toString(), LOGOUT_REDIRECT_URI);
     }
   } finally {
-    await clearTokens(SecureStore);
+    // Local credentials were cleared before the remote browser operation.
   }
 }
