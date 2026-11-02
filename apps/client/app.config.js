@@ -42,7 +42,7 @@ module.exports = ({ config }) => {
     slug: "delishafrica-client",
     owner: "delishafrica",
     scheme: CLIENT_SCHEME,
-    version: IS_ATARAXIE ? "3.0.4" : config.version || "3.0.0",
+    version: IS_DEV ? (config.version || "3.0.0") : "3.0.4",
     orientation: config.orientation || "portrait",
     userInterfaceStyle: "dark",
     backgroundColor: CLIENT_BOOT_BACKGROUND,

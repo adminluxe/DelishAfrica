@@ -19,7 +19,7 @@ const SPLASH_IMAGE = "./assets/splash.png";
 const API_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
   process.env.EXPO_PUBLIC_API_URL ||
-  "https://api.delishafrica.me";
+  "https://api.delishafrica.me/api/v1";
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -27,7 +27,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: "delishafrica-merchant",
   owner: "delishafrica",
   scheme: MERCHANT_SCHEME,
-  version: IS_ATARAXIE ? "3.0.4" : "3.0.0",
+  version: IS_DEV ? "3.0.0" : "3.0.4",
   orientation: "portrait",
   userInterfaceStyle: "dark",
   backgroundColor: MERCHANT_BOOT_BACKGROUND,
