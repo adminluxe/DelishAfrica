@@ -23,6 +23,7 @@ const COURIER_H2O_RASTER = require("../assets/h2o/courier-h2o-premium-v1.png");
 const COURIER_RAIN_TILE = require("../assets/h2o/courier-rain-streak-tile-v3.png");
 const COURIER_GLASS_RIVULETS = require("../assets/h2o/courier-glass-rivulets-v3.png");
 import { daOrdersFetch } from "../utils/daOrdersApi";
+import { loadCourierPresence, syncCourierPresence } from "../utils/daPresenceStore";
 
 const RAW_API = process.env.EXPO_PUBLIC_API_URL || "https://api.delishafrica.me/api/v1";
 const API = RAW_API.replace(/\/$/, "").endsWith("/api/v1")
@@ -91,9 +92,19 @@ export default function CourierSurfaceHome() {
     return () => loop.stop();
   }, [rainPhase, reduceMotion]);
 
-  const load = useCallback(async (refresh = false) => {
-    refresh ? setRefreshing(true) : setLoading(true);
+  const load = useCallback(async (refresh = false, silent = false) => {
+    if (!silent) refresh ? setRefreshing(true) : setLoading(true);
     try {
+      // A verified, previously activated courier must not go offline merely
+      // because they navigated away from Route Oracle. The heartbeat also
+      // asks the server to reconcile eligible ready-order proposals.
+      try {
+        const profile = await loadCourierPresence<Record<string, any>>();
+        if (profile?.available === true) await syncCourierPresence(profile);
+      } catch {
+        // A transient heartbeat failure must not hide an offer that the
+        // authenticated server can still return.
+      }
       const response = await daOrdersFetch(`${API}/orders/demo/courier/offers`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -107,14 +118,18 @@ export default function CourierSurfaceHome() {
       setOffers([]);
       setAuthReady(false);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!silent) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       void load(false);
+      const timer = setInterval(() => void load(false, true), 60_000);
+      return () => clearInterval(timer);
     }, [load]),
   );
 
@@ -201,7 +216,7 @@ export default function CourierSurfaceHome() {
           body="Temps estimé, offres et progression de la mission : des repères pour décider librement."
           status={loading ? "SYNCHRO" : authReady ? "ACTIF" : "ACCÈS"}
           reduceMotion={reduceMotion}
-          onPress={() => go(authReady ? "/terrain-live" : "/auth-session")}
+          onPress={() => go(authReady ? (stats.proposed > 0 ? "/route-oracle" : "/terrain-live") : "/auth-session")}
           accessibilityLabel="Ouvrir la lecture des missions et de la progression en temps réel"
         />
 
@@ -219,15 +234,15 @@ export default function CourierSurfaceHome() {
         </View>
 
         <Pressable
-          onPress={() => go(authReady ? "/orders" : "/auth-session")}
+          onPress={() => go(authReady ? (stats.proposed > 0 ? "/route-oracle" : "/orders") : "/auth-session")}
           style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
           accessibilityRole="button"
         >
           <View style={styles.primaryCopy}>
-            <Text style={styles.primaryEyebrow}>{authReady ? "MISSIONS À CONSULTER" : "IDENTITÉ D’ABORD"}</Text>
-            <Text style={styles.primaryTitle}>{authReady ? "Voir mes missions" : "Se connecter comme livreur"}</Text>
+            <Text style={styles.primaryEyebrow}>{authReady ? (stats.proposed > 0 ? "OFFRE À DÉCIDER" : "MISSIONS À CONSULTER") : "IDENTITÉ D’ABORD"}</Text>
+            <Text style={styles.primaryTitle}>{authReady ? (stats.proposed > 0 ? "Répondre à l’offre" : "Voir mes missions") : "Se connecter comme livreur"}</Text>
             <Text style={styles.primaryBody}>
-              {authReady ? "Seules les offres rattachées à votre sujet Courier sont visibles." : "Une session OIDC Courier est nécessaire."}
+              {authReady ? (stats.proposed > 0 ? "Acceptez ou refusez la proposition ciblée avant son expiration." : "Seules les offres rattachées à votre sujet Courier sont visibles.") : "Une session OIDC Courier est nécessaire."}
             </Text>
           </View>
           <Text style={styles.primaryArrow}>→</Text>

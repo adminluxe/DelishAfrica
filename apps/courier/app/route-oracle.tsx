@@ -277,25 +277,30 @@ function proofIsCurrent(proof: PresenceProof | undefined, destination: string): 
   return Number.isFinite(expiresAt) && expiresAt > Date.now();
 }
 
-function profileReady(profile: CourierProfileLite | null): boolean {
-  if (!profile) return false;
-
-  const phone = clean(profile.phone);
-  const email = clean(profile.email).toLowerCase();
+function missingPresenceRequirements(profile: CourierProfileLite | null): string[] {
+  if (!profile) return ["profil Courier"];
+  const missing: string[] = [];
   const territoryReady = Boolean(
     clean(profile.activeZone) &&
       clean(profile.territory?.city) &&
       clean(profile.territory?.countryCode) &&
-      Number.isFinite(Number(profile.territoryEvidence?.latitude)) &&
-      Number.isFinite(Number(profile.territoryEvidence?.longitude)),
+      Number.isFinite(profile.territoryEvidence?.latitude) &&
+      Number.isFinite(profile.territoryEvidence?.longitude),
   );
+  if (!territoryReady) missing.push("territoire géolocalisé");
+  if (!clean(profile.vehicle)) missing.push("véhicule");
+  if (!proofIsCurrent(profile.proofs?.phone, clean(profile.phone))) {
+    missing.push("téléphone vérifié");
+  }
+  if (!proofIsCurrent(profile.proofs?.email, clean(profile.email).toLowerCase())) {
+    missing.push("email vérifié");
+  }
+  if (profile.trust?.status !== "screened") missing.push("contrôle de confiance");
+  return missing;
+}
 
-  return (
-    territoryReady &&
-    proofIsCurrent(profile.proofs?.phone, phone) &&
-    proofIsCurrent(profile.proofs?.email, email) &&
-    profile.trust?.status === "screened"
-  );
+function profileReady(profile: CourierProfileLite | null): boolean {
+  return missingPresenceRequirements(profile).length === 0;
 }
 
 export default function RouteOracleScreen() {
@@ -361,6 +366,9 @@ export default function RouteOracleScreen() {
   const refreshPresence = useCallback(
     async (profile: CourierProfileLite, quiet = true) => {
       try {
+        if (!profileReady(profile)) {
+          throw new Error(`Disponibilité non autorisée : ${missingPresenceRequirements(profile).join(", ")}.`);
+        }
         if (!(await waitForCourierSession())) {
           throw new Error("courier_oidc_session_required");
         }
@@ -410,7 +418,9 @@ export default function RouteOracleScreen() {
       profile = null;
     }
 
-    const online = Boolean(profile?.available);
+    // A cached availability flag is not proof that expired identity checks
+    // still authorize a new heartbeat or dispatch proposal.
+    const online = Boolean(profile?.available && profileReady(profile));
 
     setState((prev) => ({
       ...prev,
@@ -472,7 +482,7 @@ export default function RouteOracleScreen() {
     if (!profileReady(state.profile)) {
       setState((prev) => ({
         ...prev,
-        error: "Complétez d’abord votre territoire et votre véhicule dans Mon espace Courier.",
+        error: `Disponibilité non autorisée : ${missingPresenceRequirements(state.profile).join(", ")}. Ouvrez Mon espace Courier.`,
       }));
       return;
     }

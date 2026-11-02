@@ -60,6 +60,10 @@ export class OrdersDispatchService {
     if (principal.role !== 'courier') {
       throw new ForbiddenException({ ok: false, code: 'courier_role_required' });
     }
+    // A proposal is only visible while its selected courier is still online
+    // and the offer is current. Reconcile on inbox reads, not just on
+    // presence heartbeats or when the merchant first marks an order ready.
+    await this.reconcileReadyOrders();
     const orders = await this.access.visibleOrders(principal, listDemoOrders());
     return { ok: true, count: orders.length, orders, items: orders, data: orders };
   }
