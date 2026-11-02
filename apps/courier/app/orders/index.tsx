@@ -1,5 +1,6 @@
 import { daOrdersFetch } from "../../utils/daOrdersApi";
 import { loadCourierPresence, syncCourierPresence } from "../../utils/daPresenceStore";
+import { useCourierJourney } from "../../components/CourierJourneyProvider";
 // DA_A5A3A7S16R8_COURIER_MISSION_DETAIL_REPAIR_V1
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -238,6 +239,8 @@ function HandoffRail({ status, compact = false, reduceMotion = false }: { status
 // DA_SPRINT14_OPERATION_ORBITS_V1
 // DA_SPRINT30_ACTION_COMMIT_TRUTH_V1
 export default function CourierOrdersFocus() {
+  const journey = useCourierJourney();
+  const qaRing = process.env.EXPO_PUBLIC_RELEASE_RING === "ataraxie-ios-qa";
   const [orders, setOrders] = useState<Order[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -371,6 +374,9 @@ export default function CourierOrdersFocus() {
         return;
       }
 
+      if (next === "delivered" && journey.orderId === id) {
+        journey.session.stop("Livraison confirmée. Votre position n’est plus partagée.");
+      }
       setMessage(`${id} · ${statusLabel(next)} ${next === "delivered" ? "confirmée" : "confirmé"}.`);
     } catch (error) {
       setMessage("Action non confirmée · dernière vérité conservée.");
@@ -526,7 +532,7 @@ export default function CourierOrdersFocus() {
         </View> : null}
 
         <Text style={styles.sectionKicker}>{lockedMission ? "CAP SUR LE CLIENT" : "MISSION PRIORITAIRE"}</Text>
-        {focusMission ? <MissionCard order={focusMission} /> : <View style={styles.empty}><Text style={styles.emptyEmoji}>🛵</Text><Text style={styles.emptyTitle}>Aucune mission active</Text><Text style={styles.emptyText}>Une offre de dispatch peut expirer si votre présence n’est plus active. Réactivez votre disponibilité puis consultez le radar.</Text><Pressable accessibilityRole="button" style={styles.sessionButton} onPress={() => router.push("/route-oracle" as any)}><Text style={styles.sessionButtonText}>Ouvrir le radar des offres</Text></Pressable></View>}
+        {focusMission ? <MissionCard order={focusMission} /> : <View style={styles.empty}><Text style={styles.emptyEmoji}>🛵</Text><Text style={styles.emptyTitle}>Aucune mission active</Text><Text style={styles.emptyText}>Une offre de dispatch peut expirer si votre présence n’est plus active. Réactivez votre disponibilité puis consultez le radar.</Text><Pressable accessibilityRole="button" style={styles.sessionButton} onPress={() => router.push("/route-oracle" as any)}><Text style={styles.sessionButtonText}>Ouvrir le radar des offres</Text></Pressable>{qaRing ? <Pressable accessibilityRole="button" style={styles.qaButton} onPress={() => router.push("/maps-qa" as any)}><Text style={styles.qaButtonText}>🗺️ Tester DelishAfrica Maps sans commande</Text></Pressable> : null}</View>}
 
         {missionPool.length > 1 && !lockedMission ? (
           <View style={styles.orbitShell}>
@@ -646,6 +652,8 @@ const styles = StyleSheet.create({
   completeActionText: { color: "#07552E" },
   actionText: { color: "#FFFFFF", fontSize: 16, fontWeight: "900" },
   offerActions: { gap: 10, marginTop: 12 },
+  qaButton: { minHeight: 48, borderRadius: 16, borderWidth: 1, borderColor: "#75EFA4", paddingHorizontal: 12, justifyContent: "center", marginTop: 12 },
+  qaButtonText: { color: "#A8FBC5", fontWeight: "800", fontSize: 13, textAlign: "center" },
   offerAccept: { marginTop: 0 },
   offerReject: { minHeight: 44, alignItems: "center", justifyContent: "center", borderRadius: 16 },
   offerRejectText: { color: "#21623B", fontSize: 13, fontWeight: "800" },

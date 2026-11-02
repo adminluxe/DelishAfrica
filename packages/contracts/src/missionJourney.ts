@@ -209,12 +209,19 @@ export function decodeJourneyPolyline(encoded: string): JourneyPoint[] {
   return result;
 }
 
+export type JourneyManeuver = {
+  instruction: string;
+  maneuver: string;
+  distanceMeters: number;
+};
+
 export type JourneyRoute = {
   points: JourneyPoint[];
   distanceMeters: number;
   durationSeconds: number;
   computedAtMs: number;
   mode: JourneyMode;
+  maneuvers: JourneyManeuver[];
 };
 
 export function verifiedJourneyRoute(payload: any, mode: JourneyMode, now = Date.now()): JourneyRoute | null {
@@ -225,7 +232,18 @@ export function verifiedJourneyRoute(payload: any, mode: JourneyMode, now = Date
   if (points.length < 2 || distanceMeters === null || durationSeconds === null || distanceMeters <= 0 || durationSeconds <= 0) return null;
   const computed = Date.parse(payload.meta?.computedAt || "");
   if (Number.isFinite(computed) && (computed > now + 30_000 || now - computed > JOURNEY_ROUTE_TTL_MS)) return null;
-  return { points, distanceMeters, durationSeconds, mode, computedAtMs: Number.isFinite(computed) ? computed : now };
+  // Use only instructions returned by the same verified Google route.
+  // Never invent a turn or silently treat an unverified estimate as guidance.
+  const maneuvers: JourneyManeuver[] = (Array.isArray(payload.maneuvers) ? payload.maneuvers : [])
+    .slice(0, 12).map((entry: any) => ({
+      instruction: typeof entry?.instruction === "string"
+        ? entry.instruction.replace(/<[^>]*>/g, "").replace(/[\x00-\x1f]/g, " ").trim().slice(0, 220) : "",
+      maneuver: typeof entry?.maneuver === "string" ? entry.maneuver.trim().slice(0, 64) : "",
+      distanceMeters: finiteJourneyNumber(entry?.distanceMeters) ?? -1,
+    }))
+    .filter((entry: JourneyManeuver) => Boolean(entry.instruction) && entry.distanceMeters >= 0);
+  return { points, distanceMeters, durationSeconds, mode, maneuvers,
+    computedAtMs: Number.isFinite(computed) ? computed : now };
 }
 
 export function journeyEta(route: JourneyRoute | null, point: JourneyPoint | null, now = Date.now()) {
