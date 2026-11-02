@@ -17,6 +17,15 @@ export type JourneyRouteProblem =
   | "endpoint_missing" | "server" | "provider"
   | "unverified" | "network";
 
+/** BCP-47 language from device, no native dependency or additional permissions. */
+export function preferredRouteLanguage(): string {
+  try {
+    const raw = Intl.DateTimeFormat().resolvedOptions().locale || "fr";
+    const match = /^([A-Za-z]{2,3})(?:-([A-Za-z]{2}|[0-9]{3}))?(?:-|$)/.exec(raw);
+    return match ? match[1].toLowerCase() + (match[2] ? "-" + match[2].toUpperCase() : "") : "fr";
+  } catch { return "fr"; }
+}
+
 function serverProblem(status: number): JourneyRouteProblem {
   if (status === 401) return "session";
   if (status === 403) return "forbidden";
@@ -82,6 +91,7 @@ export function useJourneyRoute(options: Options) {
             origin: { lat: value.origin.latitude, lng: value.origin.longitude },
             destination: { lat: value.destination.latitude, lng: value.destination.longitude },
             mode: value.mode, orderId: value.orderId, source: "mission-journey",
+            languageCode: preferredRouteLanguage(),
           }),
           signal: controller.signal,
         });
