@@ -26,6 +26,8 @@ type Order = {
   clientName?: string;
   customer?: { name?: string; address?: string; city?: string };
   restaurantName?: string;
+  restaurantAddress?: string;
+  pickupAddress?: string;
   restaurant?: string;
   merchantName?: string;
   deliveryAddress?: string;
@@ -66,6 +68,9 @@ function restaurantName(order: Order) {
 }
 function addressOf(order: Order) {
   return String(order.deliveryAddress || order.customer?.address || "Adresse de livraison");
+}
+function pickupAddressOf(order: Order) {
+  return String(order.restaurantAddress || order.pickupAddress || "Adresse de retrait sur la carte");
 }
 function firstItem(order: Order) {
   const items = Array.isArray(order.items) ? order.items : [];
@@ -309,6 +314,21 @@ export default function CourierOrdersFocus() {
     }
   }, [lockedMissionId, missionPool, priorityId, selectedMissionId]);
 
+  function confirmTransition(order: Order, next: "picked_up" | "delivered") {
+    if (statusMutationRef.current) return;
+    const delivered = next === "delivered";
+    Alert.alert(
+      delivered ? "Remise effectuée ?" : "Retrait effectué ?",
+      delivered
+        ? "Confirmez uniquement après avoir remis la commande au destinataire. Cette action clôture la livraison."
+        : "Confirmez uniquement après avoir récupéré la commande au restaurant.",
+      [
+        { text: "Pas encore", style: "cancel" },
+        { text: delivered ? "Confirmer la remise" : "Confirmer le retrait", onPress: () => { void updateStatus(order, next); } },
+      ],
+    );
+  }
+
   async function updateStatus(order: Order, next: "picked_up" | "delivered") {
     const id = orderId(order);
     if (statusMutationRef.current) return;
@@ -414,7 +434,7 @@ export default function CourierOrdersFocus() {
         </View>
         <Text style={[styles.restaurant, { color: textColor }]}>{restaurantName(order)}</Text>
         <Text style={[styles.client, { color: mutedColor }]}>{customerName(order)}</Text>
-        <Text style={[styles.address, { color: mutedColor }]}>📍 {addressOf(order)}</Text>
+        <Text style={[styles.address, { color: mutedColor }]}>📍 {status === "ready" ? pickupAddressOf(order) : addressOf(order)}</Text>
         <Text style={[styles.item, { color: textColor }]}>{firstItem(order)}</Text>
         <Pressable
           accessibilityRole="button"
@@ -422,13 +442,13 @@ export default function CourierOrdersFocus() {
           style={[styles.detailButton, compact && styles.detailButtonCompact]}
           onPress={() => router.push({ pathname: "/mission-detail" as any, params: { orderId: id } })}
         >
-          <Text style={[styles.detailButtonText, compact && styles.detailButtonTextCompact]}>Voir la commande complète</Text>
+          <Text style={[styles.detailButtonText, compact && styles.detailButtonTextCompact]}>Détails et contact</Text>
           <Text style={[styles.detailButtonArrow, compact && styles.detailButtonTextCompact]}>→</Text>
         </Pressable>
         <HandoffRail status={status} compact={compact} reduceMotion={reduceMotion} />
         {status === "picked_up" || (status === "ready" && accepted) ? (
           <Pressable style={styles.mapButton} onPress={() => router.push({ pathname: "/courier-real-map" as any, params: { orderId: id } })}>
-            <Text style={styles.mapButtonText}>{status === "picked_up" ? "Voir le trajet vivant" : "Voir le guidage vers le restaurant"}</Text>
+            <Text style={styles.mapButtonText}>{status === "picked_up" ? "🧭 Naviguer vers le client" : "🧭 Naviguer vers le restaurant"}</Text>
           </Pressable>
         ) : null}
         {offered ? (
@@ -446,10 +466,10 @@ export default function CourierOrdersFocus() {
               accessibilityRole="button"
               accessibilityLabel={`Refuser l’offre ${id}`}
               disabled={mutationBusy}
-              style={[styles.mapButton, mutationBusy && styles.disabled]}
+              style={[styles.offerReject, mutationBusy && styles.disabled]}
               onPress={() => decideOffer(order, "reject")}
             >
-              <Text style={styles.mapButtonText}>Pas maintenant</Text>
+              <Text style={styles.offerRejectText}>Pas maintenant</Text>
             </Pressable>
           </View>
         ) : null}
@@ -459,8 +479,8 @@ export default function CourierOrdersFocus() {
             accessibilityState={{ disabled: mutationBusy, busy }}
             accessibilityLabel={next === "picked_up" ? "Commande récupérée" : "Commande remise"}
             disabled={mutationBusy}
-            style={[styles.action, mutationBusy && styles.disabled]}
-            onPress={() => updateStatus(order, next)}
+            style={[styles.action, next === "delivered" && styles.completeAction, mutationBusy && styles.disabled]}
+            onPress={() => confirmTransition(order, next)}
           >
             {busy ? (
               <View style={{ alignItems: "center", gap: 4 }}>
@@ -468,7 +488,7 @@ export default function CourierOrdersFocus() {
                 <Text style={styles.actionText}>Écriture puis relecture</Text>
               </View>
             ) : (
-              <Text style={styles.actionText}>{next === "picked_up" ? "Commande récupérée" : "Commande remise"}</Text>
+              <Text style={[styles.actionText, next === "delivered" && styles.completeActionText]}>{next === "picked_up" ? "Confirmer le retrait" : "Confirmer la remise"}</Text>
             )}
           </Pressable>
         ) : null}
@@ -482,7 +502,7 @@ export default function CourierOrdersFocus() {
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             <Text style={styles.brand}>DELISHAFRICA® · COURIER</Text>
-            <Text style={styles.title}>Mission maintenant</Text>
+            <Text style={styles.title}>{lockedMission ? "Votre livraison" : "Mission maintenant"}</Text>
             <Text style={styles.subtitle}>{sessionRequired ? "Identité Courier requise pour les missions" : `${restaurants.length} restaurant${restaurants.length > 1 ? "s" : ""} · ${message}`}</Text>
           </View>
           <Pressable style={styles.closeButton} onPress={() => router.replace("/")}><Text style={styles.closeText}>Fermer</Text></Pressable>
@@ -499,16 +519,16 @@ export default function CourierOrdersFocus() {
           </View>
         ) : null}
 
-        <View style={styles.metricRow}>
+        {!focusMission ? <View style={styles.metricRow}>
           <View style={styles.metric}><Text style={styles.metricValue}>{ready.length}</Text><Text style={styles.metricLabel}>À récupérer</Text></View>
           <View style={styles.metric}><Text style={styles.metricValue}>{picked.length}</Text><Text style={styles.metricLabel}>En route</Text></View>
           <View style={styles.metric}><Text style={styles.metricValue}>{history.length}</Text><Text style={styles.metricLabel}>Terminées</Text></View>
-        </View>
+        </View> : null}
 
-        <Text style={styles.sectionKicker}>UNE MISSION À LA FOIS</Text>
+        <Text style={styles.sectionKicker}>{lockedMission ? "CAP SUR LE CLIENT" : "MISSION PRIORITAIRE"}</Text>
         {focusMission ? <MissionCard order={focusMission} /> : <View style={styles.empty}><Text style={styles.emptyEmoji}>🛵</Text><Text style={styles.emptyTitle}>Aucune mission active</Text><Text style={styles.emptyText}>Une offre de dispatch peut expirer si votre présence n’est plus active. Réactivez votre disponibilité puis consultez le radar.</Text><Pressable accessibilityRole="button" style={styles.sessionButton} onPress={() => router.push("/route-oracle" as any)}><Text style={styles.sessionButtonText}>Ouvrir le radar des offres</Text></Pressable></View>}
 
-        {missionPool.length > 1 ? (
+        {missionPool.length > 1 && !lockedMission ? (
           <View style={styles.orbitShell}>
             <View style={styles.orbitHeader}>
               <View style={{ flex: 1 }}>
@@ -561,11 +581,13 @@ export default function CourierOrdersFocus() {
           </View>
         ) : null}
 
+        {!focusMission ? <>
         <Pressable style={styles.toggle} onPress={() => setShowHistory((value) => !value)}>
           <View><Text style={styles.toggleKicker}>HISTORIQUE</Text><Text style={styles.toggleTitle}>{history.length} livraison{history.length > 1 ? "s" : ""} terminée{history.length > 1 ? "s" : ""}</Text></View>
           <Text style={styles.toggleIcon}>{showHistory ? "−" : "+"}</Text>
         </Pressable>
         {showHistory ? history.slice(0, 8).map((order) => <MissionCard key={orderId(order)} order={order} compact />) : null}
+        </> : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -617,12 +639,16 @@ const styles = StyleSheet.create({
   handoffLabelActive: { color: "#0B9C50" },
   handoffLine: { flex: 1, height: 2, backgroundColor: "rgba(3,23,12,0.10)", marginTop: 13, marginHorizontal: -7 },
   handoffLineActive: { backgroundColor: "#75EFA4" },
-  mapButton: { borderRadius: 18, alignItems: "center", paddingVertical: 13, backgroundColor: "rgba(11,106,54,0.10)", borderWidth: 1, borderColor: "rgba(11,106,54,0.20)", marginTop: 16 },
-  mapButtonText: { color: "#0B6A36", fontSize: 15, fontWeight: "900" },
-  action: { borderRadius: 18, alignItems: "center", paddingVertical: 14, backgroundColor: "#0B9C50", marginTop: 10 },
+  mapButton: { borderRadius: 18, alignItems: "center", justifyContent: "center", minHeight: 54, paddingVertical: 13, backgroundColor: "#07552E", marginTop: 12 },
+  mapButtonText: { color: "#F1FFF6", fontSize: 15, fontWeight: "900" },
+  action: { borderRadius: 18, alignItems: "center", paddingVertical: 14, minHeight: 54, justifyContent: "center", backgroundColor: "#0B9C50", marginTop: 10 },
+  completeAction: { backgroundColor: "rgba(11,106,54,0.08)", borderWidth: 1, borderColor: "#0B6A36" },
+  completeActionText: { color: "#07552E" },
   actionText: { color: "#FFFFFF", fontSize: 16, fontWeight: "900" },
   offerActions: { gap: 10, marginTop: 12 },
   offerAccept: { marginTop: 0 },
+  offerReject: { minHeight: 44, alignItems: "center", justifyContent: "center", borderRadius: 16 },
+  offerRejectText: { color: "#21623B", fontSize: 13, fontWeight: "800" },
   disabled: { opacity: 0.55 },
   empty: { borderRadius: 26, padding: 22, backgroundColor: "#072318", borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", alignItems: "center", marginBottom: 12 },
   emptyEmoji: { fontSize: 34 },
@@ -644,7 +670,7 @@ const styles = StyleSheet.create({
   orbitRestaurantSelected: { color: "#03170C" },
   orbitMeta: { color: "rgba(227,255,236,0.52)", fontSize: 10, fontWeight: "800", marginTop: 4 },
   orbitMetaSelected: { color: "rgba(3,23,12,0.58)" },
-  detailButton: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, borderRadius: 18, paddingHorizontal: 15, paddingVertical: 13, marginTop: 14, backgroundColor: "rgba(3,23,12,0.08)", borderWidth: 1, borderColor: "rgba(3,23,12,0.14)" },
+  detailButton: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7, marginTop: 8, backgroundColor: "rgba(3,23,12,0.04)" },
   detailButtonCompact: { backgroundColor: "rgba(117,239,164,0.08)", borderColor: "rgba(117,239,164,0.18)" },
   detailButtonText: { color: "#06351D", fontSize: 13, fontWeight: "900" },
   detailButtonTextCompact: { color: "#75EFA4" },
