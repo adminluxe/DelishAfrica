@@ -52,8 +52,11 @@ export class MissionRoutesController {
     if (!origin || !destination || !['DRIVE', 'TWO_WHEELER', 'BICYCLE', 'WALK'].includes(mode) || !orderId || orderId.length > 128) {
       throw new BadRequestException({ ok: false, error: 'invalid_mission_route' });
     }
+    const rawLanguage = typeof input.languageCode === "string" ? input.languageCode.trim() : "";
+    const languageCode = /^[A-Za-z]{2,3}(?:-(?:[A-Za-z]{2}|[0-9]{3}))?$/.test(rawLanguage)
+      ? rawLanguage : "fr";
     const key = createHash('sha256').update(`${principal.issuer}|${principal.subject}`).digest('hex');
     this.limit(key);
-    return this.routes.preview({ origin, destination, mode, orderId, source: 'mission-journey' }, { allowGoogle: true });
+    return this.routes.preview({ origin, destination, mode, orderId, languageCode, source: 'mission-journey' }, { allowGoogle: true });
   }
 }

@@ -114,6 +114,9 @@ const waypoints = Array.isArray(input.waypoints)
 const mode = normalizeMode(input.mode);
 const source = typeof input.source === 'string' && input.source.trim() ? input.source.trim() : DEFAULT_SOURCE;
 const orderId = typeof input.orderId === 'string' && input.orderId.trim() ? input.orderId.trim() : null;
+const rawLanguage = typeof input.languageCode === "string" ? input.languageCode.trim() : "";
+const languageCode = /^[A-Za-z]{2,3}(?:-(?:[A-Za-z]{2}|[0-9]{3}))?$/.test(rawLanguage)
+  ? rawLanguage : "fr";
 
 if (!origin || !destination) {
 return this.fallback({
@@ -147,7 +150,7 @@ confidence: 0.68,
 }
 
 try {
-const google = await this.computeWithGoogle({ apiKey, origin, destination, waypoints, mode });
+const google = await this.computeWithGoogle({ apiKey, origin, destination, waypoints, mode, languageCode });
 
 if (google) {
 const etaMinutes = Math.max(1, Math.round(google.durationSeconds / 60));
@@ -236,6 +239,7 @@ origin: RoutePoint;
 destination: RoutePoint;
 waypoints: RoutePoint[];
 mode: RouteTravelMode;
+languageCode: string;
 }): Promise<{ distanceMeters: number; durationSeconds: number; polyline: string | null } | null> {
 const fetchFn = (globalThis as any).fetch;
 const AbortControllerCtor = (globalThis as any).AbortController;
@@ -263,6 +267,7 @@ longitude: args.destination.lng,
 },
 },
 travelMode: args.mode,
+languageCode: args.languageCode,
 routingPreference: args.mode === 'DRIVE' ? 'TRAFFIC_AWARE' : undefined,
 computeAlternativeRoutes: false,
 polylineQuality: 'OVERVIEW',
