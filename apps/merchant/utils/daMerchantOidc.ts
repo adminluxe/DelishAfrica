@@ -1,3 +1,4 @@
+import { daApiBase } from './daApiEnvironment';
 /*
  * DELISHAFRICA — Merchant OIDC session
  * Authorization Code + PKCE S256, system browser, state/nonce,
@@ -67,15 +68,7 @@ const EXPIRES_KEY = 'da_merchant_oidc_expires_at_v1';
 const USER_KEY = 'da_merchant_oidc_user_v1';
 const API_VERIFICATION_KEY = 'da_merchant_oidc_api_verification_v1';
 
-function apiBase(): string {
-  const env = (globalThis as any)?.process?.env || {};
-  const raw =
-    env.EXPO_PUBLIC_API_BASE_URL ||
-    env.EXPO_PUBLIC_API_URL ||
-    'https://api.delishafrica.me/api/v1';
-  const normalized = String(raw).replace(/\/+$/, '');
-  return normalized.endsWith('/api/v1') ? normalized : `${normalized}/api/v1`;
-}
+function apiBase(): string { return daApiBase(); }
 
 function loadModules(): {
   AuthSession: ExpoAuthSessionModule;

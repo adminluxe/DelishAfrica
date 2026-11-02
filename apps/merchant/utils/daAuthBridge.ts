@@ -1,3 +1,4 @@
+import { daApiBase } from './daApiEnvironment';
 import {
   daMerchantOidcAccessToken,
   daMerchantOidcLogout,
@@ -33,15 +34,7 @@ const DEV_ACCESS_KEY = 'da_auth_access_token_v1';
 const DEV_REFRESH_KEY = 'da_auth_refresh_token_v1';
 const MEMORY: Record<string, string> = {};
 
-function apiBase(): string {
-  const env = (globalThis as any)?.process?.env || {};
-  const raw =
-    env.EXPO_PUBLIC_API_BASE_URL ||
-    env.EXPO_PUBLIC_API_URL ||
-    'https://api.delishafrica.me/api/v1';
-  const normalized = String(raw).replace(/\/+$/, '');
-  return normalized.endsWith('/api/v1') ? normalized : `${normalized}/api/v1`;
-}
+function apiBase(): string { return daApiBase(); }
 
 function getSecureStore(): any | null {
   try {
