@@ -1,3 +1,4 @@
+import { daMerchantIdentityEpoch, daAssertMerchantIdentity, daOnMerchantIdentityChange } from '../../utils/daIdentityEpoch';
 import { readOrderList, orderMoneyLabel, orderSafety, orderReadFailure, orderReadMessage, type OrderReadState } from '../../../../packages/contracts/src/orderRead';
 import { assessJourneySignal, type JourneySignal } from "../../../../packages/contracts/src/missionJourney";
 import { daOrdersFetch } from "../../utils/daOrdersApi";
@@ -115,7 +116,9 @@ async function postJson(path: string, body: Record<string, unknown> = {}) {
     body: JSON.stringify(body),
     signal: controller.signal,
   });
+  const responseEpoch = daMerchantIdentityEpoch();
   const payload = await response.json().catch(() => ({}));
+  daAssertMerchantIdentity(responseEpoch);
   if (!response.ok) { const error = new Error("La connexion au service est indisponible.") as Error & { status: number }; error.status = response.status; throw error; }
   return payload;
   } finally { clearTimeout(timeout); }
@@ -311,6 +314,10 @@ export default function MerchantOrdersFocus() {
   const [showHistory, setShowHistory] = useState(false);
   const [liveLocations, setLiveLocations] = useState<Record<string, LiveLocationRead>>({});
   const [signalNow, setSignalNow] = useState(Date.now());
+  useEffect(() => daOnMerchantIdentityChange(() => {
+    setOrders([]); setLiveLocations({}); setSelectedOrderId(null); setReadState('loading');
+  }), []);
+
   useEffect(() => { const timer = setInterval(() => setSignalNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   const reduceMotion = useReduceMotionPreference();
   const statusMutationRef = useRef<string | null>(null);

@@ -1,3 +1,4 @@
+import { daMerchantIdentityEpoch, daAssertMerchantIdentity, daOnMerchantIdentityChange } from '../utils/daIdentityEpoch';
 import { readOrderList, orderMoneyLabel, orderReadFailure, orderReadMessage, type OrderReadState } from '../../../packages/contracts/src/orderRead';
 // DA_GALA_TACTILE_GRAVITY_ANCHOR_LADDER_V1 - heavy actions stay bottom-grounded while lighter controls progressively recenter their press pivot; resting surfaces and business behavior remain frozen.
 // DA_GALA_TACTILE_ANCHOR_GROUNDED_CONTACT_V1 - pressed deformation is grounded to the bottom contact edge; resting surfaces and business behavior remain frozen.
@@ -155,7 +156,9 @@ Accept: "application/json",
 body: JSON.stringify(body),
 });
 
+const responseEpoch = daMerchantIdentityEpoch();
 const text = await res.text();
+daAssertMerchantIdentity(responseEpoch);
 let json: any = null;
 
 try {
@@ -194,6 +197,7 @@ const [readState, setReadState] = useState<OrderReadState>('loading');
 const sessionRequired = readState === 'auth_required';
 const accessRequired = sessionRequired || readState === 'forbidden';
 const dataReady = readState === 'ready';
+useEffect(() => daOnMerchantIdentityChange(() => { setOrders([]); setReadState('loading'); }), []);
 
 const load = useCallback(async () => {
 setRefreshing(true);

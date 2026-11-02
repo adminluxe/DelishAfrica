@@ -1,4 +1,5 @@
-import { orderMoneyLabel, readOrderList } from '../../../packages/contracts/src/orderRead';
+import { daMerchantIdentityEpoch, daAssertMerchantIdentity, daOnMerchantIdentityChange } from '../utils/daIdentityEpoch';
+import { orderMoneyLabel, readOrderList, orderReadFailure, orderReadMessage } from '../../../packages/contracts/src/orderRead';
 import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -52,7 +53,9 @@ async function fetchNetworkJson(url: string, init?: Parameters<typeof fetch>[1])
   try {
     const request = url.includes("/orders/demo/") ? daOrdersFetch : fetch;
     const response = await request(url, { ...(init || {}), signal: controller.signal });
-    const payload = await response.json().catch(() => ({}));
+    const responseEpoch = daMerchantIdentityEpoch();
+  const payload = await response.json().catch(() => ({}));
+  daAssertMerchantIdentity(responseEpoch);
     if (!response.ok) throw new Error(payload?.message || `HTTP ${response.status}`);
     return payload;
   } catch (error) {
@@ -66,11 +69,7 @@ async function fetchNetworkJson(url: string, init?: Parameters<typeof fetch>[1])
 }
 
 function networkTruthMessage(error: unknown) {
-  const detail = error instanceof Error ? error.message : "Synchronisation indisponible";
-  if (/temps|timeout|network|fetch|connexion|http/i.test(detail)) {
-    return "Connexion momentanément indisponible. Le dernier état opérationnel reste disponible.";
-  }
-  return "Une partie du réseau ne répond pas encore. Le dernier état opérationnel reste disponible.";
+  return orderReadMessage(orderReadFailure(error));
 }
 
 type Order = {
@@ -286,6 +285,10 @@ function buildMoment(
 // DELISHAFRICA_SPRINT29_PRESENCE_COMMIT_TRUTH_V1
 export default function MerchantHome() {
   const [orders, setOrders] = useState<Order[]>([]);
+  useEffect(() => daOnMerchantIdentityChange(() => {
+    setOrders([]); setServiceOpen(false); setNetworkTruth('syncing');
+  }), []);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -885,16 +888,16 @@ export default function MerchantHome() {
               <ActivityIndicator color="#2A1308" />
               <Text style={styles.stateText}>Lecture du service…</Text>
             </View>
-          ) : error && orders.length === 0 && networkTruth !== "stale" ? (
+          ) : error && orders.length === 0 ? (
             <Pressable
               style={({ pressed }) => [styles.errorSurface, pressed && styles.pressFeedback]}
-              onPress={() => { void load(); }}
+              onPress={() => go("/auth-session")}
               accessibilityRole="button"
-              accessibilityLabel="Cockpit en mode dégradé. Relancer la synchronisation du service"
+              accessibilityLabel="Vérifier la connexion et l’accès à l’établissement"
             >
-              <Text style={styles.errorTitle}>Cockpit en mode dégradé</Text>
+              <Text style={styles.errorTitle}>Commandes non confirmées</Text>
               <Text style={styles.errorText}>{error}</Text>
-              <Text style={styles.errorRetry}>Relancer la synchronisation</Text>
+              <Text style={styles.errorRetry}>Vérifier l’accès Merchant</Text>
             </Pressable>
           ) : priority ? (
             <View style={styles.prioritySurface}>
