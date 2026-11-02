@@ -12,8 +12,24 @@ const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), 'da-hf38-dispatch-'));
 process.env.DA_DEMO_ORDERS_STORE_FILE = path.join(sandbox, 'orders.json');
 process.env.DA_COURIER_PRESENCE_STORE_FILE = path.join(sandbox, 'presence.json');
 
-const { OrdersDispatchService } = require('../dist/orders/orders.dispatch.service');
-const { CourierPresenceService } = require('../dist/orders/courier-presence.service');
+// The QA source has a production-only vendored PG path. We unit-test only
+// dispatch/presence behavior here and never open a database connection.
+const Module = require('node:module');
+const originalLoad = Module._load;
+Module._load = function loadForIsolatedUnitTest(request, parent, isMain) {
+  if (String(request).endsWith('/.runtime-vendor/pg-runtime/node_modules/pg')) {
+    return { Pool: class NoDatabaseConnectionAllowed {} };
+  }
+  return originalLoad.call(this, request, parent, isMain);
+};
+let OrdersDispatchService;
+let CourierPresenceService;
+try {
+  ({ OrdersDispatchService } = require('../dist/orders/orders.dispatch.service'));
+  ({ CourierPresenceService } = require('../dist/orders/courier-presence.service'));
+} finally {
+  Module._load = originalLoad;
+}
 
 process.on('exit', () => fs.rmSync(sandbox, { recursive: true, force: true }));
 
