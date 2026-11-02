@@ -65,12 +65,12 @@ export function CourierJourneyProvider({ children }: { children: React.ReactNode
 function SharingPresence({ session }: { session: MissionLocationSession }) {
   const state = useSyncExternalStore(session.subscribe, session.snapshot, session.snapshot);
   if (!state.sharingRequested) return null;
-  return <View style={{ backgroundColor: "#173D30", paddingHorizontal: 16, paddingVertical: 12, flexDirection: "row", alignItems: "center", gap: 12, borderTopColor: "#4D7159", borderTopWidth: 1 }}>
+  return <View style={{ backgroundColor: "#173D30", paddingHorizontal: 14, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 8, borderTopColor: "#4D7159", borderTopWidth: 1 }}>
     <Pressable accessibilityRole="button" accessibilityLabel="Revenir à la mission dont la position est partagée" style={{ flex: 1, minHeight: 44, justifyContent: "center" }} onPress={() => router.push({ pathname: "/courier-integrated-map" as any, params: { orderId: state.orderId || "" } })}>
-      <Text style={{ color: "#E9F1E2", fontSize: 12, fontWeight: "700" }}>{state.paused ? "Partage en pause" : state.sharing ? "Partage de position activé" : "Partage à vérifier"}</Text>
-      <Text style={{ color: "#BFD6C4", fontSize: 10, marginTop: 4 }}>Mission {state.orderId} · revenir à la carte</Text>
+      <Text style={{ color: "#E9F1E2", fontSize: 12, fontWeight: "700" }}>{state.paused ? "Position en pause" : state.sharing ? "● Position partagée" : "Position à vérifier"}</Text>
+      <Text style={{ color: "#BFD6C4", fontSize: 10, marginTop: 2 }}>{state.orderId} · Carte et confidentialité</Text>
     </Pressable>
-    <Pressable accessibilityRole="button" accessibilityLabel="Arrêter le partage de ma position" style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: 12, borderRadius: 16, backgroundColor: "#E6BD72" }} onPress={() => session.stop()}><Text style={{ color: "#143726", fontSize: 12, fontWeight: "800" }}>Arrêter</Text></Pressable>
+    <Pressable accessibilityRole="button" accessibilityLabel="Arrêter le partage de ma position" style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: 10, borderRadius: 12, backgroundColor: "#E6BD72" }} onPress={() => session.stop()}><Text style={{ color: "#143726", fontSize: 12, fontWeight: "800" }}>Arrêter</Text></Pressable>
   </View>;
 }
 
