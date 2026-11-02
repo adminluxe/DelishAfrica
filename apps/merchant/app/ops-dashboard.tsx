@@ -1,3 +1,4 @@
+import { readOrderList, orderMoneyLabel, orderReadFailure, orderReadMessage, type OrderReadState } from '../../../packages/contracts/src/orderRead';
 // DA_GALA_TACTILE_GRAVITY_ANCHOR_LADDER_V1 - heavy actions stay bottom-grounded while lighter controls progressively recenter their press pivot; resting surfaces and business behavior remain frozen.
 // DA_GALA_TACTILE_ANCHOR_GROUNDED_CONTACT_V1 - pressed deformation is grounded to the bottom contact edge; resting surfaces and business behavior remain frozen.
 // DA_GALA_TACTILE_MASS_ANISOTROPIC_COMPRESSION_V1 - area-equivalent directional compression on the validated contact plane; resting visuals and business behavior remain frozen.
@@ -105,15 +106,11 @@ function restaurantName(order: DemoOrder): string {
 return order.restaurantName || order.merchantName || "Restaurant partenaire";
 }
 
-function amountLabel(order: DemoOrder): string {
-const raw = Number(order.total ?? order.amount ?? 0);
-const euros = raw > 100 ? raw / 100 : raw;
-return `${euros.toFixed(2).replace(".", ",")} €`;
-}
+function amountLabel(order: DemoOrder): string { return orderMoneyLabel(order); }
 
 function firstItem(order: DemoOrder): string {
 const item = Array.isArray(order.items) ? order.items[0] : null;
-if (!item) return "1× Thieboudienne royal";
+if (!item) return "Détail des articles non renseigné";
 const qty = item.quantity || item.qty || 1;
 const name = item.name || item.title || "Plat signature";
 return `${qty}× ${name}`;
@@ -168,20 +165,13 @@ throw new Error(`Réponse non JSON (${res.status}): ${text.slice(0, 240)}`);
 }
 
 if (!res.ok) {
-throw new Error(json?.message || json?.error || `HTTP ${res.status}`);
+throw Object.assign(new Error('merchant_orders_read_failed'), { status: res.status });
 }
 
 return json;
 }
 
-function extractOrders(payload: any): DemoOrder[] {
-if (Array.isArray(payload)) return payload;
-if (Array.isArray(payload?.orders)) return payload.orders;
-if (Array.isArray(payload?.data)) return payload.data;
-if (Array.isArray(payload?.items)) return payload.items;
-if (payload?.order) return [payload.order];
-return [];
-}
+function extractOrders(payload: any): DemoOrder[] { return readOrderList<DemoOrder>(payload); }
 
 // DA_GALA_MERCHANT_OPS_HUMAN_STATE_V2 - supervision copy never renders raw auth/network keys.
 function humanizeMerchantOpsState(value: unknown): string {
@@ -200,7 +190,10 @@ const [refreshing, setRefreshing] = useState(false);
 const [loading, setLoading] = useState(true);
 const [message, setMessage] = useState("Chargement supervision...");
 const [selectedStatus, setSelectedStatus] = useState<string>("all");
-const [sessionRequired, setSessionRequired] = useState(false);
+const [readState, setReadState] = useState<OrderReadState>('loading');
+const sessionRequired = readState === 'auth_required';
+const accessRequired = sessionRequired || readState === 'forbidden';
+const dataReady = readState === 'ready';
 
 const load = useCallback(async () => {
 setRefreshing(true);
@@ -208,13 +201,13 @@ try {
 const payload = await postJson("/orders/demo/list", {});
 const list = extractOrders(payload);
 setOrders(list);
-setSessionRequired(false);
+setReadState('ready');
 setMessage(`${list.length} commande(s) synchronisée(s).`);
 } catch (error: any) {
-const reason = String(error?.message || error || '');
-const needsSession = reason.includes('merchant_oidc_session_required') || reason.includes('Session restaurateur indisponible');
-setSessionRequired(needsSession);
-setMessage(needsSession ? 'Connexion Merchant requise · aucune session simulée.' : humanizeMerchantOpsState(reason));
+const state = orderReadFailure(error);
+setReadState(state);
+setOrders([]);
+setMessage(orderReadMessage(state));
 } finally {
 setRefreshing(false);
 setLoading(false);
@@ -292,7 +285,7 @@ style={({ pressed }) => [styles.filterButton, active && styles.filterButtonActiv
 onPress={() => setSelectedStatus(id)}
 >
 <Text style={[styles.filterLabel, active && styles.filterLabelActive]}>{label}</Text>
-<Text style={[styles.filterCount, active && styles.filterLabelActive]}>{count}</Text>
+<Text style={[styles.filterCount, active && styles.filterLabelActive]}>{dataReady ? count : "—"}</Text>
 </Pressable>
 );
 }
@@ -308,7 +301,7 @@ tone?: "default" | "watch" | "ok" | "done";
 }) {
 return (
 <View style={[styles.metric, styles[`metric_${tone}` as keyof typeof styles]]}>
-<Text style={styles.metricValue}>{value}</Text>
+<Text style={styles.metricValue}>{dataReady ? value : "—"}</Text>
 <Text style={styles.metricLabel}>{label}</Text>
 </View>
 );
@@ -385,26 +378,26 @@ Décider vite, voir loin : flux, pression cuisine et remise au même endroit.
 <View style={{ flex: 1 }}>
 <Text style={styles.futureRailKicker}>SERVICE INTELLIGENCE</Text>
 <Text style={styles.futureRailText}>
-{sessionRequired
-? "Compte Merchant à connecter · Master Control reste protégé"
+{!dataReady
+? orderReadMessage(readState)
 : stats.active > 0
 ? `${stats.active} opérations surveillées en temps réel`
 : "Système prêt · aucun signal prioritaire"}
 </Text>
 </View>
-<Text style={styles.futureRailMeta}>{sessionRequired ? "À CONNECTER" : refreshing || loading ? "SYNC" : "LIVE"}</Text>
+<Text style={styles.futureRailMeta}>{refreshing || loading ? "SYNC" : dataReady ? "SYNCHRONISÉ" : "À VÉRIFIER"}</Text>
 </View>
 
 <View style={styles.hero}>
 <View style={styles.heroTop}>
 <Text style={styles.heroKicker}>SERVICE INTELLIGENCE</Text>
-<Text style={styles.live}>SYSTEM LIVE</Text>
+<Text style={styles.live}>{dataReady ? "SYNCHRONISÉ" : "LECTURE NON CONFIRMÉE"}</Text>
 </View>
 
 <Text style={styles.heroTitle}>
-{sessionRequired ? "Identité Merchant requise" : stats.active > 0 ? `${stats.active} opérations en cours` : "Service calme"}
+{!dataReady ? "Supervision non confirmée" : stats.active > 0 ? `${stats.active} opérations en cours` : "Service calme"}
 </Text>
-<Text style={styles.heroText}>{sessionRequired ? "Connectez votre compte Merchant pour ouvrir les flux opérationnels. Les actions restent protégées jusqu’à validation de la session." : blockerText}</Text>
+<Text style={styles.heroText}>{dataReady ? blockerText : orderReadMessage(readState)}</Text>
 
 <View style={styles.metrics}>
 <Metric label="Total" value={stats.total} />
@@ -419,11 +412,11 @@ Décider vite, voir loin : flux, pression cuisine et remise au même endroit.
 </View>
 </View>
 
-<Pressable style={({ pressed }) => [styles.refreshButton, pressed && styles.daPressSecondary]} onPress={sessionRequired ? () => router.push("/auth-session" as any) : load}>
+<Pressable style={({ pressed }) => [styles.refreshButton, pressed && styles.daPressSecondary]} onPress={accessRequired ? () => router.push("/auth-session" as any) : load}>
 {refreshing || loading ? (
 <ActivityIndicator />
 ) : (
-<Text style={styles.refreshText}>{sessionRequired ? "Connecter le compte Merchant" : "Synchroniser le control room"}</Text>
+<Text style={styles.refreshText}>{accessRequired ? "Vérifier l’accès Merchant" : "Actualiser les commandes"}</Text>
 )}
 </Pressable>
 
@@ -441,7 +434,7 @@ Décider vite, voir loin : flux, pression cuisine et remise au même endroit.
 <View style={styles.sectionHead}>
 <Text style={styles.sectionTitle}>Flux opérationnel</Text>
 <Text style={styles.sectionSubtitle}>
-{filteredOrders.length} résultats dans le filtre actif.
+{dataReady ? `${filteredOrders.length} résultats dans le filtre actif.` : "Lecture des commandes non confirmée."}
 </Text>
 </View>
 
@@ -450,9 +443,9 @@ filteredOrders.map((order) => <OrderRow key={orderId(order)} order={order} />)
 ) : (
 <View style={styles.emptyCard}>
 <Text style={styles.emptyEmoji}>🧭</Text>
-<Text style={styles.emptyTitle}>{sessionRequired ? "Compte Merchant non connecté" : "Aucune commande ici"}</Text>
+<Text style={styles.emptyTitle}>{dataReady ? "Aucune commande dans ce filtre" : "Commandes non confirmées"}</Text>
 <Text style={styles.emptyText}>
-{sessionRequired ? "Une connexion réelle suffit pour restaurer la supervision, les commandes et le contexte cuisine." : "Change de filtre ou crée une commande depuis l’app Client."}
+{dataReady ? "Modifiez le filtre pour consulter les autres commandes synchronisées." : orderReadMessage(readState)}
 </Text>
 </View>
 )}

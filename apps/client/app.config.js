@@ -120,6 +120,7 @@ module.exports = ({ config }) => {
       ...(config.extra || {}),
       EXPO_PUBLIC_API_BASE_URL: API_BASE_URL,
       EXPO_PUBLIC_API_URL: API_BASE_URL,
+      EXPO_PUBLIC_RELEASE_RING: process.env.EXPO_PUBLIC_RELEASE_RING || (IS_ATARAXIE_IOS ? 'ataraxie-ios-qa' : IS_ATARAXIE_ANDROID ? 'ataraxie-closed' : undefined),
       eas: {
         ...((config.extra && config.extra.eas) || {}),
         projectId: "b9aebdae-10b4-4638-a576-a5f61352ea97",

@@ -1,3 +1,4 @@
+import { orderMoneyLabel, readOrderList } from '../../../packages/contracts/src/orderRead';
 import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -190,12 +191,7 @@ function restaurantName(order?: Order | null) {
   );
 }
 
-function money(value: unknown) {
-  const raw = typeof value === "number" ? value : Number(value || 0);
-  if (!Number.isFinite(raw) || raw === 0) return "—";
-  const euros = Math.abs(raw) >= 100 ? raw / 100 : raw;
-  return `${euros.toFixed(2).replace(".", ",")} €`;
-}
+function money(value: unknown) { return orderMoneyLabel(value); }
 
 function itemSummary(order?: Order | null) {
   const items = Array.isArray(order?.items) ? order?.items : [];
@@ -217,14 +213,7 @@ function timeLabel(order?: Order | null) {
   return date.toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" });
 }
 
-function extractOrders(payload: any): Order[] {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.orders)) return payload.orders;
-  if (Array.isArray(payload?.data?.orders)) return payload.data.orders;
-  if (Array.isArray(payload?.items)) return payload.items;
-  if (Array.isArray(payload?.data)) return payload.data;
-  return [];
-}
+function extractOrders(payload: any): Order[] { return readOrderList<Order>(payload); }
 
 async function fetchOrders(): Promise<Order[]> {
   const payload = await fetchNetworkJson(`${API_BASE_URL}/orders/demo/list`, {
@@ -311,7 +300,7 @@ export default function MerchantHome() {
   const operationToolsOpen = useRef(initialOperationFocus.showTools);
   const initialPresence = readPartnerPresenceCache<PartnerPresenceProfile>();
   const [presenceProfile, setPresenceProfile] = useState<PartnerPresenceProfile | null>(initialPresence);
-  const [serviceOpen, setServiceOpen] = useState(() => Boolean(initialPresence?.serviceOpen));
+  const [serviceOpen, setServiceOpen] = useState(() => false);
   const [presenceHydrated, setPresenceHydrated] = useState(false);
   const [presenceMutation, setPresenceMutation] = useState<"idle" | "opening" | "closing">("idle");
   const presenceMutationRef = useRef<"idle" | "opening" | "closing">("idle");
@@ -333,7 +322,7 @@ export default function MerchantHome() {
       setServiceOpen(false);
     } else {
       setPresenceProfile(profile);
-      setServiceOpen(Boolean(profile?.serviceOpen));
+      setServiceOpen(false);
     }
     setPresenceHydrated(true);
   }, []);
@@ -411,6 +400,8 @@ export default function MerchantHome() {
       } catch (err) {
         hasLoadedRef.current = true;
         setNetworkTruth("stale");
+        setOrders([]);
+        setServiceOpen(false);
         setError(networkTruthMessage(err));
       } finally {
         setLoading(false);
@@ -588,8 +579,8 @@ export default function MerchantHome() {
             : presenceNetworkLocked
           ? "HORS RÉSEAU"
           : serviceOpen
-          ? "EN LIGNE"
-          : "HORS LIGNE";
+          ? "OUVERTURE À CONFIRMER"
+          : "OUVERTURE À CONFIRMER";
   const baseMoment = useMemo(() => buildMoment(priority, stats), [priority, stats]);
   const moment = useMemo<ServiceMoment>(() => {
     if (!presenceHydrated) {
@@ -637,9 +628,9 @@ export default function MerchantHome() {
       return {
         code: "PRÊT",
         kicker: "LE SERVICE ATTEND VOTRE SIGNAL",
-        title: "Ouvrez lorsque la cuisine est réellement prête.",
-        body: "Un geste suffit. Les commandes en cours restent toujours accessibles.",
-        action: "Ouvrir le service",
+        title: "L’ouverture du service reste à confirmer.",
+        body: "Vos preuves sont conservées. La plateforme doit confirmer l’accès et la disponibilité de l’établissement.",
+        action: "Vérifier l’ouverture",
         activeStage: 0,
       };
     }
@@ -647,45 +638,12 @@ export default function MerchantHome() {
   }, [activationProofCount, activationProofs.length, activationReady, baseMoment, networkTruth, presenceHydrated, presenceMutation, presenceMutationBusy, priority, serviceOpen]);
 
   async function togglePresence() {
-    if (!presenceHydrated || presenceMutationRef.current !== "idle") return;
-    if (presenceNetworkLocked) {
-      setError("Connexion requise uniquement pour modifier la présence. Le cockpit reste disponible.");
-      void refreshLiveTruth();
-      return;
-    }
-    const current = await loadPartnerPresence<PartnerPresenceProfile>();
-    if (!partnerActivationReady(current)) {
-      go("/partner-space");
-      return;
-    }
-    const desiredOpen = !Boolean(current?.serviceOpen);
-    const mutation = desiredOpen ? "opening" : "closing";
-    const next: PartnerPresenceProfile = {
-      ...current,
-      serviceOpen: desiredOpen,
-      updatedAt: new Date().toISOString(),
-    };
-    presenceMutationRef.current = mutation;
-    setPresenceMutation(mutation);
-    try {
-      await savePartnerPresence(next);
-      const confirmed = await loadPartnerPresence<PartnerPresenceProfile>();
-      if (!confirmed || Boolean(confirmed.serviceOpen) !== desiredOpen) {
-        throw new Error("presence_commit_mismatch");
-      }
-      setPresenceProfile(confirmed);
-      setServiceOpen(Boolean(confirmed.serviceOpen));
-    } catch {
-      const restored = await loadPartnerPresence<PartnerPresenceProfile>().catch(() => null);
-      if (restored) {
-        setPresenceProfile(restored);
-        setServiceOpen(Boolean(restored.serviceOpen));
-      }
-      Alert.alert("Statut non confirmé", "Le service conserve son dernier état relu. Réessayez dans un instant.");
-    } finally {
-      presenceMutationRef.current = "idle";
-      setPresenceMutation("idle");
-    }
+    if (!activationReady) { go('/partner-space'); return; }
+    setServiceOpen(false);
+    Alert.alert('Ouverture non confirmée', 'L’ouverture doit être confirmée par la plateforme. Les commandes déjà autorisées restent consultables.', [
+      { text: 'Vérifier l’accès', onPress: () => go('/auth-session') },
+      { text: 'Fermer', style: 'cancel' },
+    ]);
   }
 
   async function openPrimary() {
@@ -947,7 +905,7 @@ export default function MerchantHome() {
                 <Text style={styles.priorityRestaurant}>{restaurantName(priority)}</Text>
               </View>
               <View style={styles.priorityMeta}>
-                <Text style={styles.priorityAmount}>{money(priority.total ?? priority.amount)}</Text>
+                <Text style={styles.priorityAmount}>{money(priority)}</Text>
                 <Text style={styles.priorityTime}>{timeLabel(priority)}</Text>
               </View>
             </View>
@@ -955,7 +913,7 @@ export default function MerchantHome() {
             <View style={styles.stateSurface}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.priorityKicker}>{!activationReady ? "ACTIVATION REQUISE" : serviceOpen ? "SERVICE DISPONIBLE" : "SERVICE HORS LIGNE"}</Text>
-                <Text style={styles.priorityTitle}>{!activationReady ? "Validez l’établissement pour ouvrir le service." : serviceOpen ? "La prochaine commande prendra naturellement la place centrale." : "La cuisine reste invisible aux nouvelles commandes jusqu’à votre signal."}</Text>
+                <Text style={styles.priorityTitle}>{!activationReady ? "Validez l’établissement pour ouvrir le service." : serviceOpen ? "La prochaine commande prendra naturellement la place centrale." : "La disponibilité de l’établissement n’est pas confirmée par la plateforme."}</Text>
               </View>
             </View>
           )}

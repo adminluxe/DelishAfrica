@@ -1,3 +1,4 @@
+import { orderMoneyLabel } from '../../../packages/contracts/src/orderRead';
 import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -37,12 +38,7 @@ function asArray(payload: any): OrderLike[] {
   return [];
 }
 
-function normalizeMoney(value: unknown): string {
-  const raw = Number(value ?? 0);
-  if (!Number.isFinite(raw) || raw <= 0) return 'Montant non reçu';
-  const euros = raw > 100 ? raw / 100 : raw;
-  return `${euros.toFixed(2).replace('.', ',')} €`;
-}
+function normalizeMoney(value: unknown): string { return orderMoneyLabel(value); }
 
 function normalizeStatus(status?: string): string {
   const s = String(status || '').toLowerCase();
@@ -62,7 +58,7 @@ function orderTitle(order?: OrderLike): string {
 }
 
 function orderAmount(order?: OrderLike): string {
-  return normalizeMoney(order?.totalAmount ?? order?.total ?? order?.amount ?? 2190);
+  return normalizeMoney(order);
 }
 
 function orderItem(order?: OrderLike): string {

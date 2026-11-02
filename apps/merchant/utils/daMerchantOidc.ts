@@ -396,6 +396,8 @@ async function readMerchantOidcSession(allowRefresh: boolean): Promise<MerchantO
 async function performMerchantOidcRefresh(): Promise<MerchantOidcSession> {
   const refreshEpoch = daMerchantIdentityEpoch();
   const { AuthSession, SecureStore } = loadModules();
+  const previousUserRaw = await SecureStore.getItemAsync(USER_KEY);
+  const previousSubject = previousUserRaw ? JSON.parse(previousUserRaw)?.id : null;
   const refreshToken = await SecureStore.getItemAsync(REFRESH_KEY);
   if (!refreshToken) throw new Error('oidc_refresh_token_missing');
 
@@ -409,6 +411,8 @@ async function performMerchantOidcRefresh(): Promise<MerchantOidcSession> {
 
     const accessClaims = decodeJwt(tokenResponse.accessToken);
     assertClaims(accessClaims, { requireMerchantRole: true });
+    if (!previousSubject || accessClaims.sub !== previousSubject) throw new Error('oidc_refresh_subject_mismatch');
+    if (tokenResponse.idToken && decodeJwt(tokenResponse.idToken).sub !== previousSubject) throw new Error('oidc_refresh_subject_mismatch');
     const apiVerification = await apiVerifyExternal(tokenResponse.accessToken);
 
     const preservedIdToken = tokenResponse.idToken || (await SecureStore.getItemAsync(ID_KEY));

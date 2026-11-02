@@ -100,6 +100,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ...(config.extra ?? {}),
     EXPO_PUBLIC_API_URL: API_URL,
     EXPO_PUBLIC_API_BASE_URL: API_URL,
+    EXPO_PUBLIC_RELEASE_RING: process.env.EXPO_PUBLIC_RELEASE_RING || (IS_ATARAXIE_IOS ? 'ataraxie-ios-qa' : IS_ATARAXIE_ANDROID ? 'ataraxie-closed' : undefined),
     eas: {
       projectId: "394e7d6f-559b-4536-81a9-fbc0cdb0c68f",
     },

@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { daMerchantIdentityEpoch, daAssertMerchantIdentity } from '../utils/daIdentityEpoch';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -14,7 +15,7 @@ import {
   View,
 } from 'react-native';
 import * as Location from 'expo-location';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { daInspectProfileTrust, DaProfileTrustResult } from '../utils/daProfileTrust';
 import { loadPartnerPresence, readPartnerPresenceCache, savePartnerPresence } from '../utils/daPresenceStore';
 import {
@@ -69,6 +70,7 @@ function humanizeMerchantTechnicalState(value: unknown): string {
 
 // DA_SPRINT16_PRESENCE_CONTINUITY_V1
 export default function PartnerSpaceScreen() {
+  const [formEpoch, setFormEpoch] = useState(daMerchantIdentityEpoch);
   const existing = readPartnerPresenceCache<PartnerProfileLite>();
   const [restaurantName, setRestaurantName] = useState(existing?.restaurantName || '');
   const [managerName, setManagerName] = useState(existing?.managerName || '');
@@ -118,6 +120,7 @@ export default function PartnerSpaceScreen() {
 
 
 async function persistActivationDraft(patch: Partial<PartnerProfileLite> = {}) {
+  daAssertMerchantIdentity(formEpoch);
   const current = await loadPartnerPresence<PartnerProfileLite>();
   const draft: PartnerProfileLite = {
     id: profileId || current?.id || `da_partner_draft_${Date.now().toString(36)}`,
@@ -141,33 +144,42 @@ async function persistActivationDraft(patch: Partial<PartnerProfileLite> = {}) {
     updatedAt: new Date().toISOString(),
     ...patch,
   };
-  await savePartnerPresence(draft);
+  await savePartnerPresence(draft, formEpoch);
   setProfileId(draft.id);
   return draft;
 }
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     let active = true;
-    void loadPartnerPresence<PartnerProfileLite>().then((profile) => {
-      if (!active || !profile) return;
-      setProfileId(profile.id || '');
-      setRestaurantName(profile.restaurantName || '');
-      setManagerName(profile.managerName || '');
-      setPhone(profile.phone || '');
-      setEmail(profile.email || '');
-      setAddress(profile.address || '');
-      setCity(profile.city || '');
-      setSpecialty(profile.specialty || '');
-      setPrepTime(profile.prepTime || '');
-      setPickupInstructions(profile.pickupInstructions || '');
-      setServiceOpen(Boolean(profile.serviceOpen));
-      setAddressTruth(profile.addressTruth || null);
-      setTerritory(profile.territory || null);
-      setPhoneProof(profile.proofs?.phone || null);
-      setEmailProof(profile.proofs?.email || null);
-    });
+    const epoch = daMerchantIdentityEpoch();
+    setFormEpoch(epoch);
+    const apply = (profile: PartnerProfileLite | null) => {
+      if (!active || epoch !== daMerchantIdentityEpoch()) return;
+      setProfileId(profile?.id || '');
+      setRestaurantName(profile?.restaurantName || '');
+      setManagerName(profile?.managerName || '');
+      setPhone(profile?.phone || '');
+      setEmail(profile?.email || '');
+      setAddress(profile?.address || '');
+      setCity(profile?.city || '');
+      setSpecialty(profile?.specialty || '');
+      setPrepTime(profile?.prepTime || '');
+      setPickupInstructions(profile?.pickupInstructions || '');
+      setServiceOpen(false);
+      setAddressTruth(profile?.addressTruth || null);
+      setTerritory(profile?.territory || null);
+      setPhoneProof(profile?.proofs?.phone || null);
+      setEmailProof(profile?.proofs?.email || null);
+      setPhoneSent(false); setEmailSent(false);
+      setPhoneCode(''); setEmailCode('');
+      setPhoneAttemptToken(''); setEmailAttemptToken('');
+      setPhoneClientRequestId(''); setEmailClientRequestId('');
+      setSuggestions([]); setTrust(null); setDeviceTerritory(null);
+    };
+    apply(null);
+    void loadPartnerPresence<PartnerProfileLite>().then(apply).catch(() => apply(null));
     return () => { active = false; };
-  }, []);
+  }, []));
 
   const basics = useMemo(() => {
     const items: string[] = [];
@@ -284,6 +296,7 @@ async function persistActivationDraft(patch: Partial<PartnerProfileLite> = {}) {
       }
       const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       const context = await daResolveTerritory(current.coords.latitude, current.coords.longitude);
+      daAssertMerchantIdentity(formEpoch);
       setDeviceTerritory(context);
       Alert.alert('Zone détectée', `${context.territory.city} · ${context.territory.country}`);
     } catch (error: any) {
@@ -351,6 +364,7 @@ async function persistActivationDraft(patch: Partial<PartnerProfileLite> = {}) {
         clientRequestId: requestId,
         resend: explicitResend,
       });
+      daAssertMerchantIdentity(formEpoch);
       const effectiveRequestId = result.clientRequestId || requestId;
       const expiresAt = result.expiresAt || new Date(Date.now() + Math.max(30, Number(result.validForSeconds || 180)) * 1000).toISOString();
       if (channel === 'sms') {
@@ -434,6 +448,7 @@ Utilisez uniquement le code le plus récent.`,
     setProofBusy(channel);
     try {
       const result = await daCheckIdentityProof({ channel, role: 'merchant', destination, code, attemptToken });
+      daAssertMerchantIdentity(formEpoch);
       if (result.expired || result.reasonCode === 'expired') {
         if (channel === 'sms') {
           setPhoneSent(false);
@@ -506,12 +521,9 @@ Utilisez uniquement le code le plus récent.`,
     }
   }
 
-  function toggleService(value: boolean) {
-    if (value && !activationReady) {
-      Alert.alert('Activation verrouillée', 'Confirmez l’adresse, le téléphone et l’email avant de passer en ligne.');
-      return;
-    }
-    setServiceOpen(value);
+  function toggleService(_value: boolean) {
+    setServiceOpen(false);
+    Alert.alert('Ouverture non confirmée', 'La plateforme ne confirme pas encore l’ouverture du service. Votre brouillon et vos preuves restent conservés.');
   }
 
   async function save() {
@@ -526,6 +538,7 @@ Utilisez uniquement le code le plus récent.`,
     setChecking(true);
     try {
       const result = await daInspectProfileTrust({ role: 'merchant', name: `${managerName} · ${restaurantName}`, phone, email, address, city });
+      daAssertMerchantIdentity(formEpoch);
       setTrust(result);
       if (!result.ok) {
         Alert.alert('Informations non validées', result.issues.map((item) => `• ${item.message}`).join('\n'));
@@ -537,15 +550,15 @@ Utilisez uniquement le code le plus récent.`,
         phone: result.normalized.phone, email: result.normalized.email,
         address: addressTruth!.formattedAddress, city: territory!.city,
         specialty: clean(specialty), prepTime: clean(prepTime), pickupInstructions: clean(pickupInstructions),
-        serviceOpen: activationReady ? serviceOpen : false,
+        serviceOpen: false,
         addressTruth: addressTruth!, territory: territory!,
         proofs: { phone: phoneVerified ? phoneProof! : undefined, email: emailVerified ? emailProof! : undefined },
         trust: { status: 'screened', score: result.score, checkedAt: result.checkedAt, emailDomain: result.email.domain },
         updatedAt: new Date().toISOString(),
       };
-      await savePartnerPresence(profile);
+      await savePartnerPresence(profile, formEpoch);
       setProfileId(profile.id);
-      Alert.alert('Établissement enregistré', activationReady ? 'Identité et adresse confirmées.' : 'Le service restera hors ligne jusqu’aux trois preuves.', [{ text: 'Retour au service', onPress: () => router.replace('/') }]);
+      Alert.alert('Brouillon enregistré', 'Vos informations sont conservées. L’ouverture du service doit être confirmée par la plateforme.', [{ text: 'Retour au service', onPress: () => router.replace('/') }]);
     } catch (error: any) {
       Alert.alert('Contrôle indisponible', humanizeMerchantTechnicalState(error?.message));
     } finally {
@@ -567,10 +580,10 @@ Utilisez uniquement le code le plus récent.`,
         <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
           <Text style={styles.brand}>DELISHAFRICA® · MERCHANT</Text>
           <Text style={styles.title}>Mon établissement</Text>
-          <Text style={styles.subtitle}>Enregistrer une fois. Prouver. Passer en ligne d’un geste.</Text>
+          <Text style={styles.subtitle}>Complétez votre brouillon et confirmez vos coordonnées.</Text>
 
           <View style={[styles.truthCard, truthCount === 3 && styles.truthReady]}>
-            <Text style={styles.truthKicker}>ACTIVATION RÉELLE</Text>
+            <Text style={styles.truthKicker}>COORDONNÉES ET ADRESSE</Text>
             <Text style={[styles.truthTitle, truthCount === 3 && styles.truthTitleReady]}>{truthCount}/3 preuves</Text>
             <Text style={[styles.truthText, truthCount === 3 && styles.truthTextReady]}>Adresse {addressVerified ? '✓' : '·'} · SMS {phoneVerified ? '✓' : '·'} · Email {emailVerified ? '✓' : '·'}</Text>
           </View>
@@ -613,11 +626,11 @@ Utilisez uniquement le code le plus récent.`,
             <Text style={styles.label}>Instructions de retrait</Text><TextInput value={pickupInstructions} onChangeText={setPickupInstructions} placeholder="Entrée, comptoir, appel…" placeholderTextColor="#91796B" style={[styles.input, styles.multiline]} multiline />
           </View>
 
-          <View style={styles.toggle}><View style={styles.toggleCopy}><Text style={styles.toggleTitle}>Service en ligne</Text><Text style={styles.toggleText}>{activationReady ? 'Prêt à recevoir des commandes.' : 'Verrouillé jusqu’aux trois preuves.'}</Text></View><Switch value={serviceOpen} onValueChange={toggleService} /></View>
-          <Pressable disabled={checking} onPress={save} style={[styles.primary, checking && styles.disabled]}>{checking ? <ActivityIndicator color="#220D05" /> : <Text style={styles.primaryText}>Enregistrer l’établissement</Text>}</Pressable>
+          <View style={styles.toggle}><View style={styles.toggleCopy}><Text style={styles.toggleTitle}>Ouverture du service non confirmée</Text><Text style={styles.toggleText}>Les preuves de contact ne remplacent pas le rattachement et l’ouverture validés par la plateforme.</Text></View><Switch value={serviceOpen} onValueChange={toggleService} /></View>
+          <Pressable disabled={checking} onPress={save} style={[styles.primary, checking && styles.disabled]}>{checking ? <ActivityIndicator color="#220D05" /> : <Text style={styles.primaryText}>Enregistrer le brouillon</Text>}</Pressable>
           <Pressable onPress={() => router.push('/orders' as any)} style={styles.secondary}><Text style={styles.secondaryText}>Voir les commandes</Text></Pressable>
           <Pressable onPress={() => router.replace('/')} style={styles.back}><Text style={styles.backText}>Retour au service</Text></Pressable>
-          <Text style={styles.note}>{trust?.issues?.[0]?.message || 'Le service ne peut plus passer en ligne avec une adresse ou un contact non prouvé.'}</Text>
+          <Text style={styles.note}>{trust?.issues?.[0]?.message || 'Ce brouillon ne modifie pas le catalogue publié ni la disponibilité de l’établissement.'}</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

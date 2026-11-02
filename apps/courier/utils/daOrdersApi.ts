@@ -1,3 +1,4 @@
+import { daAssertApiRequest } from './daApiEnvironment';
 import * as SecureStore from 'expo-secure-store';
 import { daAuthApiBaseUrl } from './daAuthBridge';
 import { getValidOidcAccessToken, loadOidcSession, refreshOidcSession } from '../auth/daOidcSession';
@@ -62,7 +63,7 @@ function sessionSubject(session: any, fallback = ''): string {
 
 function sessionIsValid(session: any): boolean {
   const role = String(session?.user?.role || '');
-  return Boolean(session && session.ok !== false && session.authenticated !== false && sessionSubject(session) && (!role || role === ROLE));
+  return Boolean(session && session.ok === true && session.authenticated === true && sessionSubject(session) && role === ROLE);
 }
 
 function isLegacyDeviceSubject(subject: string): boolean {
@@ -107,12 +108,12 @@ async function canMigrateLegacyValues(subject: string): Promise<boolean> {
 async function verifyExternalPrincipal(token: string, fallbackSubject = ''): Promise<PrincipalState | null> {
   try {
     const response = await fetch(`${daAuthApiBaseUrl()}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}` }, redirect: 'error',
     });
     const session = await response.json().catch(() => null);
     if (!response.ok || !sessionIsValid(session)) return null;
     const subject = sessionSubject(session, fallbackSubject);
-    if (!subject || isLegacyDeviceSubject(subject)) return null;
+    if (!subject || subject !== fallbackSubject || isLegacyDeviceSubject(subject)) return null;
     await savePrincipalMarker(subject);
     return { token, subject, role: ROLE, user: (session.user || {}) as Record<string, unknown> };
   } catch {
@@ -147,7 +148,11 @@ async function requireExternalCourierPrincipal(forceRefresh = false): Promise<Pr
 }
 
 async function ensurePrincipal(force = false): Promise<PrincipalState> {
-  if (!force && principalCache) return principalCache;
+  if (!force && principalCache) {
+    const current = await loadOidcSession();
+    if (current.status === 'authenticated' && current.subject === principalCache.subject && (current as any).accessToken === principalCache.token) return principalCache;
+    principalCache = null;
+  }
   if (!force && principalFlight) return principalFlight;
   principalFlight = (async () => {
     const principal = await requireExternalCourierPrincipal(force);
@@ -213,13 +218,20 @@ export async function daAccountStorageKey(base: string): Promise<string> {
 }
 
 export async function daOrdersFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  daAssertApiRequest(input);
   const send = async (principal: PrincipalState) => {
     const headers = new Headers(init.headers || {});
     headers.set('Authorization', `Bearer ${principal.token}`);
     if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
-    return fetch(input, { ...init, headers });
+    const before = await loadOidcSession();
+    if (before.status !== 'authenticated' || before.subject !== principal.subject || (before as any).accessToken !== principal.token) throw new Error('oidc_identity_changed');
+    const response = await fetch(input, { ...init, headers, redirect: 'error' });
+    const after = await loadOidcSession();
+    if (after.status !== 'authenticated' || after.subject !== principal.subject || (after as any).accessToken !== principal.token) throw new Error('oidc_identity_changed');
+    return response;
   };
   let response = await send(await ensurePrincipal(false));
+  if (response.status === 403) principalCache = null;
   if (response.status !== 401) return response;
   principalCache = null;
   response = await send(await ensurePrincipal(true));

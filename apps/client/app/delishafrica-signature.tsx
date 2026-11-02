@@ -1,3 +1,4 @@
+import { orderMoneyLabel } from '../../../packages/contracts/src/orderRead';
 import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { AquaticSignature } from "../components/aquatic/AquaticSignature";
@@ -70,22 +71,12 @@ function publicId(order?: OrderLike | null) {
 
 function itemName(order?: OrderLike | null) {
   const first = Array.isArray(order?.items) ? order?.items?.[0] : null;
-  return String(first?.name || first?.title || "Rice and Peace");
+  return String(first?.name || first?.title || "Article non renseigné");
 }
 
-function moneyValue(order?: OrderLike | null) {
-  const raw = order?.total ?? order?.totalAmount ?? order?.amount ?? 2190;
-  const n = typeof raw === "string" ? Number(raw.replace(",", ".")) : Number(raw);
-  if (!Number.isFinite(n)) return 0;
-  return Math.abs(n) >= 100 ? n / 100 : n;
-}
 
-function money(order?: OrderLike | null) {
-  return moneyValue(order).toLocaleString("fr-BE", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
+
+function money(value: unknown): string { return orderMoneyLabel(value); }
 
 function sortOrders(orders: OrderLike[]) {
   const priority: Record<string, number> = {
@@ -173,7 +164,7 @@ export default function DelishAfricaSignatureScreen() {
           </View>
           <View style={styles.signalRight}>
             <Text style={styles.signalLabel}>Panier</Text>
-            <Text style={styles.signalValue}>{money(active)} €</Text>
+            <Text style={styles.signalValue}>{money(active)}</Text>
             <Text style={styles.signalHint}>{deliveredCount} livrées</Text>
           </View>
         </View>

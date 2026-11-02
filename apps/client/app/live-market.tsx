@@ -1,3 +1,4 @@
+import { orderMoneyLabel } from '../../../packages/contracts/src/orderRead';
 import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -181,11 +182,7 @@ function orderable(partner: MarketplacePartner): boolean {
   const status = normalized(partner.status);
   return (status === "active" || status === "open" || status === "") && menuOf(partner).length > 0;
 }
-function priceLabel(order?: Order): string {
-  const raw = Number(order?.total || order?.amount || 0);
-  const euros = Number.isInteger(raw) && raw >= 100 ? raw / 100 : raw;
-  return euros > 0 ? euros.toFixed(2).replace(".", ",") + " €" : "";
-}
+function priceLabel(value: unknown): string { return orderMoneyLabel(value); }
 function isActive(order: Order): boolean {
   return !["delivered", "completed", "cancelled"].includes(normalized(order.status));
 }

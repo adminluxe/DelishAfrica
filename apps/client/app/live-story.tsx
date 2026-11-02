@@ -1,3 +1,4 @@
+import { orderMoneyLabel } from '../../../packages/contracts/src/orderRead';
 import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -124,29 +125,10 @@ const first = Array.isArray(order?.items) ? order?.items?.[0] : undefined;
 return String(first?.name || first?.title || "Commande DelishAfrica®");
 }
 
-function amountOf(order?: DemoOrder): string {
-const raw = Number(order?.total ?? order?.amount ?? 0);
-const euros = raw > 100 ? raw / 100 : raw;
-try {
-return new Intl.NumberFormat("fr-BE", {
-style: "currency",
-currency: "EUR",
-minimumFractionDigits: 2,
-maximumFractionDigits: 2,
-}).format(euros);
-} catch {
-return `${euros.toFixed(2).replace(".", ",")} €`;
-}
-}
+function amountOf(value: unknown): string { return orderMoneyLabel(value); }
 
 function etaOf(order?: DemoOrder): string {
-const s = statusOf(order);
-if (s === "pending") return "38 min";
-if (s === "accepted") return "34 min";
-if (s === "ready") return "22 min";
-if (s === "picked_up") return "12 min";
-if (s === "delivered") return "Livrée";
-return "En cours";
+return statusOf(order) === 'delivered' ? 'Livrée' : 'Estimation non confirmée';
 }
 
 function etaUnit(order?: DemoOrder): string {

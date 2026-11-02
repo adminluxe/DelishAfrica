@@ -1,3 +1,4 @@
+import { readOrderList, orderMoneyLabel, orderSafety, orderReadFailure, orderReadMessage, type OrderReadState } from '../../../../packages/contracts/src/orderRead';
 import { assessJourneySignal, type JourneySignal } from "../../../../packages/contracts/src/missionJourney";
 import { daOrdersFetch } from "../../utils/daOrdersApi";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -101,35 +102,9 @@ function displayList(values?: unknown[]) {
   if (!Array.isArray(values)) return [];
   return values.map((value) => String(value || '').trim()).filter(Boolean);
 }
-function safetySignals(order: Order) {
-  const safety = order.canonical?.safety || order.safety || {};
-  const allergens = displayList(
-    safety.allergenFlags || order.allergenFlags || order.customer?.allergenFlags,
-  );
-  const dietary = displayList(
-    safety.dietaryTags || order.dietaryTags || order.customer?.dietaryTags,
-  );
-  const note = String(safety.note || order.foodSafetyNote || order.customer?.foodSafetyNote || '').trim();
-  return {
-    allergens,
-    dietary,
-    note,
-    urgent: allergens.length > 0 || Boolean(safety.requiresMerchantAcknowledgement),
-  };
-}
-function money(order: Order) {
-  const raw = Number(order.total ?? order.amount ?? 0);
-  const euros = Math.abs(raw) >= 100 ? raw / 100 : raw;
-  return `${euros.toFixed(2).replace(".", ",")} €`;
-}
-function extractOrders(payload: any): Order[] {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.orders)) return payload.orders;
-  if (Array.isArray(payload?.data?.orders)) return payload.data.orders;
-  if (Array.isArray(payload?.items)) return payload.items;
-  if (Array.isArray(payload?.data)) return payload.data;
-  return [];
-}
+function safetySignals(order: Order) { return orderSafety(order); }
+function money(order: Order) { return orderMoneyLabel(order); }
+function extractOrders(payload: any): Order[] { return readOrderList<Order>(payload); }
 async function postJson(path: string, body: Record<string, unknown> = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
@@ -329,7 +304,9 @@ export default function MerchantOrdersFocus() {
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState("Vos commandes sont prêtes à être consultées.");
-  const [sessionRequired, setSessionRequired] = useState(false);
+  const [readState, setReadState] = useState<OrderReadState>('loading');
+  const sessionRequired = readState === 'auth_required';
+  const accessRequired = sessionRequired || readState === 'forbidden';
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [liveLocations, setLiveLocations] = useState<Record<string, LiveLocationRead>>({});
@@ -350,13 +327,15 @@ export default function MerchantOrdersFocus() {
     setRefreshing(true);
     try {
       const list = await readOrders();
-      setSessionRequired(false);
+      setReadState('ready');
       setMessage(`${list.length} commande${list.length > 1 ? "s" : ""} synchronisée${list.length > 1 ? "s" : ""}.`);
     } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error || '');
-      const needsSession = [401, 403].includes((error as any)?.status) || reason.includes('merchant_oidc_session_required') || reason.includes('Session restaurateur indisponible');
-      setSessionRequired(needsSession);
-      setMessage(needsSession ? "Connectez-vous pour retrouver vos commandes." : "Actualisation indisponible. Réessayez dans un instant.");
+      const state = orderReadFailure(error);
+      setReadState(state);
+      setOrders([]);
+      setLiveLocations({});
+      setSelectedOrderId(null);
+      setMessage(orderReadMessage(state));
     } finally {
       setRefreshing(false);
     }
@@ -580,30 +559,30 @@ export default function MerchantOrdersFocus() {
           <View style={{ flex: 1 }}>
             <Text style={styles.brand}>DELISHAFRICA® · MERCHANT</Text>
             <Text style={styles.title}>Service maintenant</Text>
-            <Text style={styles.subtitle}>{sessionRequired ? "Identité Merchant requise pour les opérations" : `${Math.max(restaurants.length, 1)} établissement${restaurants.length > 1 ? "s" : ""} · ${message}`}</Text>
+            <Text style={styles.subtitle}>{readState === "ready" ? message : orderReadMessage(readState)}</Text>
           </View>
           <Pressable style={styles.closeButton} onPress={() => router.replace("/")}><Text style={styles.closeText}>Fermer</Text></Pressable>
         </View>
 
         <View style={styles.metricRow}>
-          <View style={styles.metric}><Text style={styles.metricValue}>{orders.filter((o) => statusOf(o) === "pending").length}</Text><Text style={styles.metricLabel}>À accepter</Text></View>
-          <View style={styles.metric}><Text style={styles.metricValue}>{orders.filter((o) => statusOf(o) === "accepted").length}</Text><Text style={styles.metricLabel}>Cuisine</Text></View>
-          <View style={styles.metric}><Text style={styles.metricValue}>{orders.filter((o) => statusOf(o) === "ready").length}</Text><Text style={styles.metricLabel}>Prêtes</Text></View>
+          <View style={styles.metric}><Text style={styles.metricValue}>{readState === "ready" ? orders.filter((o) => statusOf(o) === "pending").length : "—"}</Text><Text style={styles.metricLabel}>À accepter</Text></View>
+          <View style={styles.metric}><Text style={styles.metricValue}>{readState === "ready" ? orders.filter((o) => statusOf(o) === "accepted").length : "—"}</Text><Text style={styles.metricLabel}>Cuisine</Text></View>
+          <View style={styles.metric}><Text style={styles.metricValue}>{readState === "ready" ? orders.filter((o) => statusOf(o) === "ready").length : "—"}</Text><Text style={styles.metricLabel}>Prêtes</Text></View>
         </View>
 
-        {sessionRequired ? (
+        {accessRequired ? (
           <View style={styles.sessionCard}>
             <Text style={styles.sessionKicker}>ACCÈS MERCHANT</Text>
-            <Text style={styles.sessionTitle}>Connectez le compte réel pour reprendre le service.</Text>
-            <Text style={styles.sessionBody}>Aucune session de développement ne remplace désormais votre identité Merchant.</Text>
+            <Text style={styles.sessionTitle}>{sessionRequired ? "Connexion au compte requise." : "Accès à l’établissement à vérifier."}</Text>
+            <Text style={styles.sessionBody}>{orderReadMessage(readState)}</Text>
             <Pressable style={styles.sessionButton} onPress={() => router.push("/auth-session" as any)}>
-              <Text style={styles.sessionButtonText}>Connecter le compte Merchant</Text>
+              <Text style={styles.sessionButtonText}>{sessionRequired ? "Connecter le compte Merchant" : "Vérifier l’accès à l’établissement"}</Text>
             </Pressable>
           </View>
         ) : null}
 
         <Text style={styles.sectionKicker}>UNE PRIORITÉ À LA FOIS</Text>
-        {focusOrder ? <OrderCard order={focusOrder} /> : <View style={styles.empty}><Text style={styles.emptyTitle}>Aucune action urgente</Text><Text style={styles.emptyText}>Le service est calme. Les nouvelles commandes apparaîtront ici.</Text></View>}
+        {focusOrder ? <OrderCard order={focusOrder} /> : <View style={styles.empty}><Text style={styles.emptyTitle}>{readState === "ready" ? "Aucune action urgente" : "Commandes non confirmées"}</Text><Text style={styles.emptyText}>{readState === "ready" ? "Aucune commande active dans la liste synchronisée." : orderReadMessage(readState)}</Text></View>}
 
         {active.length > 1 ? (
           <View style={styles.orbitShell}>

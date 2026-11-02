@@ -1,3 +1,4 @@
+import { orderMoneyLabel } from '../../../packages/contracts/src/orderRead';
 import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -162,12 +163,7 @@ const item = Array.isArray(order?.items) ? order?.items?.[0] : undefined;
 return String(item?.name || item?.title || "Commande DelishAfrica®");
 }
 
-function amountOf(order?: DemoOrder) {
-const raw = typeof order?.total === "number" ? order.total : typeof order?.amount === "number" ? order.amount : 0;
-if (!raw) return "—";
-const euros = raw > 100 ? raw / 100 : raw;
-return `${euros.toFixed(2).replace(".", ",")} €`;
-}
+function amountOf(value: unknown): string { return orderMoneyLabel(value); }
 
 function sortByFreshness(a: DemoOrder, b: DemoOrder) {
 const ad = Date.parse(String(a.updatedAt || a.createdAt || ""));

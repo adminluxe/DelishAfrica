@@ -1,3 +1,4 @@
+import { daAssertApiRequest } from './daApiEnvironment';
 import * as SecureStore from 'expo-secure-store';
 import { loadOidcSession, refreshOidcSession } from '../auth/daOidcSession';
 
@@ -221,14 +222,21 @@ export async function daAccountStorageKey(base: string): Promise<string> {
 }
 
 export async function daOrdersFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  daAssertApiRequest(input);
   const send = async (principal: PrincipalState) => {
     const headers = new Headers(init.headers || {});
     headers.set('Authorization', `Bearer ${principal.token}`);
     if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
-    return fetch(input, { ...init, headers });
+    const before = await loadOidcSession();
+    if (before.status !== 'authenticated' || before.subject !== principal.subject || (before as any).accessToken !== principal.token) throw new Error('oidc_identity_changed');
+    const response = await fetch(input, { ...init, headers, redirect: 'error' });
+    const after = await loadOidcSession();
+    if (after.status !== 'authenticated' || after.subject !== principal.subject || (after as any).accessToken !== principal.token) throw new Error('oidc_identity_changed');
+    return response;
   };
 
   let response = await send(await ensurePrincipal(false));
+  if (response.status === 403) principalCache = null;
   if (response.status !== 401) return response;
 
   // A locally unexpired access token can still have been revoked server-side.

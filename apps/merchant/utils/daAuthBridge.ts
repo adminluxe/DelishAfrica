@@ -75,12 +75,10 @@ export async function daMerchantAccess(): Promise<DaMerchantAccess> {
 }
 export async function daVerify(): Promise<DaAuthSession> { return daMe(); }
 export async function daLogout(): Promise<void> {
-  const orders = require('./daOrdersApi');
-  await orders.daPurgeOrdersAccountState();
+  try { await daMerchantOidcLogout(); }
+  finally { await require('./daOrdersApi').daPurgeOrdersAccountState(); }
 }
-export async function daLogoutAll(): Promise<void> {
-  try { await daMerchantOidcLogout(); } finally { await daLogout(); }
-}
+export async function daLogoutAll(): Promise<void> { return daLogout(); }
 export function daAuthRole(): DaRole { return 'merchant'; }
 export function daAuthLabel(): string { return 'Compte partenaire'; }
 export function daAuthAccent(): string { return '#D9893D'; }
