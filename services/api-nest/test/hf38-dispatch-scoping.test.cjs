@@ -83,3 +83,36 @@ test('Courier presence is scoped to authenticated Courier principal and expires 
   assert.equal(offline.online, false);
   assert.equal(presence.isActive(courier.subject), false);
 });
+
+
+test('expired proposal is reissued only to an active Courier and hidden from its previous target', async () => {
+  const { createDemoOrder } = require('../dist/orders/orders.demo.store');
+  const presence = new CourierPresenceService();
+  const current = { role: 'courier', subject: 'hf38-next-courier', issuer: 'qa', name: 'Courier QA' };
+  const previous = { role: 'courier', subject: 'hf38-offline-courier', issuer: 'qa' };
+  presence.heartbeat(current, {
+    available: true, city: 'Bruxelles', countryCode: 'BE',
+    activeZone: 'Bruxelles', vehicle: 'bike', capacity: 1,
+  });
+  createDemoOrder({
+    id: 'HF38-EPHEMERAL-QA', partnerSlug: 'la-boule-bleue',
+    restaurantCity: 'Bruxelles', countryCode: 'BE', status: 'ready',
+    assignmentProposal: {
+      status: 'proposed', courierId: previous.subject, source: 'server-dispatch',
+      expiresAt: new Date(Date.now() - 30_000).toISOString(),
+    },
+  });
+  const service = new OrdersDispatchService(presence, {
+    visibleOrders: async (principal, orders) => orders.filter((order) =>
+      order.status === 'ready'
+      && order.assignmentProposal?.courierId === principal.subject
+      && order.assignmentProposal?.status === 'proposed'),
+  });
+  const next = await service.offers(current);
+  assert.equal(next.count, 1);
+  assert.equal(next.orders[0].orderId, 'HF38-EPHEMERAL-QA');
+  assert.equal(next.orders[0].assignmentProposal.courierId, current.subject);
+  assert.ok(new Date(next.orders[0].assignmentProposal.expiresAt).getTime() > Date.now());
+  const old = await service.offers(previous);
+  assert.equal(old.count, 0);
+});
