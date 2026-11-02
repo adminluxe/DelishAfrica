@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   SafeAreaView,
@@ -235,7 +236,14 @@ async function persistActivationDraft(patch: Partial<CourierProfileLite> = {}) {
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
       if (permission.status !== 'granted') {
-        Alert.alert('Position requise', 'La mise en ligne terrain exige une zone réellement détectée.');
+        Alert.alert(
+          'Position requise',
+          'Autorisez la localisation « Lorsque l’app est active » et « Position exacte » dans les réglages iPhone pour détecter votre territoire. Vos deux preuves SMS et email restent conservées.',
+          [
+            { text: 'Plus tard', style: 'cancel' },
+            { text: 'Ouvrir Réglages', onPress: () => { void Linking.openSettings(); } },
+          ],
+        );
         return;
       }
       const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });

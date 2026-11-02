@@ -246,7 +246,9 @@ export default function CourierOrdersFocus() {
   const readOrders = useCallback(async () => {
     const profile = await loadCourierPresence<Record<string, any>>();
     if (profile?.available) await syncCourierPresence(profile);
-    const payload = await postJson("/orders/demo/list", {});
+    // Use the same courier-scoped, server-authorized offer inbox as Route Oracle.
+    // The generic order list can be empty during a dispatch reconciliation.
+    const payload = await postJson("/orders/demo/courier/offers", {});
     const list = extractOrders(payload);
     setOrders(list);
     return list;
@@ -373,8 +375,13 @@ export default function CourierOrdersFocus() {
     setMessage(decision === "accept" ? "Acceptation de l’offre…" : "Refus de l’offre…");
     try {
       await postJson(`/orders/demo/courier/offers/${decision}`, { orderId: id, id });
-      await readOrders();
-      setMessage(decision === "accept" ? `${id} · mission acceptée.` : `${id} · offre refusée.`);
+      const confirmed = await readOrders();
+      if (decision === "accept" && !confirmed.some((candidate) =>
+        orderId(candidate) === id && assignmentAccepted(candidate)
+      )) {
+        throw new Error("Acceptation transmise mais non confirmée par le serveur. Rafraîchissez le radar.");
+      }
+      setMessage(decision === "accept" ? `${id} · mission acceptée et relue.` : `${id} · offre refusée.`);
     } catch (error) {
       setMessage("Décision non confirmée · dernière vérité conservée.");
       Alert.alert("Décision impossible", error instanceof Error ? error.message : "Erreur inconnue");
@@ -476,7 +483,7 @@ export default function CourierOrdersFocus() {
           <View style={{ flex: 1 }}>
             <Text style={styles.brand}>DELISHAFRICA® · COURIER</Text>
             <Text style={styles.title}>Mission maintenant</Text>
-            <Text style={styles.subtitle}>{sessionRequired ? "Identité Courier requise pour les missions" : `${Math.max(restaurants.length, 1)} restaurant${restaurants.length > 1 ? "s" : ""} · ${message}`}</Text>
+            <Text style={styles.subtitle}>{sessionRequired ? "Identité Courier requise pour les missions" : `${restaurants.length} restaurant${restaurants.length > 1 ? "s" : ""} · ${message}`}</Text>
           </View>
           <Pressable style={styles.closeButton} onPress={() => router.replace("/")}><Text style={styles.closeText}>Fermer</Text></Pressable>
         </View>
@@ -499,7 +506,7 @@ export default function CourierOrdersFocus() {
         </View>
 
         <Text style={styles.sectionKicker}>UNE MISSION À LA FOIS</Text>
-        {focusMission ? <MissionCard order={focusMission} /> : <View style={styles.empty}><Text style={styles.emptyEmoji}>🛵</Text><Text style={styles.emptyTitle}>Aucune mission active</Text><Text style={styles.emptyText}>Les commandes prêtes apparaîtront ici automatiquement.</Text></View>}
+        {focusMission ? <MissionCard order={focusMission} /> : <View style={styles.empty}><Text style={styles.emptyEmoji}>🛵</Text><Text style={styles.emptyTitle}>Aucune mission active</Text><Text style={styles.emptyText}>Une offre de dispatch peut expirer si votre présence n’est plus active. Réactivez votre disponibilité puis consultez le radar.</Text><Pressable accessibilityRole="button" style={styles.sessionButton} onPress={() => router.push("/route-oracle" as any)}><Text style={styles.sessionButtonText}>Ouvrir le radar des offres</Text></Pressable></View>}
 
         {missionPool.length > 1 ? (
           <View style={styles.orbitShell}>

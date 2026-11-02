@@ -23,6 +23,7 @@ const COURIER_H2O_RASTER = require("../assets/h2o/courier-h2o-premium-v1.png");
 const COURIER_RAIN_TILE = require("../assets/h2o/courier-rain-streak-tile-v3.png");
 const COURIER_GLASS_RIVULETS = require("../assets/h2o/courier-glass-rivulets-v3.png");
 import { daOrdersFetch } from "../utils/daOrdersApi";
+import { loadCourierPresence, syncCourierPresence } from "../utils/daPresenceStore";
 
 const RAW_API = process.env.EXPO_PUBLIC_API_URL || "https://api.delishafrica.me/api/v1";
 const API = RAW_API.replace(/\/$/, "").endsWith("/api/v1")
@@ -93,9 +94,17 @@ export default function CourierSurfaceHome() {
     return () => loop.stop();
   }, [rainPhase, reduceMotion]);
 
-  const load = useCallback(async (refresh = false) => {
-    refresh ? setRefreshing(true) : setLoading(true);
+  const load = useCallback(async (refresh = false, silent = false) => {
+    if (!silent) refresh ? setRefreshing(true) : setLoading(true);
     try {
+      // Reaffirm only an already-authorized, opt-in Courier presence
+      // before reading the targeted server offer inbox.
+      try {
+        const profile = await loadCourierPresence<Record<string, any>>();
+        if (profile?.available === true) await syncCourierPresence(profile);
+      } catch {
+        // A transient presence error must not erase authenticated offers.
+      }
       const response = await daOrdersFetch(`${API}/orders/demo/courier/offers`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -110,14 +119,18 @@ export default function CourierSurfaceHome() {
       setOffers([]);
       setAuthReady(false);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!silent) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       void load(false);
+      const timer = setInterval(() => void load(false, true), 60_000);
+      return () => clearInterval(timer);
     }, [load]),
   );
 
@@ -211,7 +224,7 @@ export default function CourierSurfaceHome() {
           evidence={authReady ? "Ces missions sont associées à votre compte coursier." : "Reconnectez-vous si vos missions ne s’affichent pas."}
           freshnessLabel={offersFreshnessLabel}
           reduceMotion={reduceMotion}
-          onPress={() => go(authReady ? "/terrain-live" : "/auth-session")}
+          onPress={() => go(authReady ? (stats.proposed > 0 ? "/route-oracle" : "/terrain-live") : "/auth-session")}
           accessibilityLabel="Ouvrir mon activité et mes missions"
         />
 
@@ -229,15 +242,15 @@ export default function CourierSurfaceHome() {
         </View>
 
         <Pressable
-          onPress={() => go(authReady ? "/orders" : "/auth-session")}
+          onPress={() => go(authReady ? (stats.proposed > 0 ? "/route-oracle" : "/orders") : "/auth-session")}
           style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
           accessibilityRole="button"
         >
           <View style={styles.primaryCopy}>
-            <Text style={styles.primaryEyebrow}>{authReady ? "VOS MISSIONS" : "VOTRE CONNEXION"}</Text>
-            <Text style={styles.primaryTitle}>{authReady ? "Voir mes missions" : "Ouvrir la connexion Courier"}</Text>
+            <Text style={styles.primaryEyebrow}>{authReady ? (stats.proposed > 0 ? "OFFRE À DÉCIDER" : "VOS MISSIONS") : "VOTRE CONNEXION"}</Text>
+            <Text style={styles.primaryTitle}>{authReady ? (stats.proposed > 0 ? "Répondre à l’offre" : "Voir mes missions") : "Ouvrir la connexion Courier"}</Text>
             <Text style={styles.primaryBody}>
-              {authReady ? "Retrouvez les propositions qui vous sont adressées." : "Connectez-vous à votre compte coursier."}
+              {authReady ? (stats.proposed > 0 ? "Acceptez ou refusez la proposition ciblée avant expiration." : "Retrouvez les propositions qui vous sont adressées.") : "Connectez-vous à votre compte coursier."}
             </Text>
           </View>
           <Text style={styles.primaryArrow}>→</Text>
