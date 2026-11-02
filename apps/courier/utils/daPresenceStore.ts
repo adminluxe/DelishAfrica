@@ -1,3 +1,4 @@
+import { daOidcSessionGeneration, daAssertOidcSessionGeneration } from '../auth/daOidcSession';
 import * as SecureStore from "expo-secure-store";
 import { daAccountScopeId, daAccountStorageKey, daOrdersFetch } from "./daOrdersApi";
 
@@ -7,19 +8,21 @@ const RAW_API = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_
 const API_BASE_URL = RAW_API.replace(/\/$/, "").endsWith("/api/v1") ? RAW_API.replace(/\/$/, "") : `${RAW_API.replace(/\/$/, "")}/api/v1`;
 const memory = new Map<string, object>();
 let activeScope: string | null = null;
+let activeEpoch = -1;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 export function readCourierPresenceCache<T extends object>(): T | null {
-  if (!activeScope) return null;
+  if (!activeScope || activeEpoch !== daOidcSessionGeneration()) return null;
   const value = memory.get(activeScope);
   return isRecord(value) ? (value as T) : null;
 }
 
 function writeCourierPresenceCache<T extends object>(scope: string, profile: T | null) {
   activeScope = scope;
+  activeEpoch = daOidcSessionGeneration();
   if (profile) memory.set(scope, profile);
   else memory.delete(scope);
   if (profile) (globalThis as any)[`${CACHE_KEY}.${scope}`] = profile;
@@ -27,18 +30,22 @@ function writeCourierPresenceCache<T extends object>(scope: string, profile: T |
 }
 
 export async function loadCourierPresence<T extends object>(): Promise<T | null> {
+  const expected = daOidcSessionGeneration();
   const scope = await daAccountScopeId();
+  daAssertOidcSessionGeneration(expected);
   const cached = memory.get(scope) as T | undefined;
   try {
     if (!(await SecureStore.isAvailableAsync())) return cached || null;
-    const scopedKey = await daAccountStorageKey(SECURE_KEY);
+    const scopedKey = SECURE_KEY + "." + scope;
     const raw = await SecureStore.getItemAsync(scopedKey);
-    if (!raw) return cached || null;
+    daAssertOidcSessionGeneration(expected);
+    if (!raw) { writeCourierPresenceCache(scope, cached || null); return cached || null; }
     const parsed: unknown = JSON.parse(raw);
     if (!isRecord(parsed)) return cached || null;
     writeCourierPresenceCache(scope, parsed as T);
     return parsed as T;
   } catch {
+    daAssertOidcSessionGeneration(expected);
     return cached || null;
   }
 }
@@ -61,23 +68,24 @@ export async function syncCourierPresence<T extends object>(profile: T): Promise
     }),
   });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok || payload?.ok === false) {
+  if (!response.ok || payload?.ok !== true) {
     throw new Error(payload?.message || payload?.error || `Présence serveur indisponible (${response.status}).`);
   }
   return payload;
 }
 
-export async function saveCourierPresence<T extends object>(profile: T): Promise<T> {
+export async function saveCourierPresence<T extends object>(profile: T, expected = daOidcSessionGeneration()): Promise<T> {
+  daAssertOidcSessionGeneration(expected);
   const scope = await daAccountScopeId();
   const previous = memory.get(scope) as T | undefined;
   let scopedKey: string | null = null;
   let previousRaw: string | null = null;
-  writeCourierPresenceCache(scope, profile);
+  daAssertOidcSessionGeneration(expected);
   try {
     if (!(await SecureStore.isAvailableAsync())) throw new Error("Le stockage sécurisé de l’appareil est indisponible.");
     scopedKey = await daAccountStorageKey(SECURE_KEY);
     previousRaw = await SecureStore.getItemAsync(scopedKey);
-    await SecureStore.setItemAsync(scopedKey, JSON.stringify(profile));
+    daAssertOidcSessionGeneration(expected);
     const previousAvailable = Boolean((previous as any)?.available);
     const nextAvailable = Boolean((profile as any)?.available);
     try {
@@ -85,10 +93,14 @@ export async function saveCourierPresence<T extends object>(profile: T): Promise
     } catch (error) {
       if (previousAvailable !== nextAvailable || nextAvailable) throw error;
     }
+    daAssertOidcSessionGeneration(expected);
+    await SecureStore.setItemAsync(scopedKey, JSON.stringify(profile));
+    daAssertOidcSessionGeneration(expected);
+    writeCourierPresenceCache(scope, profile);
     return profile;
   } catch (error) {
-    writeCourierPresenceCache(scope, previous || null);
-    if (scopedKey) {
+    if (expected === daOidcSessionGeneration()) writeCourierPresenceCache(scope, previous || null);
+    if (scopedKey && expected === daOidcSessionGeneration()) {
       try {
         if (previousRaw === null) await SecureStore.deleteItemAsync(scopedKey);
         else await SecureStore.setItemAsync(scopedKey, previousRaw);
@@ -105,7 +117,7 @@ export async function clearCourierPresence() {
   writeCourierPresenceCache(scope, null);
   try {
     if (await SecureStore.isAvailableAsync()) {
-      const scopedKey = await daAccountStorageKey(SECURE_KEY);
+      const scopedKey = SECURE_KEY + "." + scope;
       await SecureStore.deleteItemAsync(scopedKey);
     }
   } catch {

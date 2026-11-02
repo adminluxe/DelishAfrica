@@ -1,4 +1,4 @@
-import { daAssertApiRequest } from './daApiEnvironment';
+import { daAssertApiRequest, daApiScope } from './daApiEnvironment';
 import * as SecureStore from 'expo-secure-store';
 import { loadOidcSession, refreshOidcSession } from '../auth/daOidcSession';
 
@@ -154,25 +154,12 @@ async function ensurePrincipal(force = false): Promise<PrincipalState> {
 }
 
 async function subjectForStorage(): Promise<string> {
-  // Preserve an already-scoped local Client profile during the OIDC migration.
-  // Business authorization is now exclusively Keycloak OIDC, but existing local
-  // profile/proof data must not silently jump accounts during the live vertical.
-  const marker = await readPrincipalMarker();
-  if (marker?.subject) return marker.subject;
-
-  const legacyProfile = await legacyProfileSubject();
-  if (legacyProfile) {
-    await savePrincipalMarker(legacyProfile);
-    return legacyProfile;
-  }
-
-  const oidc = await canonicalOidcPrincipal(false);
-  if (oidc) {
-    await savePrincipalMarker(oidc.subject);
-    return oidc.subject;
-  }
-
-  return await identityHint();
+  const principal = await canonicalOidcPrincipal(false);
+  return principal?.subject || 'anonymous:' + await legacyInstallationSubject();
+}
+async function scopedIdentity(subject: string): Promise<string> {
+  const Crypto = require('expo-crypto') as typeof import('expo-crypto');
+  return 'v4.' + await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, JSON.stringify([ROLE, daApiScope(), subject]));
 }
 
 async function bindActiveScope(scope: string): Promise<void> {
@@ -207,17 +194,17 @@ async function migrateValue(base: string, target: string, subject: string): Prom
 
 export async function daAccountScopeId(): Promise<string> {
   const subject = await subjectForStorage();
-  const scope = hashScope(`${ROLE}:${subject}`);
+  const scope = await scopedIdentity(subject);
   await bindActiveScope(scope);
   return scope;
 }
 
 export async function daAccountStorageKey(base: string): Promise<string> {
   const subject = await subjectForStorage();
-  const scope = hashScope(`${ROLE}:${subject}`);
+  const scope = await scopedIdentity(subject);
   await bindActiveScope(scope);
   const target = `${base}.${scope}`;
-  await migrateValue(base, target, subject);
+  // Legacy proof provenance is unknown. Preserve old keys without importing them.
   return target;
 }
 

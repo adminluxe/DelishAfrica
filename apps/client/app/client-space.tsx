@@ -1,3 +1,4 @@
+import { daOidcSessionGeneration, daAssertOidcSessionGeneration } from '../auth/daOidcSession';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -83,12 +84,15 @@ async function loadClientProfile(): Promise<ClientProfileLite | null> {
   }
 }
 
-async function saveClientProfile(profile: ClientProfileLite): Promise<void> {
+async function saveClientProfile(profile: ClientProfileLite, expected: number): Promise<void> {
+  daAssertOidcSessionGeneration(expected);
   const scope = await daAccountScopeId();
   const scopedKey = await daAccountStorageKey(PROFILE_KEY);
+  daAssertOidcSessionGeneration(expected);
+  await daSecureSetLargeString(scopedKey, JSON.stringify(profile));
+  daAssertOidcSessionGeneration(expected);
   clientProfileMemory.set(scope, profile);
   bag()[scopedKey] = profile;
-  await daSecureSetLargeString(scopedKey, JSON.stringify(profile));
 }
 
 const sessionToken = () => `da-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
@@ -127,6 +131,7 @@ function toggleListValue(current: string[], value: string): string[] {
 }
 
 export default function ClientSpaceScreen() {
+  const [formEpoch, setFormEpoch] = useState(daOidcSessionGeneration);
   const existing: ClientProfileLite | null = null;
   const [firstName, setFirstName] = useState(existing?.firstName || '');
   const [lastName, setLastName] = useState(existing?.lastName || '');
@@ -238,7 +243,7 @@ export default function ClientSpaceScreen() {
       updatedAt: new Date().toISOString(),
       ...patch,
     };
-    await saveClientProfile(draft);
+    await saveClientProfile(draft, formEpoch);
     setProfileId(draft.id);
     setLastSavedAt(draft.updatedAt);
     return draft;
@@ -246,8 +251,14 @@ export default function ClientSpaceScreen() {
 
   useEffect(() => {
     let active = true;
+    const expected = daOidcSessionGeneration();
+    setFormEpoch(expected);
+    setHydrating(true);
+    setPhoneSent(false); setEmailSent(false); setPhoneCode(''); setEmailCode('');
+    setPhoneAttemptToken(''); setEmailAttemptToken('');
     void loadClientProfile().then((profile) => {
-      if (!active) return;
+      if (!active || expected !== daOidcSessionGeneration()) return;
+      profile = profile || {} as ClientProfileLite;
       if (profile) {
         setProfileId(profile.id || '');
         setFirstName(profile.firstName || '');
@@ -272,7 +283,7 @@ export default function ClientSpaceScreen() {
       setHydrating(false);
     });
     return () => { active = false; };
-  }, []);
+  }, [auth.session.status, auth.session.subject]);
 
   useEffect(() => {
     if (hydrating || !accountConnected) return;
@@ -665,7 +676,7 @@ Utilisez uniquement le code le plus récent.`,
         trust: { status: 'screened', score: result.score, checkedAt: result.checkedAt, emailDomain: result.email.domain },
         updatedAt: new Date().toISOString(),
       };
-      await saveClientProfile(profile);
+      await saveClientProfile(profile, formEpoch);
       setProfileId(profile.id);
       setLastSavedAt(profile.updatedAt);
       if (continueToCheckout) router.push('/checkout-preflight' as any);

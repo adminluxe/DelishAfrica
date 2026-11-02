@@ -24,7 +24,7 @@ function loader(options={}){
    if(name==='expo-secure-store')return {getItemAsync:async()=>null,deleteItemAsync:async()=>{},setItemAsync:async()=>{},isAvailableAsync:async()=>true};
    return require(name);
   };
-  vm.runInNewContext(js,{module,exports:module.exports,require:requireHere,fetch,console,Date,Set,Map,URL,Headers,AbortController,Promise,setTimeout,clearTimeout,process:{env:{NODE_ENV:'production'}},__DEV__:false},{filename});
+  vm.runInNewContext(js,{module,exports:module.exports,require:requireHere,fetch,console,Date,Set,Map,URL,Headers,atob,btoa,AbortController,Promise,setTimeout,clearTimeout,process:{env:{NODE_ENV:'production'}},__DEV__:false},{filename});
   return module.exports;
  }
  return {load,calls};

@@ -1,3 +1,4 @@
+import { validateInitialTokenSet, validateStoredTokenSet, decodeJwtPayload } from './daOidcClaims';
 import * as AuthSession from 'expo-auth-session';
 import * as SecureStore from 'expo-secure-store';
 import { DA_OIDC_CONFIG } from './daOidcConfig';
@@ -6,6 +7,24 @@ import type { DaOidcSession } from './daOidcTypes';
 const STORE_KEY = `da.oidc.${DA_OIDC_CONFIG.role}.v2`;
 
 type Json = Record<string, any>;
+let sessionGeneration = 0;
+export function daOidcSessionGeneration() { return sessionGeneration; }
+export function daAssertOidcSessionGeneration(expected: number) { assertSessionGeneration(expected); }
+let sessionMutation: Promise<unknown> = Promise.resolve();
+function mutateSession(fn: () => Promise<void>): Promise<void> {
+  const next = sessionMutation.catch(() => undefined).then(fn);
+  sessionMutation = next.catch(() => undefined);
+  return next;
+}
+function assertSessionGeneration(expected: number) {
+  if (expected !== sessionGeneration) throw new Error('oidc_identity_changed');
+}
+async function clearStored(expected = sessionGeneration): Promise<void> {
+  return mutateSession(async () => {
+    if (expected === sessionGeneration) await SecureStore.deleteItemAsync(STORE_KEY);
+  });
+}
+
 
 type Stored = {
   accessToken: string;
@@ -26,23 +45,7 @@ function failed(reason: string): DaOidcSession {
 }
 
 function decodeJwt(token?: string): Json {
-  if (!token || token.split('.').length < 2) return {};
-  try {
-    const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    const padded = part + '='.repeat((4 - (part.length % 4)) % 4);
-    const B: any = (globalThis as any).Buffer;
-    const raw = B
-      ? B.from(padded, 'base64').toString('utf8')
-      : decodeURIComponent(
-          Array.prototype.map.call(
-            atob(padded),
-            (c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2),
-          ).join(''),
-        );
-    return JSON.parse(raw);
-  } catch {
-    return {};
-  }
+  try { return token ? decodeJwtPayload(token) : {}; } catch { return {}; }
 }
 
 function stringArray(value: unknown): string[] {
@@ -78,37 +81,46 @@ function buildAuthenticated(stored: Stored): DaOidcSession {
   } as DaOidcSession;
 }
 
-async function persist(stored: Stored): Promise<void> {
-  await SecureStore.setItemAsync(STORE_KEY, JSON.stringify(stored));
+async function persist(stored: Stored, expected: number): Promise<void> {
+  return mutateSession(async () => {
+    assertSessionGeneration(expected);
+    await SecureStore.setItemAsync(STORE_KEY, JSON.stringify(stored));
+    if (expected !== sessionGeneration) {
+      await SecureStore.deleteItemAsync(STORE_KEY);
+      throw new Error('oidc_identity_changed');
+    }
+  });
 }
 
 async function readStored(): Promise<Stored | null> {
+  await sessionMutation;
+  const expected = sessionGeneration;
   const raw = await SecureStore.getItemAsync(STORE_KEY);
-  if (!raw) return null;
+  if (expected !== sessionGeneration || !raw) return null;
   try {
     const parsed = JSON.parse(raw) as Stored;
     return parsed?.accessToken ? parsed : null;
   } catch {
-    await SecureStore.deleteItemAsync(STORE_KEY);
+    await clearStored();
     return null;
   }
 }
 
-async function fromTokenResponse(tokenResponse: any, expectedNonce?: string): Promise<DaOidcSession> {
+async function fromTokenResponse(tokenResponse: any, expectedNonce: string | undefined, expected: number): Promise<DaOidcSession> {
+  assertSessionGeneration(expected);
   const accessToken = tokenResponse?.accessToken || tokenResponse?.access_token;
   if (!accessToken || typeof accessToken !== 'string') return failed('access_token_missing');
 
-  const access = decodeJwt(accessToken);
   const idToken = tokenResponse?.idToken || tokenResponse?.id_token;
-  const id = decodeJwt(idToken);
-
-  if (expectedNonce && idToken && typeof id?.nonce === 'string' && id.nonce !== expectedNonce) {
-    return failed('jwt_nonce_mismatch');
-  }
-
-  if (!hasExpectedRole(access) && !hasExpectedRole(id)) {
-    return failed('jwt_role_missing');
-  }
+  let access: Json, id: Json;
+  try {
+    const validated = expectedNonce !== undefined
+      ? validateInitialTokenSet(accessToken, idToken || '', expectedNonce)
+      : validateStoredTokenSet(accessToken, idToken || '');
+    access = validated.access.claims;
+    id = validated.id.claims;
+  } catch (error: any) { return failed(error?.code || 'jwt_contract_invalid'); }
+  assertSessionGeneration(expected);
 
   const now = Math.floor(Date.now() / 1000);
   const expiresAt =
@@ -135,12 +147,14 @@ async function fromTokenResponse(tokenResponse: any, expectedNonce?: string): Pr
       undefined,
   };
 
-  await persist(stored);
+  await persist(stored, expected);
   return buildAuthenticated(stored);
 }
 
 export async function establishOidcSession(tokenResponse: any, expectedNonce?: string): Promise<DaOidcSession> {
-  return fromTokenResponse(tokenResponse, expectedNonce);
+  if (!expectedNonce) return failed('jwt_nonce_missing');
+  const expected = ++sessionGeneration;
+  return fromTokenResponse(tokenResponse, expectedNonce, expected);
 }
 
 export async function loadOidcSession(): Promise<DaOidcSession> {
@@ -151,19 +165,28 @@ export async function loadOidcSession(): Promise<DaOidcSession> {
     return refreshOidcSession();
   }
 
-  const payload = decodeJwt(stored.accessToken);
-  if (!hasExpectedRole(payload)) {
-    await SecureStore.deleteItemAsync(STORE_KEY);
+  let valid = false;
+  try { validateStoredTokenSet(stored.accessToken, stored.idToken || ''); valid = true; } catch { /* invalid credentials cannot become a connected account */ }
+  if (!valid) {
+    await clearStored();
     return failed('jwt_role_missing');
   }
 
   return buildAuthenticated(stored);
 }
 
-export async function refreshOidcSession(): Promise<DaOidcSession> {
+let refreshFlight: Promise<DaOidcSession> | null = null;
+export function refreshOidcSession(): Promise<DaOidcSession> {
+  if (!refreshFlight) {
+    refreshFlight = performRefreshOidcSession().finally(() => { refreshFlight = null; });
+  }
+  return refreshFlight;
+}
+async function performRefreshOidcSession(): Promise<DaOidcSession> {
+  const expected = sessionGeneration;
   const stored = await readStored();
   if (!stored?.refreshToken) {
-    await SecureStore.deleteItemAsync(STORE_KEY);
+    await clearStored(expected);
     return anonymous('refresh_token_missing');
   }
 
@@ -177,9 +200,16 @@ export async function refreshOidcSession(): Promise<DaOidcSession> {
       },
       discovery,
     );
-    return fromTokenResponse(next);
+    assertSessionGeneration(expected);
+    const subject = decodeJwt(next.accessToken).sub;
+    if (!stored.subject || subject !== stored.subject) throw new Error('oidc_refresh_subject_mismatch');
+    return await fromTokenResponse({
+      ...next,
+      refreshToken: next.refreshToken || stored.refreshToken,
+      idToken: next.idToken || stored.idToken,
+    }, undefined, expected);
   } catch {
-    await SecureStore.deleteItemAsync(STORE_KEY);
+    if (expected === sessionGeneration) await clearStored(expected);
     return failed('refresh_failed');
   }
 }
@@ -192,6 +222,7 @@ export async function getValidOidcAccessToken(): Promise<string | null> {
 }
 
 export async function logoutOidcSession(): Promise<DaOidcSession> {
-  await SecureStore.deleteItemAsync(STORE_KEY);
+  sessionGeneration += 1;
+  await clearStored();
   return anonymous('logged_out');
 }

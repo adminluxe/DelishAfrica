@@ -1,4 +1,4 @@
-import { daAssertApiRequest } from './daApiEnvironment';
+import { daAssertApiRequest, daApiScope } from './daApiEnvironment';
 import * as SecureStore from 'expo-secure-store';
 import { daAuthApiBaseUrl } from './daAuthBridge';
 import { getValidOidcAccessToken, loadOidcSession, refreshOidcSession } from '../auth/daOidcSession';
@@ -163,13 +163,13 @@ async function ensurePrincipal(force = false): Promise<PrincipalState> {
 }
 
 async function subjectForStorage(): Promise<string> {
-  try {
-    return (await ensurePrincipal(false)).subject;
-  } catch {
-    const marker = await readPrincipalMarker();
-    if (marker?.subject) return marker.subject;
-    return await identityHint();
-  }
+  const session = await loadOidcSession();
+  if (session.status !== 'authenticated') return 'anonymous:' + await legacyInstallationSubject();
+  return (await ensurePrincipal(false)).subject;
+}
+async function scopedIdentity(subject: string): Promise<string> {
+  const Crypto = require('expo-crypto') as typeof import('expo-crypto');
+  return 'v4.' + await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, JSON.stringify([ROLE, daApiScope(), subject]));
 }
 
 async function bindActiveScope(scope: string): Promise<void> {
@@ -203,17 +203,17 @@ async function migrateValue(base: string, target: string, subject: string): Prom
 
 export async function daAccountScopeId(): Promise<string> {
   const subject = await subjectForStorage();
-  const scope = hashScope(`${ROLE}:${subject}`);
+  const scope = await scopedIdentity(subject);
   await bindActiveScope(scope);
   return scope;
 }
 
 export async function daAccountStorageKey(base: string): Promise<string> {
   const subject = await subjectForStorage();
-  const scope = hashScope(`${ROLE}:${subject}`);
+  const scope = await scopedIdentity(subject);
   await bindActiveScope(scope);
   const target = `${base}.${scope}`;
-  await migrateValue(base, target, subject);
+  // Legacy proof provenance is unknown. Preserve old keys without importing them.
   return target;
 }
 
