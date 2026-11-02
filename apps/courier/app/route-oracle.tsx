@@ -1,3 +1,4 @@
+import { daOidcSessionGeneration, daAssertOidcSessionGeneration } from '../auth/daOidcSession';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -465,7 +466,9 @@ export default function RouteOracleScreen() {
     [readOffers],
   );
 
+  const profileEpoch = useRef(daOidcSessionGeneration());
   const bootstrap = useCallback(async () => {
+    const expected = daOidcSessionGeneration();
     let profile: CourierProfileLite | null = null;
     try {
       profile = await loadCourierPresence<CourierProfileLite>();
@@ -473,6 +476,8 @@ export default function RouteOracleScreen() {
       profile = null;
     }
 
+    daAssertOidcSessionGeneration(expected);
+    profileEpoch.current = expected;
     const online = Boolean(profile?.available);
 
     setState((prev) => ({
@@ -558,8 +563,7 @@ export default function RouteOracleScreen() {
         updatedAt: new Date().toISOString(),
       };
 
-      await saveCourierPresence(next);
-      await syncCourierPresence(next);
+      await saveCourierPresence(next, profileEpoch.current);
 
       setState((prev) => ({
         ...prev,

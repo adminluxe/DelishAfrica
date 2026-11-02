@@ -50,7 +50,8 @@ export async function loadCourierPresence<T extends object>(): Promise<T | null>
   }
 }
 
-export async function syncCourierPresence<T extends object>(profile: T): Promise<Record<string, any>> {
+export async function syncCourierPresence<T extends object>(profile: T, expected = daOidcSessionGeneration()): Promise<Record<string, any>> {
+  daAssertOidcSessionGeneration(expected);
   const value = profile as Record<string, any>;
   const response = await daOrdersFetch(`${API_BASE_URL}/orders/demo/courier/presence`, {
     method: "POST",
@@ -68,6 +69,7 @@ export async function syncCourierPresence<T extends object>(profile: T): Promise
     }),
   });
   const payload = await response.json().catch(() => ({}));
+  daAssertOidcSessionGeneration(expected);
   if (!response.ok || payload?.ok !== true) {
     throw new Error(payload?.message || payload?.error || `Présence serveur indisponible (${response.status}).`);
   }
@@ -89,7 +91,7 @@ export async function saveCourierPresence<T extends object>(profile: T, expected
     const previousAvailable = Boolean((previous as any)?.available);
     const nextAvailable = Boolean((profile as any)?.available);
     try {
-      await syncCourierPresence(profile);
+      await syncCourierPresence(profile, expected);
     } catch (error) {
       if (previousAvailable !== nextAvailable || nextAvailable) throw error;
     }

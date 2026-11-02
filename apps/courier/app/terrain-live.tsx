@@ -1,3 +1,4 @@
+import { daOidcSessionGeneration } from '../auth/daOidcSession';
 import { daOrdersFetch } from "../utils/daOrdersApi";
 // DA_A5A3A7S16R8_COURIER_MISSION_DETAIL_REPAIR_V1
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -330,10 +331,11 @@ export default function CourierHome() {
 
   const syncPresence = useCallback(async () => {
     if (presenceMutationRef.current !== "idle") return;
+    const presenceEpoch = daOidcSessionGeneration();
     const profile = await loadCourierPresence<CourierPresenceProfile>();
     if (profile && !courierActivationReady(profile) && profile.available) {
       const locked = { ...profile, available: false, updatedAt: new Date().toISOString() };
-      try { await saveCourierPresence(locked); } catch { /* L'interface reste verrouillée hors ligne. */ }
+      try { await saveCourierPresence(locked, presenceEpoch); } catch { /* L'interface reste verrouillée hors ligne. */ }
       setPresenceProfile(locked);
       setAvailable(false);
     } else {
@@ -600,6 +602,7 @@ export default function CourierHome() {
       void refreshLiveTruth();
       return;
     }
+    const presenceEpoch = daOidcSessionGeneration();
     const current = await loadCourierPresence<CourierPresenceProfile>();
     if (!courierActivationReady(current)) {
       go("/courier-space");
@@ -622,7 +625,7 @@ export default function CourierHome() {
     presenceMutationRef.current = mutation;
     setPresenceMutation(mutation);
     try {
-      await saveCourierPresence(next);
+      await saveCourierPresence(next, presenceEpoch);
       const confirmed = await loadCourierPresence<CourierPresenceProfile>();
       if (!confirmed || Boolean(confirmed.available) !== desiredAvailable) {
         throw new Error("presence_commit_mismatch");
