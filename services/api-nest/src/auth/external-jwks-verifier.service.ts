@@ -137,6 +137,9 @@ export class ExternalJwksVerifierService
     if (!externalRole) {
       return { ok: false, reason: 'audience_mismatch' };
     }
+    if (externalRole === 'merchant' && !this.hasMerchantAuthorizedParty(claims)) {
+      return { ok: false, reason: 'authorized_party_mismatch' };
+    }
     if (externalRole === 'client') {
       if (!this.hasClientAuthorizedParty(claims)) {
         return { ok: false, reason: 'authorized_party_mismatch' };
@@ -338,15 +341,30 @@ export class ExternalJwksVerifierService
   private resolveExternalRole(
     claims: JsonObject,
   ): 'client' | 'merchant' | 'courier' | 'ops' | null {
-    // Audience selects the trusted application role. Ops is deliberately
-    // checked first: a token carrying the Dashboard audience must satisfy the
-    // Dashboard-specific azp + resource_access role gates below and must never
-    // fall through to a less privileged application role.
+    // Ops audience stays highest priority, never falling through to merchant.
     if (this.audienceIncludes(claims.aud, DASHBOARD_AUDIENCE)) return 'ops';
+
+    // Multi-audience OIDC tokens are common with Keycloak audience mappers.
+    // Resolve by the issuing client (azp) AND its expected audience, not by
+    // an unrelated audience that happens to appear earlier in an array.
+    const azp = typeof claims.azp === 'string' ? claims.azp.trim() : '';
+    if (azp === 'afritaste-mobile' || azp === this.config.audience) {
+      return this.audienceIncludes(claims.aud, this.config.audience) ? 'merchant' : null;
+    }
+    if (azp === CLIENT_AUDIENCE && this.audienceIncludes(claims.aud, CLIENT_AUDIENCE)) return 'client';
+    if (azp === COURIER_AUDIENCE && this.audienceIncludes(claims.aud, COURIER_AUDIENCE)) return 'courier';
+
+    // Legacy failure classification only: these branches still fail the
+    // corresponding azp check; an unrecognized client cannot gain a role.
     if (this.audienceIncludes(claims.aud, CLIENT_AUDIENCE)) return 'client';
     if (this.audienceIncludes(claims.aud, COURIER_AUDIENCE)) return 'courier';
     if (this.audienceIncludes(claims.aud, this.config.audience)) return 'merchant';
     return null;
+  }
+
+  private hasMerchantAuthorizedParty(claims: JsonObject): boolean {
+    const azp = typeof claims.azp === 'string' ? claims.azp.trim() : '';
+    return azp === 'afritaste-mobile' || azp === this.config.audience;
   }
 
   private hasOpsAuthorizedParty(claims: JsonObject): boolean {
