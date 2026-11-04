@@ -28,6 +28,10 @@
         "EXPO_PUBLIC_API_BASE_URL": "https://api.delishafrica.me/api/v1",
         "EXPO_PUBLIC_API_URL": "https://api.delishafrica.me/api/v1",
         "EXPO_PUBLIC_RELEASE_RING": "production"
+      },
+      "environment": "production",
+      "ios": {
+        "resourceClass": "medium"
       }
     },
     "preview": {
@@ -68,7 +72,11 @@
     }
   },
   "submit": {
-    "production": {},
+    "production": {
+      "ios": {
+        "ascAppId": "6807369989"
+      }
+    },
     "ataraxie-closed": {
       "android": {
         "track": "alpha",
