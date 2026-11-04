@@ -12,6 +12,8 @@ on:
       - "services/api-nest/**"
       - "scripts/da_store_candidate_contract_tests.cjs"
       - "scripts/da_store_bundle_dependency_attestation.cjs"
+      - "scripts/qa/decoder-compatibility-regression.cjs"
+      - "apps/landing/**"
       - "patches/**"
       - ".easignore"
       - "package.json"
@@ -65,7 +67,7 @@ jobs:
       - name: Frozen install without lifecycle scripts
         run: |
           pnpm install --frozen-lockfile --ignore-scripts \
-            --filter client --filter merchant --filter courier --filter ./services/api-nest
+            --filter client --filter merchant --filter courier --filter ./services/api-nest --filter ./apps/landing
 
       - name: TypeScript 3 apps
         run: |
@@ -75,6 +77,12 @@ jobs:
 
       - name: Nest API build
         run: pnpm --dir services/api-nest run build
+
+      - name: Decoder CommonJS and ESM compatibility with bounded malformed-input regression
+        run: node scripts/qa/decoder-compatibility-regression.cjs
+
+      - name: Patched landing production build
+        run: pnpm --dir apps/landing run build
 
       - name: Client cart catalog zone and map regression contracts
         run: node scripts/da_store_candidate_contract_tests.cjs
@@ -241,3 +249,6 @@ jobs:
             exit 1
           fi
           exit "$code"
+
+      - name: Full workspace dependency audit high or critical
+        run: timeout 300s pnpm audit --audit-level high
