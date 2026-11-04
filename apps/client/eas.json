@@ -69,6 +69,17 @@
         "EXPO_PUBLIC_API_URL": "https://ataraxie-api.delishafrica.me/api/v1",
         "EXPO_PUBLIC_RELEASE_RING": "ataraxie-ios-qa"
       }
+    },
+    "android-partner-closed": {
+      "extends": "production",
+      "distribution": "store",
+      "channel": "production",
+      "environment": "production",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle",
+        "resourceClass": "medium"
+      }
     }
   },
   "submit": {
@@ -88,6 +99,14 @@
     "ataraxie-ios-qa": {
       "ios": {
         "ascAppId": "6807363823"
+      }
+    },
+    "android-partner-closed": {
+      "android": {
+        "track": "alpha",
+        "releaseStatus": "draft",
+        "changesNotSentForReview": true,
+        "applicationId": "com.delishafrica.client"
       }
     }
   }
