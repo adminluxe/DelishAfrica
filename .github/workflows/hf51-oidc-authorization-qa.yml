@@ -1,0 +1,52 @@
+name: HF51 OIDC authorization QA
+
+on:
+  pull_request:
+    paths:
+      - 'services/api-nest/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/hf51-oidc-authorization-qa.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hf51-oidc-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  authorization:
+    name: signed-oidc-roles-and-merchant-http
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CI: '1'
+      DATABASE_URL: ''
+      DA_INTERNAL_AUTH_ENABLED: 'false'
+    steps:
+      - name: Checkout immutable candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Verify exact candidate
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Frozen API dependencies; no install scripts
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+          pnpm install --frozen-lockfile --ignore-scripts --filter ./services/api-nest
+      - name: Compile the candidate API
+        run: pnpm --dir services/api-nest run build
+      - name: Signed JWT role isolation and real loopback HTTP gates
+        run: |
+          timeout 120s node --test --test-concurrency=1 \
+            services/api-nest/test/trusted-identity-multi-audience.qa.test.cjs \
+            services/api-nest/test/hf26-oidc-merchant-routes.qa.test.cjs

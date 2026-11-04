@@ -1,0 +1,2 @@
+FROM delishafrica-api:atm-hf46-oidc-20261103
+COPY trusted-identity-multi-audience.qa.test.cjs /app/test/trusted-identity-multi-audience.qa.test.cjs

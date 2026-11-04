@@ -14,7 +14,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "0.9.10",
-    "astro": "7.1.6",
+    "astro": "7.2.8",
     "typescript": "5.9.3",
     "cookie": "2.0.1",
     "tinyglobby": "0.2.16"

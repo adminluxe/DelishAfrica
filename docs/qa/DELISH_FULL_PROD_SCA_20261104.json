@@ -1,0 +1,57 @@
+{
+  "observedAt": "2026-11-04T14:01:22.261Z",
+  "node": "v24.14.0",
+  "pnpm": "9.15.4",
+  "sourceParent": "64dbbf7cda2b8d0548f1ff5df99c0426a8a5c0ea",
+  "baselineProd": {
+    "info": 0,
+    "low": 9,
+    "moderate": 28,
+    "high": 14,
+    "critical": 0
+  },
+  "full": {
+    "info": 0,
+    "low": 11,
+    "moderate": 32,
+    "high": 0,
+    "critical": 0
+  },
+  "prod": {
+    "info": 0,
+    "low": 5,
+    "moderate": 20,
+    "high": 0,
+    "critical": 0
+  },
+  "fullHighGateExit": 0,
+  "prodHighGateExit": 0,
+  "scope": "QA_ONLY_NO_PRODUCTION_STORE_IDENTITY_OR_FINANCIAL_MUTATION",
+  "compatibility": {
+    "consumerVersions": [
+      "query-string@7.1.3",
+      "query-string@9.3.1"
+    ],
+    "smokeChecks": 10,
+    "unadaptedLegacyError": "decodeComponent is not a function",
+    "patchScope": "Only export syntax and package type; upstream 0.5.1 decoder algorithm unchanged"
+  },
+  "files": [
+    {
+      "path": "package.json",
+      "sha256": "47001a58802a3472d0570723deb2460131fdf76257dda36a985f931a7ffe3f8e"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "c1699d28af317dd1bc7f160ed0cec6c8b09e2818dcc689d4a7120eaadb4d20a5"
+    },
+    {
+      "path": "apps/landing/package.json",
+      "sha256": "e28ad207233ba5e0101d9d5d2c34805a8440c81776ef1f72231a005a83c2dd51"
+    },
+    {
+      "path": "patches/decode-uri-component@0.5.1.patch",
+      "sha256": "f1c8733cd9fc021d4563d1010e96827476a074337054dc63d62ac9d2df6dc358"
+    }
+  ]
+}
