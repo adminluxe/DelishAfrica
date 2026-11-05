@@ -1,0 +1,43 @@
+name: HF51 Android 3.0.4 closed production candidate
+on:
+  push:
+    branches: [release/hf51-android304-closed-production-20261105]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: hf51-android304-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  android-closed-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      CI: "1"
+      EXPO_NO_TELEMETRY: "1"
+      NODE_OPTIONS: --max-old-space-size=4096
+      APP_VARIANT: production
+      EAS_BUILD_PLATFORM: android
+      EXPO_PUBLIC_RELEASE_RING: production
+      EXPO_PUBLIC_API_BASE_URL: https://api.delishafrica.me/api/v1
+      EXPO_PUBLIC_API_URL: https://api.delishafrica.me/api/v1
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22.23.3"
+      - name: Exact frozen native dependencies; no lifecycle scripts
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+          pnpm install --frozen-lockfile --ignore-scripts --filter client --filter merchant --filter courier
+      - name: Android identity, production API and closed-only draft submission guard
+        run: node scripts/qa/hf51-android-closed-config.cjs
+      - name: Three Android Hermes exports
+        run: |
+          for app in client merchant courier; do
+            pnpm --dir "apps/$app" exec expo export --platform android --source-maps --output-dir "$RUNNER_TEMP/hf51-android-$app"
+          done

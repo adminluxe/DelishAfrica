@@ -1,3 +1,4 @@
+import { daApiBase } from '../../../utils/daApiEnvironment';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -49,15 +50,7 @@ type AcceptanceResult = {
 
 const TOKEN_RE = /^[A-Za-z0-9_-]{32,128}$/;
 
-function apiBase(): string {
-  const env = (globalThis as any)?.process?.env || {};
-  const raw =
-    env.EXPO_PUBLIC_API_BASE_URL ||
-    env.EXPO_PUBLIC_API_URL ||
-    'https://api.delishafrica.me/api/v1';
-  const normalized = String(raw).replace(/\/+$/, '');
-  return normalized.endsWith('/api/v1') ? normalized : `${normalized}/api/v1`;
-}
+function apiBase(): string { return daApiBase(); }
 
 async function requestJson(url: string, init?: RequestInit): Promise<any> {
   const response = await fetch(url, init);

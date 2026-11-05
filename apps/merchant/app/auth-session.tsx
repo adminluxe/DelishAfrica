@@ -1,149 +1,69 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { router } from 'expo-router';
-import {
-  daAuthHealth,
-  daMe,
-  type DaAuthSession,
-} from '../utils/daAuthBridge';
-import {
-  daMerchantOidcLogin,
-  daMerchantOidcLogout,
-  daMerchantOidcRefresh,
-  daMerchantOidcRuntimeStatus,
-  daMerchantOidcSession,
-  type MerchantOidcSession,
-} from '../utils/daMerchantOidc';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { daAuthHealth, daMe, daMerchantAccess, type DaAuthSession, type DaMerchantAccess } from '../utils/daAuthBridge';
+import { daMerchantOidcLogin, daMerchantOidcLogout, daMerchantOidcRefresh, daMerchantOidcRuntimeStatus, daMerchantOidcSession, type MerchantOidcSession } from '../utils/daMerchantOidc';
+import { merchantConnectionView } from '../../../packages/contracts/src/merchantIdentity';
 
 export default function AuthSessionScreen() {
   const runtime = useMemo(() => daMerchantOidcRuntimeStatus(), []);
-  const [loading, setLoading] = useState(false);
-  const [health, setHealth] = useState<any>(null);
+  const [loading, setLoading] = useState(false), [health, setHealth] = useState<any>(null);
   const [session, setSession] = useState<DaAuthSession | null>(null);
   const [oidc, setOidc] = useState<MerchantOidcSession | null>(null);
-
+  const [access, setAccess] = useState<DaMerchantAccess | null>(null);
+  const attempt = useRef(0), mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; attempt.current++; }; }, []);
   const refreshAll = useCallback(async () => {
+    const current = ++attempt.current;
     const [nextHealth, nextOidc, nextSession] = await Promise.all([
-      daAuthHealth().catch(() => null),
-      daMerchantOidcSession(),
-      daMe().catch(() => null),
+      daAuthHealth().catch(() => null), daMerchantOidcSession().catch(() => null),
+      daMe().catch((error: any) => ({ ok: false, authenticated: false, apiVerified: false, status: Number(error?.status || 0), reason: String(error?.code || 'merchant_service_unavailable') } as DaAuthSession)),
     ]);
-    setHealth(nextHealth);
-    setOidc(nextOidc);
-    setSession(nextSession);
+    const nextAccess = nextSession.apiVerified ? await daMerchantAccess().catch(() => null) : null;
+    if (!mounted.current || current !== attempt.current) return;
+    setHealth(nextHealth); setOidc(nextOidc); setSession(nextSession); setAccess(nextAccess);
   }, []);
-
+  useFocusEffect(useCallback(() => { void refreshAll(); return () => { attempt.current++; }; }, [refreshAll]));
+  const view = merchantConnectionView({ oidc, session, health, access });
+  const user = view.identityVerified ? session?.user : oidc?.user;
   async function run(fn: () => Promise<any>) {
     setLoading(true);
-    try {
-      await fn();
-      await refreshAll();
-    } catch (error: any) {
-      Alert.alert('Connexion Merchant', String(error?.message || error));
-    } finally {
-      setLoading(false);
-    }
+    try { await fn(); await refreshAll(); }
+    catch { Alert.alert('Connexion Merchant', 'L’accès n’a pas pu être confirmé. Réessayez ou vérifiez le rattachement de votre établissement.'); await refreshAll(); }
+    finally { if (mounted.current) setLoading(false); }
   }
-
-  useEffect(() => {
-    void refreshAll();
-  }, [refreshAll]);
-
-  const authenticated = Boolean(oidc?.authenticated && session?.authenticated !== false);
-  const user = oidc?.user || session?.user || null;
-  const apiReady = Boolean(health?.trustedIdentity?.ready ?? health?.ready ?? true);
-
+  const connect = () => run(() => view.action === 'connect' ? daMerchantOidcLogin() : view.action === 'refresh' ? daMerchantOidcRefresh() : Promise.resolve());
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.page}>
-        <View style={styles.header}>
-          <Text style={styles.brand}>DELISHAFRICA® · MERCHANT</Text>
-          <Text style={styles.title}>Connexion Merchant</Text>
-          <Text style={styles.subtitle}>
-            Une identité réelle pour les commandes, le service et Master Control. La session reste chiffrée sur cet appareil et se restaure automatiquement.
-          </Text>
+    <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.page}>
+      <View style={styles.header}><Text style={styles.brand}>DELISHAFRICA® · MERCHANT</Text><Text style={styles.title}>Connexion Merchant</Text>
+        <Text style={styles.subtitle}>Votre compte, votre établissement et vos accès sont vérifiés séparément.</Text></View>
+      <View style={[styles.statusRail, view.operational && styles.statusRailLive]}>
+        <View style={[styles.dot, view.operational && styles.dotLive]} /><View style={{ flex: 1 }}>
+          <Text style={styles.statusKicker}>{view.title}</Text><Text style={styles.statusText}>{view.detail}</Text>
+        </View><Text style={styles.statusMeta}>{view.badge}</Text></View>
+      <View style={styles.card}><Text style={styles.cardKicker}>{view.identityVerified ? 'IDENTITÉ CONFIRMÉE PAR LE SERVICE' : 'VOTRE COMPTE PARTENAIRE'}</Text>
+        <Text style={styles.cardTitle}>{user?.name || 'Connectez votre compte Merchant.'}</Text>
+        <Text style={styles.cardBody}>{access?.partnerName ? access.partnerName : 'L’établissement sera affiché après confirmation de son rattachement par le service.'}</Text>
+        <View style={[styles.identityGrid, { flexWrap: 'wrap' }]}>
+          <View style={styles.identityCell}><Text style={styles.identityLabel}>COMPTE</Text><Text style={styles.identityValue}>{view.oidcConnected ? 'Connecté' : 'À connecter'}</Text></View>
+          <View style={styles.identityCell}><Text style={styles.identityLabel}>SERVICE</Text><Text style={styles.identityValue}>{view.apiAvailable ? 'Joignable' : 'À vérifier'}</Text></View>
+          <View style={styles.identityCell}><Text style={styles.identityLabel}>IDENTITÉ</Text><Text style={styles.identityValue}>{view.identityVerified ? 'Confirmée' : 'À vérifier'}</Text></View>
+          <View style={styles.identityCell}><Text style={styles.identityLabel}>ÉTABLISSEMENT</Text><Text style={styles.identityValue}>{view.operational ? 'Accès validé' : 'À confirmer'}</Text></View>
         </View>
-
-        <View style={[styles.statusRail, authenticated && styles.statusRailLive]}>
-          <View style={[styles.dot, authenticated && styles.dotLive]} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.statusKicker}>{authenticated ? 'COMPTE MERCHANT ACTIF' : 'ACCÈS MERCHANT'}</Text>
-            <Text style={styles.statusText}>
-              {authenticated ? 'Session réelle restaurée · cockpit opérationnel' : 'Connexion requise · aucune session simulée'}
-            </Text>
-          </View>
-          <Text style={styles.statusMeta}>{authenticated ? 'PRÊT' : 'À CONNECTER'}</Text>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardKicker}>{authenticated ? 'IDENTITÉ CONFIRMÉE' : 'UN COMPTE · TOUT LE COCKPIT'}</Text>
-          <Text style={styles.cardTitle}>
-            {authenticated ? (user?.name || 'Compte Merchant') : 'Connectez votre identité Merchant réelle.'}
-          </Text>
-          <Text style={styles.cardBody}>
-            {authenticated
-              ? 'Commandes, cuisine, remise et supervision peuvent maintenant utiliser la même identité sécurisée.'
-              : 'La connexion s’ouvre dans le navigateur système puis revient dans DelishAfrica®. Le mot de passe n’est jamais stocké par l’app.'}
-          </Text>
-
-          {authenticated ? (
-            <View style={styles.identityGrid}>
-              <View style={styles.identityCell}><Text style={styles.identityLabel}>RÔLE</Text><Text style={styles.identityValue}>Merchant</Text></View>
-              <View style={styles.identityCell}><Text style={styles.identityLabel}>API</Text><Text style={styles.identityValue}>{apiReady ? 'Prête' : 'À vérifier'}</Text></View>
-            </View>
-          ) : null}
-
-          <Pressable
-            disabled={loading || !runtime.ready}
-            style={[styles.primary, (!runtime.ready || loading) && styles.disabled]}
-            onPress={() => run(() => authenticated ? daMerchantOidcRefresh() : daMerchantOidcLogin())}
-          >
-            {loading ? <ActivityIndicator color="#241006" /> : (
-              <Text style={styles.primaryText}>{authenticated ? 'Renouveler la session' : 'Connecter le compte Merchant'}</Text>
-            )}
-          </Pressable>
-        </View>
-
-        {!runtime.ready ? (
-          <View style={styles.warningCard}>
-            <Text style={styles.warningTitle}>Connexion sécurisée indisponible</Text>
-            <Text style={styles.warningBody}>Le module d’authentification du client installé doit être actualisé avant la connexion réelle.</Text>
-          </View>
-        ) : null}
-
-        <View style={styles.trustCard}>
-          <Text style={styles.trustKicker}>CONFIANCE DELISHAFRICA®</Text>
-          <Text style={styles.trustTitle}>Navigateur système · PKCE · API vérifiée</Text>
-          <Text style={styles.trustBody}>Les tokens restent dans SecureStore. Aucun token, mot de passe ou secret n’est affiché dans cette interface.</Text>
-        </View>
-
-        <View style={styles.actions}>
-          <Pressable style={styles.secondary} onPress={() => { void refreshAll(); }}>
-            <Text style={styles.secondaryText}>Actualiser l’état</Text>
-          </Pressable>
-          <Pressable style={styles.secondary} onPress={() => router.replace('/ops-dashboard' as any)}>
-            <Text style={styles.secondaryText}>Ouvrir Master Control</Text>
-          </Pressable>
-          <Pressable style={styles.secondary} onPress={() => router.replace('/orders' as any)}>
-            <Text style={styles.secondaryText}>Ouvrir le service</Text>
-          </Pressable>
-          {authenticated ? (
-            <Pressable style={styles.logout} onPress={() => run(() => daMerchantOidcLogout())}>
-              <Text style={styles.logoutText}>Déconnecter ce compte</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        <Pressable disabled={loading || !runtime.ready} style={[styles.primary, (!runtime.ready || loading) && styles.disabled]} onPress={connect}>
+          {loading ? <ActivityIndicator color="#241006" /> : <Text style={styles.primaryText}>{view.action === 'connect' ? 'Connecter le compte Merchant' : view.action === 'refresh' ? 'Renouveler la session' : 'Vérifier mon accès'}</Text>}
+        </Pressable>
+      </View>
+      {!runtime.ready ? <View style={styles.warningCard}><Text style={styles.warningTitle}>Connexion sécurisée indisponible</Text><Text style={styles.warningBody}>Le module de connexion de l’application installée doit être actualisé.</Text></View> : null}
+      <View style={styles.trustCard}><Text style={styles.trustKicker}>VOTRE ESPACE PARTENAIRE</Text><Text style={styles.trustTitle}>Un compte connecté ne suffit pas à ouvrir le service.</Text>
+        <Text style={styles.trustBody}>Le rattachement à l’établissement et la validation de l’adhésion sont confirmés par le service. Un brouillon local ne donne aucun droit sur un autre établissement.</Text></View>
+      <View style={styles.actions}>
+        <Pressable style={styles.secondary} onPress={() => void refreshAll()}><Text style={styles.secondaryText}>Actualiser l’état</Text></Pressable>
+        <Pressable style={styles.secondary} onPress={() => router.replace('/ops-dashboard' as any)}><Text style={styles.secondaryText}>Ouvrir Master Control</Text></Pressable>
+        <Pressable style={styles.secondary} onPress={() => router.replace('/orders' as any)}><Text style={styles.secondaryText}>Ouvrir le service</Text></Pressable>
+        {view.oidcConnected ? <Pressable style={styles.logout} onPress={() => run(() => daMerchantOidcLogout())}><Text style={styles.logoutText}>Déconnecter ce compte</Text></Pressable> : null}
+      </View>
+    </ScrollView></SafeAreaView>
   );
 }
 

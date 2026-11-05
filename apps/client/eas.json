@@ -15,13 +15,99 @@
       "pnpm": "9.15.4",
       "cache": {
         "key": "delishafrica-pnpm-9.15.4-v2"
+      },
+      "channel": "development",
+      "env": {
+        "APP_VARIANT": "development"
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.delishafrica.me/api/v1",
+        "EXPO_PUBLIC_API_URL": "https://api.delishafrica.me/api/v1",
+        "EXPO_PUBLIC_RELEASE_RING": "production"
+      },
+      "environment": "production",
+      "ios": {
+        "resourceClass": "medium"
+      }
+    },
+    "preview": {
+      "channel": "preview"
+    },
+    "ataraxie-closed": {
+      "extends": "production",
+      "distribution": "store",
+      "channel": "ataraxie-closed",
+      "environment": "production",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "DA_ATARAXIE_ANDROID_BUILD": "1",
+        "EXPO_PUBLIC_API_BASE_URL": "https://ataraxie-api.delishafrica.me/api/v1",
+        "EXPO_PUBLIC_API_URL": "https://ataraxie-api.delishafrica.me/api/v1",
+        "EXPO_PUBLIC_RELEASE_RING": "ataraxie-closed"
+      }
+    },
+    "ataraxie-ios-qa": {
+      "extends": "production",
+      "distribution": "store",
+      "channel": "ataraxie-ios-qa",
+      "environment": "production",
+      "autoIncrement": true,
+      "ios": {
+        "simulator": false,
+        "buildConfiguration": "Release"
+      },
+      "env": {
+        "DA_ATARAXIE_IOS_BUILD": "1",
+        "EXPO_PUBLIC_API_BASE_URL": "https://ataraxie-api.delishafrica.me/api/v1",
+        "EXPO_PUBLIC_API_URL": "https://ataraxie-api.delishafrica.me/api/v1",
+        "EXPO_PUBLIC_RELEASE_RING": "ataraxie-ios-qa"
+      }
+    },
+    "android-partner-closed": {
+      "extends": "production",
+      "distribution": "store",
+      "channel": "production",
+      "environment": "production",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle",
+        "resourceClass": "medium"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6807363823"
+      }
+    },
+    "ataraxie-closed": {
+      "android": {
+        "track": "alpha",
+        "releaseStatus": "completed",
+        "changesNotSentForReview": false,
+        "applicationId": "com.delishafrica.client"
+      }
+    },
+    "ataraxie-ios-qa": {
+      "ios": {
+        "ascAppId": "6807363823"
+      }
+    },
+    "android-partner-closed": {
+      "android": {
+        "track": "alpha",
+        "releaseStatus": "draft",
+        "changesNotSentForReview": true,
+        "applicationId": "com.delishafrica.client"
+      }
+    }
   }
 }

@@ -1,3 +1,5 @@
+import { daMerchantIdentityEpoch, daAssertMerchantIdentity, daOnMerchantIdentityChange } from '../utils/daIdentityEpoch';
+import { orderMoneyLabel, readOrderList, orderReadFailure, orderReadMessage } from '../../../packages/contracts/src/orderRead';
 import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -18,6 +20,9 @@ import {
 import { router, useFocusEffect } from "expo-router";
 import { MerchantAquaticSignature } from "../components/aquatic/MerchantAquaticSignature";
 import { WaterKitchenTide } from "../ui/water/WaterKitchenTide";
+// DA_GALA_CAPILLARY_FUSION_V1 - opening and service surfaces now share the same liquid field through a restrained subsurface teal/amber glaze; no new timer or business mutation.
+// DA_GALA_OSMOTIC_SEAM_V1 - opening surfaces lose explicit caustic seams and keep only broad, low-energy subsurface continuity; no business mutation.
+// DA_GALA_PHASE_DECOHERENCE_V1 - multi-axis phase drift and boundary evaporation dissolve residual layer geometry while preserving business truth and existing animation clocks.
 // DA_SPRINT19_ADAPTIVE_HOME_ORCHESTRATION_V1
 import {
   loadPartnerPresence,
@@ -48,7 +53,9 @@ async function fetchNetworkJson(url: string, init?: Parameters<typeof fetch>[1])
   try {
     const request = url.includes("/orders/demo/") ? daOrdersFetch : fetch;
     const response = await request(url, { ...(init || {}), signal: controller.signal });
-    const payload = await response.json().catch(() => ({}));
+    const responseEpoch = daMerchantIdentityEpoch();
+  const payload = await response.json().catch(() => ({}));
+  daAssertMerchantIdentity(responseEpoch);
     if (!response.ok) throw new Error(payload?.message || `HTTP ${response.status}`);
     return payload;
   } catch (error) {
@@ -62,11 +69,7 @@ async function fetchNetworkJson(url: string, init?: Parameters<typeof fetch>[1])
 }
 
 function networkTruthMessage(error: unknown) {
-  const detail = error instanceof Error ? error.message : "Synchronisation indisponible";
-  if (/temps|timeout|network|fetch|connexion|http/i.test(detail)) {
-    return "Connexion momentanément indisponible. Le dernier état opérationnel reste disponible.";
-  }
-  return "Une partie du réseau ne répond pas encore. Le dernier état opérationnel reste disponible.";
+  return orderReadMessage(orderReadFailure(error));
 }
 
 type Order = {
@@ -187,12 +190,7 @@ function restaurantName(order?: Order | null) {
   );
 }
 
-function money(value: unknown) {
-  const raw = typeof value === "number" ? value : Number(value || 0);
-  if (!Number.isFinite(raw) || raw === 0) return "—";
-  const euros = Math.abs(raw) >= 100 ? raw / 100 : raw;
-  return `${euros.toFixed(2).replace(".", ",")} €`;
-}
+function money(value: unknown) { return orderMoneyLabel(value); }
 
 function itemSummary(order?: Order | null) {
   const items = Array.isArray(order?.items) ? order?.items : [];
@@ -214,14 +212,7 @@ function timeLabel(order?: Order | null) {
   return date.toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" });
 }
 
-function extractOrders(payload: any): Order[] {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.orders)) return payload.orders;
-  if (Array.isArray(payload?.data?.orders)) return payload.data.orders;
-  if (Array.isArray(payload?.items)) return payload.items;
-  if (Array.isArray(payload?.data)) return payload.data;
-  return [];
-}
+function extractOrders(payload: any): Order[] { return readOrderList<Order>(payload); }
 
 async function fetchOrders(): Promise<Order[]> {
   const payload = await fetchNetworkJson(`${API_BASE_URL}/orders/demo/list`, {
@@ -294,6 +285,10 @@ function buildMoment(
 // DELISHAFRICA_SPRINT29_PRESENCE_COMMIT_TRUTH_V1
 export default function MerchantHome() {
   const [orders, setOrders] = useState<Order[]>([]);
+  useEffect(() => daOnMerchantIdentityChange(() => {
+    setOrders([]); setServiceOpen(false); setNetworkTruth('syncing');
+  }), []);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -308,7 +303,7 @@ export default function MerchantHome() {
   const operationToolsOpen = useRef(initialOperationFocus.showTools);
   const initialPresence = readPartnerPresenceCache<PartnerPresenceProfile>();
   const [presenceProfile, setPresenceProfile] = useState<PartnerPresenceProfile | null>(initialPresence);
-  const [serviceOpen, setServiceOpen] = useState(() => Boolean(initialPresence?.serviceOpen));
+  const [serviceOpen, setServiceOpen] = useState(() => false);
   const [presenceHydrated, setPresenceHydrated] = useState(false);
   const [presenceMutation, setPresenceMutation] = useState<"idle" | "opening" | "closing">("idle");
   const presenceMutationRef = useRef<"idle" | "opening" | "closing">("idle");
@@ -330,7 +325,7 @@ export default function MerchantHome() {
       setServiceOpen(false);
     } else {
       setPresenceProfile(profile);
-      setServiceOpen(Boolean(profile?.serviceOpen));
+      setServiceOpen(false);
     }
     setPresenceHydrated(true);
   }, []);
@@ -408,6 +403,8 @@ export default function MerchantHome() {
       } catch (err) {
         hasLoadedRef.current = true;
         setNetworkTruth("stale");
+        setOrders([]);
+        setServiceOpen(false);
         setError(networkTruthMessage(err));
       } finally {
         setLoading(false);
@@ -585,8 +582,8 @@ export default function MerchantHome() {
             : presenceNetworkLocked
           ? "HORS RÉSEAU"
           : serviceOpen
-          ? "EN LIGNE"
-          : "HORS LIGNE";
+          ? "OUVERTURE À CONFIRMER"
+          : "OUVERTURE À CONFIRMER";
   const baseMoment = useMemo(() => buildMoment(priority, stats), [priority, stats]);
   const moment = useMemo<ServiceMoment>(() => {
     if (!presenceHydrated) {
@@ -634,9 +631,9 @@ export default function MerchantHome() {
       return {
         code: "PRÊT",
         kicker: "LE SERVICE ATTEND VOTRE SIGNAL",
-        title: "Ouvrez lorsque la cuisine est réellement prête.",
-        body: "Un geste suffit. Les commandes en cours restent toujours accessibles.",
-        action: "Ouvrir le service",
+        title: "L’ouverture du service reste à confirmer.",
+        body: "Vos preuves sont conservées. La plateforme doit confirmer l’accès et la disponibilité de l’établissement.",
+        action: "Vérifier l’ouverture",
         activeStage: 0,
       };
     }
@@ -644,45 +641,12 @@ export default function MerchantHome() {
   }, [activationProofCount, activationProofs.length, activationReady, baseMoment, networkTruth, presenceHydrated, presenceMutation, presenceMutationBusy, priority, serviceOpen]);
 
   async function togglePresence() {
-    if (!presenceHydrated || presenceMutationRef.current !== "idle") return;
-    if (presenceNetworkLocked) {
-      setError("Connexion requise uniquement pour modifier la présence. Le cockpit reste disponible.");
-      void refreshLiveTruth();
-      return;
-    }
-    const current = await loadPartnerPresence<PartnerPresenceProfile>();
-    if (!partnerActivationReady(current)) {
-      go("/partner-space");
-      return;
-    }
-    const desiredOpen = !Boolean(current?.serviceOpen);
-    const mutation = desiredOpen ? "opening" : "closing";
-    const next: PartnerPresenceProfile = {
-      ...current,
-      serviceOpen: desiredOpen,
-      updatedAt: new Date().toISOString(),
-    };
-    presenceMutationRef.current = mutation;
-    setPresenceMutation(mutation);
-    try {
-      await savePartnerPresence(next);
-      const confirmed = await loadPartnerPresence<PartnerPresenceProfile>();
-      if (!confirmed || Boolean(confirmed.serviceOpen) !== desiredOpen) {
-        throw new Error("presence_commit_mismatch");
-      }
-      setPresenceProfile(confirmed);
-      setServiceOpen(Boolean(confirmed.serviceOpen));
-    } catch {
-      const restored = await loadPartnerPresence<PartnerPresenceProfile>().catch(() => null);
-      if (restored) {
-        setPresenceProfile(restored);
-        setServiceOpen(Boolean(restored.serviceOpen));
-      }
-      Alert.alert("Statut non confirmé", "Le service conserve son dernier état relu. Réessayez dans un instant.");
-    } finally {
-      presenceMutationRef.current = "idle";
-      setPresenceMutation("idle");
-    }
+    if (!activationReady) { go('/partner-space'); return; }
+    setServiceOpen(false);
+    Alert.alert('Ouverture non confirmée', 'L’ouverture doit être confirmée par la plateforme. Les commandes déjà autorisées restent consultables.', [
+      { text: 'Vérifier l’accès', onPress: () => go('/auth-session') },
+      { text: 'Fermer', style: 'cancel' },
+    ]);
   }
 
   async function openPrimary() {
@@ -822,7 +786,22 @@ export default function MerchantHome() {
           accessibilityLabel={priority ? `Ouvrir la priorité ${orderId(priority)}` : moment.action}
           accessibilityHint={priority ? "Accède à la file opérationnelle du service" : activationReady ? "Change la présence du service" : "Ouvre la validation de l’établissement"}
         >
-          <View style={styles.heroHalo} pointerEvents="none" />
+                    <View style={styles.heroHalo} pointerEvents="none" />
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.heroSubsurfaceVeil,
+              {
+                opacity: pulse.interpolate({ inputRange: [0, 0.30, 0.64, 1], outputRange: [0.17, 0.28, 0.34, 0.20] }),
+                transform: [
+                  { translateX: pulse.interpolate({ inputRange: [0, 0.30, 0.64, 1], outputRange: [9, -2, -11, 4] }) },
+                  { translateY: pulse.interpolate({ inputRange: [0, 0.30, 0.64, 1], outputRange: [-3, 2, 6, -1] }) },
+                  { scaleX: pulse.interpolate({ inputRange: [0, 0.30, 0.64, 1], outputRange: [0.997, 1.016, 1.028, 1.0] }) },
+                  { rotate: "4deg" },
+                ],
+              },
+            ]}
+          />
           <View style={styles.heroHeader}>
             <View style={{ flex: 1 }}>
               <Text style={styles.heroKicker}>{activationPassportVisible ? "OUVERTURE GUIDÉE" : serviceOpen && activationReady ? "SERVICE EN COURS" : "PRÉSENCE DU SERVICE"}</Text>
@@ -909,16 +888,16 @@ export default function MerchantHome() {
               <ActivityIndicator color="#2A1308" />
               <Text style={styles.stateText}>Lecture du service…</Text>
             </View>
-          ) : error && orders.length === 0 && networkTruth !== "stale" ? (
+          ) : error && orders.length === 0 ? (
             <Pressable
               style={({ pressed }) => [styles.errorSurface, pressed && styles.pressFeedback]}
-              onPress={() => { void load(); }}
+              onPress={() => go("/auth-session")}
               accessibilityRole="button"
-              accessibilityLabel="Cockpit en mode dégradé. Relancer la synchronisation du service"
+              accessibilityLabel="Vérifier la connexion et l’accès à l’établissement"
             >
-              <Text style={styles.errorTitle}>Cockpit en mode dégradé</Text>
+              <Text style={styles.errorTitle}>Commandes non confirmées</Text>
               <Text style={styles.errorText}>{error}</Text>
-              <Text style={styles.errorRetry}>Relancer la synchronisation</Text>
+              <Text style={styles.errorRetry}>Vérifier l’accès Merchant</Text>
             </Pressable>
           ) : priority ? (
             <View style={styles.prioritySurface}>
@@ -929,7 +908,7 @@ export default function MerchantHome() {
                 <Text style={styles.priorityRestaurant}>{restaurantName(priority)}</Text>
               </View>
               <View style={styles.priorityMeta}>
-                <Text style={styles.priorityAmount}>{money(priority.total ?? priority.amount)}</Text>
+                <Text style={styles.priorityAmount}>{money(priority)}</Text>
                 <Text style={styles.priorityTime}>{timeLabel(priority)}</Text>
               </View>
             </View>
@@ -937,7 +916,7 @@ export default function MerchantHome() {
             <View style={styles.stateSurface}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.priorityKicker}>{!activationReady ? "ACTIVATION REQUISE" : serviceOpen ? "SERVICE DISPONIBLE" : "SERVICE HORS LIGNE"}</Text>
-                <Text style={styles.priorityTitle}>{!activationReady ? "Validez l’établissement pour ouvrir le service." : serviceOpen ? "La prochaine commande prendra naturellement la place centrale." : "La cuisine reste invisible aux nouvelles commandes jusqu’à votre signal."}</Text>
+                <Text style={styles.priorityTitle}>{!activationReady ? "Validez l’établissement pour ouvrir le service." : serviceOpen ? "La prochaine commande prendra naturellement la place centrale." : "La disponibilité de l’établissement n’est pas confirmée par la plateforme."}</Text>
               </View>
             </View>
           )}
@@ -1157,9 +1136,9 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     backgroundColor: "rgba(255,181,107,0.08)",
     borderWidth: 1,
-    borderColor: "rgba(244,181,107,0.20)",
+    borderColor: "rgba(244,181,107,0.21)",
   },
-  presencePillLive: { backgroundColor: "rgba(110,245,164,0.09)", borderColor: "rgba(110,245,164,0.24)" },
+  presencePillLive: { backgroundColor: "rgba(110,245,164,0.09)", borderColor: "rgba(110,245,164,0.21)" },
   presencePillLocked: { backgroundColor: "rgba(255,255,255,0.045)", borderColor: "rgba(255,255,255,0.10)" },
   presenceDot: { width: 8, height: 8, borderRadius: 99, backgroundColor: "#F4B56B" },
   presenceDotLive: { backgroundColor: "#72F5A7" },
@@ -1179,7 +1158,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderRadius: 30,
     padding: 20,
-    backgroundColor: "#F3E5D4",
+    backgroundColor: "rgba(243,229,212,0.89)",
+    borderWidth: 1,
+    borderColor: "rgba(244,181,107,0.050)",
     marginBottom: 14,
   },
   heroHalo: {
@@ -1189,8 +1170,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     right: -135,
     top: -165,
-    backgroundColor: "rgba(231,114,49,0.16)",
+    backgroundColor: "rgba(231,114,49,0.050)",
   },
+  heroSubsurfaceVeil: { position: "absolute", width: 392, height: 162, right: -168, top: 108, borderTopLeftRadius: 58, borderTopRightRadius: 176, borderBottomRightRadius: 44, borderBottomLeftRadius: 154, backgroundColor: "rgba(29,111,94,0.050)", shadowColor: "#8FE2C0", shadowOpacity: 0.028, shadowRadius: 36, shadowOffset: { width: 0, height: 0 } },
   heroHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   heroKicker: { color: "#8B4D2B", fontSize: 9, fontWeight: "900", letterSpacing: 2.1 },
   heroEyebrow: {
@@ -1207,9 +1189,9 @@ const styles = StyleSheet.create({
   heroBody: { color: "rgba(37,16,6,0.60)", fontSize: 14, lineHeight: 21, fontWeight: "700", marginTop: 10 },
   activationPassport: {
     marginTop: 22,
-    borderRadius: 22,
+    borderRadius: 21,
     padding: 15,
-    backgroundColor: "rgba(37,16,6,0.06)",
+    backgroundColor: "rgba(37,16,6,0.028)",
     borderWidth: 1,
     borderColor: "rgba(37,16,6,0.08)",
   },
@@ -1227,11 +1209,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 11,
     paddingVertical: 10,
-    backgroundColor: "rgba(37,16,6,0.045)",
+    backgroundColor: "rgba(37,16,6,0.020)",
     borderWidth: 1,
-    borderColor: "rgba(37,16,6,0.07)",
+    borderColor: "rgba(37,16,6,0.026)",
   },
-  activationProofChipReady: { backgroundColor: "rgba(35,133,75,0.09)", borderColor: "rgba(35,133,75,0.16)" },
+  activationProofChipReady: { backgroundColor: "rgba(35,133,75,0.09)", borderColor: "rgba(35,133,75,0.13)" },
   activationProofDot: { width: 8, height: 8, borderRadius: 99, backgroundColor: "rgba(37,16,6,0.24)" },
   activationProofDotReady: { backgroundColor: "#23854B" },
   activationProofLabel: { color: "rgba(37,16,6,0.68)", fontSize: 11, fontWeight: "900" },
@@ -1239,7 +1221,7 @@ const styles = StyleSheet.create({
   activationProofState: { color: "rgba(37,16,6,0.42)", fontSize: 9, fontWeight: "800", marginTop: 2 },
   stageRail: { flexDirection: "row", gap: 8, marginTop: 24 },
   stageColumn: { flex: 1 },
-  stageLine: { height: 4, borderRadius: 99, backgroundColor: "rgba(37,16,6,0.10)", marginBottom: 9 },
+  stageLine: { height: 4, borderRadius: 99, backgroundColor: "rgba(37,16,6,0.05)", marginBottom: 9 },
   stageLineActive: { backgroundColor: "#C86E38" },
   stageValue: { color: "rgba(37,16,6,0.38)", fontSize: 21, fontWeight: "900" },
   stageValueActive: { color: "#2A1308" },
@@ -1249,9 +1231,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 14,
     marginTop: 22,
-    borderRadius: 22,
+    borderRadius: 21,
     padding: 16,
-    backgroundColor: "rgba(37,16,6,0.065)",
+    backgroundColor: "rgba(37,16,6,0.050)",
     borderWidth: 1,
     borderColor: "rgba(37,16,6,0.08)",
   },
@@ -1260,16 +1242,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     marginTop: 22,
-    borderRadius: 22,
+    borderRadius: 21,
     padding: 16,
-    backgroundColor: "rgba(37,16,6,0.065)",
+    backgroundColor: "rgba(37,16,6,0.050)",
   },
   stateText: { color: "rgba(37,16,6,0.62)", fontWeight: "800" },
-  errorSurface: { marginTop: 22, borderRadius: 22, padding: 16, backgroundColor: "rgba(144,34,24,0.10)" },
+  errorSurface: { marginTop: 22, borderRadius: 21, padding: 16, backgroundColor: "rgba(144,34,24,0.10)" },
   errorTitle: { color: "#7E2118", fontSize: 15, fontWeight: "900" },
   errorText: { color: "rgba(92,26,18,0.68)", fontSize: 12, lineHeight: 18, marginTop: 5 },
   errorRetry: { color: "#71301F", fontSize: 10, fontWeight: "900", marginTop: 9 },
-  networkNotice: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 18, borderRadius: 18, paddingHorizontal: 15, paddingVertical: 13, backgroundColor: "rgba(139,78,28,0.07)", borderWidth: 1, borderColor: "rgba(139,78,28,0.13)" },
+  networkNotice: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 18, borderRadius: 18, paddingHorizontal: 15, paddingVertical: 13, backgroundColor: "rgba(139,78,28,0.08)", borderWidth: 1, borderColor: "rgba(139,78,28,0.13)" },
   networkNoticeKicker: { color: "#8B4E1C", fontSize: 8, fontWeight: "900", letterSpacing: 1.35 },
   networkNoticeText: { color: "rgba(65,34,18,0.58)", fontSize: 11, lineHeight: 16, marginTop: 4 },
   networkNoticeMeta: { color: "rgba(65,34,18,0.38)", fontSize: 9, lineHeight: 13, marginTop: 3, fontWeight: "800" },
@@ -1308,13 +1290,13 @@ const styles = StyleSheet.create({
   serviceStripText: { flex: 1 },
   serviceStripKicker: { color: "#F4B56B", fontSize: 9, fontWeight: "900", letterSpacing: 2 },
   serviceStripTitle: { color: "#FFF8F1", fontSize: 15, lineHeight: 21, fontWeight: "900", marginTop: 5 },
-  allOrdersButton: { borderRadius: 999, paddingHorizontal: 13, paddingVertical: 9, backgroundColor: "rgba(244,181,107,0.11)" },
+  allOrdersButton: { borderRadius: 999, paddingHorizontal: 13, paddingVertical: 9, backgroundColor: "rgba(244,181,107,0.13)" },
   allOrdersText: { color: "#FFD09F", fontWeight: "900", fontSize: 10 },
   nextCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    borderRadius: 20,
+    borderRadius: 21,
     padding: 15,
     backgroundColor: "#1C0D07",
     borderWidth: 1,
@@ -1339,25 +1321,25 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     gap: 12,
-    borderRadius: 22,
+    borderRadius: 21,
     padding: 18,
     marginTop: 14,
     backgroundColor: "#2A140C",
     borderWidth: 1,
-    borderColor: "rgba(244,181,107,0.14)",
+    borderColor: "rgba(244,181,107,0.13)",
   },
   toolsKicker: { color: "#F4B56B", fontSize: 9, fontWeight: "900", letterSpacing: 2.1 },
   toolsTitle: { color: "#FFF8F1", fontSize: 16, fontWeight: "900", marginTop: 5 },
   toolsIcon: { color: "#F4B56B", fontSize: 27, fontWeight: "800" },
   toolsGrid: { gap: 10, marginTop: 10 },
-  toolCard: { borderRadius: 20, padding: 16, backgroundColor: "#1D0D08", borderWidth: 1, borderColor: "rgba(255,255,255,0.05)" },
+  toolCard: { borderRadius: 21, padding: 16, backgroundColor: "#1D0D08", borderWidth: 1, borderColor: "rgba(255,255,255,0.05)" },
   toolTitle: { color: "#FFF8F1", fontSize: 16, fontWeight: "900" },
   toolBody: { color: "rgba(255,248,241,0.56)", marginTop: 5, fontSize: 13, lineHeight: 19 },
   activationGuidance: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    borderRadius: 22,
+    borderRadius: 21,
     padding: 16,
     marginBottom: 10,
     backgroundColor: "rgba(244,181,107,0.10)",
@@ -1378,12 +1360,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    borderRadius: 22,
+    borderRadius: 21,
     padding: 17,
     marginBottom: 10,
     backgroundColor: "#211008",
     borderWidth: 1,
-    borderColor: "rgba(244,181,107,0.14)",
+    borderColor: "rgba(244,181,107,0.13)",
   },
   previewToggleKicker: { color: "#F4B56B", fontSize: 8, fontWeight: "900", letterSpacing: 1.9 },
   previewToggleTitle: { color: "#FFF8F1", fontSize: 15, fontWeight: "900", marginTop: 5 },
@@ -1394,7 +1376,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     backgroundColor: "#F3E5D4",
     borderWidth: 1,
-    borderColor: "rgba(244,181,107,0.22)",
+    borderColor: "rgba(244,181,107,0.21)",
   },
   safePreviewHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   safePreviewKicker: { color: "#8B4D2B", fontSize: 8, fontWeight: "900", letterSpacing: 1.5 },
@@ -1409,15 +1391,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 18,
     padding: 12,
-    backgroundColor: "rgba(37,16,6,0.055)",
+    backgroundColor: "rgba(37,16,6,0.050)",
   },
   safePreviewMetricValue: { color: "#251006", fontSize: 24, fontWeight: "900" },
   safePreviewMetricLabel: { color: "rgba(37,16,6,0.50)", fontSize: 9, fontWeight: "900", marginTop: 4 },
   safePreviewPriority: {
     marginTop: 12,
-    borderRadius: 20,
+    borderRadius: 21,
     padding: 15,
-    backgroundColor: "rgba(37,16,6,0.07)",
+    backgroundColor: "rgba(37,16,6,0.08)",
   },
   safePreviewPriorityKicker: { color: "#98502B", fontSize: 8, fontWeight: "900", letterSpacing: 1.5 },
   safePreviewPriorityTitle: { color: "#251006", fontSize: 16, fontWeight: "900", marginTop: 6 },
@@ -1437,7 +1419,7 @@ const styles = StyleSheet.create({
   futureRail: {
     minHeight: 62,
     marginBottom: 18,
-    borderRadius: 20,
+    borderRadius: 21,
     paddingHorizontal: 15,
     paddingVertical: 11,
     flexDirection: "row",
@@ -1445,7 +1427,7 @@ const styles = StyleSheet.create({
     gap: 12,
     backgroundColor: "rgba(45,18,7,0.74)",
     borderWidth: 1,
-    borderColor: "rgba(244,181,107,0.24)",
+    borderColor: "rgba(244,181,107,0.21)",
   },
   futureRailPulse: { width: 10, height: 10, borderRadius: 99, backgroundColor: "#D47A49" },
   futureRailPulseLive: { backgroundColor: "#F4B56B" },

@@ -1,3 +1,4 @@
+import { daApiBase } from './daApiEnvironment';
 type DaRole = 'client' | 'merchant' | 'courier' | 'ops';
 
 export type DaAuthUser = {
@@ -25,17 +26,7 @@ const REFRESH_KEY = 'da_auth_refresh_token_v1';
 
 const MEMORY: Record<string, string> = {};
 
-function apiBase(): string {
-  const extra = (globalThis as any)?.process?.env || {};
-  const raw =
-    extra.EXPO_PUBLIC_API_BASE_URL ||
-    extra.EXPO_PUBLIC_API_URL ||
-    'https://api.delishafrica.me/api/v1';
-
-  return String(raw).replace(/\/+$/, '').endsWith('/api/v1')
-    ? String(raw).replace(/\/+$/, '')
-    : String(raw).replace(/\/+$/, '') + '/api/v1';
-}
+function apiBase(): string { return daApiBase(); }
 
 function getSecureStore(): any | null {
   try {

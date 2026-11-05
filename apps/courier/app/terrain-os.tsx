@@ -75,7 +75,7 @@ export default function TerrainOSScreen() {
         </View>
 
         <ActionCard title="Route Oracle" body="Voir la meilleure route validable avant départ." to="/route-oracle" />
-        <ActionCard title="ETA mission" body="Lire le temps, la distance et la précision terrain." to="/eta-mission" />
+        <ActionCard title="ETA mission" body="Lire le temps, la distance et la précision terrain." to="/courier-eta" />
         <ActionCard title="Missions" body="Revenir au cockpit opérationnel du coursier." to="/orders" />
 
         <Text style={styles.footer}>Terrain clair · ETA lisible · action maîtrisée.</Text>

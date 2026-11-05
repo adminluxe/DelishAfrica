@@ -1,3 +1,4 @@
+// DA_GALA_INTERACTION_OSMOSIS_V1 - shared actions inherit each app chroma while deep surfaces breathe more freely; no new timer, dependency or business mutation.
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import type { DAApp } from "./tokens";
@@ -8,15 +9,17 @@ type Status = "KYC_OK" | "KYC_PENDING" | "ONLINE" | "OFFLINE" | "MISSION" | "IDL
 export function StatusPill({ app, status, label }: { app: DAApp; status: Status; label: string; }){
   const t = getDATheme(app);
 
+  const primaryAccent = app === "merchant" ? t.colors.accent : t.colors.accent2;
+
   const map: Record<Status, { bg: string; fg: string; bd: string; }> = {
-    KYC_OK:      { bg: "#0E2B22", fg: t.colors.success, bd: "#1F7A5D" },
-    KYC_PENDING: { bg: "#2A210D", fg: t.colors.warn,    bd: "#8A6A1F" },
-    ONLINE:      { bg: "#0E2B22", fg: t.colors.success, bd: "#1F7A5D" },
-    OFFLINE:     { bg: t.colors.surface1, fg: t.colors.muted, bd: t.colors.border },
-    MISSION:     { bg: "#0C1D2A", fg: t.colors.accent2, bd: "#1F4A63" },
-    IDLE:        { bg: t.colors.surface1, fg: t.colors.text2, bd: t.colors.border },
-    WARN:        { bg: "#2A210D", fg: t.colors.warn,    bd: "#8A6A1F" },
-    ERROR:       { bg: "#2A0D12", fg: t.colors.error,   bd: "#7A1F2A" },
+    KYC_OK:      { bg: t.colors.surface1, fg: t.colors.success, bd: t.colors.success },
+    KYC_PENDING: { bg: t.colors.surface1, fg: t.colors.warn,    bd: t.colors.warn },
+    ONLINE:      { bg: t.colors.surface1, fg: t.colors.success, bd: t.colors.success },
+    OFFLINE:     { bg: t.colors.surface0, fg: t.colors.muted,   bd: t.colors.border },
+    MISSION:     { bg: t.colors.surface1, fg: primaryAccent,    bd: primaryAccent },
+    IDLE:        { bg: t.colors.surface0, fg: t.colors.text2,   bd: t.colors.border },
+    WARN:        { bg: t.colors.surface1, fg: t.colors.warn,    bd: t.colors.warn },
+    ERROR:       { bg: t.colors.surface1, fg: t.colors.error,   bd: t.colors.error },
   };
 
   const c = map[status];

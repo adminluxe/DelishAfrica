@@ -1,3 +1,4 @@
+import { orderMoneyLabel } from '../../../packages/contracts/src/orderRead';
 import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -57,37 +58,9 @@ function firstItemName(order?: DemoOrder | null): string {
   return safeText(first.name || first.title || order?.itemName || order?.dishName, "Commande DelishAfrica®");
 }
 
-function amountValue(order?: DemoOrder | null): number {
-  const candidates = [
-    order?.totalCents,
-    order?.amountCents,
-    order?.cartTotalCents,
-    order?.totalAmountCents,
-    order?.total,
-    order?.amount,
-    order?.cartTotal,
-    order?.totalAmount,
-    order?.price,
-  ];
-  for (const candidate of candidates) {
-    if (candidate === null || candidate === undefined || candidate === "") continue;
-    const n = Number(candidate);
-    if (Number.isFinite(n)) return n;
-  }
-  return 0;
-}
 
-function money(orderOrValue?: DemoOrder | number | string | null): string {
-  const raw = typeof orderOrValue === "object" && orderOrValue !== null ? amountValue(orderOrValue) : Number(orderOrValue || 0);
-  if (!Number.isFinite(raw) || raw <= 0) return "—";
-  const euros = Math.abs(raw) >= 100 ? raw / 100 : raw;
-  return new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(euros);
-}
+
+function money(value: unknown): string { return orderMoneyLabel(value); }
 
 function priority(status: string): number {
   if (status === "picked_up") return 0;
@@ -233,12 +206,12 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#020807" },
   scroll: { padding: 20, paddingBottom: 48 },
   orb: { position: "absolute", top: -90, right: -70, width: 240, height: 240, borderRadius: 140, opacity: 0.22 },
-  hero: { borderWidth: 1, borderRadius: 32, padding: 26, overflow: "hidden", marginBottom: 24 },
+  hero: { borderWidth: 1, borderRadius: 34, padding: 26, overflow: "hidden", marginBottom: 24 },
   kicker: { fontSize: 13, lineHeight: 18, fontWeight: "900", letterSpacing: 5, textTransform: "uppercase", marginBottom: 22 },
   title: { color: "#F8F4EA", fontSize: 42, lineHeight: 48, fontWeight: "900", letterSpacing: -1.4 },
   subtitle: { color: "rgba(248,244,234,0.72)", fontSize: 18, lineHeight: 29, marginTop: 18 },
   metricsRow: { flexDirection: "row", gap: 8, marginTop: 26 },
-  metric: { flex: 1, minHeight: 110, borderRadius: 22, paddingHorizontal: 12, paddingVertical: 16, justifyContent: "center", backgroundColor: "rgba(255,255,255,0.07)", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
+  metric: { flex: 1, minHeight: 110, borderRadius: 21, paddingHorizontal: 12, paddingVertical: 16, justifyContent: "center", backgroundColor: "rgba(255,255,255,0.07)", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
   metricLabel: { color: "rgba(248,244,234,0.62)", fontSize: 10, lineHeight: 14, fontWeight: "900", letterSpacing: 1.3, textTransform: "uppercase" },
   metricValue: { color: "#F8F4EA", fontSize: 24, lineHeight: 29, fontWeight: "900", marginTop: 8 },
   metricHint: { color: "rgba(248,244,234,0.58)", fontSize: 12, lineHeight: 16, marginTop: 6 },
@@ -247,7 +220,7 @@ const styles = StyleSheet.create({
   panelTitle: { fontSize: 34, lineHeight: 40, fontWeight: "900", letterSpacing: -1, marginBottom: 10 },
   panelMeta: { fontSize: 16, lineHeight: 24, fontWeight: "800", opacity: 0.68, marginBottom: 20 },
   insightGrid: { gap: 12 },
-  insight: { borderRadius: 20, padding: 16, backgroundColor: "rgba(0,0,0,0.08)" },
+  insight: { borderRadius: 21, padding: 16, backgroundColor: "rgba(0,0,0,0.08)" },
   insightLabel: { fontSize: 12, lineHeight: 16, fontWeight: "900", letterSpacing: 1.6, opacity: 0.58, textTransform: "uppercase" },
   insightValue: { fontSize: 24, lineHeight: 30, fontWeight: "900", marginTop: 6 },
   steps: { gap: 14, marginTop: 26 },

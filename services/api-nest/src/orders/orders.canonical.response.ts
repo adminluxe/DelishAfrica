@@ -44,6 +44,12 @@ function adaptOrder(input: unknown): UnknownRecord {
   const source = asRecord(input) ?? {};
   const customer = asRecord(source.customer ?? source.client) ?? {};
   const payment = asRecord(source.payment) ?? {};
+  const safety = asRecord(source.safety) ?? {};
+  const flags = (key: string): string[] => [...new Set(
+    [safety, source, customer].flatMap(value => Array.isArray(value[key]) ? (value[key] as unknown[]).map(String).map(v => v.trim()).filter(Boolean) : []),
+  )];
+  const allergenFlags = flags('allergenFlags');
+  const dietaryTags = flags('dietaryTags');
   const publicId = firstString(source, ["publicId", "orderId", "id"], "UNKNOWN");
   const currency = firstString(source, ["currency"], "EUR").toUpperCase().slice(0, 3);
   const status = normalizeStatus(source.status);
@@ -60,7 +66,7 @@ function adaptOrder(input: unknown): UnknownRecord {
       lineTotal: { amountMinor: Math.round(amountMinor), currency },
       options: [],
       extras: [],
-      allergens: [],
+      allergens: Array.isArray(item.allergens) ? [...item.allergens] : [],
       preparationState: "queued",
     };
   }) : [];
@@ -104,9 +110,10 @@ function adaptOrder(input: unknown): UnknownRecord {
       delivery: firstString(source, ["deliveryInstructions", "instructions"]) || firstString(customer, ["instructions"]) || undefined,
     },
     safety: {
-      allergenFlags: [],
-      dietaryTags: [],
-      requiresMerchantAcknowledgement: false,
+      allergenFlags,
+      dietaryTags,
+      note: firstString(safety, ['note']) || firstString(source, ['foodSafetyNote']) || firstString(customer, ['foodSafetyNote']) || undefined,
+      requiresMerchantAcknowledgement: allergenFlags.length > 0 || safety.requiresMerchantAcknowledgement === true,
     },
     pricing: {
       subtotal: { amountMinor: Math.round(firstNumber(source, ["subtotalMinor", "subtotal"]) ?? totalMinor), currency },

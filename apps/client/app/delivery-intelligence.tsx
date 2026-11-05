@@ -3,13 +3,13 @@ import {
   AccessibilityInfo,
   Animated,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { AquaticSignature } from "../components/aquatic/AquaticSignature";
 

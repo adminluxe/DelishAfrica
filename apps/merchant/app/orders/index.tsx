@@ -1,7 +1,11 @@
+import { daMerchantIdentityEpoch, daAssertMerchantIdentity, daOnMerchantIdentityChange } from '../../utils/daIdentityEpoch';
+import { readOrderList, orderMoneyLabel, orderSafety, orderReadFailure, orderReadMessage, type OrderReadState } from '../../../../packages/contracts/src/orderRead';
+import { assessJourneySignal, type JourneySignal } from "../../../../packages/contracts/src/missionJourney";
 import { daOrdersFetch } from "../../utils/daOrdersApi";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AccessibilityInfo,
+  AppState,
   ActivityIndicator,
   Animated,
   Alert,
@@ -54,13 +58,17 @@ type Order = {
   total?: number;
   amount?: number;
   deliveryAddress?: string;
+  assignmentProposal?: {
+    status?: string;
+    proposalStatus?: string;
+    totalEtaMin?: number;
+    etaMin?: number;
+    confidence?: number;
+    score?: number;
+  };
 };
 
-type LiveLocationRead = {
-  freshness?: "live" | "recent" | "stale" | "stopped" | "missing";
-  ageSeconds?: number | null;
-  location?: { courierName?: string; stage?: "to_restaurant" | "to_customer" } | null;
-};
+type LiveLocationRead = JourneySignal;
 
 const RAW_API =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
@@ -95,44 +103,25 @@ function displayList(values?: unknown[]) {
   if (!Array.isArray(values)) return [];
   return values.map((value) => String(value || '').trim()).filter(Boolean);
 }
-function safetySignals(order: Order) {
-  const safety = order.canonical?.safety || order.safety || {};
-  const allergens = displayList(
-    safety.allergenFlags || order.allergenFlags || order.customer?.allergenFlags,
-  );
-  const dietary = displayList(
-    safety.dietaryTags || order.dietaryTags || order.customer?.dietaryTags,
-  );
-  const note = String(safety.note || order.foodSafetyNote || order.customer?.foodSafetyNote || '').trim();
-  return {
-    allergens,
-    dietary,
-    note,
-    urgent: allergens.length > 0 || Boolean(safety.requiresMerchantAcknowledgement),
-  };
-}
-function money(order: Order) {
-  const raw = Number(order.total ?? order.amount ?? 0);
-  const euros = Math.abs(raw) >= 100 ? raw / 100 : raw;
-  return `${euros.toFixed(2).replace(".", ",")} €`;
-}
-function extractOrders(payload: any): Order[] {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.orders)) return payload.orders;
-  if (Array.isArray(payload?.data?.orders)) return payload.data.orders;
-  if (Array.isArray(payload?.items)) return payload.items;
-  if (Array.isArray(payload?.data)) return payload.data;
-  return [];
-}
+function safetySignals(order: Order) { return orderSafety(order); }
+function money(order: Order) { return orderMoneyLabel(order); }
+function extractOrders(payload: any): Order[] { return readOrderList<Order>(payload); }
 async function postJson(path: string, body: Record<string, unknown> = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
   const response = await daOrdersFetch(`${API_BASE_URL}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify(body),
+    signal: controller.signal,
   });
+  const responseEpoch = daMerchantIdentityEpoch();
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload?.message || payload?.error || `HTTP ${response.status}`);
+  daAssertMerchantIdentity(responseEpoch);
+  if (!response.ok) { const error = new Error("La connexion au service est indisponible.") as Error & { status: number }; error.status = response.status; throw error; }
   return payload;
+  } finally { clearTimeout(timeout); }
 }
 function statusLabel(status: string) {
   if (status === "pending") return "À accepter";
@@ -142,12 +131,43 @@ function statusLabel(status: string) {
   if (status === "delivered") return "Livrée";
   return status;
 }
-function signalLabel(read?: LiveLocationRead) {
-  if (read?.freshness === "live") return `Coursier en mouvement${read.ageSeconds ? ` · ${read.ageSeconds}s` : ""}`;
-  if (read?.freshness === "recent") return `Signal récent${read.ageSeconds ? ` · ${read.ageSeconds}s` : ""}`;
-  if (read?.freshness === "stale") return "Signal à rafraîchir";
-  if (read?.freshness === "stopped") return "Partage arrêté";
-  return "Signal coursier en attente";
+function signalLabel(read?: LiveLocationRead, now = Date.now()) { return assessJourneySignal(read, now).label; }
+
+type MerchantHandoffView = { label: string; kitchen: string; terrain: string; bridge: string; proof: string; active: boolean };
+function merchantHandoffView(order: Order, read?: LiveLocationRead, now = Date.now()): MerchantHandoffView {
+  const status = statusOf(order);
+  const signal = assessJourneySignal(read, now);
+  const toRestaurant = signal.usable && read?.location?.stage === "to_restaurant";
+  const courier = read?.location?.courierName || "Votre coursier";
+  if (status === "picked_up") return { label: "RETRAIT CONFIRMÉ", kitchen: "Remise effectuée", terrain: "Vers le client", bridge: "La commande a quitté le restaurant. Le client retrouve la suite de sa livraison dans son suivi.", proof: signal.label, active: true };
+  if (status === "ready") return { label: "PRÊTE POUR LE RETRAIT", kitchen: "Commande prête", terrain: toRestaurant ? `${courier} · position partagée` : "Position du coursier en attente", bridge: toRestaurant ? "Le coursier partage sa position pour le retrait. Gardez la commande à portée de main." : "La commande est prête. L’heure d’arrivée du coursier reste à confirmer.", proof: signal.label, active: true };
+  if (status === "accepted") return { label: "EN PRÉPARATION", kitchen: "Préparation confirmée", terrain: "Retrait à venir", bridge: "Préparez la commande à votre rythme, puis indiquez lorsqu’elle est prête.", proof: "Le retrait sera la prochaine étape.", active: true };
+  if (["delivered", "completed"].includes(status)) return { label: "LIVRAISON TERMINÉE", kitchen: "Remise effectuée", terrain: "Livraison confirmée", bridge: "Le client a reçu sa commande.", proof: "La commande est terminée.", active: false };
+  return { label: "COMMANDE EN ATTENTE", kitchen: "Commande à accepter", terrain: "Retrait à venir", bridge: "Vérifiez la commande et ses indications avant de l’accepter.", proof: "La préparation démarre après votre acceptation.", active: false };
+}
+
+function MerchantHandoffCurrent({ order, read, now }: { order: Order; read?: LiveLocationRead; now: number }) {
+  const view = merchantHandoffView(order, read, now);
+  return (
+    <View style={styles.confluenceCard}>
+      <View style={styles.confluenceTop}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.confluenceKicker}>CUISINE · RETRAIT · LIVRAISON</Text>
+          <Text style={styles.confluenceTitle}>Le prochain geste, au bon moment.</Text>
+        </View>
+        <View style={[styles.confluenceBadge, view.active && styles.confluenceBadgeActive]}>
+          <Text style={[styles.confluenceBadgeText, view.active && styles.confluenceBadgeTextActive]}>{view.label}</Text>
+        </View>
+      </View>
+      <View style={styles.confluenceStreams}>
+        <View style={styles.confluenceStream}><Text style={styles.confluenceStreamLabel}>CUISINE</Text><Text style={styles.confluenceStreamValue}>{view.kitchen}</Text></View>
+        <View style={styles.confluenceJoin}><View style={styles.confluenceJoinLine} /><View style={[styles.confluenceJoinDrop, view.active && styles.confluenceJoinDropActive]} /><View style={styles.confluenceJoinLine} /></View>
+        <View style={styles.confluenceStream}><Text style={styles.confluenceStreamLabel}>COURSIER</Text><Text style={styles.confluenceStreamValue}>{view.terrain}</Text></View>
+      </View>
+      <Text style={styles.confluenceBridge}>{view.bridge}</Text>
+      <Text style={styles.confluenceProof}>{view.proof}</Text>
+    </View>
+  );
 }
 
 function merchantFlowIndex(status: string) {
@@ -286,11 +306,19 @@ export default function MerchantOrdersFocus() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [message, setMessage] = useState("Cockpit prêt.");
-  const [sessionRequired, setSessionRequired] = useState(false);
+  const [message, setMessage] = useState("Vos commandes sont prêtes à être consultées.");
+  const [readState, setReadState] = useState<OrderReadState>('loading');
+  const sessionRequired = readState === 'auth_required';
+  const accessRequired = sessionRequired || readState === 'forbidden';
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [liveLocations, setLiveLocations] = useState<Record<string, LiveLocationRead>>({});
+  const [signalNow, setSignalNow] = useState(Date.now());
+  useEffect(() => daOnMerchantIdentityChange(() => {
+    setOrders([]); setLiveLocations({}); setSelectedOrderId(null); setReadState('loading');
+  }), []);
+
+  useEffect(() => { const timer = setInterval(() => setSignalNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   const reduceMotion = useReduceMotionPreference();
   const statusMutationRef = useRef<string | null>(null);
 
@@ -306,13 +334,15 @@ export default function MerchantOrdersFocus() {
     setRefreshing(true);
     try {
       const list = await readOrders();
-      setSessionRequired(false);
+      setReadState('ready');
       setMessage(`${list.length} commande${list.length > 1 ? "s" : ""} synchronisée${list.length > 1 ? "s" : ""}.`);
     } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error || '');
-      const needsSession = reason.includes('merchant_oidc_session_required') || reason.includes('Session restaurateur indisponible');
-      setSessionRequired(needsSession);
-      setMessage(needsSession ? "Connexion Merchant requise" : reason || "Synchronisation indisponible");
+      const state = orderReadFailure(error);
+      setReadState(state);
+      setOrders([]);
+      setLiveLocations({});
+      setSelectedOrderId(null);
+      setMessage(orderReadMessage(state));
     } finally {
       setRefreshing(false);
     }
@@ -359,23 +389,27 @@ export default function MerchantOrdersFocus() {
   useEffect(() => {
     let cancelled = false;
     const candidates = active.filter((order) => ["ready", "picked_up"].includes(statusOf(order)));
+    let inFlight = false;
     async function refreshSignals() {
+      if (inFlight || AppState.currentState && AppState.currentState !== "active") return;
+      inFlight = true;
       if (!candidates.length) {
         if (!cancelled) setLiveLocations({});
-        return;
+        inFlight = false; return;
       }
       const rows = await Promise.all(
         candidates.map(async (order) => {
           const id = orderId(order);
           try {
             const payload = await postJson("/orders/demo/location/get", { orderId: id });
-            return [id, payload as LiveLocationRead] as const;
-          } catch {
-            return [id, { freshness: "missing", location: null } as LiveLocationRead] as const;
+            return [id, { ...payload, receivedAtMs: Date.now() } as LiveLocationRead] as const;
+          } catch (error) {
+            return [id, [401, 403, 404].includes((error as any)?.status) ? { freshness: "missing", location: null } as LiveLocationRead : null] as const;
           }
         }),
       );
-      if (!cancelled) setLiveLocations(Object.fromEntries(rows));
+      if (!cancelled) setLiveLocations((previous) => Object.fromEntries(rows.map(([id, value]) => [id, value || previous[id] || { freshness: "missing", location: null }])));
+      inFlight = false;
     }
     void refreshSignals();
     const timer = setInterval(() => void refreshSignals(), 6000);
@@ -487,11 +521,12 @@ export default function MerchantOrdersFocus() {
             </View>
           ) : null}
           <HandoffRail status={status} compact={compact} reduceMotion={reduceMotion} />
+          {!compact ? <MerchantHandoffCurrent order={order} read={liveLocations[id]}  now={signalNow} /> : null}
           {["ready", "picked_up"].includes(status) ? (
             <View style={[styles.signalRow, compact && styles.signalRowCompact]}>
-              <View style={[styles.signalDot, ["live", "recent"].includes(String(liveLocations[id]?.freshness)) && styles.signalDotLive]} />
+              <View style={[styles.signalDot, assessJourneySignal(liveLocations[id], signalNow).usable && styles.signalDotLive]} />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.signalTitle, compact && styles.signalTitleCompact]}>{signalLabel(liveLocations[id])}</Text>
+                <Text style={[styles.signalTitle, compact && styles.signalTitleCompact]}>{signalLabel(liveLocations[id], signalNow)}</Text>
                 <Text style={[styles.signalMeta, compact && styles.signalMetaCompact]}>{liveLocations[id]?.location?.courierName || "Mission Live"}</Text>
               </View>
             </View>
@@ -531,30 +566,30 @@ export default function MerchantOrdersFocus() {
           <View style={{ flex: 1 }}>
             <Text style={styles.brand}>DELISHAFRICA® · MERCHANT</Text>
             <Text style={styles.title}>Service maintenant</Text>
-            <Text style={styles.subtitle}>{sessionRequired ? "Identité Merchant requise pour les opérations" : `${Math.max(restaurants.length, 1)} établissement${restaurants.length > 1 ? "s" : ""} · ${message}`}</Text>
+            <Text style={styles.subtitle}>{readState === "ready" ? message : orderReadMessage(readState)}</Text>
           </View>
           <Pressable style={styles.closeButton} onPress={() => router.replace("/")}><Text style={styles.closeText}>Fermer</Text></Pressable>
         </View>
 
         <View style={styles.metricRow}>
-          <View style={styles.metric}><Text style={styles.metricValue}>{orders.filter((o) => statusOf(o) === "pending").length}</Text><Text style={styles.metricLabel}>À accepter</Text></View>
-          <View style={styles.metric}><Text style={styles.metricValue}>{orders.filter((o) => statusOf(o) === "accepted").length}</Text><Text style={styles.metricLabel}>Cuisine</Text></View>
-          <View style={styles.metric}><Text style={styles.metricValue}>{orders.filter((o) => statusOf(o) === "ready").length}</Text><Text style={styles.metricLabel}>Prêtes</Text></View>
+          <View style={styles.metric}><Text style={styles.metricValue}>{readState === "ready" ? orders.filter((o) => statusOf(o) === "pending").length : "—"}</Text><Text style={styles.metricLabel}>À accepter</Text></View>
+          <View style={styles.metric}><Text style={styles.metricValue}>{readState === "ready" ? orders.filter((o) => statusOf(o) === "accepted").length : "—"}</Text><Text style={styles.metricLabel}>Cuisine</Text></View>
+          <View style={styles.metric}><Text style={styles.metricValue}>{readState === "ready" ? orders.filter((o) => statusOf(o) === "ready").length : "—"}</Text><Text style={styles.metricLabel}>Prêtes</Text></View>
         </View>
 
-        {sessionRequired ? (
+        {accessRequired ? (
           <View style={styles.sessionCard}>
             <Text style={styles.sessionKicker}>ACCÈS MERCHANT</Text>
-            <Text style={styles.sessionTitle}>Connectez le compte réel pour reprendre le service.</Text>
-            <Text style={styles.sessionBody}>Aucune session de développement ne remplace désormais votre identité Merchant.</Text>
+            <Text style={styles.sessionTitle}>{sessionRequired ? "Connexion au compte requise." : "Accès à l’établissement à vérifier."}</Text>
+            <Text style={styles.sessionBody}>{orderReadMessage(readState)}</Text>
             <Pressable style={styles.sessionButton} onPress={() => router.push("/auth-session" as any)}>
-              <Text style={styles.sessionButtonText}>Connecter le compte Merchant</Text>
+              <Text style={styles.sessionButtonText}>{sessionRequired ? "Connecter le compte Merchant" : "Vérifier l’accès à l’établissement"}</Text>
             </Pressable>
           </View>
         ) : null}
 
         <Text style={styles.sectionKicker}>UNE PRIORITÉ À LA FOIS</Text>
-        {focusOrder ? <OrderCard order={focusOrder} /> : <View style={styles.empty}><Text style={styles.emptyTitle}>Aucune action urgente</Text><Text style={styles.emptyText}>Le service est calme. Les nouvelles commandes apparaîtront ici.</Text></View>}
+        {focusOrder ? <OrderCard order={focusOrder} /> : <View style={styles.empty}><Text style={styles.emptyTitle}>{readState === "ready" ? "Aucune action urgente" : "Commandes non confirmées"}</Text><Text style={styles.emptyText}>{readState === "ready" ? "Aucune commande active dans la liste synchronisée." : orderReadMessage(readState)}</Text></View>}
 
         {active.length > 1 ? (
           <View style={styles.orbitShell}>
@@ -615,6 +650,24 @@ export default function MerchantOrdersFocus() {
 }
 
 const styles = StyleSheet.create({
+  confluenceCard: { marginTop: 14, borderRadius: 22, padding: 14, backgroundColor: "rgba(30,16,10,0.72)", borderWidth: 1, borderColor: "rgba(244,177,105,0.22)", gap: 12 },
+  confluenceTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 },
+  confluenceKicker: { color: "#F4B169", fontSize: 9, fontWeight: "900", letterSpacing: 1.6 },
+  confluenceTitle: { color: "#FFF7EF", fontSize: 15, lineHeight: 20, fontWeight: "900", marginTop: 4 },
+  confluenceBadge: { maxWidth: 150, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 6, borderWidth: 1, borderColor: "rgba(244,177,105,0.18)", backgroundColor: "rgba(255,255,255,0.035)" },
+  confluenceBadgeActive: { borderColor: "rgba(91,224,181,0.34)", backgroundColor: "rgba(27,95,71,0.28)" },
+  confluenceBadgeText: { color: "rgba(255,247,239,0.58)", fontSize: 8.5, lineHeight: 11, fontWeight: "900", letterSpacing: 0.6, textAlign: "center" },
+  confluenceBadgeTextActive: { color: "#79E5BD" },
+  confluenceStreams: { flexDirection: "row", alignItems: "stretch", gap: 7 },
+  confluenceStream: { flex: 1, minHeight: 66, borderRadius: 16, padding: 10, backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1, borderColor: "rgba(244,177,105,0.10)" },
+  confluenceStreamLabel: { color: "rgba(255,247,239,0.54)", fontSize: 8.5, fontWeight: "900", letterSpacing: 1.1 },
+  confluenceStreamValue: { color: "#FFF7EF", fontSize: 12.5, lineHeight: 17, fontWeight: "800", marginTop: 6 },
+  confluenceJoin: { width: 26, alignItems: "center", justifyContent: "center" },
+  confluenceJoinLine: { width: 1, flex: 1, backgroundColor: "rgba(244,177,105,0.18)" },
+  confluenceJoinDrop: { width: 11, height: 11, borderTopLeftRadius: 7, borderTopRightRadius: 7, borderBottomLeftRadius: 7, borderBottomRightRadius: 3, borderWidth: 1, borderColor: "rgba(244,177,105,0.32)", backgroundColor: "rgba(244,177,105,0.12)", transform: [{ rotate: "45deg" }] },
+  confluenceJoinDropActive: { borderColor: "rgba(121,229,189,0.70)", backgroundColor: "rgba(121,229,189,0.24)" },
+  confluenceBridge: { color: "rgba(255,247,239,0.76)", fontSize: 12, lineHeight: 18, fontWeight: "700" },
+  confluenceProof: { color: "rgba(255,247,239,0.46)", fontSize: 9.5, lineHeight: 14, fontWeight: "700" },
   safe: { flex: 1, backgroundColor: "#120804" },
   sessionCard: { borderRadius: 26, padding: 20, marginBottom: 22, backgroundColor: "rgba(255,184,107,0.10)", borderWidth: 1, borderColor: "rgba(255,184,107,0.28)" },
   sessionKicker: { color: "#FFB86B", fontSize: 10, fontWeight: "900", letterSpacing: 2.4 },

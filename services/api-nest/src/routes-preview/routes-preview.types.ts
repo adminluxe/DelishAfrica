@@ -19,6 +19,7 @@ waypoints?: Array<Partial<RoutePoint>> | null;
 mode?: RouteTravelMode | string | null;
 orderId?: string | null;
 source?: string | null;
+languageCode?: string | null;
 }
 
 export interface RoutePreviewMeta {

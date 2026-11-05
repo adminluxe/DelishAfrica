@@ -50,17 +50,39 @@ export const GLOBAL_MARKETPLACE_CATALOG: MarketplaceRadarEntry[] = [
       "Afrique centrale"
     ],
     "description": "Cuisine congolaise repérée dans le paysage bruxellois.",
-    "sourceUrl": "https://afrikanarestaurant.be/",
-    "sourceLabel": "Site officiel",
+    "sourceUrl": "https://afrikanarestaurant.be/fr/menu/menu",
+    "sourceLabel": "Site officiel · carte",
     "sourceKind": "official",
-    "checkedAt": "2026-07-18",
+    "checkedAt": "2026-10-24",
     "launchWave": 1,
     "priority": "launch",
     "tags": [
       "Bruxelles",
       "Afrique centrale"
     ],
-    "availability": "watchlist"
+    "availability": "watchlist",
+    "publicAddress": "Rue du Marteau 29, 1000 Bruxelles, Belgique",
+    "publicMenuNote": "Repères tirés d’une carte publique à la date du 24 octobre 2026 (Afrikana). Extraits indicatifs seulement : prix, allergènes et disponibilité à confirmer directement avec le restaurant. Aucun plat commandable sans partenariat.",
+    "publicMenuHighlights": [
+      {
+        "name": "Chèvre grillée",
+        "priceLabel": "22,00 €",
+        "checkedAt": "2026-10-24",
+        "sourceUrl": "https://afrikanarestaurant.be/fr/menu/menu"
+      },
+      {
+        "name": "Poulet coco",
+        "priceLabel": "19,50 €",
+        "checkedAt": "2026-10-24",
+        "sourceUrl": "https://afrikanarestaurant.be/fr/menu/menu"
+      },
+      {
+        "name": "Veggie",
+        "priceLabel": "19,00 €",
+        "checkedAt": "2026-10-24",
+        "sourceUrl": "https://afrikanarestaurant.be/fr/menu/menu"
+      }
+    ]
   },
   {
     "id": "be-brussels-mere-malou",
@@ -543,18 +565,40 @@ export const GLOBAL_MARKETPLACE_CATALOG: MarketplaceRadarEntry[] = [
       "Éthiopien",
       "Afrique de l’Est"
     ],
-    "description": "Table éthiopienne repérée à Bruxelles.",
-    "sourceUrl": "https://bruxellessecrete.com/en/african-restaurants-brussels/",
-    "sourceLabel": "Bruxelles Secrète",
-    "sourceKind": "editorial",
-    "checkedAt": "2026-07-18",
+    "description": "Maison éthiopienne à Bruxelles : injera et plats de partage repérés sur la carte officielle.",
+    "sourceUrl": "https://toukoulresto.be/menu",
+    "sourceLabel": "Site officiel · carte",
+    "sourceKind": "official",
+    "checkedAt": "2026-10-24",
     "launchWave": 1,
     "priority": "launch",
     "tags": [
       "Bruxelles",
       "Repéré en ligne"
     ],
-    "availability": "watchlist"
+    "availability": "watchlist",
+    "publicAddress": "Rue de Laeken 34, 1000 Bruxelles, Belgique",
+    "publicMenuNote": "Repères tirés d’une carte publique à la date du 24 octobre 2026 (Toukoul). Extraits indicatifs seulement : prix, allergènes et disponibilité à confirmer directement avec le restaurant. Aucun plat commandable sans partenariat.",
+    "publicMenuHighlights": [
+      {
+        "name": "Shiro Wot",
+        "priceLabel": "16,50 €",
+        "checkedAt": "2026-10-24",
+        "sourceUrl": "https://toukoulresto.be/menu"
+      },
+      {
+        "name": "Yemiser Key Wot",
+        "priceLabel": "16,50 €",
+        "checkedAt": "2026-10-24",
+        "sourceUrl": "https://toukoulresto.be/menu"
+      },
+      {
+        "name": "Engudai Tibs",
+        "priceLabel": "14,50 €",
+        "checkedAt": "2026-10-24",
+        "sourceUrl": "https://toukoulresto.be/menu"
+      }
+    ]
   },
   {
     "id": "be-brussels-fasika",
@@ -833,16 +877,37 @@ export const GLOBAL_MARKETPLACE_CATALOG: MarketplaceRadarEntry[] = [
     ],
     "description": "Cuisine africaine contemporaine repérée à Paris.",
     "sourceUrl": "https://www.mamakossa.fr/",
-    "sourceLabel": "Site officiel",
+    "sourceLabel": "Site officiel · carte",
     "sourceKind": "official",
-    "checkedAt": "2026-07-18",
+    "checkedAt": "2026-10-24",
     "launchWave": 1,
     "priority": "launch",
     "tags": [
       "Paris",
       "Contemporain"
     ],
-    "availability": "watchlist"
+    "availability": "watchlist",
+    "publicMenuNote": "Repères tirés d’une carte publique à la date du 24 octobre 2026 (Mama Kossa). Extraits indicatifs seulement : prix, allergènes et disponibilité à confirmer directement avec le restaurant. Aucun plat commandable sans partenariat.",
+    "publicMenuHighlights": [
+      {
+        "name": "Peanut Butter Houmous",
+        "priceLabel": "10,00 €",
+        "checkedAt": "2026-10-24",
+        "sourceUrl": "https://www.mamakossa.fr/"
+      },
+      {
+        "name": "Planticini",
+        "priceLabel": "13,00 €",
+        "checkedAt": "2026-10-24",
+        "sourceUrl": "https://www.mamakossa.fr/"
+      },
+      {
+        "name": "Mama’s Jerk Chicken (8 pièces)",
+        "priceLabel": "12,00 €",
+        "checkedAt": "2026-10-24",
+        "sourceUrl": "https://www.mamakossa.fr/"
+      }
+    ]
   },
   {
     "id": "fr-paris-le-lokosso",
@@ -2237,6 +2302,157 @@ export const GLOBAL_MARKETPLACE_CATALOG: MarketplaceRadarEntry[] = [
       "Cuisine locale"
     ],
     "availability": "watchlist"
+  },
+  {
+    "id": "lu-luxembourg-chez-doudou",
+    "name": "Chez Doudou",
+    "city": "Luxembourg",
+    "country": "Luxembourg",
+    "countryCode": "LU",
+    "cuisine": "Camerounais · afro-européen",
+    "cuisines": [
+      "Camerounais",
+      "Afro-européen",
+      "Bistronomie"
+    ],
+    "description": "Maison bistronomique afro-européenne au quartier Eich ; cuisine inspirée notamment du Cameroun et des produits de saison.",
+    "sourceUrl": "https://www.chezdoudou.lu/",
+    "sourceLabel": "Site officiel",
+    "sourceKind": "official",
+    "checkedAt": "2026-10-24",
+    "launchWave": 1,
+    "priority": "launch",
+    "tags": [
+      "Luxembourg-Ville",
+      "Eich",
+      "Bistronomie",
+      "Afrique centrale"
+    ],
+    "availability": "watchlist",
+    "publicAddress": "11 place François-Joseph Dargent, L-1413 Eich, Luxembourg",
+    "publicMenuNote": "Carte et menu de semaine renouvelés ; spécialité de sauce Mbongo mentionnée sur le site. Prix et intitulés du moment à confirmer avant de référencer des plats."
+  },
+  {
+    "id": "lu-luxembourg-mosob-habesha",
+    "name": "Mosob Habesha",
+    "city": "Luxembourg",
+    "country": "Luxembourg",
+    "countryCode": "LU",
+    "cuisine": "Éthiopien",
+    "cuisines": [
+      "Éthiopien",
+      "Afrique de l’Est",
+      "Végétarien"
+    ],
+    "description": "Table éthiopienne repérée à Luxembourg-Ville, autour de l’injera et de la cuisine de partage ; détails et horaires à confirmer directement.",
+    "sourceUrl": "https://mosob.restaurant/fr",
+    "sourceLabel": "Site de l’établissement",
+    "sourceKind": "official",
+    "checkedAt": "2026-10-24",
+    "launchWave": 1,
+    "priority": "launch",
+    "tags": [
+      "Luxembourg-Ville",
+      "Injera",
+      "Afrique de l’Est"
+    ],
+    "availability": "watchlist",
+    "publicAddress": "33 Rue du Fort Neipperg, Luxembourg-Ville, Luxembourg",
+    "publicMenuNote": "Aucune carte tarifée suffisamment précise vérifiée pour une reprise de plats. Préparer les repères après confirmation de l’établissement."
+  },
+  {
+    "id": "fr-marseille-ziguinchor",
+    "name": "Ziguinchor",
+    "city": "Marseille",
+    "country": "France",
+    "countryCode": "FR",
+    "cuisine": "Sénégalais",
+    "cuisines": [
+      "Sénégalais",
+      "Afrique de l’Ouest"
+    ],
+    "description": "Restaurant sénégalais du centre de Marseille ; yassa, mafé et tiéboudienne mis en avant sur sa carte officielle.",
+    "sourceUrl": "https://restaurant-ziguinchor.com/",
+    "sourceLabel": "Site officiel · carte",
+    "sourceKind": "official",
+    "checkedAt": "2026-10-24",
+    "launchWave": 1,
+    "priority": "launch",
+    "tags": [
+      "Marseille",
+      "Sénégal",
+      "Cours Julien",
+      "Yassa"
+    ],
+    "availability": "watchlist",
+    "publicAddress": "20 rue Pastoret, 13006 Marseille, France",
+    "publicMenuNote": "Repères tirés d’une carte publique à la date du 24 octobre 2026 (Ziguinchor). Extraits indicatifs seulement : prix, allergènes et disponibilité à confirmer directement avec le restaurant. Aucun plat commandable sans partenariat.",
+    "publicMenuHighlights": [
+      {
+        "name": "Yassa poulet",
+        "priceLabel": "15,00 €",
+        "checkedAt": "2026-10-24",
+        "sourceUrl": "https://restaurant-ziguinchor.com/carte-menu/"
+      },
+      {
+        "name": "Mafé bœuf ou poulet",
+        "priceLabel": "16,00 €",
+        "checkedAt": "2026-10-24",
+        "sourceUrl": "https://restaurant-ziguinchor.com/carte-menu/"
+      },
+      {
+        "name": "Tieboudien",
+        "priceLabel": "17,00 €",
+        "checkedAt": "2026-10-24",
+        "sourceUrl": "https://restaurant-ziguinchor.com/carte-menu/"
+      }
+    ]
+  },
+  {
+    "id": "fr-marseille-okwat-food",
+    "name": "O’Kwat Food",
+    "city": "Marseille",
+    "country": "France",
+    "countryCode": "FR",
+    "cuisine": "Street food africaine",
+    "cuisines": [
+      "Afrique subsaharienne",
+      "Afrique de l’Ouest",
+      "Street food"
+    ],
+    "description": "Cuisine de quartier et street food africaine à l’Estaque, avec service à emporter ou livraison mentionné par l’établissement.",
+    "sourceUrl": "https://okwatfood.fr/",
+    "sourceLabel": "Site officiel",
+    "sourceKind": "official",
+    "checkedAt": "2026-10-24",
+    "launchWave": 1,
+    "priority": "launch",
+    "tags": [
+      "Marseille",
+      "Estaque",
+      "Street food",
+      "Mafé"
+    ],
+    "availability": "watchlist",
+    "publicAddress": "84 boulevard Roger Chieusse, 13016 Marseille, France",
+    "publicMenuNote": "Spécialités de carte et traiteur visibles sur le site officiel. Aucun prix de plat individuel repris : à confirmer avec l’établissement avant officialisation.",
+    "publicMenuHighlights": [
+      {
+        "name": "Poulet Yassa",
+        "checkedAt": "2026-10-24",
+        "sourceUrl": "https://okwatfood.fr/"
+      },
+      {
+        "name": "Poulet Mafé",
+        "checkedAt": "2026-10-24",
+        "sourceUrl": "https://okwatfood.fr/"
+      },
+      {
+        "name": "Poulet fumé à l’Odika",
+        "checkedAt": "2026-10-24",
+        "sourceUrl": "https://okwatfood.fr/"
+      }
+    ]
   }
 ];
 

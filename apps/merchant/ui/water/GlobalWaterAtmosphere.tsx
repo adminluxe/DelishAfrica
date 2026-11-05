@@ -16,6 +16,14 @@ const MERCHANT_GLOBAL_DROPS = require("../../assets/h2o/merchant-h2o-premium-v1.
 const MERCHANT_SPECULAR_GLINTS = require("../../assets/h2o/merchant-h2o-specular-glints-v1.png");
 const MERCHANT_DROP_SPRITE = require("../../assets/h2o/merchant-h2o-drop-sprite-v1.png");
 
+// DA_GALA_H2O_HOME_DNA_V2 - one ocean, three pulses.
+// DA_GALA_PHYSICAL_MATTER_V3 - optical meniscus + physical bead field.
+// DA_GALA_SIGNATURE_DROPLET_V4 - signature optical rim + multi-depth surface light.
+// DA_GALA_NETWORK_ORGANISM_V1 - organic meniscus geometry; fewer perfect rings, more physical droplets.
+// DA_GALA_REFRACTIVE_INTELLIGENCE_V1 - droplets gain asymmetric optical compression instead of additional quantity.
+const DA_GALA_HOME_WATER_PRESENCE = 0.78;
+const DA_GALA_HOME_REDUCED_TRANSPARENCY_PRESENCE = 0.18;
+
 /**
  * S10S — Merchant Universal Rain Canopy.
  * Courier's proven two-depth rain morphology becomes a persistent Merchant weather skin
@@ -31,9 +39,10 @@ export function GlobalWaterAtmosphere() {
   const rainNearPhase = useRef(new Animated.Value(0)).current;
   const rainFarPhase = useRef(new Animated.Value(0)).current;
   const phase = useRef(new Animated.Value(0)).current;
-  const presence = useRef(new Animated.Value(isHome ? 0 : 1)).current;
+  const presence = useRef(new Animated.Value(isHome ? DA_GALA_HOME_WATER_PRESENCE : 1)).current;
   const dropA = useRef(new Animated.Value(0)).current;
   const dropB = useRef(new Animated.Value(0)).current;
+  const dropC = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     let mounted = true;
@@ -96,7 +105,7 @@ export function GlobalWaterAtmosphere() {
 
   useEffect(() => {
     phase.stopAnimation();
-    if (isHome || reduceMotion) {
+    if (reduceMotion) {
       phase.setValue(0.43);
       return undefined;
     }
@@ -125,7 +134,9 @@ export function GlobalWaterAtmosphere() {
 
   useEffect(() => {
     presence.stopAnimation();
-    const target = isHome ? 0 : reduceTransparency ? 0.12 : 1;
+    const target = reduceTransparency
+      ? (isHome ? DA_GALA_HOME_REDUCED_TRANSPARENCY_PRESENCE : 0.12)
+      : (isHome ? DA_GALA_HOME_WATER_PRESENCE : 1);
     if (reduceMotion) {
       presence.setValue(target);
       return undefined;
@@ -143,19 +154,22 @@ export function GlobalWaterAtmosphere() {
   useEffect(() => {
     dropA.stopAnimation();
     dropB.stopAnimation();
-    if (isHome || reduceMotion) {
-      dropA.setValue(0.29);
-      dropB.setValue(0.73);
+    dropC.stopAnimation();
+    if (reduceMotion) {
+      dropA.setValue(0.18);
+      dropB.setValue(0.52);
+      dropC.setValue(0.82);
       return undefined;
     }
     dropA.setValue(0);
     dropB.setValue(0);
+    dropC.setValue(0);
     const loopA = Animated.loop(
       Animated.sequence([
-        Animated.delay(6900),
+        Animated.delay(900),
         Animated.timing(dropA, {
           toValue: 1,
-          duration: 26000,
+          duration: 15000,
           easing: Easing.in(Easing.quad),
           useNativeDriver: true,
           isInteraction: false,
@@ -164,10 +178,22 @@ export function GlobalWaterAtmosphere() {
     );
     const loopB = Animated.loop(
       Animated.sequence([
-        Animated.delay(15100),
+        Animated.delay(4600),
         Animated.timing(dropB, {
           toValue: 1,
-          duration: 33000,
+          duration: 20500,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true,
+          isInteraction: false,
+        }),
+      ]),
+    );
+    const loopC = Animated.loop(
+      Animated.sequence([
+        Animated.delay(9600),
+        Animated.timing(dropC, {
+          toValue: 1,
+          duration: 24500,
           easing: Easing.in(Easing.quad),
           useNativeDriver: true,
           isInteraction: false,
@@ -176,11 +202,13 @@ export function GlobalWaterAtmosphere() {
     );
     loopA.start();
     loopB.start();
+    loopC.start();
     return () => {
       loopA.stop();
       loopB.stop();
+      loopC.stop();
     };
-  }, [dropA, dropB, isHome, reduceMotion]);
+  }, [dropA, dropB, dropC, isHome, reduceMotion]);
 
   const tileHeight = Math.max(760, viewportHeight + 240);
   const rainNearY = rainNearPhase.interpolate({ inputRange: [0, 1], outputRange: [0, tileHeight] });
@@ -198,8 +226,17 @@ export function GlobalWaterAtmosphere() {
   });
   const dropAY = dropA.interpolate({ inputRange: [0, 1], outputRange: [-200, viewportHeight + 230] });
   const dropBY = dropB.interpolate({ inputRange: [0, 1], outputRange: [-240, viewportHeight + 270] });
+  const dropCY = dropC.interpolate({ inputRange: [0, 1], outputRange: [-218, viewportHeight + 248] });
   const dropAX = dropA.interpolate({ inputRange: [0, 0.3, 0.66, 1], outputRange: [0, -2.2, 2.2, 0.5] });
   const dropBX = dropB.interpolate({ inputRange: [0, 0.35, 0.7, 1], outputRange: [0, 1.8, -1.5, 0] });
+  const dropCX = dropC.interpolate({ inputRange: [0, 0.38, 0.74, 1], outputRange: [0, -1.2, 1.0, -0.4] });
+  const meniscusOpacity = phase.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.22, 0.42, 0.22] });
+  const meniscusScale = phase.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.985, 1.025, 0.985] });
+  const meniscusY = phase.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1.4, -2.2, 1.4] });
+  const signatureDriftX = phase.interpolate({ inputRange: [0, 0.5, 1], outputRange: [-12, 17, -12] });
+  const signatureDriftY = phase.interpolate({ inputRange: [0, 0.5, 1], outputRange: [4, -5, 4] });
+  const signatureLightOpacity = phase.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.10, 0.23, 0.10] });
+  const signatureLightScale = phase.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.98, 1.05, 0.98] });
 
   return (
     <View
@@ -292,13 +329,56 @@ export function GlobalWaterAtmosphere() {
           }}
         />
 
-        <Animated.Image
+                <Animated.View
+          style={[
+            styles.signatureLightField,
+            {
+              opacity: signatureLightOpacity,
+              transform: [
+                { translateX: signatureDriftX },
+                { translateY: signatureDriftY },
+                { scale: signatureLightScale },
+              ],
+            },
+          ]}
+        >
+          <View style={[styles.signatureLight, styles.signatureLightA]} />
+          <View style={[styles.signatureLight, styles.signatureLightB]} />
+        </Animated.View>
+
+        <Animated.View
+          style={[
+            styles.meniscusField,
+            { opacity: meniscusOpacity, transform: [{ translateY: meniscusY }, { scale: meniscusScale }] },
+          ]}
+        >
+          <View style={[styles.meniscusBead, styles.meniscusA]}>
+            <View style={styles.meniscusRim} />
+            <View style={styles.meniscusHighlight} />
+            <View style={styles.meniscusCore} />
+            <View style={styles.meniscusShadow} />
+          </View>
+          <View style={[styles.meniscusBead, styles.meniscusB]}>
+            <View style={styles.meniscusRim} />
+            <View style={styles.meniscusHighlight} />
+            <View style={styles.meniscusCore} />
+            <View style={styles.meniscusShadow} />
+          </View>
+          <View style={[styles.meniscusBead, styles.meniscusC]}>
+            <View style={styles.meniscusRim} />
+            <View style={styles.meniscusHighlight} />
+            <View style={styles.meniscusCore} />
+            <View style={styles.meniscusShadow} />
+          </View>
+        </Animated.View>
+
+<Animated.Image
           source={MERCHANT_DROP_SPRITE}
           resizeMode="contain"
           style={[
             styles.drop,
             styles.dropA,
-            { opacity: 0.34, transform: [{ translateX: dropAX }, { translateY: dropAY }, { rotate: "-3deg" }, { scale: 0.67 }] },
+            { opacity: 0.44, transform: [{ translateX: dropAX }, { translateY: dropAY }, { rotate: "-3deg" }, { scale: 0.78 }] },
           ]}
           onLoad={() => {
             if (__DEV__) console.log("DA_S10R_GRAVITY_DROP_MERCHANT_ONLOAD");
@@ -310,7 +390,16 @@ export function GlobalWaterAtmosphere() {
           style={[
             styles.drop,
             styles.dropB,
-            { opacity: 0.24, transform: [{ translateX: dropBX }, { translateY: dropBY }, { rotate: "2deg" }, { scale: 0.49 }] },
+            { opacity: 0.31, transform: [{ translateX: dropBX }, { translateY: dropBY }, { rotate: "2deg" }, { scale: 0.57 }] },
+          ]}
+        />
+        <Animated.Image
+          source={MERCHANT_DROP_SPRITE}
+          resizeMode="contain"
+          style={[
+            styles.drop,
+            styles.dropC,
+            { opacity: 0.29, transform: [{ translateX: dropCX }, { translateY: dropCY }, { rotate: "1deg" }, { scale: 0.52 }] },
           ]}
         />
       </Animated.View>
@@ -372,12 +461,93 @@ const styles = StyleSheet.create({
     width: undefined,
     height: undefined,
   },
+  signatureLightField: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+  },
+  signatureLight: {
+    position: "absolute",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(255, 224, 185, 0.16)",
+    backgroundColor: "rgba(235, 178, 106, 0.038)",
+  },
+  signatureLightA: {
+    width: 310,
+    height: 92,
+    left: -158,
+    top: "29%",
+    transform: [{ rotate: "-16deg" }],
+  },
+  signatureLightB: {
+    width: 238,
+    height: 68,
+    right: -118,
+    top: "67%",
+    transform: [{ rotate: "11deg" }],
+  },
+  meniscusRim: {
+    ...StyleSheet.absoluteFillObject,
+    borderTopLeftRadius: 17,
+    borderTopRightRadius: 11,
+    borderBottomRightRadius: 19,
+    borderBottomLeftRadius: 13,
+    borderWidth: 0.7,
+    borderColor: "rgba(238,255,251,0.34)",
+  },
+  meniscusCore: {
+    position: "absolute",
+    left: "28%",
+    top: "34%",
+    width: "48%",
+    height: "42%",
+    borderRadius: 999,
+    backgroundColor: "rgba(239, 181, 107, 0.12)",
+  },
+  meniscusField: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+  },
+  meniscusBead: {
+    position: "absolute",
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255, 226, 190, 0.34)",
+    backgroundColor: "rgba(235, 178, 106, 0.070)",
+    shadowColor: "#D8FFF7",
+    shadowOpacity: 0.16,
+    shadowRadius: 7,
+    elevation: 1,
+  },
+  meniscusHighlight: {
+    position: "absolute",
+    left: 4,
+    top: 4,
+    width: 5,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.55)",
+    transform: [{ rotate: "18deg" }],
+  },
+  meniscusShadow: {
+    position: "absolute",
+    right: -2,
+    bottom: -1,
+    width: "72%",
+    height: "46%",
+    borderRadius: 999,
+    backgroundColor: "rgba(48, 24, 8, 0.16)",
+  },
+  meniscusA: { left: "24%", top: "15%", width: 24, height: 33, borderTopLeftRadius: 19, borderTopRightRadius: 8, borderBottomRightRadius: 16, borderBottomLeftRadius: 13, transform: [{ rotate: "12deg" }] },
+  meniscusB: { right: "5%", top: "45%", width: 17, height: 22, borderTopLeftRadius: 7, borderTopRightRadius: 14, borderBottomRightRadius: 8, borderBottomLeftRadius: 15, transform: [{ rotate: "-18deg" }] },
+  meniscusC: { left: "11%", top: "72%", width: 32, height: 41, borderTopLeftRadius: 24, borderTopRightRadius: 13, borderBottomRightRadius: 27, borderBottomLeftRadius: 17, transform: [{ rotate: "-9deg" }] },
   drop: {
     position: "absolute",
     top: 0,
     width: 58,
     height: 80,
   },
-  dropA: { left: "8%" },
-  dropB: { left: "89%" },
+  dropA: { left: "9%" },
+  dropB: { left: "64%" },
+  dropC: { left: "89%" },
 });
