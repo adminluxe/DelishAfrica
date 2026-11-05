@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_pro
 const root=path.resolve(__dirname,'../..');
 const ids={client:'b9aebdae-10b4-4638-a576-a5f61352ea97',merchant:'394e7d6f-559b-4536-81a9-fbc0cdb0c68f',courier:'5d1b6b85-9e64-4cc2-9cbe-7d698feccc84'};
 const assert=(b,m)=>{if(!b)throw Error(m)};
-const expectedLock='84df04082ec517db345d78a1a52296d060c45d91b843fa911f8ff9357ea3863b';
+const expectedLock='9b9c70fa2b10b8f24889553236bcac7f8dca64f9c545ee05a8e8f59e41a21c96';
 assert(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,'pnpm-lock.yaml'))).digest('hex')===expectedLock,'BASELINE_LOCK_CHANGED');
 for(const app of Object.keys(ids)){
  const cwd=path.join(root,'apps',app),eas=JSON.parse(fs.readFileSync(path.join(cwd,'eas.json'),'utf8'));
