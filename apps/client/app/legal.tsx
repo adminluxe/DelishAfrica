@@ -1,5 +1,6 @@
 import React from "react";
-import { Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const LEGAL_BASE = "https://api.delishafrica.me/api/v1/legal";
 

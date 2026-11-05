@@ -1,3 +1,4 @@
+import { daApiBase } from './daApiEnvironment';
 export type DaAddressSuggestion = {
   placeId: string;
   fullText: string;
@@ -60,12 +61,7 @@ export type DaIdentityProof = {
   destination: string;
 };
 
-function apiBase(): string {
-  const env = (globalThis as any)?.process?.env || {};
-  const raw = env.EXPO_PUBLIC_API_BASE_URL || env.EXPO_PUBLIC_API_URL || 'https://api.delishafrica.me/api/v1';
-  const clean = String(raw).replace(/\/+$/, '');
-  return clean.endsWith('/api/v1') ? clean : `${clean}/api/v1`;
-}
+function apiBase(): string { return daApiBase(); }
 
 async function postJson<T>(path: string, body: Record<string, unknown>, timeout = 12_000): Promise<T> {
   const controller = new AbortController();

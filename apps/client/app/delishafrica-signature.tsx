@@ -1,3 +1,4 @@
+import { orderMoneyLabel } from '../../../packages/contracts/src/orderRead';
 import { daOrdersFetch } from "../utils/daOrdersApi";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { AquaticSignature } from "../components/aquatic/AquaticSignature";
@@ -70,22 +71,12 @@ function publicId(order?: OrderLike | null) {
 
 function itemName(order?: OrderLike | null) {
   const first = Array.isArray(order?.items) ? order?.items?.[0] : null;
-  return String(first?.name || first?.title || "Rice and Peace");
+  return String(first?.name || first?.title || "Article non renseigné");
 }
 
-function moneyValue(order?: OrderLike | null) {
-  const raw = order?.total ?? order?.totalAmount ?? order?.amount ?? 2190;
-  const n = typeof raw === "string" ? Number(raw.replace(",", ".")) : Number(raw);
-  if (!Number.isFinite(n)) return 0;
-  return Math.abs(n) >= 100 ? n / 100 : n;
-}
 
-function money(order?: OrderLike | null) {
-  return moneyValue(order).toLocaleString("fr-BE", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
+
+function money(value: unknown): string { return orderMoneyLabel(value); }
 
 function sortOrders(orders: OrderLike[]) {
   const priority: Record<string, number> = {
@@ -173,7 +164,7 @@ export default function DelishAfricaSignatureScreen() {
           </View>
           <View style={styles.signalRight}>
             <Text style={styles.signalLabel}>Panier</Text>
-            <Text style={styles.signalValue}>{money(active)} €</Text>
+            <Text style={styles.signalValue}>{money(active)}</Text>
             <Text style={styles.signalHint}>{deliveredCount} livrées</Text>
           </View>
         </View>
@@ -290,9 +281,9 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
   },
-  signalLeft: { borderRadius: 20, backgroundColor: "rgba(255,249,236,0.075)", padding: 16 },
-  signalMiddle: { borderRadius: 20, backgroundColor: "rgba(148,238,223,0.075)", padding: 16 },
-  signalRight: { borderRadius: 20, backgroundColor: "rgba(255,249,236,0.075)", padding: 16 },
+  signalLeft: { borderRadius: 21, backgroundColor: "rgba(255,249,236,0.075)", padding: 16 },
+  signalMiddle: { borderRadius: 21, backgroundColor: "rgba(148,238,223,0.075)", padding: 16 },
+  signalRight: { borderRadius: 21, backgroundColor: "rgba(255,249,236,0.075)", padding: 16 },
   signalLabel: { color: "rgba(255,249,236,0.62)", fontSize: 12, fontWeight: "900", letterSpacing: 4, textTransform: "uppercase" },
   signalValue: { color: "#FFF9EC", fontSize: 34, lineHeight: 38, fontWeight: "900", marginTop: 8 },
   signalHint: { color: "rgba(255,249,236,0.55)", fontSize: 15, fontWeight: "700", marginTop: 5 },

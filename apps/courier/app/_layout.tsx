@@ -1,3 +1,4 @@
+import { CourierJourneyProvider } from "../components/CourierJourneyProvider";
 import React from "react";
 import { Stack } from "expo-router";
 import * as SystemUI from "expo-system-ui";
@@ -12,7 +13,7 @@ const COURIER_BOOT_BACKGROUND = "#00140B";
 void SystemUI.setBackgroundColorAsync(COURIER_BOOT_BACKGROUND);
 
 export default function RootLayout() {
-  return (<DAWaterRootView style={{ flex: 1 }} collapsable={false}>
+  return (<CourierJourneyProvider><DAWaterRootView style={{ flex: 1 }} collapsable={false}>
         {/* DA_GLOBAL_H2O_S10O_ROOT */}
         {(
     <Stack
@@ -24,5 +25,5 @@ export default function RootLayout() {
     />
   )}
         <DAGlobalWaterAtmosphere />
-      </DAWaterRootView>);
+      </DAWaterRootView></CourierJourneyProvider>);
 }

@@ -1,3 +1,4 @@
+import { daOidcSessionGeneration } from '../auth/daOidcSession';
 import { daOrdersFetch } from "../utils/daOrdersApi";
 // DA_A5A3A7S16R8_COURIER_MISSION_DETAIL_REPAIR_V1
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -69,6 +70,17 @@ type CourierPresenceProfile = {
 };
 
 const cleanPresence = (value: unknown) => String(value || "").replace(/\s+/g, " ").trim();
+
+// DA_GALA_FALLBACK_ERADICATION_V1 - technical auth/session keys never render raw.
+function humanizeCourierTechnicalState(value: unknown): string {
+  const raw = String(value || "").trim();
+  if (!raw) return "Le terrain n’a pas encore confirmé cette donnée.";
+  if (raw.includes("courier_oidc_session_required") || raw.includes("Session courier indisponible")) return "Identité Courier requise pour charger les données terrain.";
+  if (raw.includes("orders_auth_required")) return "Votre session Courier doit être renouvelée pour continuer.";
+  if (/network request failed|failed to fetch|networkerror/i.test(raw)) return "Connexion terrain momentanément indisponible. Les dernières données confirmées restent visibles.";
+  if (/^[a-z0-9._-]+$/i.test(raw)) return "État terrain momentanément indisponible. Réessayez dans un instant.";
+  return raw;
+}
 
 function proofIsCurrent(proof: PresenceProof | undefined, destination: string) {
   if (!proof?.token || !proof?.expiresAt || cleanPresence(proof.destination) !== destination) return false;
@@ -236,7 +248,7 @@ function terrainMoment(priority: Order | null, readyCount: number, routeCount: n
       kicker: "LE CLIENT EST LE PROCHAIN POINT",
       title: `${customerName(priority)} vous attend.`,
       body: `${addressOf(priority)} · ${restaurantName(priority)} est derrière vous`,
-      action: "Poursuivre Mission Live",
+      action: "Suivre ma mission",
       stage: 1,
     };
   }
@@ -257,7 +269,7 @@ function terrainMoment(priority: Order | null, readyCount: number, routeCount: n
     mode: "VEILLE",
     kicker: "LE TERRAIN RESTE OUVERT",
     title: "Prêt pour la prochaine mission.",
-    body: `${readyCount} à prendre · ${routeCount} en route · aucune urgence inventée`,
+    body: `${readyCount} à prendre · ${routeCount} en route · à votre rythme`,
     action: "Voir les missions",
     stage: 0,
   };
@@ -319,10 +331,11 @@ export default function CourierHome() {
 
   const syncPresence = useCallback(async () => {
     if (presenceMutationRef.current !== "idle") return;
+    const presenceEpoch = daOidcSessionGeneration();
     const profile = await loadCourierPresence<CourierPresenceProfile>();
     if (profile && !courierActivationReady(profile) && profile.available) {
       const locked = { ...profile, available: false, updatedAt: new Date().toISOString() };
-      try { await saveCourierPresence(locked); } catch { /* L'interface reste verrouillée hors ligne. */ }
+      try { await saveCourierPresence(locked, presenceEpoch); } catch { /* L'interface reste verrouillée hors ligne. */ }
       setPresenceProfile(locked);
       setAvailable(false);
     } else {
@@ -589,6 +602,7 @@ export default function CourierHome() {
       void refreshLiveTruth();
       return;
     }
+    const presenceEpoch = daOidcSessionGeneration();
     const current = await loadCourierPresence<CourierPresenceProfile>();
     if (!courierActivationReady(current)) {
       go("/courier-space");
@@ -611,7 +625,7 @@ export default function CourierHome() {
     presenceMutationRef.current = mutation;
     setPresenceMutation(mutation);
     try {
-      await saveCourierPresence(next);
+      await saveCourierPresence(next, presenceEpoch);
       const confirmed = await loadCourierPresence<CourierPresenceProfile>();
       if (!confirmed || Boolean(confirmed.available) !== desiredAvailable) {
         throw new Error("presence_commit_mismatch");
@@ -653,12 +667,12 @@ export default function CourierHome() {
       return;
     }
     if (priority && ["picked_up", "on_the_way", "in_transit"].includes(priorityStatus)) {
-      router.push({ pathname: "/courier-real-map" as any, params: { orderId: orderId(priority) } });
+      router.push({ pathname: "/courier-integrated-map" as any, params: { orderId: orderId(priority) } });
       return;
     }
     if (priority && priorityStatus === "ready") {
       if (assignmentAccepted(priority)) {
-        router.push({ pathname: "/route-oracle" as any, params: { orderId: orderId(priority) } });
+        router.push({ pathname: "/courier-integrated-map" as any, params: { orderId: orderId(priority) } });
       } else {
         router.push("/orders" as any);
       }
@@ -729,16 +743,16 @@ export default function CourierHome() {
         <View style={styles.futureRail}>
           <View style={[styles.futureRailPulse, networkTruth === "live" && styles.futureRailPulseLive]} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.futureRailKicker}>COURIER TERRAIN LIVE</Text>
+            <Text style={styles.futureRailKicker}>VOTRE ACTIVITÉ COURIER</Text>
             <Text style={styles.futureRailText}>
               {networkTruth === "live"
                 ? "Mission, route et remise synchronisées"
                 : networkTruth === "stale"
-                  ? "Dernières données actives · reconnexion en arrière-plan"
-                  : "Synchronisation discrète du terrain"}
+                  ? "Dernières informations connues · actualisation en attente"
+                  : "Actualisation de vos missions"}
             </Text>
           </View>
-          <Text style={styles.futureRailMeta}>{networkTruth === "live" ? "LIVE" : networkTruth === "stale" ? "HORS RÉSEAU" : "SYNC"}</Text>
+          <Text style={styles.futureRailMeta}>{networkTruth === "live" ? "À JOUR" : networkTruth === "stale" ? "HORS RÉSEAU" : "ACTUALISATION"}</Text>
         </View>
 
         <WaterRouteCurrent
@@ -757,27 +771,27 @@ export default function CourierHome() {
           }
           statusLabel={
             networkTruth === "live"
-              ? "LIVE"
+              ? "À JOUR"
               : networkTruth === "stale"
                 ? "HORS RÉSEAU"
-                : "SYNC"
+                : "ACTUALISATION"
           }
           headline={
             priority
               ? moment.title
               : activationPassportVisible
-                ? "Le terrain attend vos preuves."
+                ? "Finalisons votre espace coursier."
                 : available
-                  ? "Le courant est prêt pour la prochaine mission."
+                  ? "Vous êtes disponible pour la prochaine mission."
                   : "Le terrain respire."
           }
           body={
             priority
               ? moment.body
               : activationPassportVisible
-                ? "Aucune mission ne remonte avant la validation complète du terrain."
+                ? "Les missions seront disponibles après la validation de votre profil."
                 : available
-                  ? "Présence confirmée. La prochaine mission prendra place dans le courant sans modifier votre décision."
+                  ? "Vous êtes en ligne. Vous choisirez les propositions qui vous conviennent."
                   : "Aucun départ automatique. Passez en ligne uniquement lorsque vous êtes réellement prêt."
           }
           orderId={priority ? orderId(priority) : undefined}
@@ -799,12 +813,12 @@ export default function CourierHome() {
           onPress={() => go("/auth-session")}
           accessibilityRole="button"
           accessibilityLabel="Ouvrir le compte Courier sécurisé"
-          accessibilityHint="Connexion réelle par navigateur système, PKCE et reprise sécurisée de session"
+          accessibilityHint="Ouvre la connexion sécurisée à votre compte coursier"
         >
           <View style={{ flex: 1 }}>
             <Text style={styles.identityDoorKicker}>IDENTITÉ COURIER</Text>
-            <Text style={styles.identityDoorTitle}>Compte & session sécurisée</Text>
-            <Text style={styles.identityDoorBody}>Connexion réelle · PKCE · SecureStore · reprise automatique</Text>
+            <Text style={styles.identityDoorTitle}>Mon compte coursier</Text>
+            <Text style={styles.identityDoorBody}>Retrouvez votre profil et vos accès en toute sérénité.</Text>
           </View>
           <Text style={styles.identityDoorArrow}>→</Text>
         </Pressable>
@@ -823,7 +837,7 @@ export default function CourierHome() {
           onPress={openPrimary}
           accessibilityRole="button"
           accessibilityLabel={priority ? `${moment.action} · mission ${orderId(priority)}` : moment.action}
-          accessibilityHint={priority && ["picked_up", "on_the_way", "in_transit"].includes(priorityStatus) ? "Ouvre la carte Mission Live" : priority && priorityStatus === "ready" ? "Ouvre Route Oracle pour proposer puis confirmer le bon coursier" : priority ? "Ouvre la liste des missions" : activationReady ? "Change la disponibilité du terrain" : "Ouvre la validation du terrain"}
+          accessibilityHint={priority && ["picked_up", "on_the_way", "in_transit"].includes(priorityStatus) ? "Ouvre votre carte de mission" : priority && priorityStatus === "ready" ? "Ouvre les détails du prochain retrait" : priority ? "Ouvre la liste des missions" : activationReady ? "Change la disponibilité du terrain" : "Ouvre la validation du terrain"}
         >
           <View style={styles.cardAura} pointerEvents="none" />
 
@@ -862,7 +876,7 @@ export default function CourierHome() {
                       <Text style={[styles.activationProofLabel, proof.ready && styles.activationProofLabelReady]}>
                         {proof.label}
                       </Text>
-                      <Text style={styles.activationProofState}>{proof.ready ? "Confirmé" : "À prouver"}</Text>
+                      <Text style={styles.activationProofState}>{proof.ready ? "Confirmé" : "À compléter"}</Text>
                     </View>
                   </View>
                 ))}
@@ -930,7 +944,7 @@ export default function CourierHome() {
               accessibilityLabel="Terrain en mode dégradé. Relancer la synchronisation"
             >
               <Text style={styles.inlineErrorTitle}>Terrain en mode dégradé</Text>
-              <Text style={styles.inlineErrorText}>{error}</Text>
+              <Text style={styles.inlineErrorText}>{humanizeCourierTechnicalState(error)}</Text>
               <Text style={styles.inlineErrorRetry}>Relancer la synchronisation</Text>
             </Pressable>
           ) : priority ? (
@@ -1121,18 +1135,18 @@ export default function CourierHome() {
               },
               pressed && styles.pressFeedback,
             ]}
-            onPress={() => router.push("/courier-integrated-map" as any)}
+            onPress={() => router.push(priority ? { pathname: "/courier-integrated-map" as any, params: { orderId: orderId(priority) } } : "/courier-integrated-map" as any)}
             accessibilityRole="button"
             accessibilityLabel="Ouvrir le suivi terrain de la mission"
           >
             <Text style={{ color: "#147040", fontSize: 10, fontWeight: "900", letterSpacing: 1.6 }}>
-              MISSION LIVE · CARTE TERRAIN
+              VOTRE MISSION · VOTRE CARTE
             </Text>
             <Text style={{ color: "#052013", fontSize: 24, lineHeight: 29, fontWeight: "900", marginTop: 7 }}>
-              Suivre la mission en direct
+              Retrouver le cap de votre mission
             </Text>
             <Text style={{ color: "rgba(5,32,19,0.72)", fontSize: 14, lineHeight: 21, fontWeight: "700", marginTop: 6 }}>
-              Position, prochain repère, distance et ETA au premier plan.
+              Votre position, votre prochaine adresse et votre trajet réunis.
             </Text>
           </Pressable>
         ) : null}
@@ -1155,21 +1169,21 @@ export default function CourierHome() {
           <View style={styles.toolsGrid}>
             <Pressable
               style={({ pressed }) => [styles.toolCard, pressed && styles.pressFeedback]}
-              onPress={() => go("/courier-eta")}
+              onPress={() => router.push(priority ? { pathname: "/courier-integrated-map" as any, params: { orderId: orderId(priority) } } : "/courier-integrated-map" as any)}
               accessibilityRole="button"
               accessibilityLabel="Ouvrir l estimation de la mission"
             >
-              <Text style={styles.toolTitle}>ETA mission</Text>
+              <Text style={styles.toolTitle}>Mon trajet</Text>
               <Text style={styles.toolText}>Distance et estimation terrain.</Text>
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.toolCard, pressed && styles.pressFeedback]}
               onPress={() => go("/route-oracle")}
               accessibilityRole="button"
-              accessibilityLabel="Ouvrir Route Oracle"
+              accessibilityLabel="Ouvrir les propositions de mission"
             >
-              <Text style={styles.toolTitle}>Route Oracle</Text>
-              <Text style={styles.toolText}>Score et décision coursier.</Text>
+              <Text style={styles.toolTitle}>Mes propositions</Text>
+              <Text style={styles.toolText}>Comprendre la prochaine étape et choisir.</Text>
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.toolCard, pressed && styles.pressFeedback]}
@@ -1225,7 +1239,7 @@ const styles = StyleSheet.create({
   cardBody: { color: "rgba(3,36,20,0.62)", fontSize: 14, lineHeight: 21, fontWeight: "700", marginTop: 10 },
   activationPassport: {
     marginTop: 22,
-    borderRadius: 22,
+    borderRadius: 21,
     padding: 15,
     backgroundColor: "rgba(3,36,20,0.06)",
     borderWidth: 1,
@@ -1264,7 +1278,7 @@ const styles = StyleSheet.create({
   stageLabel: { color: "rgba(3,36,20,0.54)", fontSize: 10, fontWeight: "900", marginTop: 7 },
   stageLine: { flex: 1, height: 2, marginTop: 21, backgroundColor: "rgba(3,36,20,0.10)" },
   stageLineActive: { backgroundColor: "rgba(32,167,93,0.68)" },
-  missionSurface: { flexDirection: "row", alignItems: "center", gap: 14, marginTop: 22, borderRadius: 22, padding: 17, backgroundColor: "rgba(3,36,20,0.065)", borderWidth: 1, borderColor: "rgba(3,36,20,0.08)" },
+  missionSurface: { flexDirection: "row", alignItems: "center", gap: 14, marginTop: 22, borderRadius: 21, padding: 17, backgroundColor: "rgba(3,36,20,0.065)", borderWidth: 1, borderColor: "rgba(3,36,20,0.08)" },
   missionKicker: { color: "#207445", fontSize: 8, fontWeight: "900", letterSpacing: 1.7 },
   missionId: { color: "#032414", fontSize: 20, lineHeight: 25, fontWeight: "900", marginTop: 6 },
   missionRestaurant: { color: "#0B5B34", fontSize: 13, fontWeight: "900", marginTop: 6 },
@@ -1272,9 +1286,9 @@ const styles = StyleSheet.create({
   missionAddress: { color: "#0B5B34", fontSize: 13, lineHeight: 18, fontWeight: "900", marginTop: 9 },
   missionRouteHint: { color: "rgba(3,36,20,0.46)", fontSize: 9, fontWeight: "900", letterSpacing: 1.1, marginTop: 5 },
   missionArrow: { color: "#137843", fontSize: 27, fontWeight: "800" },
-  inlineState: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 22, borderRadius: 20, padding: 16, backgroundColor: "rgba(3,36,20,0.06)" },
+  inlineState: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 22, borderRadius: 21, padding: 16, backgroundColor: "rgba(3,36,20,0.06)" },
   inlineStateText: { color: "rgba(3,36,20,0.62)", fontWeight: "800" },
-  inlineError: { marginTop: 22, borderRadius: 20, padding: 16, backgroundColor: "rgba(144,34,24,0.10)" },
+  inlineError: { marginTop: 22, borderRadius: 21, padding: 16, backgroundColor: "rgba(144,34,24,0.10)" },
   inlineErrorTitle: { color: "#7E2118", fontSize: 15, fontWeight: "900" },
   inlineErrorText: { color: "rgba(92,26,18,0.68)", fontSize: 12, lineHeight: 18, marginTop: 5 },
   inlineErrorRetry: { color: "#7E2118", fontSize: 10, fontWeight: "900", marginTop: 9 },
@@ -1283,7 +1297,7 @@ const styles = StyleSheet.create({
   networkNoticeText: { color: "rgba(3,36,20,0.58)", fontSize: 11, lineHeight: 16, marginTop: 4 },
   networkNoticeMeta: { color: "rgba(3,36,20,0.38)", fontSize: 9, lineHeight: 13, marginTop: 3, fontWeight: "800" },
   networkNoticeAction: { color: "#0B5B34", fontSize: 11, fontWeight: "900" },
-  primaryAction: { minHeight: 56, flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 20, borderRadius: 20, paddingHorizontal: 18, paddingVertical: 15, backgroundColor: "#07331E" },
+  primaryAction: { minHeight: 56, flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 20, borderRadius: 21, paddingHorizontal: 18, paddingVertical: 15, backgroundColor: "#07331E" },
   primaryActionText: { color: "#E8FFF0", fontSize: 15, fontWeight: "900" },
   primaryActionArrow: { color: "#75EFA4", fontSize: 25, fontWeight: "800" },
   snapshot: { flexDirection: "row", alignItems: "center", gap: 14, borderRadius: 26, padding: 18, backgroundColor: "#041E12", borderWidth: 1, borderColor: "rgba(117,239,164,0.14)", marginBottom: 14 },
@@ -1292,19 +1306,19 @@ const styles = StyleSheet.create({
   snapshotMeta: { color: "rgba(227,255,236,0.46)", fontSize: 11, fontWeight: "800", marginTop: 5 },
   snapshotButton: { borderRadius: 999, paddingHorizontal: 15, paddingVertical: 11, backgroundColor: "rgba(117,239,164,0.10)" },
   snapshotButtonText: { color: "#A8FBC5", fontSize: 12, fontWeight: "900" },
-  toolsToggle: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, borderRadius: 22, padding: 18, backgroundColor: "#062718", borderWidth: 1, borderColor: "rgba(117,239,164,0.13)" },
+  toolsToggle: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, borderRadius: 21, padding: 18, backgroundColor: "#062718", borderWidth: 1, borderColor: "rgba(117,239,164,0.13)" },
   toolsKicker: { color: "#75EFA4", fontSize: 9, fontWeight: "900", letterSpacing: 2.1 },
   toolsTitle: { color: "#F3FFF7", fontSize: 16, fontWeight: "900", marginTop: 5 },
   toolsIcon: { color: "#75EFA4", fontSize: 27, fontWeight: "800" },
   toolsGrid: { gap: 10, marginTop: 10 },
-  toolCard: { borderRadius: 20, padding: 16, backgroundColor: "#051E14", borderWidth: 1, borderColor: "rgba(255,255,255,0.05)" },
+  toolCard: { borderRadius: 21, padding: 16, backgroundColor: "#051E14", borderWidth: 1, borderColor: "rgba(255,255,255,0.05)" },
   toolTitle: { color: "#F3FFF7", fontSize: 16, fontWeight: "900" },
   toolText: { color: "rgba(227,255,236,0.56)", fontSize: 13, lineHeight: 19, marginTop: 5 },
   activationGuidance: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    borderRadius: 22,
+    borderRadius: 21,
     padding: 16,
     marginBottom: 10,
     backgroundColor: "rgba(108,245,169,0.08)",

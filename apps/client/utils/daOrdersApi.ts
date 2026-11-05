@@ -1,3 +1,4 @@
+import { daAssertApiRequest, daApiScope } from './daApiEnvironment';
 import * as SecureStore from 'expo-secure-store';
 import { loadOidcSession, refreshOidcSession } from '../auth/daOidcSession';
 
@@ -125,7 +126,7 @@ async function canonicalOidcPrincipal(forceRefresh = false): Promise<PrincipalSt
 async function requireCanonicalOidcPrincipal(forceRefresh = false): Promise<PrincipalState> {
   const principal = await canonicalOidcPrincipal(forceRefresh);
   if (principal) return principal;
-  throw new Error('Session Client Keycloak requise. Ouvrez Mon espace puis Connexion sécurisée.');
+  throw new Error('Connexion DelishAfrica requise. Continuez avec votre compte pour accéder à vos commandes.');
 }
 
 async function ensurePrincipal(force = false): Promise<PrincipalState> {
@@ -153,25 +154,12 @@ async function ensurePrincipal(force = false): Promise<PrincipalState> {
 }
 
 async function subjectForStorage(): Promise<string> {
-  // Preserve an already-scoped local Client profile during the OIDC migration.
-  // Business authorization is now exclusively Keycloak OIDC, but existing local
-  // profile/proof data must not silently jump accounts during the live vertical.
-  const marker = await readPrincipalMarker();
-  if (marker?.subject) return marker.subject;
-
-  const legacyProfile = await legacyProfileSubject();
-  if (legacyProfile) {
-    await savePrincipalMarker(legacyProfile);
-    return legacyProfile;
-  }
-
-  const oidc = await canonicalOidcPrincipal(false);
-  if (oidc) {
-    await savePrincipalMarker(oidc.subject);
-    return oidc.subject;
-  }
-
-  return await identityHint();
+  const principal = await canonicalOidcPrincipal(false);
+  return principal?.subject || 'anonymous:' + await legacyInstallationSubject();
+}
+async function scopedIdentity(subject: string): Promise<string> {
+  const Crypto = require('expo-crypto') as typeof import('expo-crypto');
+  return 'v4.' + await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, JSON.stringify([ROLE, daApiScope(), subject]));
 }
 
 async function bindActiveScope(scope: string): Promise<void> {
@@ -206,29 +194,36 @@ async function migrateValue(base: string, target: string, subject: string): Prom
 
 export async function daAccountScopeId(): Promise<string> {
   const subject = await subjectForStorage();
-  const scope = hashScope(`${ROLE}:${subject}`);
+  const scope = await scopedIdentity(subject);
   await bindActiveScope(scope);
   return scope;
 }
 
 export async function daAccountStorageKey(base: string): Promise<string> {
   const subject = await subjectForStorage();
-  const scope = hashScope(`${ROLE}:${subject}`);
+  const scope = await scopedIdentity(subject);
   await bindActiveScope(scope);
   const target = `${base}.${scope}`;
-  await migrateValue(base, target, subject);
+  // Legacy proof provenance is unknown. Preserve old keys without importing them.
   return target;
 }
 
 export async function daOrdersFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  daAssertApiRequest(input);
   const send = async (principal: PrincipalState) => {
     const headers = new Headers(init.headers || {});
     headers.set('Authorization', `Bearer ${principal.token}`);
     if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
-    return fetch(input, { ...init, headers });
+    const before = await loadOidcSession();
+    if (before.status !== 'authenticated' || before.subject !== principal.subject || (before as any).accessToken !== principal.token) throw new Error('oidc_identity_changed');
+    const response = await fetch(input, { ...init, headers, redirect: 'error' });
+    const after = await loadOidcSession();
+    if (after.status !== 'authenticated' || after.subject !== principal.subject || (after as any).accessToken !== principal.token) throw new Error('oidc_identity_changed');
+    return response;
   };
 
   let response = await send(await ensurePrincipal(false));
+  if (response.status === 403) principalCache = null;
   if (response.status !== 401) return response;
 
   // A locally unexpired access token can still have been revoked server-side.

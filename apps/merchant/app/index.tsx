@@ -41,10 +41,11 @@ type RouteCard = {
 };
 
 const ROUTES: RouteCard[] = [
-  { eyebrow: "COMMANDES", title: "Décider", body: "Accepter, préparer, marquer prête et suivre le service.", path: "/orders" },
-  { eyebrow: "CUISINE", title: "Rythme en cuisine", body: "Cadence, priorités et lecture opérationnelle du service.", path: "/kitchen-pulse" },
-  { eyebrow: "ÉTABLISSEMENT", title: "Mon espace", body: "Présence, confiance, territoire et disponibilité.", path: "/partner-space" },
-  { eyebrow: "PILOTAGE", title: "Tableau de bord", body: "Vision synthétique des signaux utiles au restaurant.", path: "/ops-dashboard" },
+  { eyebrow: "COMMANDES", title: "Mes commandes", body: "Accepter, préparer, marquer prête et suivre le service.", path: "/orders" },
+  { eyebrow: "CUISINE", title: "Ma cuisine", body: "Retrouver les préparations et les priorités du service.", path: "/kitchen-pulse" },
+  { eyebrow: "ÉTABLISSEMENT", title: "Mon espace", body: "Établissement, horaires et disponibilité.", path: "/partner-space" },
+  { eyebrow: "FINANCES", title: "Mes finances", body: "Activité, relevés et versements validés.", path: "/finances" },
+  { eyebrow: "PILOTAGE", title: "Mon activité", body: "Voir les informations utiles à votre restaurant.", path: "/ops-dashboard" },
 ];
 
 function extractOrders(payload: any): any[] {
@@ -63,6 +64,8 @@ export default function MerchantSurfaceHome() {
   const [reduceMotion, setReduceMotion] = useState(false);
   const [ownership, setOwnership] = useState<Ownership>({ ready: false });
   const [orders, setOrders] = useState<any[]>([]);
+  const [ordersSynced, setOrdersSynced] = useState(false);
+  const [ordersObservedAt, setOrdersObservedAt] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const condensationPhase = useRef(new Animated.Value(0)).current;
@@ -134,9 +137,17 @@ export default function MerchantSurfaceHome() {
         body: JSON.stringify({}),
       });
       const body = await response.json().catch(() => ({}));
-      setOrders(response.ok ? extractOrders(body) : []);
+      if (response.ok) {
+        setOrders(extractOrders(body));
+        setOrdersSynced(true);
+        setOrdersObservedAt(new Date().toISOString());
+      } else {
+        setOrders([]);
+        setOrdersSynced(false);
+      }
     } catch {
       setOrders([]);
+      setOrdersSynced(false);
     }
 
     setOwnership(nextOwnership);
@@ -158,6 +169,10 @@ export default function MerchantSurfaceHome() {
       ready: orders.filter((item) => status(item) === "ready").length,
     };
   }, [orders]);
+
+  const ordersFreshnessLabel = ordersObservedAt
+    ? `Dernière actualisation · ${new Date(ordersObservedAt).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" })}`
+    : "Les commandes attendent une actualisation.";
 
   const go = (path: string) => router.push(path as any);
   const condensationOpacity = condensationPhase.interpolate({
@@ -209,7 +224,7 @@ export default function MerchantSurfaceHome() {
         <View style={styles.topline}>
           <View style={styles.toplineCopy}>
             <Text style={styles.brand}>DELISHAFRICA®</Text>
-            <Text style={styles.role}>RESTAURATEUR · CUISINE ET COMMANDES</Text>
+            <Text style={styles.role}>MERCHANT · VOTRE SERVICE</Text>
           </View>
           <Pressable
             onPress={() => go("/partner-space")}
@@ -225,34 +240,37 @@ export default function MerchantSurfaceHome() {
         <View style={[styles.authority, ownership.ready ? styles.authorityReady : styles.authorityPending]}>
           <View style={[styles.authorityDot, ownership.ready && styles.authorityDotReady]} />
           <View style={styles.authorityCopy}>
-            <Text style={styles.authorityLabel}>ACCÈS À L’ÉTABLISSEMENT</Text>
+            <Text style={styles.authorityLabel}>VOTRE ÉTABLISSEMENT</Text>
             <Text style={styles.authorityText}>
               {loading
                 ? "Vérification de votre établissement…"
                 : ownership.ready
-                  ? `${ownership.partner} · rôle ${ownership.role}`
-                  : "Compte reconnu · votre établissement doit encore être associé"}
+                  ? `${ownership.partner} · accès confirmé`
+                  : "Connectez-vous pour retrouver votre établissement."}
             </Text>
           </View>
-          {loading ? <ActivityIndicator size="small" /> : <Text style={styles.authorityState}>{ownership.ready ? "LIÉ" : "À LIER"}</Text>}
+          {loading ? <ActivityIndicator size="small" /> : <Text style={styles.authorityState}>{ownership.ready ? "CONNECTÉ" : "À VÉRIFIER"}</Text>}
         </View>
 
         <WaterIntelRail
           tone="merchant"
           mode="pulse"
-          label="SERVICE · RYTHME DE CUISINE"
-          title={stats.pending > 0 ? `${stats.pending} décision${stats.pending > 1 ? "s" : ""} remonte${stats.pending > 1 ? "nt" : ""} à la surface.` : "Le service respire."}
-          body={`${stats.kitchen} en cuisine · ${stats.ready} prête${stats.ready > 1 ? "s" : ""} · la priorité reste lisible et la décision reste humaine.`}
-          status={loading ? "SYNCHRO" : "SERVICE"}
+          label="LE RYTHME DU SERVICE"
+          title={!ordersSynced ? "Retrouvons vos commandes." : stats.pending > 0 ? `${stats.pending} décision${stats.pending > 1 ? "s" : ""} remonte${stats.pending > 1 ? "nt" : ""} à la surface.` : "Le service respire."}
+          body={ordersSynced ? `${stats.kitchen} en cuisine · ${stats.ready} prête${stats.ready > 1 ? "s" : ""} · chaque priorité à portée de main.` : "Une actualisation est nécessaire pour afficher votre service."}
+          status={loading ? "ACTUALISATION" : ordersSynced ? "À JOUR" : "À ACTUALISER"}
+          signalClass={loading ? "estimated" : ordersSynced ? "confirmed" : "stale"}
+          evidence={ordersSynced ? "Les commandes sont actualisées pour votre établissement." : "Actualisez votre connexion pour retrouver les commandes."}
+          freshnessLabel={ordersFreshnessLabel}
           reduceMotion={reduceMotion}
           onPress={() => go("/operations-live")}
-          accessibilityLabel="Ouvrir l'activité de la cuisine et les commandes"
+          accessibilityLabel="Ouvrir le suivi du service"
         />
 
-        <Text style={styles.kicker}>CUISINE · COMMANDES · SERVICE</Text>
+        <Text style={styles.kicker}>CUISINE · SERVICE · REMISE</Text>
         <Text style={styles.hero}>Une décision claire.{`\n`}Le service avance.</Text>
         <Text style={styles.subtitle}>
-          Le cockpit rassemble commandes, cuisine, présence et pilotage dans une lecture immédiate,
+          Vos commandes, votre cuisine et votre activité se retrouvent ici,
           avec chaque priorité à portée de geste.
         </Text>
 
@@ -271,7 +289,7 @@ export default function MerchantSurfaceHome() {
             <Text style={styles.primaryEyebrow}>{ownership.ready ? "SERVICE ACTIF" : "IDENTITÉ D’ABORD"}</Text>
             <Text style={styles.primaryTitle}>{ownership.ready ? "Ouvrir les commandes" : "Sécuriser mon accès"}</Text>
             <Text style={styles.primaryBody}>
-              {ownership.ready ? "Votre établissement est associé à ce compte." : "Connectez votre compte restaurateur pour accéder aux commandes."}
+              {ownership.ready ? "Les commandes de votre établissement vous attendent." : "Connectez-vous à votre compte restaurateur."}
             </Text>
           </View>
           <Text style={styles.primaryArrow}>→</Text>
@@ -318,45 +336,45 @@ export default function MerchantSurfaceHome() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "transparent", position: "relative", zIndex: 1 },
-  content: { paddingHorizontal: 22, gap: 22 },
+  content: { paddingHorizontal: 21, gap: 21 },
   topline: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 16 },
   toplineCopy: { flex: 1, minWidth: 0 },
   brand: { color: "#F0B651", fontSize: 16, fontWeight: "900", letterSpacing: 3.1 },
   role: { color: "rgba(239,224,207,0.55)", fontSize: 10, fontWeight: "800", letterSpacing: 1.4, marginTop: 7 },
-  avatarButton: { width: 58, height: 58, borderRadius: 29, borderWidth: 1, borderColor: "rgba(235,174,91,0.26)", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(42,24,12,0.60)" },
+  avatarButton: { width: 55, height: 55, borderRadius: 27.5, borderWidth: 1, borderColor: "rgba(235,174,91,0.26)", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(42,24,12,0.60)" },
   avatarText: { color: "#F8E8D2", fontSize: 11, fontWeight: "900", letterSpacing: 1 },
-  authority: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderRadius: 24, padding: 16 },
+  authority: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderRadius: 21, padding: 16 },
   authorityReady: { borderColor: "rgba(90,220,180,0.30)", backgroundColor: "rgba(8,43,34,0.62)" },
   authorityPending: { borderColor: "rgba(236,172,83,0.30)", backgroundColor: "rgba(48,31,13,0.62)" },
   authorityDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#E5A44C" },
   authorityDotReady: { backgroundColor: "#67DDB3" },
   authorityCopy: { flex: 1 },
   authorityLabel: { color: "#E4A653", fontSize: 10, fontWeight: "900", letterSpacing: 2 },
-  authorityText: { color: "rgba(247,236,220,0.76)", fontSize: 12, lineHeight: 18, marginTop: 5 },
+  authorityText: { color: "rgba(247,236,220,0.76)", fontSize: 13, lineHeight: 20, marginTop: 5 },
   authorityState: { color: "#F0C078", fontSize: 11, fontWeight: "900", letterSpacing: 1.2 },
-  kicker: { color: "#CE8355", fontSize: 11, fontWeight: "900", letterSpacing: 2.6, marginTop: 8 },
-  hero: { color: "#FFF2DF", fontSize: 43, lineHeight: 47, fontWeight: "900", letterSpacing: -1.8 },
-  subtitle: { color: "rgba(238,222,205,0.68)", fontSize: 17, lineHeight: 27 },
+  kicker: { color: "#CE8355", fontSize: 10, fontWeight: "900", letterSpacing: 2.6, marginTop: 8 },
+  hero: { color: "#FFF2DF", fontSize: 42, lineHeight: 47, fontWeight: "900", letterSpacing: -1.8 },
+  subtitle: { color: "rgba(238,222,205,0.68)", fontSize: 16, lineHeight: 26 },
   stats: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  stat: { flex: 1, minWidth: 88, minHeight: 88, borderRadius: 22, borderWidth: 1, borderColor: "rgba(232,165,83,0.16)", backgroundColor: "rgba(35,20,11,0.52)", padding: 14, justifyContent: "center" },
-  statValue: { color: "#FFF0D8", fontSize: 27, fontWeight: "900" },
+  stat: { flex: 1, minWidth: 89, minHeight: 89, borderRadius: 21, borderWidth: 1, borderColor: "rgba(232,165,83,0.16)", backgroundColor: "rgba(35,20,11,0.52)", padding: 14, justifyContent: "center" },
+  statValue: { color: "#FFF0D8", fontSize: 26, fontWeight: "900" },
   statLabel: { color: "rgba(235,216,195,0.55)", fontSize: 10, fontWeight: "800", marginTop: 3 },
   primary: { minHeight: 168, borderRadius: 34, padding: 24, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", backgroundColor: "#F3D5A3" },
   primaryCopy: { flex: 1, minWidth: 0, paddingRight: 18 },
-  primaryEyebrow: { color: "#9D5735", fontSize: 11, fontWeight: "900", letterSpacing: 2.4 },
-  primaryTitle: { color: "#24140B", fontSize: 29, fontWeight: "900", marginTop: 12, letterSpacing: -0.8 },
-  primaryBody: { color: "rgba(36,20,11,0.66)", fontSize: 13, lineHeight: 19, marginTop: 8 },
+  primaryEyebrow: { color: "#9D5735", fontSize: 10, fontWeight: "900", letterSpacing: 2.4 },
+  primaryTitle: { color: "#24140B", fontSize: 26, fontWeight: "900", marginTop: 12, letterSpacing: -0.8 },
+  primaryBody: { color: "rgba(36,20,11,0.66)", fontSize: 13, lineHeight: 20, marginTop: 8 },
   primaryArrow: { color: "#24140B", fontSize: 38, fontWeight: "600" },
-  sectionLabel: { color: "#CB8152", fontSize: 11, fontWeight: "900", letterSpacing: 2.7 },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "stretch" },
-  card: { flexBasis: "47%", flexGrow: 1, minWidth: 148, minHeight: 178, borderRadius: 26, borderWidth: 1, borderColor: "rgba(229,169,95,0.18)", backgroundColor: "rgba(33,19,11,0.64)", padding: 18 },
-  cardEyebrow: { color: "#D7955C", fontSize: 9, fontWeight: "900", letterSpacing: 1.8 },
+  sectionLabel: { color: "#CB8152", fontSize: 10, fontWeight: "900", letterSpacing: 2.7 },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 13, alignItems: "stretch" },
+  card: { flexBasis: "47%", flexGrow: 1, minWidth: 144, minHeight: 178, borderRadius: 26, borderWidth: 1, borderColor: "rgba(229,169,95,0.18)", backgroundColor: "rgba(33,19,11,0.64)", padding: 18 },
+  cardEyebrow: { color: "#D7955C", fontSize: 10, fontWeight: "900", letterSpacing: 1.8 },
   cardTitle: { color: "#FFF1DE", fontSize: 20, fontWeight: "900", marginTop: 10 },
-  cardBody: { color: "rgba(235,217,198,0.60)", fontSize: 12, lineHeight: 18, marginTop: 8 },
+  cardBody: { color: "rgba(235,217,198,0.60)", fontSize: 13, lineHeight: 20, marginTop: 8 },
   cardArrow: { color: "#F0B65D", fontSize: 22, marginTop: "auto", alignSelf: "flex-end" },
-  legacy: { borderRadius: 24, borderWidth: 1, borderColor: "rgba(215,148,81,0.20)", backgroundColor: "rgba(31,18,10,0.46)", padding: 18, flexDirection: "row", alignItems: "center", gap: 16 },
-  legacyEyebrow: { color: "#C98B5A", fontSize: 9, fontWeight: "900", letterSpacing: 1.7 },
-  legacyTitle: { flexShrink: 1, color: "#F7E8D5", fontSize: 15, fontWeight: "800", marginTop: 5 },
+  legacy: { borderRadius: 21, borderWidth: 1, borderColor: "rgba(215,148,81,0.20)", backgroundColor: "rgba(31,18,10,0.46)", padding: 18, flexDirection: "row", alignItems: "center", gap: 16 },
+  legacyEyebrow: { color: "#C98B5A", fontSize: 10, fontWeight: "900", letterSpacing: 1.7 },
+  legacyTitle: { flexShrink: 1, color: "#F7E8D5", fontSize: 16, fontWeight: "800", marginTop: 5 },
   legacyArrow: { color: "#EFB65E", fontSize: 24 },
   footer: { color: "rgba(206,183,162,0.38)", fontSize: 10, lineHeight: 16, textAlign: "center", paddingHorizontal: 18 },
   h2oCompositor: { flex: 1, position: "relative", overflow: "hidden" },

@@ -1,8 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { daOidcSessionGeneration } from '../auth/daOidcSession';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   SafeAreaView,
@@ -14,7 +16,7 @@ import {
   View,
 } from 'react-native';
 import * as Location from 'expo-location';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { daInspectProfileTrust, DaProfileTrustResult } from '../utils/daProfileTrust';
 import { loadCourierPresence, readCourierPresenceCache, saveCourierPresence } from '../utils/daPresenceStore';
 import {
@@ -49,6 +51,7 @@ const clean = (value: string) => String(value || '').replace(/\s+/g, ' ').trim()
 
 // DA_SPRINT16_PRESENCE_CONTINUITY_V1
 export default function CourierSpaceScreen() {
+  const [formEpoch, setFormEpoch] = useState(daOidcSessionGeneration);
   const existing = readCourierPresenceCache<CourierProfileLite>();
   const [riderName, setRiderName] = useState(existing?.riderName || '');
   const [phone, setPhone] = useState(existing?.phone || '');
@@ -132,15 +135,19 @@ async function persistActivationDraft(patch: Partial<CourierProfileLite> = {}) {
     updatedAt: new Date().toISOString(),
     ...patch,
   };
-  await saveCourierPresence(draft);
+  await saveCourierPresence(draft, formEpoch);
   setProfileId(draft.id);
   return draft;
 }
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     let active = true;
+    const expected = daOidcSessionGeneration();
+    setFormEpoch(expected);
+    setPhoneSent(false); setEmailSent(false); setPhoneCode(''); setEmailCode('');
     void loadCourierPresence<CourierProfileLite>().then((profile) => {
-      if (!active || !profile) return;
+      if (!active || expected !== daOidcSessionGeneration()) return;
+      profile = profile || {} as CourierProfileLite;
       setProfileId(profile.id || '');
       setRiderName(profile.riderName || '');
       setPhone(profile.phone || '');
@@ -167,7 +174,7 @@ async function persistActivationDraft(patch: Partial<CourierProfileLite> = {}) {
       setEmailProof(profile.proofs?.email || null);
     });
     return () => { active = false; };
-  }, []);
+  }, []));
 
   const basics = useMemo(() => {
     const items: string[] = [];
@@ -229,7 +236,14 @@ async function persistActivationDraft(patch: Partial<CourierProfileLite> = {}) {
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
       if (permission.status !== 'granted') {
-        Alert.alert('Position requise', 'La mise en ligne terrain exige une zone réellement détectée.');
+        Alert.alert(
+          'Position requise',
+          'Autorisez la localisation « Lorsque l’app est active » et « Position exacte » dans les réglages iPhone pour détecter votre territoire. Vos deux preuves SMS et email restent conservées.',
+          [
+            { text: 'Plus tard', style: 'cancel' },
+            { text: 'Ouvrir Réglages', onPress: () => { void Linking.openSettings(); } },
+          ],
+        );
         return;
       }
       const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
@@ -471,7 +485,7 @@ Utilisez uniquement le code le plus récent.`,
         trust: { status: 'screened', score: result.score, checkedAt: result.checkedAt, emailDomain: result.email.domain },
         updatedAt: new Date().toISOString(),
       };
-      await saveCourierPresence(profile);
+      await saveCourierPresence(profile, formEpoch);
       setProfileId(profile.id);
       Alert.alert('Profil terrain enregistré', activationReady ? 'Le coursier peut passer en ligne.' : 'La mise en ligne reste verrouillée.', [{ text: 'Retour au terrain', onPress: () => router.replace('/') }]);
     } catch (error: any) {

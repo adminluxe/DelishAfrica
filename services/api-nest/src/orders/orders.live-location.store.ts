@@ -31,12 +31,15 @@ type LiveLocationRecord = {
   stoppedAt?: string;
   stopReason?: string;
   history: LivePoint[];
+  travelMode?: "DRIVE" | "TWO_WHEELER" | "BICYCLE" | "WALK";
+  sharingSessionId?: string;
 };
 
 type StoreShape = {
   version: 1;
   updatedAt: string;
   locations: Record<string, LiveLocationRecord>;
+  stoppedSessions?: Record<string, string[]>;
 };
 
 const STORE_VERSION = 1 as const;
@@ -76,21 +79,24 @@ function readStore(): StoreShape {
       version: STORE_VERSION,
       updatedAt: String(parsed?.updatedAt || nowIso()),
       locations,
+      stoppedSessions: parsed?.stoppedSessions || {},
     };
   } catch {
     return { version: STORE_VERSION, updatedAt: nowIso(), locations: {} };
   }
 }
 
-function writeStore(store: StoreShape): void {
+function writeStore(store: StoreShape): boolean {
   try {
     ensureDir();
     const next = { ...store, version: STORE_VERSION, updatedAt: nowIso() };
     const temp = `${STORE_FILE}.tmp`;
     fs.writeFileSync(temp, JSON.stringify(next, null, 2), "utf8");
     fs.renameSync(temp, STORE_FILE);
+    return true;
   } catch {
     // Location persistence must never crash order processing.
+    return false;
   }
 }
 
@@ -103,6 +109,7 @@ function text(value: unknown): string {
 }
 
 function finite(value: unknown): number | null {
+  if (value === null || value === undefined || value === "" || typeof value === "boolean") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -197,6 +204,9 @@ export function publishDemoOrderLiveLocation(input: AnyRecord = {}): AnyRecord {
   const now = nowIso();
   const capturedCandidate = text(input.capturedAt);
   const capturedMs = Date.parse(capturedCandidate);
+  if (capturedCandidate && (!Number.isFinite(capturedMs) || capturedMs > Date.now() + 30_000 || capturedMs < Date.now() - 90_000)) {
+    return { ok: false, error: "invalid_location_timestamp", orderId };
+  }
   const capturedAt = Number.isFinite(capturedMs) ? new Date(capturedMs).toISOString() : now;
   const accuracyMeters = finite(input.accuracyMeters ?? input.coords?.accuracy);
   const headingDegrees = finite(input.headingDegrees ?? input.coords?.heading);
@@ -204,6 +214,15 @@ export function publishDemoOrderLiveLocation(input: AnyRecord = {}): AnyRecord {
 
   const store = readStore();
   const previous = store.locations[orderId] || null;
+  const sharingSessionId = text(input.sharingSessionId).slice(0, 128);
+  const stoppedSessions = store.stoppedSessions ||= {};
+  const closed = stoppedSessions[orderId] || [];
+  if (sharingSessionId && closed.includes(sharingSessionId)) return { ok: false, error: "sharing_session_stopped", orderId };
+  if (previous && Date.parse(capturedAt) < Date.parse(previous.point.capturedAt)) return { ok: false, error: "out_of_order_location", orderId };
+  if (sharingSessionId && previous?.sharingSessionId && previous.sharingSessionId !== sharingSessionId) {
+    stoppedSessions[orderId] = [...new Set([...closed, previous.sharingSessionId])].slice(-64);
+  }
+  const travelMode = text(input.travelMode).toUpperCase();
   const point: LivePoint = {
     latitude,
     longitude,
@@ -232,10 +251,12 @@ export function publishDemoOrderLiveLocation(input: AnyRecord = {}): AnyRecord {
     assignmentVerified: true,
     staleAfterSeconds: STALE_AFTER_SECONDS,
     history,
+    ...(sharingSessionId ? { sharingSessionId } : {}),
+    ...(["DRIVE", "TWO_WHEELER", "BICYCLE", "WALK"].includes(travelMode) ? { travelMode: travelMode as LiveLocationRecord["travelMode"] } : {}),
   };
 
   store.locations[orderId] = record;
-  writeStore(store);
+  if (!writeStore(store)) return { ok: false, error: "location_persistence_unavailable", orderId };
 
   return {
     ok: true,
@@ -289,9 +310,7 @@ export function stopDemoOrderLiveLocation(input: AnyRecord = {}): AnyRecord {
 
   const store = readStore();
   const previous = store.locations[orderId] || null;
-  if (!previous) return { ok: false, error: "location_not_found", orderId };
-
-  if (courierId && previous.courierId !== courierId) {
+  if (previous && courierId && previous.courierId !== courierId) {
     return {
       ok: false,
       error: "courier_mismatch",
@@ -299,6 +318,18 @@ export function stopDemoOrderLiveLocation(input: AnyRecord = {}): AnyRecord {
       courierId,
     };
   }
+
+  const sharingSessionId = text(input.sharingSessionId).slice(0, 128);
+  if (sharingSessionId) {
+    const stoppedSessions = store.stoppedSessions ||= {};
+    stoppedSessions[orderId] = [...new Set([...(stoppedSessions[orderId] || []), sharingSessionId])].slice(-64);
+    // A late stop from a previous screen/session must never stop the new session.
+    if (!previous || previous.sharingSessionId !== sharingSessionId) {
+      if (!writeStore(store)) return { ok: false, error: "location_persistence_unavailable", orderId };
+      return { ok: true, orderId, statusMutation: false, sessionStopped: true };
+    }
+  }
+  if (!previous) return { ok: false, error: "location_not_found", orderId };
 
   const stopped: LiveLocationRecord = {
     ...previous,
@@ -308,7 +339,7 @@ export function stopDemoOrderLiveLocation(input: AnyRecord = {}): AnyRecord {
   };
 
   store.locations[orderId] = stopped;
-  writeStore(store);
+  if (!writeStore(store)) return { ok: false, error: "location_persistence_unavailable", orderId };
 
   return {
     ok: true,

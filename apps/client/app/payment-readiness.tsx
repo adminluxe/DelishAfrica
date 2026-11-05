@@ -1,14 +1,15 @@
+import { getStripeNativeModule } from "../utils/daStripeNativeBridge";
 import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
 declare const require: any;
@@ -75,7 +76,7 @@ function loadStripeNative(): {
   error: string | null;
 } {
   try {
-    const stripeModule = require("@stripe/stripe-react-native") as StripeNativeModule;
+    const stripeModule = getStripeNativeModule() as StripeNativeModule | null;
 
     if (
       !stripeModule ||
